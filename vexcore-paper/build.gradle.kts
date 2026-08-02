@@ -31,7 +31,6 @@ tasks.shadowJar {
     relocate("org.spongepowered.configurate", "dev.vexsoft.core.libs.configurate")
     relocate("org.yaml.snakeyaml", "dev.vexsoft.core.libs.snakeyaml")
     relocate("io.leangen.geantyref", "dev.vexsoft.core.libs.geantyref")
-    relocate("com.fasterxml.jackson", "dev.vexsoft.core.libs.jackson")
 }
 
 tasks.jar { enabled = false }

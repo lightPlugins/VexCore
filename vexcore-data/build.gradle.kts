@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     api(project(":vexcore-api"))
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.2")
     compileOnly("com.zaxxer:HikariCP:6.3.0")
     compileOnly("org.postgresql:postgresql:42.7.8")
 
