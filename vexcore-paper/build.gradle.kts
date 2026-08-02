@@ -32,8 +32,6 @@ tasks.shadowJar {
     relocate("org.yaml.snakeyaml", "dev.vexsoft.core.libs.snakeyaml")
     relocate("io.leangen.geantyref", "dev.vexsoft.core.libs.geantyref")
     relocate("com.fasterxml.jackson", "dev.vexsoft.core.libs.jackson")
-    relocate("com.zaxxer.hikari", "dev.vexsoft.core.libs.hikari")
-    relocate("org.postgresql", "dev.vexsoft.core.libs.postgresql")
 }
 
 tasks.jar { enabled = false }
