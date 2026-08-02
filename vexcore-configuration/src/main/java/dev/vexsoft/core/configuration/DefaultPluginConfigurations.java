@@ -1,7 +1,6 @@
 package dev.vexsoft.core.configuration;
 
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
-import dev.vexsoft.core.api.configuration.PluginConfigurations;
 import dev.vexsoft.core.api.configuration.VexConfiguration;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -20,7 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-final class DefaultPluginConfigurations implements PluginConfigurations {
+final class DefaultPluginConfigurations {
   private final ConfigurationOwner owner;
   private final Path dataDirectory;
 
@@ -29,30 +28,25 @@ final class DefaultPluginConfigurations implements PluginConfigurations {
     this.dataDirectory = owner.configurationDirectory().toAbsolutePath().normalize();
   }
 
-  @Override public ConfigurationOwner owner() { return owner; }
+  public ConfigurationOwner owner() { return owner; }
 
-  @Override
   public VexConfiguration load(String relativePath) {
     return load(Path.of(Objects.requireNonNull(relativePath, "relativePath")));
   }
 
-  @Override
   public VexConfiguration load(Path relativePath) {
     return load(relativePath, true);
   }
 
-  @Override
   public VexConfiguration load(Path relativePath, boolean loadDefaults) {
     Path normalized = normalizeRelative(relativePath);
     return loadInternal(normalized, normalized.toString().replace('\\', '/'), loadDefaults);
   }
 
-  @Override
   public VexConfiguration load(Path relativePath, String defaultsResource) {
     return loadInternal(normalizeRelative(relativePath), normalizeResource(defaultsResource), true);
   }
 
-  @Override
   public Map<Path, VexConfiguration> loadDirectory(Path relativeDirectory) {
     Path directory = resolveInsideDataDirectory(relativeDirectory);
     Map<Path, VexConfiguration> loaded = new LinkedHashMap<>();

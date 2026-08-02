@@ -1,8 +1,9 @@
 package dev.vexsoft.core.paper;
 
 import dev.vexsoft.core.api.service.ServiceRegistry;
-import dev.vexsoft.core.paper.module.ConfigurationModule;
 import dev.vexsoft.core.paper.module.ModuleManager;
+import dev.vexsoft.core.paper.module.PlatformModule;
+import dev.vexsoft.core.paper.platform.PlatformService;
 import dev.vexsoft.core.paper.plugin.VexLogger;
 import dev.vexsoft.core.service.DefaultServiceRegistry;
 import org.bukkit.plugin.ServicePriority;
@@ -19,12 +20,13 @@ public final class VexCorePlugin extends JavaPlugin {
     services = new DefaultServiceRegistry();
     getServer().getServicesManager().register(ServiceRegistry.class, services, this, ServicePriority.Normal);
     modules = new ModuleManager(services);
-    modules.enable(new ConfigurationModule());
+    modules.enable(new PlatformModule());
   }
 
   @Override
   public void onEnable() {
-    getLogger().info("VexCore successfully enabled.");
+    PlatformService platform = services.require(PlatformService.class);
+    getLogger().info("VexCore successfully enabled on " + platform.platform());
   }
 
   @Override

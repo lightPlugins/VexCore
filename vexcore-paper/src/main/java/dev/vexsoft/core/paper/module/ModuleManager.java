@@ -27,13 +27,34 @@ public final class ModuleManager {
     List<VexModule> reverse = new ArrayList<>(enabled);
     // Dependants are started later, so they need to stop before their dependencies
     Collections.reverse(reverse);
+    RuntimeException failure = null;
+
     for (VexModule module : reverse) {
       try {
         module.disable();
+      } catch (RuntimeException exception) {
+        failure = collectFailure(failure, exception);
       } finally {
-        services.unregisterOwnedBy(module);
+        try {
+          services.unregisterOwnedBy(module);
+        } catch (RuntimeException exception) {
+          failure = collectFailure(failure, exception);
+        }
       }
     }
     enabled.clear();
+
+    // One broken module must not prevent the remaining modules from cleaning up
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  private RuntimeException collectFailure(RuntimeException current, RuntimeException next) {
+    if (current == null) {
+      return next;
+    }
+    current.addSuppressed(next);
+    return current;
   }
 }

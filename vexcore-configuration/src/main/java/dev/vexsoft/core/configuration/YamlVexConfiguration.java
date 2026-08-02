@@ -12,7 +12,7 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
   private final Path file;
   private final YamlConfigurationLoader loader;
 
-  YamlVexConfiguration(Path file) {
+  public YamlVexConfiguration(Path file) {
     super(load(file));
     this.file = file.toAbsolutePath().normalize();
     this.loader = loader(this.file);
@@ -22,21 +22,25 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
 
   @Override
   public void reload() {
-    try {
-      node.from(loader.load());
-    } catch (IOException exception) {
-      throw new IllegalStateException("Failed to reload configuration " + file, exception);
-    }
+    write(() -> {
+      try {
+        node.from(loader.load());
+      } catch (IOException exception) {
+        throw new IllegalStateException("Failed to reload configuration " + file, exception);
+      }
+    });
   }
 
   @Override
   public void save() {
-    try {
-      Files.createDirectories(file.getParent());
-      loader.save(node);
-    } catch (IOException exception) {
-      throw new IllegalStateException("Failed to save configuration " + file, exception);
-    }
+    write(() -> {
+      try {
+        Files.createDirectories(file.getParent());
+        loader.save(node);
+      } catch (IOException exception) {
+        throw new IllegalStateException("Failed to save configuration " + file, exception);
+      }
+    });
   }
 
   public CommentedConfigurationNode rootNode() { return node; }

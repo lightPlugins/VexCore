@@ -2,12 +2,19 @@ package dev.vexsoft.core.api.service;
 
 import java.util.Optional;
 
-public interface PluginServiceRegistry {
-  /** Returns the owner associated with this registry view */
+public interface VexServiceRegistry {
+
+  /** Returns the owner associated with this registry */
   public ServiceOwner owner();
 
-  /** Registers a service implementation owned by this registry's owner */
-  public <T extends VexService> void register(Class<T> serviceType, T implementation);
+  /** Queues a service implementation for dependency-aware registration */
+  public <T extends VexService> void register(
+      Class<T> serviceType,
+      Class<? extends T> implementationType
+  );
+
+  /** Creates and publishes every queued service in dependency order */
+  public void registerQueuedServices();
 
   /** Finds the current implementation of the requested service type */
   public <T extends VexService> Optional<T> find(Class<T> serviceType);
@@ -21,9 +28,9 @@ public interface PluginServiceRegistry {
   /** Checks whether the requested service type is currently registered */
   public boolean isAvailable(Class<? extends VexService> serviceType);
 
-  /** Removes a service when it is owned by this registry's owner */
+  /** Removes a service when it is owned by this registry */
   public void unregister(Class<? extends VexService> serviceType);
 
-  /** Removes every service registered through this owner-bound view */
+  /** Removes every service registered through this registry */
   public void unregisterOwnedServices();
 }

@@ -10,7 +10,7 @@ public interface ServiceRegistry {
    * @param owner the owner of future registrations
    * @return an owner-bound registry view
    */
-  public PluginServiceRegistry scoped(ServiceOwner owner);
+  public VexServiceRegistry scoped(ServiceOwner owner);
 
   /**
    * Finds the currently registered implementation of a service type
