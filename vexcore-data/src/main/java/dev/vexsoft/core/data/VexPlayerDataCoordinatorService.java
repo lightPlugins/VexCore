@@ -169,16 +169,6 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   }
 
   @Override
-  public CompletableFuture<Void> save(final VexPlayer player) {
-    Objects.requireNonNull(player, "player");
-    VexPlayer cached = players.get(player.getUniqueId());
-    if (cached != player) {
-      throw new IllegalStateException("VexPlayer is not the currently cached instance: " + player.getUniqueId());
-    }
-    return queueSave(player);
-  }
-
-  @Override
   public synchronized Collection<DataContainerKey<?>> getKeys(final ServiceOwner owner) {
     String ownerName = normalizeOwner(Objects.requireNonNull(owner, "owner").getServiceOwnerName());
     OwnerContainers ownerContainers = containersByOwner.get(ownerName);

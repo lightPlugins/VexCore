@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.postgresql.ds.PGSimpleDataSource;
 
 public final class PostgresPlayerDataStore implements PlayerDataStore {
 
@@ -26,17 +27,103 @@ public final class PostgresPlayerDataStore implements PlayerDataStore {
       final String jdbcUrl,
       final String username,
       final String password,
-      final int maximumPoolSize
+      final int maximumPoolSize,
+      final boolean autoCreateDatabase,
+      final String maintenanceDatabase
   ) {
+    PGSimpleDataSource postgres = new PGSimpleDataSource();
+    postgres.setURL(Objects.requireNonNull(jdbcUrl, "jdbcUrl"));
+    postgres.setUser(Objects.requireNonNull(username, "username"));
+    postgres.setPassword(Objects.requireNonNull(password, "password"));
+    if (autoCreateDatabase) {
+      createDatabaseIfMissing(
+          postgres,
+          jdbcUrl,
+          username,
+          password,
+          Objects.requireNonNull(maintenanceDatabase, "maintenanceDatabase")
+      );
+    }
+
     HikariConfig config = new HikariConfig();
-    config.setJdbcUrl(Objects.requireNonNull(jdbcUrl, "jdbcUrl"));
-    config.setUsername(Objects.requireNonNull(username, "username"));
-    config.setPassword(Objects.requireNonNull(password, "password"));
+    // A direct DataSource avoids DriverManager lookups across Paper's library classloader
+    config.setDataSource(postgres);
     config.setMaximumPoolSize(maximumPoolSize);
     config.setPoolName("VexCore-Data");
-    // Let the first real operation report an unavailable database after the config was generated
+    // Keep pool creation lazy when automatic database creation is disabled
     config.setInitializationFailTimeout(-1);
     dataSource = new HikariDataSource(config);
+  }
+
+  private void createDatabaseIfMissing(
+      final PGSimpleDataSource target,
+      final String jdbcUrl,
+      final String username,
+      final String password,
+      final String maintenanceDatabase
+  ) {
+    String database = target.getDatabaseName();
+    if (database == null || database.isBlank()) {
+      throw new IllegalArgumentException("PostgreSQL JDBC URL does not contain a database name");
+    }
+
+    PGSimpleDataSource maintenance = new PGSimpleDataSource();
+    maintenance.setURL(maintenanceUrl(jdbcUrl, maintenanceDatabase));
+    maintenance.setUser(username);
+    maintenance.setPassword(password);
+
+    try (Connection connection = maintenance.getConnection()) {
+      if (databaseExists(connection, database)) {
+        return;
+      }
+      try (Statement statement = connection.createStatement()) {
+        statement.executeUpdate("CREATE DATABASE " + quoteIdentifier(database));
+      } catch (SQLException exception) {
+        // Another server may have created the database after our existence check
+        if (!"42P04".equals(exception.getSQLState())) {
+          throw exception;
+        }
+      }
+    } catch (SQLException exception) {
+      throw new IllegalStateException(
+          "Unable to create PostgreSQL database '" + database
+              + "'. Grant CREATE DATABASE or disable postgresql.auto-create-database",
+          exception
+      );
+    }
+  }
+
+  private boolean databaseExists(final Connection connection, final String database) throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT 1 FROM pg_database WHERE datname = ?"
+    )) {
+      statement.setString(1, database);
+      try (ResultSet result = statement.executeQuery()) {
+        return result.next();
+      }
+    }
+  }
+
+  private String quoteIdentifier(final String identifier) {
+    return '"' + identifier.replace("\"", "\"\"") + '"';
+  }
+
+  private String maintenanceUrl(final String jdbcUrl, final String maintenanceDatabase) {
+    String prefix = "jdbc:postgresql:";
+    if (!jdbcUrl.startsWith(prefix)) {
+      throw new IllegalArgumentException("Unsupported PostgreSQL JDBC URL: " + jdbcUrl);
+    }
+    int query = jdbcUrl.indexOf('?');
+    String parameters = query < 0 ? "" : jdbcUrl.substring(query);
+    String connection = query < 0 ? jdbcUrl : jdbcUrl.substring(0, query);
+    if (connection.startsWith(prefix + "//")) {
+      int databaseSeparator = connection.indexOf('/', (prefix + "//").length());
+      if (databaseSeparator < 0) {
+        throw new IllegalArgumentException("PostgreSQL JDBC URL does not contain a database name");
+      }
+      return connection.substring(0, databaseSeparator + 1) + maintenanceDatabase + parameters;
+    }
+    return prefix + maintenanceDatabase + parameters;
   }
 
   @Override

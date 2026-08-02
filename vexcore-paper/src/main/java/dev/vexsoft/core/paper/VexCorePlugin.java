@@ -40,6 +40,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
   private ModuleManager modules;
   private VexLogger logger;
   private ScheduledTask playerAutosaveTask;
+  private boolean initialized;
 
   @Override
   public void onLoad() {
@@ -57,10 +58,16 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.registerQueuedServices();
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
+    initialized = true;
   }
 
   @Override
   public void onEnable() {
+    if (!initialized) {
+      getLogger().severe("VexCore cannot be enabled because its loading phase failed");
+      getServer().getPluginManager().disablePlugin(this);
+      return;
+    }
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     getServer().getPluginManager().registerEvents(

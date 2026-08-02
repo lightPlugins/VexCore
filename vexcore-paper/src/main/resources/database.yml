@@ -5,3 +5,5 @@ postgresql:
   username: postgres
   password: change-me
   maximum-pool-size: 10
+  auto-create-database: true
+  maintenance-database: postgres

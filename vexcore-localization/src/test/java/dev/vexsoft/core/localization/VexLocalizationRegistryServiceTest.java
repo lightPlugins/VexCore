@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -89,6 +90,28 @@ class VexLocalizationRegistryServiceTest {
     );
   }
 
+  @Test
+  void ignoresInvalidExternalLanguageFoldersWithOneReadableWarning() throws Exception {
+    TestOwner owner = new TestOwner(directory, Map.of(
+        "languages/en_EN/messages.yml",
+        "message: \"Valid\"\n"
+    ));
+    Path invalid = directory.resolve("some_language");
+    java.nio.file.Files.createDirectories(invalid);
+    java.nio.file.Files.writeString(invalid.resolve("first.yml"), "message: \"Invalid\"\n");
+    java.nio.file.Files.writeString(invalid.resolve("second.yml"), "message: \"Invalid\"\n");
+    VexLocalizationRegistryService registry = new VexLocalizationRegistryService(new TestServices(owner));
+
+    registry.register(owner);
+
+    assertEquals(1, owner.warnings.size());
+    assertTrue(owner.warnings.getFirst().contains("some_language"));
+    assertEquals(
+        "Valid",
+        plain(registry.resolve(owner, LanguageKey.EN_EN, "messages.message", Map.of()).getComponent())
+    );
+  }
+
   private String plain(final net.kyori.adventure.text.Component component) {
     return PlainTextComponentSerializer.plainText().serialize(component);
   }
@@ -97,6 +120,7 @@ class VexLocalizationRegistryServiceTest {
 
     private final Path directory;
     private final Map<String, byte[]> resources = new LinkedHashMap<>();
+    private final List<String> warnings = new ArrayList<>();
 
     private TestOwner(final Path directory, final Map<String, String> resources) {
       this.directory = directory;
@@ -129,6 +153,7 @@ class VexLocalizationRegistryServiceTest {
 
     @Override
     public void reportLocalizationWarning(final String message, final Throwable cause) {
+      warnings.add(message);
     }
 
     @Override

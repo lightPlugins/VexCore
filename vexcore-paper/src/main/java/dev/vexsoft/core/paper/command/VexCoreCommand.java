@@ -89,10 +89,7 @@ public final class VexCoreCommand {
     }
 
     VexPlayer vexPlayer = players.require(player.getUniqueId());
-    languages.setLanguage(vexPlayer, selected.get().getKey()).exceptionally(throwable -> {
-      logger.log(Level.SEVERE, "Unable to persist language for " + player.getUniqueId(), throwable);
-      return null;
-    });
+    languages.setLanguage(vexPlayer, selected.get().getKey());
     messages.send(
         player,
         "commands.vexcore.language.set",

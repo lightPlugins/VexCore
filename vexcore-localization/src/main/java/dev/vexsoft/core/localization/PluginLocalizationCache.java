@@ -17,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Value;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
@@ -83,12 +85,29 @@ final class PluginLocalizationCache {
     if (Files.notExists(directory)) {
       return;
     }
+    Set<String> reportedFolders = new HashSet<>();
     try (var paths = Files.walk(directory)) {
       paths.filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().endsWith(".yml"))
           .sorted(Comparator.comparing(Path::toString))
           .forEach(path -> {
-            ResourceLocation location = location(directory.relativize(path).toString().replace('\\', '/'));
+            Path relative = directory.relativize(path);
+            ResourceLocation location;
+            try {
+              location = location(relative.toString().replace('\\', '/'));
+            } catch (IllegalArgumentException exception) {
+              String folder = relative.getNameCount() == 0
+                  ? relative.toString()
+                  : relative.getName(0).toString();
+              if (reportedFolders.add(folder)) {
+                owner.reportLocalizationWarning(
+                    "Ignoring language folder '" + folder + "' for " + owner.getServiceOwnerName()
+                        + ", expected a language key like en_EN or de_DE",
+                    null
+                );
+              }
+              return;
+            }
             try (InputStream input = Files.newInputStream(path)) {
               loadFile(target, location, input, true, path.toString());
             } catch (IOException exception) {

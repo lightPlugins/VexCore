@@ -4,7 +4,6 @@ import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.VexService;
 import java.util.Collection;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public interface LanguageService extends VexService {
 
@@ -17,8 +16,8 @@ public interface LanguageService extends VexService {
   /** Returns every language globally available through VexCore */
   public Collection<Language> getLanguages();
 
-  /** Changes and persists the language selected by a Vex player */
-  public CompletableFuture<Void> setLanguage(VexPlayer player, LanguageKey language);
+  /** Changes the cached language selected by a Vex player */
+  public void setLanguage(VexPlayer player, LanguageKey language);
 
   /** Reloads every registered localization cache */
   public void reload();

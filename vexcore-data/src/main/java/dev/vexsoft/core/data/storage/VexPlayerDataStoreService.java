@@ -26,7 +26,9 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
           configuration.getString("postgresql.jdbc-url", "jdbc:postgresql://localhost:5432/vexcore"),
           configuration.getString("postgresql.username", "postgres"),
           configuration.getString("postgresql.password", "change-me"),
-          configuration.getInt("postgresql.maximum-pool-size", 10)
+          configuration.getInt("postgresql.maximum-pool-size", 10),
+          configuration.getBoolean("postgresql.auto-create-database", true),
+          configuration.getString("postgresql.maintenance-database", "postgres")
       );
       default -> throw new IllegalArgumentException("Unsupported player data storage: " + type);
     };

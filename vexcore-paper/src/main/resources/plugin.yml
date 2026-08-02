@@ -6,12 +6,6 @@ load: STARTUP
 description: Modular infrastructure for VexSoft Paper plugins
 folia-supported: true
 libraries:
+  - com.fasterxml.jackson.core:jackson-databind:2.21.2
   - com.zaxxer:HikariCP:6.3.0
   - org.postgresql:postgresql:42.7.8
-permissions:
-  vexcore.command.reload:
-    description: Allows reloading VexCore localizations
-    default: op
-  vexcore.command.language:
-    description: Allows changing the personal language
-    default: true
