@@ -4,9 +4,11 @@ import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
+import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.paper.listener.ListenerService;
 import dev.vexsoft.core.paper.listener.VexListenerService;
 import dev.vexsoft.core.paper.scheduler.ScheduleService;
@@ -39,8 +41,10 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       services.register(ScheduleService.class, VexScheduleService.class);
       services.register(CommandService.class, VexCommandService.class);
       services.register(ListenerService.class, VexListenerService.class);
+      services.register(DataService.class, VexDataService.class);
       registerServices();
       services.registerQueuedServices();
+      registerData(services.require(DataService.class));
       registerCommands(services.require(CommandService.class));
       registerListeners(services.require(ListenerService.class));
       onVexLoad();
@@ -69,6 +73,9 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   /** Registers the commands provided by this plugin */
   protected void registerCommands(final CommandService commands) { }
+
+  /** Registers the player data containers provided by this plugin */
+  protected void registerData(final DataService data) { }
 
   /** Registers the listeners provided by this plugin */
   protected void registerListeners(final ListenerService listeners) { }

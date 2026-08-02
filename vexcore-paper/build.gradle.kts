@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":vexcore-service-registry"))
     implementation(project(":vexcore-configuration"))
     implementation(project(":vexcore-command"))
+    implementation(project(":vexcore-data"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
@@ -25,9 +26,13 @@ tasks.processResources {
 tasks.shadowJar {
     archiveBaseName.set("VexCore")
     archiveClassifier.set("")
+    mergeServiceFiles()
     relocate("org.spongepowered.configurate", "dev.vexsoft.core.libs.configurate")
     relocate("org.yaml.snakeyaml", "dev.vexsoft.core.libs.snakeyaml")
     relocate("io.leangen.geantyref", "dev.vexsoft.core.libs.geantyref")
+    relocate("com.fasterxml.jackson", "dev.vexsoft.core.libs.jackson")
+    relocate("com.zaxxer.hikari", "dev.vexsoft.core.libs.hikari")
+    relocate("org.postgresql", "dev.vexsoft.core.libs.postgresql")
 }
 
 tasks.jar { enabled = false }

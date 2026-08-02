@@ -5,5 +5,6 @@ include(
     "vexcore-service-registry",
     "vexcore-configuration",
     "vexcore-command",
+    "vexcore-data",
     "vexcore-paper",
 )

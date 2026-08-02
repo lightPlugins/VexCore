@@ -1,0 +1,7 @@
+storage: postgresql
+
+postgresql:
+  jdbc-url: jdbc:postgresql://localhost:5432/vexcore
+  username: postgres
+  password: change-me
+  maximum-pool-size: 10
