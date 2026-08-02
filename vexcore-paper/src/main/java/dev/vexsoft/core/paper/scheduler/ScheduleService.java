@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface ScheduleService extends VexService {
 
   /** Returns the plugin that owns every task created by this service */
-  public Plugin owner();
+  public Plugin getOwner();
 
   /** Executes a task on the global region on the next tick */
   public VexTask runGlobal(Runnable task);

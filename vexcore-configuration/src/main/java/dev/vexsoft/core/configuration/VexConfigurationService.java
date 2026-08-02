@@ -16,15 +16,15 @@ public final class VexConfigurationService implements ConfigurationService {
 
   public VexConfigurationService(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    if (!(checkedServices.owner() instanceof ConfigurationOwner configurationOwner)) {
+    if (!(checkedServices.getOwner() instanceof ConfigurationOwner configurationOwner)) {
       throw new IllegalArgumentException("ConfigurationService owner must support configurations");
     }
     this.configurations = new DefaultPluginConfigurations(configurationOwner);
   }
 
   @Override
-  public ConfigurationOwner owner() {
-    return configurations.owner();
+  public ConfigurationOwner getOwner() {
+    return configurations.getOwner();
   }
 
   @Override

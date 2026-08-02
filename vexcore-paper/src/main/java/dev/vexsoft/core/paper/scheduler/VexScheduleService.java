@@ -18,11 +18,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import lombok.Getter;
 
 @Dependencies({PlatformService.class})
 public final class VexScheduleService implements ScheduleService, AutoCloseable {
 
   private final Server server;
+  @Getter
   private final Plugin owner;
   private final ConcurrentHashMap<ScheduledTask, ScheduledVexTask> tasks = new ConcurrentHashMap<>();
   private final AtomicBoolean closed = new AtomicBoolean();
@@ -30,16 +32,11 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
   public VexScheduleService(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
     checkedServices.require(PlatformService.class);
-    if (!(checkedServices.owner() instanceof Plugin plugin)) {
+    if (!(checkedServices.getOwner() instanceof Plugin plugin)) {
       throw new IllegalArgumentException("ScheduleService owner must be a Bukkit plugin");
     }
     this.server = Bukkit.getServer();
     this.owner = plugin;
-  }
-
-  @Override
-  public Plugin owner() {
-    return owner;
   }
 
   @Override

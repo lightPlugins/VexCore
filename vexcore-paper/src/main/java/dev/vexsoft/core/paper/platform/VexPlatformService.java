@@ -15,8 +15,8 @@ public final class VexPlatformService implements PlatformService {
   }
 
   @Override
-  public ServerPlatform platform() {
-    return PlatformDetector.platform();
+  public ServerPlatform getPlatform() {
+    return PlatformDetector.getPlatform();
   }
 
   @Override

@@ -7,8 +7,10 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import lombok.Getter;
 
 public final class YamlVexConfiguration extends ConfigurateConfigurationSection implements VexConfiguration {
+  @Getter(onMethod_ = @Override)
   private final Path file;
   private final YamlConfigurationLoader loader;
 
@@ -17,8 +19,6 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
     this.file = file.toAbsolutePath().normalize();
     this.loader = loader(this.file);
   }
-
-  @Override public Path file() { return file; }
 
   @Override
   public void reload() {
@@ -43,7 +43,7 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
     });
   }
 
-  public CommentedConfigurationNode rootNode() { return node; }
+  public CommentedConfigurationNode getRootNode() { return node; }
 
   private static CommentedConfigurationNode load(Path file) {
     Path normalized = file.toAbsolutePath().normalize();

@@ -7,7 +7,7 @@ import java.util.Map;
 public interface ConfigurationService extends VexService {
 
   /** Returns the owner associated with this configuration service */
-  public ConfigurationOwner owner();
+  public ConfigurationOwner getOwner();
 
   /** Loads a YAML file and merges defaults from the matching bundled resource */
   public VexConfiguration load(String relativePath);

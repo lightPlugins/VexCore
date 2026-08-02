@@ -18,17 +18,17 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import lombok.Getter;
 
 final class DefaultPluginConfigurations {
+  @Getter
   private final ConfigurationOwner owner;
   private final Path dataDirectory;
 
   DefaultPluginConfigurations(ConfigurationOwner owner) {
     this.owner = owner;
-    this.dataDirectory = owner.configurationDirectory().toAbsolutePath().normalize();
+    this.dataDirectory = owner.getConfigurationDirectory().toAbsolutePath().normalize();
   }
-
-  public ConfigurationOwner owner() { return owner; }
 
   public VexConfiguration load(String relativePath) {
     return load(Path.of(Objects.requireNonNull(relativePath, "relativePath")));
@@ -63,7 +63,7 @@ final class DefaultPluginConfigurations {
             try {
               loaded.put(directory.relativize(path), new YamlVexConfiguration(path));
             } catch (RuntimeException exception) {
-              owner.configurationWarning("Failed to load YAML file " + path, exception);
+              owner.reportConfigurationWarning("Failed to load YAML file " + path, exception);
             }
           });
     } catch (IOException exception) {
@@ -83,7 +83,7 @@ final class DefaultPluginConfigurations {
     copyDefaultIfMissing(target, resourcePath);
     YamlVexConfiguration configuration = new YamlVexConfiguration(target);
     CommentedConfigurationNode defaults = loadDefaults(resourcePath);
-    boolean changed = merge(defaults, configuration.rootNode(), "", target, resourcePath);
+    boolean changed = merge(defaults, configuration.getRootNode(), "", target, resourcePath);
     if (changed) {
       configuration.save();
     }
@@ -116,9 +116,9 @@ final class DefaultPluginConfigurations {
   }
 
   private InputStream openResource(String resourcePath) {
-    return owner.configurationResource(resourcePath)
+    return owner.getConfigurationResource(resourcePath)
         .orElseThrow(() -> new IllegalStateException(
-            "Missing configuration resource " + resourcePath + " in " + owner.serviceOwnerName()
+            "Missing configuration resource " + resourcePath + " in " + owner.getServiceOwnerName()
         ));
   }
 
@@ -161,7 +161,7 @@ final class DefaultPluginConfigurations {
   }
 
   private void warnConflict(Path file, String defaults, String path, String expected, String found) {
-    owner.configurationWarning(
+    owner.reportConfigurationWarning(
         "Type conflict in " + file + " at '" + (path.isBlank() ? "<root>" : path)
             + "' (defaults=" + defaults + "): expected " + expected + ", found " + found
             + ". Keeping current value.",

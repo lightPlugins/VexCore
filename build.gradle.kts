@@ -15,6 +15,13 @@ allprojects {
 
 subprojects {
     plugins.withId("java") {
+        dependencies {
+            add("compileOnly", "org.projectlombok:lombok:1.18.42")
+            add("annotationProcessor", "org.projectlombok:lombok:1.18.42")
+            add("testCompileOnly", "org.projectlombok:lombok:1.18.42")
+            add("testAnnotationProcessor", "org.projectlombok:lombok:1.18.42")
+        }
+
         extensions.configure<JavaPluginExtension> {
             toolchain.languageVersion.set(JavaLanguageVersion.of(25))
             withSourcesJar()

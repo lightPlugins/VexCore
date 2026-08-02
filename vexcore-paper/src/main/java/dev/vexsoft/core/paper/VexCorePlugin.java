@@ -26,7 +26,7 @@ public final class VexCorePlugin extends JavaPlugin {
   @Override
   public void onEnable() {
     PlatformService platform = services.require(PlatformService.class);
-    getLogger().info("VexCore successfully enabled on " + platform.platform());
+    getLogger().info("VexCore successfully enabled on " + platform.getPlatform());
   }
 
   @Override

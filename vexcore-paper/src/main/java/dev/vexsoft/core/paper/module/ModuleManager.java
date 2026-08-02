@@ -4,14 +4,14 @@ import dev.vexsoft.core.api.service.ServiceRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public final class ModuleManager {
+  @NonNull
   private final ServiceRegistry services;
   private final List<VexModule> enabled = new ArrayList<>();
-
-  public ModuleManager(ServiceRegistry services) {
-    this.services = services;
-  }
 
   public void enable(VexModule module) {
     try {

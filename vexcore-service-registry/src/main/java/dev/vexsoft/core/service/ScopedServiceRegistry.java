@@ -15,10 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.Getter;
+import lombok.Value;
 
 final class ScopedServiceRegistry implements VexServiceRegistry {
 
   private final DefaultServiceRegistry registry;
+  @Getter
   private final ServiceOwner owner;
   private final Map<Class<? extends VexService>, ServiceDefinition<?>> queued =
       new LinkedHashMap<>();
@@ -26,11 +29,6 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
   ScopedServiceRegistry(final DefaultServiceRegistry registry, final ServiceOwner owner) {
     this.registry = registry;
     this.owner = owner;
-  }
-
-  @Override
-  public ServiceOwner owner() {
-    return owner;
   }
 
   @Override
@@ -57,9 +55,9 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
       while (!pending.isEmpty()) {
         boolean progressed = false;
         for (ServiceDefinition<?> definition : new ArrayList<>(pending)) {
-          if (dependenciesAvailable(definition.implementationType(), pending)) {
+          if (dependenciesAvailable(definition.getImplementationType(), pending)) {
             registerDefinition(definition);
-            registered.add(definition.serviceType());
+            registered.add(definition.getServiceType());
             pending.remove(definition);
             progressed = true;
           }
@@ -140,7 +138,7 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
         continue;
       }
       boolean queuedDependency = pending.stream()
-          .anyMatch(definition -> definition.serviceType() == dependency);
+          .anyMatch(definition -> definition.getServiceType() == dependency);
       if (queuedDependency) {
         return false;
       }
@@ -151,7 +149,7 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
 
   private IllegalStateException dependencyFailure(final List<ServiceDefinition<?>> pending) {
     String implementations = pending.stream()
-        .map(definition -> definition.implementationType().getName())
+        .map(definition -> definition.getImplementationType().getName())
         .sorted()
         .reduce((left, right) -> left + ", " + right)
         .orElse("unknown");
@@ -160,11 +158,11 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
 
   private <T extends VexService> void registerDefinition(final ServiceDefinition<T> definition) {
     try {
-      T implementation = constructor(definition.implementationType()).newInstance(this);
-      registry.register(owner, definition.serviceType(), implementation);
+      T implementation = constructor(definition.getImplementationType()).newInstance(this);
+      registry.register(owner, definition.getServiceType(), implementation);
     } catch (InstantiationException | IllegalAccessException exception) {
       throw new IllegalStateException(
-          "Unable to create service " + definition.implementationType().getName(),
+          "Unable to create service " + definition.getImplementationType().getName(),
           exception
       );
     } catch (InvocationTargetException exception) {
@@ -176,7 +174,7 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
         throw error;
       }
       throw new IllegalStateException(
-          "Service constructor failed: " + definition.implementationType().getName(),
+          "Service constructor failed: " + definition.getImplementationType().getName(),
           cause
       );
     }
@@ -196,9 +194,9 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
     }
   }
 
-  private record ServiceDefinition<T extends VexService>(
-      Class<T> serviceType,
-      Class<? extends T> implementationType
-  ) {
+  @Value
+  private static class ServiceDefinition<T extends VexService> {
+    Class<T> serviceType;
+    Class<? extends T> implementationType;
   }
 }

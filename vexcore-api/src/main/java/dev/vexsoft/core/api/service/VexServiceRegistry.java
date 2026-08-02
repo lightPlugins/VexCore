@@ -5,7 +5,7 @@ import java.util.Optional;
 public interface VexServiceRegistry {
 
   /** Returns the owner associated with this registry */
-  public ServiceOwner owner();
+  public ServiceOwner getOwner();
 
   /** Queues a service implementation for dependency-aware registration */
   public <T extends VexService> void register(

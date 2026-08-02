@@ -46,7 +46,7 @@ class ModuleManagerTest {
     }
 
     @Override
-    public String serviceOwnerName() {
+    public String getServiceOwnerName() {
       return name;
     }
   }

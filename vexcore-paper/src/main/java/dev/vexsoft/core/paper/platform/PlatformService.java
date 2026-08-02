@@ -7,7 +7,7 @@ import org.bukkit.entity.Entity;
 public interface PlatformService extends VexService {
 
   /** Returns the platform used by the current server */
-  public ServerPlatform platform();
+  public ServerPlatform getPlatform();
 
   /** Checks whether the current server is running Folia */
   public boolean isFolia();

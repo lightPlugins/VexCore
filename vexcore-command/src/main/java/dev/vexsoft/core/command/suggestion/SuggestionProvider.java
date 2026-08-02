@@ -1,0 +1,15 @@
+package dev.vexsoft.core.command.suggestion;
+
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import dev.vexsoft.core.command.VexCommandSource;
+import java.util.concurrent.CompletableFuture;
+
+public interface SuggestionProvider {
+
+  /** Creates suggestions for the current command argument */
+  public CompletableFuture<Suggestions> suggest(
+      VexCommandSource source,
+      SuggestionsBuilder builder
+  );
+}

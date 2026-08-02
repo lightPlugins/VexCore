@@ -4,7 +4,11 @@ import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.command.CommandService;
+import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
+import dev.vexsoft.core.paper.listener.ListenerService;
+import dev.vexsoft.core.paper.listener.VexListenerService;
 import dev.vexsoft.core.paper.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.scheduler.VexScheduleService;
 import org.bukkit.Bukkit;
@@ -33,8 +37,12 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
     try {
       services.register(ConfigurationService.class, VexConfigurationService.class);
       services.register(ScheduleService.class, VexScheduleService.class);
-      configureServices(services);
+      services.register(CommandService.class, VexCommandService.class);
+      services.register(ListenerService.class, VexListenerService.class);
+      registerServices();
       services.registerQueuedServices();
+      registerCommands(services.require(CommandService.class));
+      registerListeners(services.require(ListenerService.class));
       onVexLoad();
     } catch (RuntimeException | Error throwable) {
       cleanupInfrastructure();
@@ -57,7 +65,13 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   }
 
   /** Queues the services provided by this plugin */
-  protected void configureServices(final VexServiceRegistry services) { }
+  protected void registerServices() { }
+
+  /** Registers the commands provided by this plugin */
+  protected void registerCommands(final CommandService commands) { }
+
+  /** Registers the listeners provided by this plugin */
+  protected void registerListeners(final ListenerService listeners) { }
 
   protected void onVexLoad() { }
 
@@ -65,11 +79,11 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   protected void onVexDisable() { }
 
-  protected String consolePrefix() {
+  protected String getConsolePrefix() {
     return "<dark_gray>[<aqua>" + getName() + "</aqua>]</dark_gray> ";
   }
 
-  public final VexServiceRegistry services() {
+  public final VexServiceRegistry getServices() {
     if (services == null) {
       throw new IllegalStateException("VexPlugin has not been loaded yet");
     }
@@ -79,18 +93,18 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   @Override
   public final @NonNull VexLogger getLogger() {
     if (logger == null) {
-      logger = new VexLogger(getName(), consolePrefix());
+      logger = new VexLogger(getName(), getConsolePrefix());
     }
     return logger;
   }
 
   @Override
-  public final String serviceOwnerName() {
+  public final String getServiceOwnerName() {
     return getName();
   }
 
   @Override
-  public final Path configurationDirectory() {
+  public final Path getConfigurationDirectory() {
     Path pluginsDirectory = getDataFolder().toPath().toAbsolutePath().normalize().getParent();
     if (pluginsDirectory == null) {
       throw new IllegalStateException("Unable to resolve the plugins directory");
@@ -99,12 +113,12 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   }
 
   @Override
-  public final Optional<InputStream> configurationResource(final String resourcePath) {
+  public final Optional<InputStream> getConfigurationResource(final String resourcePath) {
     return Optional.ofNullable(getResource(resourcePath));
   }
 
   @Override
-  public final void configurationWarning(final String message, final Throwable cause) {
+  public final void reportConfigurationWarning(final String message, final Throwable cause) {
     if (cause == null) {
       getLogger().warning(message);
     } else {

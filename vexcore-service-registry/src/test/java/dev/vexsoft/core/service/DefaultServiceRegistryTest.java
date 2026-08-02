@@ -5,8 +5,12 @@ import dev.vexsoft.core.api.service.ServiceNotFoundException;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.ServiceReference;
 import dev.vexsoft.core.api.service.VexService;
+import dev.vexsoft.core.api.service.VexClassFactory;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import org.junit.jupiter.api.Test;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
+import lombok.Getter;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultServiceRegistryTest {
@@ -27,7 +31,7 @@ class DefaultServiceRegistryTest {
     services.registerQueuedServices();
     assertSame(
         services.require(TestService.class),
-        services.require(DependentService.class).dependency()
+        services.require(DependentService.class).getDependency()
     );
   }
 
@@ -109,39 +113,72 @@ class DefaultServiceRegistryTest {
     assertThrows(ServiceNotFoundException.class, () -> registry("empty").require(TestService.class));
   }
 
+  @Test
+  void createsRegistryAwareComponentsFromClasses() {
+    VexServiceRegistry services = registry("components");
+    RegistryAwareComponent component = VexClassFactory.create(
+        RegistryAwareComponent.class,
+        services,
+        "Component"
+    );
+    assertSame(services, component.getServices());
+  }
+
+  @Test
+  void rejectsRegistryComponentsWithoutDependenciesAnnotation() {
+    VexServiceRegistry services = registry("components");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> VexClassFactory.create(MissingComponentAnnotation.class, services, "Component")
+    );
+  }
+
   private VexServiceRegistry registry(final String name) {
     return new DefaultServiceRegistry().scoped(new TestOwner(name));
   }
 
-  private record TestOwner(String serviceOwnerName) implements ServiceOwner { }
+  @Value
+  private static class TestOwner implements ServiceOwner {
+    String serviceOwnerName;
+  }
+
+  @Dependencies
+  @Value
+  public static class RegistryAwareComponent {
+    VexServiceRegistry services;
+  }
+
+  @RequiredArgsConstructor
+  public static final class MissingComponentAnnotation {
+    private final VexServiceRegistry services;
+  }
 
   private interface TestService extends VexService { }
 
   @Dependencies
+  @RequiredArgsConstructor
   public static final class VexTestService implements TestService {
-    public VexTestService(final VexServiceRegistry services) { }
+    private final VexServiceRegistry services;
   }
 
+  @RequiredArgsConstructor
   public static final class MissingAnnotationService implements TestService {
-    public MissingAnnotationService(final VexServiceRegistry services) { }
+    private final VexServiceRegistry services;
   }
 
   private interface DependentService extends VexService {
-    public TestService dependency();
+    public TestService getDependency();
   }
 
   @Dependencies({TestService.class})
   public static final class VexDependentService implements DependentService {
+    @Getter
     private final TestService dependency;
 
     public VexDependentService(final VexServiceRegistry services) {
       this.dependency = services.require(TestService.class);
     }
 
-    @Override
-    public TestService dependency() {
-      return dependency;
-    }
   }
 
   private interface FailingService extends VexService { }
@@ -157,12 +194,14 @@ class DefaultServiceRegistryTest {
   private interface CircularTwo extends VexService { }
 
   @Dependencies({CircularTwo.class})
+  @RequiredArgsConstructor
   public static final class VexCircularOne implements CircularOne {
-    public VexCircularOne(final VexServiceRegistry services) { }
+    private final VexServiceRegistry services;
   }
 
   @Dependencies({CircularOne.class})
+  @RequiredArgsConstructor
   public static final class VexCircularTwo implements CircularTwo {
-    public VexCircularTwo(final VexServiceRegistry services) { }
+    private final VexServiceRegistry services;
   }
 }

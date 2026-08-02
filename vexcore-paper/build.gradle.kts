@@ -7,6 +7,7 @@ dependencies {
     api(project(":vexcore-api"))
     implementation(project(":vexcore-service-registry"))
     implementation(project(":vexcore-configuration"))
+    implementation(project(":vexcore-command"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")

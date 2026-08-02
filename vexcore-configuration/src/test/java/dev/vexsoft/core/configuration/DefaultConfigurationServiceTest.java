@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 class DefaultConfigurationServiceTest {
   @TempDir Path directory;
@@ -96,23 +98,19 @@ class DefaultConfigurationServiceTest {
     return services.require(ConfigurationService.class);
   }
 
+  @RequiredArgsConstructor
   private static final class TestOwner implements ConfigurationOwner {
-    private final Path directory;
+    @Getter
+    private final Path configurationDirectory;
     private final Map<String, String> resources;
     private final List<String> warnings = new ArrayList<>();
 
-    private TestOwner(Path directory, Map<String, String> resources) {
-      this.directory = directory;
-      this.resources = resources;
-    }
-
-    @Override public Path configurationDirectory() { return directory; }
-    @Override public String serviceOwnerName() { return "test"; }
-    @Override public Optional<InputStream> configurationResource(String path) {
+    @Override public String getServiceOwnerName() { return "test"; }
+    @Override public Optional<InputStream> getConfigurationResource(String path) {
       String value = resources.get(path);
       return value == null ? Optional.empty() : Optional.of(
           new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
     }
-    @Override public void configurationWarning(String message, Throwable cause) { warnings.add(message); }
+    @Override public void reportConfigurationWarning(String message, Throwable cause) { warnings.add(message); }
   }
 }

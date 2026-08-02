@@ -1,14 +1,15 @@
 package dev.vexsoft.core.paper.scheduler;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import java.util.Objects;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public final class ScheduledVexTask implements VexTask {
+  @Getter
+  @NonNull
   private final ScheduledTask task;
-
-  public ScheduledVexTask(ScheduledTask task) {
-    this.task = Objects.requireNonNull(task, "task");
-  }
 
   @Override
   public void cancel() {
@@ -30,7 +31,4 @@ public final class ScheduledVexTask implements VexTask {
     return task.isRepeatingTask();
   }
 
-  public ScheduledTask paperTask() {
-    return task;
-  }
 }

@@ -24,7 +24,7 @@ public final class PlatformModule implements VexModule {
   }
 
   @Override
-  public String serviceOwnerName() {
+  public String getServiceOwnerName() {
     return "vexcore-platform";
   }
 }

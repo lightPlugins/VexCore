@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.Value;
 
 public final class DefaultServiceRegistry implements ServiceRegistry {
 
@@ -51,8 +52,8 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     registrations.forEach((type, values) -> {
       synchronized (values) {
         values.removeIf(registration -> {
-          if (registration.owner() == owner) {
-            removed.add(registration.implementation());
+          if (registration.getOwner() == owner) {
+            removed.add(registration.getImplementation());
             return true;
           }
           return false;
@@ -77,13 +78,13 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     synchronized (values) {
       if (owner != null) {
         for (Registration<?> registration : values) {
-          if (registration.owner() == owner) {
-            return Optional.of(serviceType.cast(registration.implementation()));
+          if (registration.getOwner() == owner) {
+            return Optional.of(serviceType.cast(registration.getImplementation()));
           }
         }
       }
       if (values.size() == 1) {
-        return Optional.of(serviceType.cast(values.getFirst().implementation()));
+        return Optional.of(serviceType.cast(values.getFirst().getImplementation()));
       }
       if (values.isEmpty()) {
         return Optional.empty();
@@ -114,7 +115,7 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     );
     synchronized (values) {
       for (Registration<?> existing : values) {
-        if (existing.owner() == owner) {
+        if (existing.getOwner() == owner) {
           throw new DuplicateServiceException(serviceType, owner);
         }
       }
@@ -132,8 +133,8 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     List<VexService> removed = new ArrayList<>();
     synchronized (values) {
       values.removeIf(registration -> {
-        if (registration.owner() == owner) {
-          removed.add(registration.implementation());
+        if (registration.getOwner() == owner) {
+          removed.add(registration.getImplementation());
           return true;
         }
         return false;
@@ -165,6 +166,9 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     }
   }
 
-  private record Registration<T extends VexService>(ServiceOwner owner, T implementation) {
+  @Value
+  private static class Registration<T extends VexService> {
+    ServiceOwner owner;
+    T implementation;
   }
 }

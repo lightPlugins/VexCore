@@ -4,15 +4,15 @@ import dev.vexsoft.core.api.service.ServiceReference;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexService;
 import java.util.Optional;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 final class DynamicServiceReference<T extends VexService> implements ServiceReference<T> {
+  @NonNull
   private final ServiceRegistry registry;
+  @NonNull
   private final Class<T> type;
-
-  DynamicServiceReference(ServiceRegistry registry, Class<T> type) {
-    this.registry = registry;
-    this.type = type;
-  }
 
   @Override
   public Optional<T> find() {

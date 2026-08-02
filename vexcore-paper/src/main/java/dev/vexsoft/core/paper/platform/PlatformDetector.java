@@ -1,13 +1,13 @@
 package dev.vexsoft.core.paper.platform;
 
-public final class PlatformDetector {
+import lombok.experimental.UtilityClass;
+
+@UtilityClass
+public class PlatformDetector {
   private static final String FOLIA_SERVER_CLASS = "io.papermc.paper.threadedregions.RegionizedServer";
   private static final ServerPlatform PLATFORM = detect();
 
-  private PlatformDetector() {
-  }
-
-  public static ServerPlatform platform() {
+  public static ServerPlatform getPlatform() {
     return PLATFORM;
   }
 

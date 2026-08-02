@@ -7,5 +7,5 @@ public interface ServiceOwner {
    *
    * @return the owner name
    */
-  public String serviceOwnerName();
+  public String getServiceOwnerName();
 }
