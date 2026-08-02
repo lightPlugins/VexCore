@@ -3,6 +3,7 @@ package dev.vexsoft.core.api.player;
 import dev.vexsoft.core.api.service.VexService;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public interface PlayerService extends VexService {
 
@@ -11,4 +12,7 @@ public interface PlayerService extends VexService {
 
   /** Returns a currently loaded Vex player or fails when it is unavailable */
   public VexPlayer require(UUID uniqueId);
+
+  /** Saves every changed container of a loaded Vex player */
+  public CompletableFuture<Void> save(VexPlayer player);
 }

@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":vexcore-configuration"))
     implementation(project(":vexcore-command"))
     implementation(project(":vexcore-data"))
+    implementation(project(":vexcore-localization"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")

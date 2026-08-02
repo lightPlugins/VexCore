@@ -5,10 +5,16 @@ import dev.vexsoft.core.api.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.api.player.DataService;
+import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
+import dev.vexsoft.core.localization.VexLocalizationService;
+import dev.vexsoft.core.paper.message.SendMessageService;
+import dev.vexsoft.core.paper.message.VexSendMessageService;
+import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
 import dev.vexsoft.core.paper.listener.ListenerService;
 import dev.vexsoft.core.paper.listener.VexListenerService;
 import dev.vexsoft.core.paper.scheduler.ScheduleService;
@@ -19,9 +25,10 @@ import org.jspecify.annotations.NonNull;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Collection;
 import java.util.logging.Level;
 
-public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner {
+public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
 
   private VexServiceRegistry services;
   private VexLogger logger;
@@ -42,6 +49,8 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       services.register(CommandService.class, VexCommandService.class);
       services.register(ListenerService.class, VexListenerService.class);
       services.register(DataService.class, VexDataService.class);
+      services.register(LocalizationService.class, VexLocalizationService.class);
+      services.register(SendMessageService.class, VexSendMessageService.class);
       registerServices();
       services.registerQueuedServices();
       registerData(services.require(DataService.class));
@@ -117,6 +126,31 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       throw new IllegalStateException("Unable to resolve the plugins directory");
     }
     return pluginsDirectory.resolve("VexSoft").resolve(getName()).normalize();
+  }
+
+  @Override
+  public final Path getLocalizationDirectory() {
+    return getConfigurationDirectory().resolve("languages");
+  }
+
+  @Override
+  public final Collection<String> getLocalizationResources() {
+    return LocalizationResourceScanner.scan(getFile().toPath());
+  }
+
+  @Override
+  public final Optional<InputStream> getLocalizationResource(final String resourcePath) {
+    return Optional.ofNullable(getResource(resourcePath));
+  }
+
+  @Override
+  public String getMessagePrefixKey() {
+    return "general.prefix";
+  }
+
+  @Override
+  public final void reportLocalizationWarning(final String message, final Throwable cause) {
+    reportConfigurationWarning(message, cause);
   }
 
   @Override

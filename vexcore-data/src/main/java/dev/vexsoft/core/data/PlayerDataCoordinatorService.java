@@ -33,6 +33,9 @@ public interface PlayerDataCoordinatorService extends VexService {
   /** Saves every changed container of every cached player */
   public CompletableFuture<Void> saveAll();
 
+  /** Saves every changed container of one cached player */
+  public CompletableFuture<Void> save(VexPlayer player);
+
   /** Returns all container keys registered by an owner */
   public Collection<DataContainerKey<?>> getKeys(ServiceOwner owner);
 }

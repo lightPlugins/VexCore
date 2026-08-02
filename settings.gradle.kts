@@ -6,5 +6,6 @@ include(
     "vexcore-configuration",
     "vexcore-command",
     "vexcore-data",
+    "vexcore-localization",
     "vexcore-paper",
 )

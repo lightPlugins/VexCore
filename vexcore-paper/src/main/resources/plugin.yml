@@ -5,3 +5,10 @@ api-version: "1.21"
 load: STARTUP
 description: Modular infrastructure for VexSoft Paper plugins
 folia-supported: true
+permissions:
+  vexcore.command.reload:
+    description: Allows reloading VexCore localizations
+    default: op
+  vexcore.command.language:
+    description: Allows changing the personal language
+    default: true

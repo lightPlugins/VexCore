@@ -1,0 +1,7 @@
+vexcore:
+  reload:
+    success: "<green>VexCore was reloaded successfully"
+    failed: "<red>VexCore could not be reloaded, check the console for details"
+  language:
+    set: "<green>Your language was changed to <yellow>{language}</yellow>"
+    not-found: "<red>The language <yellow>{language}</yellow> is not available"
