@@ -7,6 +7,9 @@ import org.bukkit.plugin.Plugin;
 import java.time.Duration;
 import java.util.Optional;
 
+/**
+ * Schedules platform-safe tasks on Paper and Folia
+ */
 public interface ScheduleService extends VexService {
 
   /** Returns the plugin that owns every task created by this service */

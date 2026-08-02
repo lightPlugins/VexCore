@@ -4,6 +4,9 @@ import dev.vexsoft.core.api.service.VexService;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 
+/**
+ * Exposes the server platform detected by VexCore
+ */
 public interface PlatformService extends VexService {
 
   /** Returns the platform used by the current server */

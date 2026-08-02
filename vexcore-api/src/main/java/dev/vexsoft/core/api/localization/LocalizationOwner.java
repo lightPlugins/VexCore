@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Optional;
 
+/**
+ * Supplies the files and resources used to localize a plugin
+ */
 public interface LocalizationOwner extends ServiceOwner {
 
   /** Returns the directory containing this owner's external language files */

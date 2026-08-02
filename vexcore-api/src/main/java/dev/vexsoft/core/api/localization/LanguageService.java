@@ -5,6 +5,9 @@ import dev.vexsoft.core.api.service.VexService;
 import java.util.Collection;
 import java.util.Optional;
 
+/**
+ * Manages available languages and each player's selected language
+ */
 public interface LanguageService extends VexService {
 
   /** Returns the language currently selected by a Vex player */

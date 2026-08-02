@@ -6,6 +6,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Persists plugin-owned player containers in a storage backend
+ */
 public interface PlayerDataStore extends AutoCloseable {
 
   /** Adds missing storage structures for the supplied containers */

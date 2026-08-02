@@ -4,6 +4,9 @@ import dev.vexsoft.core.api.service.VexService;
 import java.nio.file.Path;
 import java.util.Map;
 
+/**
+ * Loads and caches configuration files owned by the current plugin
+ */
 public interface ConfigurationService extends VexService {
 
   /** Returns the owner associated with this configuration service */

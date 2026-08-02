@@ -2,6 +2,9 @@ package dev.vexsoft.core.api.service;
 
 import java.util.Optional;
 
+/**
+ * Keeps a dynamic reference to a service that may be registered later
+ */
 public interface ServiceReference<T extends VexService> {
 
   /**

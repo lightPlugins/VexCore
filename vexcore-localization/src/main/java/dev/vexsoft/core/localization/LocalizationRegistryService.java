@@ -7,6 +7,9 @@ import dev.vexsoft.core.api.service.VexService;
 import java.util.Collection;
 import java.util.Map;
 
+/**
+ * Stores and reloads the localization caches registered by plugins
+ */
 public interface LocalizationRegistryService extends VexService {
 
   /** Loads and registers every localization supplied by an owner */

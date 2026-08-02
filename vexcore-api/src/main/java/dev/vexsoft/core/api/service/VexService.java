@@ -1,5 +1,7 @@
 package dev.vexsoft.core.api.service;
 
-/** Marker interface for services shared through VexCore */
+/**
+ * Marks a type as a service shared through VexCore
+ */
 public interface VexService {
 }

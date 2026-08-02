@@ -5,6 +5,9 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;
 
+/**
+ * Supplies the paths and resources needed to load plugin configurations
+ */
 public interface ConfigurationOwner extends ServiceOwner {
   /** Returns the root directory used to store this owner's configuration files */
   public Path getConfigurationDirectory();

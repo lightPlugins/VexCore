@@ -2,6 +2,9 @@ package dev.vexsoft.core.api.service;
 
 import java.util.Optional;
 
+/**
+ * Provides owner-scoped registration and access to VexCore services
+ */
 public interface VexServiceRegistry {
 
   /** Returns the owner associated with this registry */

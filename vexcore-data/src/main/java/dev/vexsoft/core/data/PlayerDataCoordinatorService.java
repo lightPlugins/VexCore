@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Coordinates registered containers, cached players and persistence operations
+ */
 public interface PlayerDataCoordinatorService extends VexService {
 
   /** Registers every container declared by a plugin data definition */

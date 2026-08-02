@@ -4,6 +4,9 @@ import dev.vexsoft.core.api.service.VexService;
 import java.util.Map;
 import org.bukkit.entity.Player;
 
+/**
+ * Sends localized plugin messages to players
+ */
 public interface SendMessageService extends VexService {
 
   /** Sends a localized message without a prefix */

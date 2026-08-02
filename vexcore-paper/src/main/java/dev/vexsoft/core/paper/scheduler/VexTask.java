@@ -1,5 +1,8 @@
 package dev.vexsoft.core.paper.scheduler;
 
+/**
+ * Represents a scheduled task that can be cancelled
+ */
 public interface VexTask {
 
   /** Cancels this task when it has not completed yet */

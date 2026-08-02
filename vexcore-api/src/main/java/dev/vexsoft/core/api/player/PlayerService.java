@@ -4,6 +4,9 @@ import dev.vexsoft.core.api.service.VexService;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Provides access to VexPlayer instances in the shared online cache
+ */
 public interface PlayerService extends VexService {
 
   /** Finds a currently loaded Vex player */

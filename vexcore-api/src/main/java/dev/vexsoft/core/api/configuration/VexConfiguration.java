@@ -2,6 +2,9 @@ package dev.vexsoft.core.api.configuration;
 
 import java.nio.file.Path;
 
+/**
+ * Represents a YAML configuration backed by a file on disk
+ */
 public interface VexConfiguration extends ConfigurationSection {
   /** Returns the absolute path of the backing YAML file */
   public Path getFile();

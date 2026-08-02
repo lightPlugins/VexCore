@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Provides typed access to values inside a configuration tree
+ */
 public interface ConfigurationSection {
   /** Checks whether a value exists at the specified dotted path */
   public boolean contains(String path);

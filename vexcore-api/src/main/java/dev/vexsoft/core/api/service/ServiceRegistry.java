@@ -2,6 +2,9 @@ package dev.vexsoft.core.api.service;
 
 import java.util.Optional;
 
+/**
+ * Stores the services shared between VexCore modules and plugins
+ */
 public interface ServiceRegistry {
 
   /**
