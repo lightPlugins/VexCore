@@ -7,5 +7,6 @@ include(
     "vexcore-command",
     "vexcore-data",
     "vexcore-localization",
+    "vexcore-inventory",
     "vexcore-paper",
 )

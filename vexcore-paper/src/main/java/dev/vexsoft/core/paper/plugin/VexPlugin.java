@@ -12,11 +12,14 @@ import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexLocalizationService;
+import dev.vexsoft.core.inventory.InventoryService;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.paper.message.VexSendMessageService;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
 import dev.vexsoft.core.paper.listener.ListenerService;
 import dev.vexsoft.core.paper.listener.VexListenerService;
+import dev.vexsoft.core.paper.inventory.VexInventoryListener;
+import dev.vexsoft.core.paper.inventory.VexInventoryService;
 import dev.vexsoft.core.paper.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.scheduler.VexScheduleService;
 import org.bukkit.Bukkit;
@@ -46,6 +49,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
     try {
       services.register(ConfigurationService.class, VexConfigurationService.class);
       services.register(ScheduleService.class, VexScheduleService.class);
+      services.register(InventoryService.class, VexInventoryService.class);
       services.register(CommandService.class, VexCommandService.class);
       services.register(ListenerService.class, VexListenerService.class);
       services.register(DataService.class, VexDataService.class);
@@ -55,7 +59,10 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       services.registerQueuedServices();
       registerData(services.require(DataService.class));
       registerCommands(services.require(CommandService.class));
-      registerListeners(services.require(ListenerService.class));
+      registerInventories(services.require(InventoryService.class));
+      ListenerService listeners = services.require(ListenerService.class);
+      listeners.register(VexInventoryListener.class);
+      registerListeners(listeners);
       onVexLoad();
     } catch (RuntimeException | Error throwable) {
       cleanupInfrastructure();
@@ -88,6 +95,9 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   /** Registers the listeners provided by this plugin */
   protected void registerListeners(final ListenerService listeners) { }
+
+  /** Registers the inventories provided by this plugin */
+  protected void registerInventories(final InventoryService inventories) { }
 
   protected void onVexLoad() { }
 
