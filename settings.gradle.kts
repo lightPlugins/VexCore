@@ -8,6 +8,7 @@ include(
     "vexcore-data",
     "vexcore-localization",
     "vexcore-inventory",
+    "vexcore-dialog",
     "vexcore-packets:common",
     "vexcore-packets:versions:v26_2",
     "vexcore-paper",
