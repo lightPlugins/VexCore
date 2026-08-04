@@ -8,10 +8,23 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class ModuleManagerTest {
+public final class ModuleManagerTest {
 
   @Test
-  void disablesRemainingModulesWhenOneModuleFails() {
+  public void startsLoadedModulesOnlyOnce() {
+    ModuleManager manager = new ModuleManager(new DefaultServiceRegistry());
+    List<String> started = new ArrayList<>();
+    manager.enable(new StartingModule("first", started));
+    manager.enable(new StartingModule("second", started));
+
+    manager.startAll();
+    manager.startAll();
+
+    assertEquals(List.of("first", "second"), started);
+  }
+
+  @Test
+  public void disablesRemainingModulesWhenOneModuleFails() {
     ModuleManager manager = new ModuleManager(new DefaultServiceRegistry());
     List<String> disabled = new ArrayList<>();
     manager.enable(new TestModule("first", disabled, false));
@@ -43,6 +56,30 @@ class ModuleManagerTest {
       if (fail) {
         throw new IllegalStateException("Expected test failure");
       }
+    }
+
+    @Override
+    public String getServiceOwnerName() {
+      return name;
+    }
+  }
+
+  private static final class StartingModule implements VexModule {
+    private final String name;
+    private final List<String> started;
+
+    private StartingModule(final String name, final List<String> started) {
+      this.name = name;
+      this.started = started;
+    }
+
+    @Override
+    public void enable(final ServiceRegistry services) {
+    }
+
+    @Override
+    public void start() {
+      started.add(name);
     }
 
     @Override

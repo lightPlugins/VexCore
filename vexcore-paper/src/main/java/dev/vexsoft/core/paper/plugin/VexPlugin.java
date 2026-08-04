@@ -13,6 +13,8 @@ import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexLocalizationService;
 import dev.vexsoft.core.inventory.InventoryService;
+import dev.vexsoft.core.dialog.DialogService;
+import dev.vexsoft.core.paper.dialog.VexDialogService;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.paper.message.VexSendMessageService;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
@@ -68,6 +70,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       services.register(InventoryService.class, VexInventoryService.class);
       services.register(CommandService.class, VexCommandService.class);
       services.register(ListenerService.class, VexListenerService.class);
+      services.register(DialogService.class, VexDialogService.class);
       services.register(DataService.class, VexDataService.class);
       services.register(LocalizationService.class, VexLocalizationService.class);
       services.register(SendMessageService.class, VexSendMessageService.class);
@@ -84,9 +87,6 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       registerData(services.require(DataService.class));
       registerCommands(services.require(CommandService.class));
       registerInventories(services.require(InventoryService.class));
-      ListenerService listeners = services.require(ListenerService.class);
-      listeners.register(VexInventoryListener.class);
-      registerListeners(listeners);
       onVexLoad();
     } catch (RuntimeException | Error throwable) {
       cleanupInfrastructure();
@@ -96,6 +96,9 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   @Override
   public final void onEnable() {
+    ListenerService listeners = services.require(ListenerService.class);
+    listeners.register(VexInventoryListener.class);
+    registerListeners(listeners);
     onVexEnable();
   }
 

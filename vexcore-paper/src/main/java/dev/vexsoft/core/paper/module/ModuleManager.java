@@ -12,11 +12,27 @@ public final class ModuleManager {
   @NonNull
   private final ServiceRegistry services;
   private final List<VexModule> enabled = new ArrayList<>();
+  private boolean started;
 
   public void enable(VexModule module) {
     try {
       module.enable(services);
       enabled.add(module);
+    } catch (RuntimeException exception) {
+      disableAll();
+      throw exception;
+    }
+  }
+
+  public void startAll() {
+    if (started) {
+      return;
+    }
+    try {
+      for (VexModule module : enabled) {
+        module.start();
+      }
+      started = true;
     } catch (RuntimeException exception) {
       disableAll();
       throw exception;
@@ -43,6 +59,7 @@ public final class ModuleManager {
       }
     }
     enabled.clear();
+    started = false;
 
     // One broken module must not prevent the remaining modules from cleaning up
     if (failure != null) {
