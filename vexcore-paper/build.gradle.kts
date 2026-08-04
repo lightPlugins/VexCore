@@ -12,6 +12,8 @@ dependencies {
     implementation(project(":vexcore-localization"))
     implementation(project(":vexcore-inventory"))
     implementation(project(":vexcore-dialog"))
+    implementation(project(":vexcore-items:common"))
+    implementation(project(":vexcore-items:versions:v26_2"))
     implementation(project(":vexcore-packets:common"))
     implementation(project(":vexcore-packets:versions:v26_2"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")

@@ -14,6 +14,10 @@
             <option value="$PROJECT_DIR$/vexcore-data" />
             <option value="$PROJECT_DIR$/vexcore-dialog" />
             <option value="$PROJECT_DIR$/vexcore-inventory" />
+            <option value="$PROJECT_DIR$/vexcore-items" />
+            <option value="$PROJECT_DIR$/vexcore-items/common" />
+            <option value="$PROJECT_DIR$/vexcore-items/versions" />
+            <option value="$PROJECT_DIR$/vexcore-items/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-localization" />
             <option value="$PROJECT_DIR$/vexcore-packets" />
             <option value="$PROJECT_DIR$/vexcore-packets/common" />
