@@ -5,6 +5,10 @@ import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.cache.CacheService;
+import dev.vexsoft.core.cache.VexCache;
+import dev.vexsoft.core.cache.VexCacheOptions;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -18,16 +22,25 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import lombok.Value;
 
-@Dependencies
+@Dependencies(CacheService.class)
 public final class VexLocalizationRegistryService implements LocalizationRegistryService {
 
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z0-9_.-]+)}");
 
   private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
   private final MiniMessage miniMessage = MiniMessage.miniMessage();
+  private final VexCache<StaticMessageKey, LocalizedMessage> staticMessages;
 
   public VexLocalizationRegistryService(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
+    staticMessages = Objects.requireNonNull(services, "services")
+        .require(CacheService.class)
+        .create(
+            "localization-static-messages",
+            VexCacheOptions.builder()
+                .maximumSize(20_000L)
+                .expireAfterAccess(Duration.ofMinutes(30))
+                .build()
+        );
   }
 
   @Override
@@ -39,6 +52,7 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
     if (existing != null && existing.owner != owner) {
       throw new IllegalStateException("Localization owner is already registered: " + ownerName);
     }
+    staticMessages.invalidateAll();
   }
 
   @Override
@@ -47,6 +61,7 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
     registrations.computeIfPresent(normalizeOwner(owner.getServiceOwnerName()), (key, registration) ->
         registration.owner == owner ? null : registration
     );
+    staticMessages.invalidateAll();
   }
 
   @Override
@@ -85,11 +100,16 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
       throw new IllegalStateException("Localization owner instance is no longer registered: " + owner.getServiceOwnerName());
     }
     registration.cache.reload();
+    staticMessages.invalidateAll();
   }
 
   @Override
   public void reloadAll() {
-    registrations.values().forEach(registration -> registration.cache.reload());
+    try {
+      registrations.values().forEach(registration -> registration.cache.reload());
+    } finally {
+      staticMessages.invalidateAll();
+    }
   }
 
   private LocalizedMessage render(
@@ -100,10 +120,34 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
   ) {
     Objects.requireNonNull(language, "language");
     String checkedKey = Objects.requireNonNull(key, "key").trim();
-    MessageTemplate template = registration.cache.find(language, checkedKey);
+    Map<String, String> checkedReplacements = Objects.requireNonNull(
+        replacements,
+        "replacements"
+    );
+    if (checkedReplacements.isEmpty()) {
+      StaticMessageKey cacheKey = new StaticMessageKey(
+          normalizeOwner(registration.owner.getServiceOwnerName()),
+          language,
+          checkedKey
+      );
+      return staticMessages.get(
+          cacheKey,
+          ignored -> renderTemplate(registration, language, checkedKey, checkedReplacements)
+      );
+    }
+    return renderTemplate(registration, language, checkedKey, checkedReplacements);
+  }
+
+  private LocalizedMessage renderTemplate(
+      final Registration registration,
+      final LanguageKey language,
+      final String key,
+      final Map<String, String> replacements
+  ) {
+    MessageTemplate template = registration.cache.find(language, key);
     if (template == null) {
       return LocalizedMessage.single(Component.text(
-          "Missing localization: " + registration.owner.getServiceOwnerName() + ":" + checkedKey,
+          "Missing localization: " + registration.owner.getServiceOwnerName() + ":" + key,
           NamedTextColor.RED
       ));
     }
@@ -154,5 +198,12 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
   private static class Registration {
     LocalizationOwner owner;
     PluginLocalizationCache cache;
+  }
+
+  @Value
+  private static class StaticMessageKey {
+    String ownerName;
+    LanguageKey language;
+    String messageKey;
   }
 }

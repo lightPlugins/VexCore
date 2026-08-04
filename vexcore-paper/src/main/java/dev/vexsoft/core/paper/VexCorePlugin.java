@@ -80,6 +80,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices = services.scoped(this);
     coreServices.register(ScheduleService.class, VexScheduleService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
+    coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
     modules.enable(new LocalizationModule());
@@ -90,7 +91,6 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(CommandService.class, VexCommandService.class);
-    coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);

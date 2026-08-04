@@ -2,6 +2,8 @@ package dev.vexsoft.core.localization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.localization.LanguageKey;
@@ -11,6 +13,8 @@ import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.ServiceReference;
 import dev.vexsoft.core.api.service.VexService;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.cache.CacheService;
+import dev.vexsoft.core.cache.VexCacheService;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -112,6 +116,44 @@ class VexLocalizationRegistryServiceTest {
     );
   }
 
+  @Test
+  void cachesStaticMessagesUntilTheOwnerIsReloaded() {
+    TestOwner owner = new TestOwner(directory, Map.of(
+        "languages/en_EN/messages.yml",
+        "message: \"Cached\"\n"
+    ));
+    VexLocalizationRegistryService registry = new VexLocalizationRegistryService(
+        new TestServices(owner)
+    );
+    registry.register(owner);
+
+    LocalizedMessage first = registry.resolve(
+        owner,
+        LanguageKey.EN_EN,
+        "messages.message",
+        Map.of()
+    );
+    LocalizedMessage second = registry.resolve(
+        owner,
+        LanguageKey.EN_EN,
+        "messages.message",
+        Map.of()
+    );
+
+    assertSame(first, second);
+
+    registry.reload(owner);
+    LocalizedMessage reloaded = registry.resolve(
+        owner,
+        LanguageKey.EN_EN,
+        "messages.message",
+        Map.of()
+    );
+
+    assertNotSame(first, reloaded);
+    assertEquals("Cached", plain(reloaded.getComponent()));
+  }
+
   private String plain(final net.kyori.adventure.text.Component component) {
     return PlainTextComponentSerializer.plainText().serialize(component);
   }
@@ -165,9 +207,11 @@ class VexLocalizationRegistryServiceTest {
   private static final class TestServices implements VexServiceRegistry {
 
     private final ServiceOwner owner;
+    private final CacheService cache;
 
     private TestServices(final ServiceOwner owner) {
       this.owner = owner;
+      cache = new VexCacheService(this);
     }
 
     @Override
@@ -190,12 +234,15 @@ class VexLocalizationRegistryServiceTest {
 
     @Override
     public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
+      if (serviceType == CacheService.class) {
+        return Optional.of(serviceType.cast(cache));
+      }
       return Optional.empty();
     }
 
     @Override
     public <T extends VexService> T require(final Class<T> serviceType) {
-      throw new UnsupportedOperationException();
+      return find(serviceType).orElseThrow();
     }
 
     @Override

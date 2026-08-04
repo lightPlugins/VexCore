@@ -2,6 +2,9 @@ package dev.vexsoft.core.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.vexsoft.core.cache.CacheService;
+import dev.vexsoft.core.cache.VexAsyncCache;
+import dev.vexsoft.core.cache.VexCacheOptions;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.DataContainerRegistry;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
@@ -21,8 +24,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.time.Duration;
+import lombok.Value;
 
-@Dependencies(PlayerDataStoreService.class)
+@Dependencies({PlayerDataStoreService.class, CacheService.class})
 public final class VexPlayerDataCoordinatorService implements PlayerDataCoordinatorService {
 
   private final Map<UUID, VexPlayer> players = new ConcurrentHashMap<>();
@@ -30,12 +35,20 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   private final Map<String, OwnerContainers> containersByOwner = new LinkedHashMap<>();
   private final Object saveLock = new Object();
   private final PlayerDataStore store;
+  private final VexAsyncCache<PlayerLoadRequest, VexPlayer> playerLoads;
   private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
   public VexPlayerDataCoordinatorService(final VexServiceRegistry services) {
-    store = Objects.requireNonNull(services, "services")
-        .require(PlayerDataStoreService.class)
-        .getStore();
+    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
+    store = checkedServices.require(PlayerDataStoreService.class).getStore();
+    playerLoads = checkedServices.require(CacheService.class).createAsync(
+        "player-loads",
+        VexCacheOptions.builder()
+            .maximumSize(1_000L)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build(),
+        this::loadFromStore
+    );
   }
 
   @Override
@@ -104,6 +117,11 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   public CompletableFuture<VexPlayer> load(final UUID uniqueId, final String name) {
     Objects.requireNonNull(uniqueId, "uniqueId");
     Objects.requireNonNull(name, "name");
+    VexPlayer existing = players.get(uniqueId);
+    if (existing != null) {
+      existing.setName(name);
+      return CompletableFuture.completedFuture(existing);
+    }
     CompletableFuture<Void> previousSave;
     synchronized (saveLock) {
       previousSave = saveChains.get(uniqueId);
@@ -111,17 +129,31 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     if (previousSave != null) {
       return previousSave.thenCompose(ignored -> load(uniqueId, name));
     }
+    PlayerLoadRequest request = new PlayerLoadRequest(uniqueId, name);
+    return playerLoads.get(request)
+        .thenApply(player -> {
+          player.setName(name);
+          return player;
+        })
+        .whenComplete((player, throwable) -> playerLoads.invalidate(request));
+  }
+
+  private CompletableFuture<VexPlayer> loadFromStore(final PlayerLoadRequest request) {
+    VexPlayer existing = players.get(request.getUniqueId());
+    if (existing != null) {
+      return CompletableFuture.completedFuture(existing);
+    }
     Map<String, OwnerContainers> owners;
     synchronized (this) {
       owners = new LinkedHashMap<>(containersByOwner);
     }
     Map<DataContainerKey<?>, Object> loaded = new ConcurrentHashMap<>();
     CompletableFuture<?>[] loads = owners.entrySet().stream()
-        .map(entry -> store.load(entry.getKey(), uniqueId, entry.getValue().keys.values())
+        .map(entry -> store.load(entry.getKey(), request.getUniqueId(), entry.getValue().keys.values())
             .thenAccept(values -> readOwnerValues(entry.getValue(), values, loaded)))
         .toArray(CompletableFuture[]::new);
     return CompletableFuture.allOf(loads).thenApply(ignored -> {
-      VexPlayer player = new VexPlayer(uniqueId, name);
+      VexPlayer player = new VexPlayer(request.getUniqueId(), request.getName());
       for (OwnerContainers owner : owners.values()) {
         for (DataContainerKey<?> key : owner.keys.values()) {
           Object value = loaded.get(key);
@@ -132,7 +164,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
           }
         }
       }
-      VexPlayer previous = players.putIfAbsent(uniqueId, player);
+      VexPlayer previous = players.putIfAbsent(request.getUniqueId(), player);
       return previous == null ? player : previous;
     });
   }
@@ -292,6 +324,29 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
     private OwnerContainers(final ServiceOwner owner) {
       this.owner = owner;
+    }
+  }
+
+  @Value
+  private static class PlayerLoadRequest {
+
+    UUID uniqueId;
+    String name;
+
+    @Override
+    public boolean equals(final Object other) {
+      if (this == other) {
+        return true;
+      }
+      if (!(other instanceof PlayerLoadRequest request)) {
+        return false;
+      }
+      return uniqueId.equals(request.uniqueId);
+    }
+
+    @Override
+    public int hashCode() {
+      return uniqueId.hashCode();
     }
   }
 }
