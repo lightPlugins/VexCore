@@ -8,5 +8,7 @@ include(
     "vexcore-data",
     "vexcore-localization",
     "vexcore-inventory",
+    "vexcore-packets:common",
+    "vexcore-packets:versions:v26_2",
     "vexcore-paper",
 )

@@ -14,10 +14,15 @@
             <option value="$PROJECT_DIR$/vexcore-data" />
             <option value="$PROJECT_DIR$/vexcore-inventory" />
             <option value="$PROJECT_DIR$/vexcore-localization" />
+            <option value="$PROJECT_DIR$/vexcore-packets" />
+            <option value="$PROJECT_DIR$/vexcore-packets/common" />
+            <option value="$PROJECT_DIR$/vexcore-packets/versions" />
+            <option value="$PROJECT_DIR$/vexcore-packets/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-paper" />
             <option value="$PROJECT_DIR$/vexcore-service-registry" />
           </set>
         </option>
+        <option name="resolveExternalAnnotations" value="true" />
         <option name="myGradleHome" value="C:\Gradle\gradle-8.12" />
       </GradleProjectSettings>
     </option>
