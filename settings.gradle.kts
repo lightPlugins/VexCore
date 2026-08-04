@@ -5,6 +5,7 @@ include(
     "vexcore-service-registry",
     "vexcore-configuration",
     "vexcore-command",
+    "vexcore-cache",
     "vexcore-data",
     "vexcore-localization",
     "vexcore-inventory",

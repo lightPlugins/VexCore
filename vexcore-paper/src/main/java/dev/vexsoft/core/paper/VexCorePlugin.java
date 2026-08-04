@@ -27,6 +27,8 @@ import dev.vexsoft.core.paper.plugin.VexLogger;
 import dev.vexsoft.core.service.DefaultServiceRegistry;
 import dev.vexsoft.core.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
+import dev.vexsoft.core.cache.CacheService;
+import dev.vexsoft.core.cache.VexCacheService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexCorePlayerData;
 import dev.vexsoft.core.localization.VexLocalizationService;
@@ -88,6 +90,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(CommandService.class, VexCommandService.class);
+    coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);

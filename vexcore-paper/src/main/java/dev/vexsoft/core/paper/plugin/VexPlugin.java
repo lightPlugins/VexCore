@@ -9,6 +9,8 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
+import dev.vexsoft.core.cache.CacheService;
+import dev.vexsoft.core.cache.VexCacheService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexLocalizationService;
@@ -71,6 +73,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       services.register(ScheduleService.class, VexScheduleService.class);
       services.register(InventoryService.class, VexInventoryService.class);
       services.register(CommandService.class, VexCommandService.class);
+      services.register(CacheService.class, VexCacheService.class);
       services.register(ListenerService.class, VexListenerService.class);
       services.register(DialogService.class, VexDialogService.class);
       services.register(ItemService.class, VexItemService.class);

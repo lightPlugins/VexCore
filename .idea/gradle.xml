@@ -9,6 +9,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/vexcore-api" />
+            <option value="$PROJECT_DIR$/vexcore-cache" />
             <option value="$PROJECT_DIR$/vexcore-command" />
             <option value="$PROJECT_DIR$/vexcore-configuration" />
             <option value="$PROJECT_DIR$/vexcore-data" />
