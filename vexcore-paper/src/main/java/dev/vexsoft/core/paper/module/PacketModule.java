@@ -1,6 +1,5 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.packets.internal.DisplayPacketAdapterService;
@@ -39,8 +38,8 @@ public final class PacketModule implements VexModule {
   }
 
   @Override
-  public void enable(final ServiceRegistry registry) {
-    services = registry.scoped(owner);
+  public void enable(final VexServiceRegistry registry) {
+    services = registry.scoped(this);
     PacketVersionDefinition definition = PacketVersions.select(services);
     services.register(PacketTransportAdapterService.class, definition.getTransportAdapter());
     services.register(DisplayPacketAdapterService.class, definition.getDisplayAdapter());

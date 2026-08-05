@@ -1,14 +1,14 @@
 package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.service.ServiceOwner;
-import dev.vexsoft.core.api.service.ServiceRegistry;
+import dev.vexsoft.core.api.service.VexServiceRegistry;
 
 /**
  * Defines a VexCore module with a managed enable and disable lifecycle
  */
 public interface VexModule extends ServiceOwner {
   /** Loads the module and registers the services it provides */
-  public void enable(ServiceRegistry services);
+  public void enable(VexServiceRegistry services);
 
   /** Activates runtime hooks after the owning plugin has been enabled */
   public default void start() { }

@@ -1,7 +1,6 @@
 package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.localization.LanguageService;
-import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.localization.LocalizationRegistryService;
 import dev.vexsoft.core.localization.VexLanguageService;
@@ -14,7 +13,7 @@ public final class LocalizationModule implements VexModule {
   private VexServiceRegistry services;
 
   @Override
-  public void enable(final ServiceRegistry registry) {
+  public void enable(final VexServiceRegistry registry) {
     services = registry.scoped(this);
     services.register(LanguageChangeDispatcherService.class, VexLanguageChangeDispatcherService.class);
     services.register(LocalizationRegistryService.class, VexLocalizationRegistryService.class);

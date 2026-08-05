@@ -81,6 +81,42 @@ class DefaultServiceRegistryTest {
   }
 
   @Test
+  void childScopePrefersItsParentOverUnrelatedImplementations() {
+    DefaultServiceRegistry registry = new DefaultServiceRegistry();
+    VexServiceRegistry core = registry.scoped(new TestOwner("core"));
+    VexServiceRegistry plugin = registry.scoped(new TestOwner("plugin"));
+    VexServiceRegistry module = core.scoped(new TestOwner("module"));
+    core.register(TestService.class, VexTestService.class);
+    plugin.register(TestService.class, VexTestService.class);
+    core.registerQueuedServices();
+    plugin.registerQueuedServices();
+
+    assertSame(core.require(TestService.class), module.require(TestService.class));
+    assertThrows(IllegalStateException.class, () -> registry.require(TestService.class));
+  }
+
+  @Test
+  void queuedLocalDependencyWinsWhenOtherScopesAlreadyProvideIt() {
+    DefaultServiceRegistry registry = new DefaultServiceRegistry();
+    VexServiceRegistry core = registry.scoped(new TestOwner("core"));
+    VexServiceRegistry items = registry.scoped(new TestOwner("items"));
+    VexServiceRegistry essentials = registry.scoped(new TestOwner("essentials"));
+    core.register(TestService.class, VexTestService.class);
+    items.register(TestService.class, VexTestService.class);
+    core.registerQueuedServices();
+    items.registerQueuedServices();
+
+    essentials.register(DependentService.class, VexDependentService.class);
+    essentials.register(TestService.class, VexTestService.class);
+    essentials.registerQueuedServices();
+
+    assertSame(
+        essentials.require(TestService.class),
+        essentials.require(DependentService.class).getDependency()
+    );
+  }
+
+  @Test
   void onlyOwnerCanUnregisterItsService() {
     DefaultServiceRegistry registry = new DefaultServiceRegistry();
     VexServiceRegistry owner = registry.scoped(new TestOwner("owner"));

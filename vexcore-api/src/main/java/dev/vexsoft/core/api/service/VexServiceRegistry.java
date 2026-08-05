@@ -10,6 +10,9 @@ public interface VexServiceRegistry {
   /** Returns the owner associated with this registry */
   public ServiceOwner getOwner();
 
+  /** Creates a child scope that falls back to this registry */
+  public VexServiceRegistry scoped(ServiceOwner owner);
+
   /** Queues a service implementation for dependency-aware registration */
   public <T extends VexService> void register(
       Class<T> serviceType,

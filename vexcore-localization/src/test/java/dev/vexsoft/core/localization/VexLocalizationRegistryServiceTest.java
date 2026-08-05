@@ -220,6 +220,11 @@ class VexLocalizationRegistryServiceTest {
     }
 
     @Override
+    public VexServiceRegistry scoped(final ServiceOwner childOwner) {
+      return this;
+    }
+
+    @Override
     public <T extends VexService> void register(
         final Class<T> serviceType,
         final Class<? extends T> implementationType

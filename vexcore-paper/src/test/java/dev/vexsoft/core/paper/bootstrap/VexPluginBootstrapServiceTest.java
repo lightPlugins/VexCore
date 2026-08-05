@@ -55,6 +55,11 @@ public final class VexPluginBootstrapServiceTest {
     }
 
     @Override
+    public VexServiceRegistry scoped(final ServiceOwner owner) {
+      return this;
+    }
+
+    @Override
     public String getServiceOwnerName() {
       return "VexPluginBootstrapTest";
     }

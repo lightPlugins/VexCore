@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.ServiceRegistry;
+import dev.vexsoft.core.api.service.VexServiceRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public final class ModuleManager {
   @NonNull
-  private final ServiceRegistry services;
+  private final VexServiceRegistry services;
   private final List<VexModule> enabled = new ArrayList<>();
   private boolean started;
 
@@ -52,7 +52,7 @@ public final class ModuleManager {
         failure = collectFailure(failure, exception);
       } finally {
         try {
-          services.unregisterOwnedBy(module);
+          services.scoped(module).unregisterOwnedServices();
         } catch (RuntimeException exception) {
           failure = collectFailure(failure, exception);
         }

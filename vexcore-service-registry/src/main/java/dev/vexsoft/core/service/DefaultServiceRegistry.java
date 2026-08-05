@@ -21,12 +21,16 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
 
   @Override
   public VexServiceRegistry scoped(final ServiceOwner owner) {
-    return new ScopedServiceRegistry(this, Objects.requireNonNull(owner, "owner"));
+     return new ScopedServiceRegistry(
+        this,
+        Objects.requireNonNull(owner, "owner"),
+        List.of()
+    );
   }
 
   @Override
   public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
-    return find(null, serviceType);
+    return find(List.of(), serviceType);
   }
 
   @Override
@@ -67,16 +71,17 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
   }
 
   <T extends VexService> Optional<T> find(
-      final ServiceOwner owner,
+      final List<ServiceOwner> preferredOwners,
       final Class<T> serviceType
   ) {
+    Objects.requireNonNull(preferredOwners, "preferredOwners");
     Objects.requireNonNull(serviceType, "serviceType");
     List<Registration<?>> values = registrations.get(serviceType);
     if (values == null) {
       return Optional.empty();
     }
     synchronized (values) {
-      if (owner != null) {
+      for (ServiceOwner owner : preferredOwners) {
         for (Registration<?> registration : values) {
           if (registration.getOwner() == owner) {
             return Optional.of(serviceType.cast(registration.getImplementation()));

@@ -27,6 +27,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   private VexServiceRegistry services;
   private PluginBootstrapService bootstrap;
   private VexLogger logger;
+  private boolean initialized;
 
   @Override
   public final void onLoad() {
@@ -47,6 +48,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       registerCommands(services.require(CommandService.class));
       registerInventories(services.require(InventoryService.class));
       onVexLoad();
+      initialized = true;
     } catch (RuntimeException | Error throwable) {
       cleanupInfrastructure();
       throw throwable;
@@ -55,6 +57,11 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   @Override
   public final void onEnable() {
+    if (!initialized) {
+      getLogger().severe("Plugin cannot be enabled because its loading phase failed");
+      getServer().getPluginManager().disablePlugin(this);
+      return;
+    }
     bootstrap.enable(services);
     registerListeners(services.require(ListenerService.class));
     onVexEnable();
@@ -63,8 +70,11 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   @Override
   public final void onDisable() {
     try {
-      onVexDisable();
+      if (initialized) {
+        onVexDisable();
+      }
     } finally {
+      initialized = false;
       cleanupInfrastructure();
     }
   }

@@ -3,7 +3,6 @@ package dev.vexsoft.core.paper.module;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.configuration.ConfigurationService;
 import dev.vexsoft.core.api.player.PlayerService;
-import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.PlayerDataCoordinatorService;
@@ -27,7 +26,7 @@ public final class PlayerModule implements VexModule, ConfigurationOwner {
   private VexServiceRegistry services;
 
   @Override
-  public void enable(final ServiceRegistry registry) {
+  public void enable(final VexServiceRegistry registry) {
     services = registry.scoped(this);
     services.register(ConfigurationService.class, VexConfigurationService.class);
     services.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);

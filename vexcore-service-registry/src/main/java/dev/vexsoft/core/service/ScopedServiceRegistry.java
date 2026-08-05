@@ -23,12 +23,30 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
   private final DefaultServiceRegistry registry;
   @Getter
   private final ServiceOwner owner;
+  private final List<ServiceOwner> resolutionOwners;
   private final Map<Class<? extends VexService>, ServiceDefinition<?>> queued =
       new LinkedHashMap<>();
 
-  ScopedServiceRegistry(final DefaultServiceRegistry registry, final ServiceOwner owner) {
+  ScopedServiceRegistry(
+      final DefaultServiceRegistry registry,
+      final ServiceOwner owner,
+      final List<ServiceOwner> parentOwners
+  ) {
     this.registry = registry;
     this.owner = owner;
+    List<ServiceOwner> owners = new ArrayList<>(parentOwners.size() + 1);
+    owners.add(owner);
+    owners.addAll(parentOwners);
+    this.resolutionOwners = List.copyOf(owners);
+  }
+
+  @Override
+  public VexServiceRegistry scoped(final ServiceOwner childOwner) {
+    return new ScopedServiceRegistry(
+        registry,
+        Objects.requireNonNull(childOwner, "childOwner"),
+        resolutionOwners
+    );
   }
 
   @Override
@@ -78,7 +96,7 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
 
   @Override
   public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
-    return registry.find(owner, serviceType);
+    return registry.find(resolutionOwners, serviceType);
   }
 
   @Override
@@ -134,13 +152,13 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
   ) {
     Dependencies dependencies = implementationType.getAnnotation(Dependencies.class);
     for (Class<? extends VexService> dependency : dependencies.value()) {
-      if (isAvailable(dependency)) {
-        continue;
-      }
       boolean queuedDependency = pending.stream()
           .anyMatch(definition -> definition.getServiceType() == dependency);
       if (queuedDependency) {
         return false;
+      }
+      if (isAvailable(dependency)) {
+        continue;
       }
       throw new ServiceNotFoundException(dependency);
     }

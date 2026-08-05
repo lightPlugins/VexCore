@@ -77,9 +77,9 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
   public void onLoad() {
     services = new DefaultServiceRegistry();
     getServer().getServicesManager().register(ServiceRegistry.class, services, this, ServicePriority.Normal);
-    modules = new ModuleManager(services);
-    modules.enable(new PlatformModule());
     coreServices = services.scoped(this);
+    modules = new ModuleManager(coreServices);
+    modules.enable(new PlatformModule());
     coreServices.register(ScheduleService.class, VexScheduleService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);

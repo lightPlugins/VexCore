@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.ServiceRegistry;
+import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.service.DefaultServiceRegistry;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ public final class ModuleManagerTest {
 
   @Test
   public void startsLoadedModulesOnlyOnce() {
-    ModuleManager manager = new ModuleManager(new DefaultServiceRegistry());
+    ModuleManager manager = new ModuleManager(services());
     List<String> started = new ArrayList<>();
     manager.enable(new StartingModule("first", started));
     manager.enable(new StartingModule("second", started));
@@ -25,7 +25,7 @@ public final class ModuleManagerTest {
 
   @Test
   public void disablesRemainingModulesWhenOneModuleFails() {
-    ModuleManager manager = new ModuleManager(new DefaultServiceRegistry());
+    ModuleManager manager = new ModuleManager(services());
     List<String> disabled = new ArrayList<>();
     manager.enable(new TestModule("first", disabled, false));
     manager.enable(new TestModule("second", disabled, true));
@@ -47,7 +47,7 @@ public final class ModuleManagerTest {
     }
 
     @Override
-    public void enable(ServiceRegistry services) {
+    public void enable(VexServiceRegistry services) {
     }
 
     @Override
@@ -74,7 +74,7 @@ public final class ModuleManagerTest {
     }
 
     @Override
-    public void enable(final ServiceRegistry services) {
+    public void enable(final VexServiceRegistry services) {
     }
 
     @Override
@@ -86,5 +86,9 @@ public final class ModuleManagerTest {
     public String getServiceOwnerName() {
       return name;
     }
+  }
+
+  private VexServiceRegistry services() {
+    return new DefaultServiceRegistry().scoped(() -> "module-test");
   }
 }
