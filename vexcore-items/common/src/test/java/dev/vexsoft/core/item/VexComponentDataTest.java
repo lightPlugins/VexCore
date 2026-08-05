@@ -3,6 +3,7 @@ package dev.vexsoft.core.item;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
+import org.bukkit.NamespacedKey;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,5 +37,15 @@ public final class VexComponentDataTest {
   public void marksPresentationComponentsForPackets() {
     assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.DISPLAY_NAME.getTarget());
     assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.LORE.getTarget());
+  }
+
+  @Test
+  public void exposesItemModelAndTooltipStyleAsItemComponents() {
+    NamespacedKey value = new NamespacedKey("vexcore", "default");
+
+    assertEquals(value, VexComponentData.ITEM_MODEL.normalize(value));
+    assertEquals(value, VexComponentData.TOOLTIP_STYLE.normalize(value));
+    assertEquals(VexComponentTarget.ITEM, VexComponentData.ITEM_MODEL.getTarget());
+    assertEquals(VexComponentTarget.ITEM, VexComponentData.TOOLTIP_STYLE.getTarget());
   }
 }

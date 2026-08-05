@@ -56,6 +56,11 @@ public class VexComponentData<T> {
       VexComponentTarget.ITEM,
       NamespacedKey.class
   );
+  public static final VexComponentData<NamespacedKey> TOOLTIP_STYLE = value(
+      VexComponentKey.TOOLTIP_STYLE,
+      VexComponentTarget.ITEM,
+      NamespacedKey.class
+  );
   public static final VexComponentData<VexCustomModelData> CUSTOM_MODEL_DATA = value(
       VexComponentKey.CUSTOM_MODEL_DATA,
       VexComponentTarget.ITEM,

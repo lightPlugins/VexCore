@@ -73,6 +73,12 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
           operation,
           Key.class
       );
+      case TOOLTIP_STYLE -> applyValue(
+          itemStack,
+          DataComponentTypes.TOOLTIP_STYLE,
+          operation,
+          Key.class
+      );
       case RARITY -> applyValue(
           itemStack,
           DataComponentTypes.RARITY,
