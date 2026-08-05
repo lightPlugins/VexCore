@@ -2,10 +2,10 @@
   <h1>VexCore</h1>
   <p><strong>The shared infrastructure behind the VexSoft plugin ecosystem</strong></p>
   <p>
-    <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?style=flat-square&logo=openjdk&logoColor=white">
-    <img alt="Paper 26.2" src="https://img.shields.io/badge/Paper-26.2-222222?style=flat-square">
-    <img alt="Folia supported" src="https://img.shields.io/badge/Folia-supported-5C6BC0?style=flat-square">
-    <img alt="Status" src="https://img.shields.io/badge/status-active_development-2E7D32?style=flat-square">
+    <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?logo=coffeescript&logoColor=white">
+    <img alt="Paper 26.2" src="https://img.shields.io/badge/Paper-26.2-222222?logo=paperlessngx&logoColor=white">
+    <img alt="Folia supported" src="https://img.shields.io/badge/Folia-supported-5C6BC0?logo=leaflet&logoColor=white">
+    <img alt="Status" src="https://img.shields.io/badge/Status-Active_development-2E7D32?logo=githubactions&logoColor=white">
     <a href="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml">
       <img alt="Build" src="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml/badge.svg">
     </a>
