@@ -6,6 +6,9 @@ import com.github.spotbugs.snom.SpotBugsExtension
 import com.github.spotbugs.snom.SpotBugsTask
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.javadoc.Javadoc
 
 plugins {
     base
@@ -72,20 +75,53 @@ subprojects {
 val documentedApiProjects = setOf(
     ":vexcore-api",
     ":vexcore-command-api",
+    ":vexcore-dialog",
+    ":vexcore-inventory",
+    ":vexcore-items:common",
+    ":vexcore-packets:common",
     ":vexcore-paper-api",
 )
 
 configure(subprojects.filter { it.path in documentedApiProjects }) {
-    pluginManager.apply("checkstyle")
+    plugins.withId("java") {
+        pluginManager.apply("checkstyle")
+        val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
 
-    extensions.configure<CheckstyleExtension> {
-        toolVersion = "13.9.0"
-        configFile = rootProject.file("config/checkstyle-api.xml")
-        isIgnoreFailures = false
-        maxWarnings = 0
-    }
+        extensions.configure<CheckstyleExtension> {
+            toolVersion = "13.9.0"
+            configFile = rootProject.file("config/checkstyle-api.xml")
+            isIgnoreFailures = false
+            maxWarnings = 0
+        }
 
-    tasks.withType<Checkstyle>().matching { it.name == "checkstyleTest" }.configureEach {
-        enabled = false
+        tasks.withType<Checkstyle>().matching { it.name == "checkstyleTest" }.configureEach {
+            enabled = false
+        }
+
+        tasks.withType<Checkstyle>().matching { it.name == "checkstyleMain" }.configureEach {
+            exclude("**/internal/**")
+        }
+
+        val delombok = tasks.register<JavaExec>("delombok") {
+            group = "documentation"
+            description = "Expands Lombok-generated API members before Javadoc runs"
+            classpath = configurations.getByName("annotationProcessor")
+            mainClass.set("lombok.launch.Main")
+            args(
+                "delombok",
+                project.file("src/main/java").absolutePath,
+                "--target",
+                layout.buildDirectory.dir("delombok").get().asFile.absolutePath,
+                "--classpath",
+                mainSourceSet.get().compileClasspath.asPath,
+            )
+        }
+
+        tasks.named<Javadoc>("javadoc") {
+            dependsOn(delombok)
+            setSource(fileTree(layout.buildDirectory.dir("delombok")) {
+                exclude("**/internal/**")
+            })
+        }
     }
 }

@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
 public interface SuggestionProvider {
 
   /** Creates suggestions for the current command argument */
-  public CompletableFuture<Suggestions> suggest(
+  CompletableFuture<Suggestions> suggest(
       VexCommandSource source,
       SuggestionsBuilder builder
   );

@@ -12,7 +12,7 @@ import org.bukkit.inventory.ItemStack;
 public interface ItemService extends VexService {
 
   /** Creates a builder for one item with the default amount */
-  public default ItemStackBuilder builder(
+  default ItemStackBuilder builder(
       final NamespacedKey itemId,
       final Material material
   ) {
@@ -20,14 +20,14 @@ public interface ItemService extends VexService {
   }
 
   /** Creates a builder for an item with the requested amount */
-  public ItemStackBuilder builder(NamespacedKey itemId, Material material, int amount);
+  ItemStackBuilder builder(NamespacedKey itemId, Material material, int amount);
 
   /** Creates a builder from a cloned item stack */
-  public ItemStackBuilder builder(NamespacedKey itemId, ItemStack itemStack);
+  ItemStackBuilder builder(NamespacedKey itemId, ItemStack itemStack);
 
   /** Reads the persistent Vex item identifier from an item stack */
-  public Optional<NamespacedKey> getItemId(ItemStack itemStack);
+  Optional<NamespacedKey> getItemId(ItemStack itemStack);
 
   /** Checks whether an item stack carries the requested Vex item identifier */
-  public boolean isItem(ItemStack itemStack, NamespacedKey itemId);
+  boolean isItem(ItemStack itemStack, NamespacedKey itemId);
 }

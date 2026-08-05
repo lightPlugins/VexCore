@@ -10,5 +10,5 @@ import java.util.List;
 public interface PageSource<T> {
 
   /** Returns the items available to the current viewer */
-  public List<T> getItems(InventoryContext context);
+  List<T> getItems(InventoryContext context);
 }

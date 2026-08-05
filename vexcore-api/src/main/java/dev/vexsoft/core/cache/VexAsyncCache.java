@@ -10,38 +10,38 @@ import java.util.concurrent.CompletableFuture;
 public interface VexAsyncCache<K, V> {
 
   /** Returns the owner-local name of this cache */
-  public String getName();
+  String getName();
 
   /** Returns an existing asynchronous value without triggering a load */
-  public Optional<CompletableFuture<V>> getIfPresent(K key);
+  Optional<CompletableFuture<V>> getIfPresent(K key);
 
   /** Returns the cached value or starts one shared asynchronous load */
-  public CompletableFuture<V> get(K key);
+  CompletableFuture<V> get(K key);
 
   /** Adds or replaces one completed value */
-  public void put(K key, V value);
+  void put(K key, V value);
 
   /** Adds or replaces one asynchronous value */
-  public void putFuture(K key, CompletableFuture<V> value);
+  void putFuture(K key, CompletableFuture<V> value);
 
   /** Returns an immutable snapshot of currently cached futures */
-  public Map<K, CompletableFuture<V>> getAllPresent(Iterable<? extends K> keys);
+  Map<K, CompletableFuture<V>> getAllPresent(Iterable<? extends K> keys);
 
   /** Removes one cached value */
-  public void invalidate(K key);
+  void invalidate(K key);
 
   /** Removes multiple cached values */
-  public void invalidateAll(Iterable<? extends K> keys);
+  void invalidateAll(Iterable<? extends K> keys);
 
   /** Removes every value from this cache */
-  public void invalidateAll();
+  void invalidateAll();
 
   /** Returns the estimated number of cached entries */
-  public long getEstimatedSize();
+  long getEstimatedSize();
 
   /** Returns a snapshot of the recorded cache statistics */
-  public VexCacheStats getStats();
+  VexCacheStats getStats();
 
   /** Performs pending maintenance such as expiration and eviction */
-  public void cleanUp();
+  void cleanUp();
 }

@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 import lombok.Value;
 
+/** Identifies an inventory definition with a normalized namespaced key. */
 @Value
 public class InventoryKey {
 
@@ -12,6 +13,7 @@ public class InventoryKey {
 
   String value;
 
+  /** Creates and validates a lower-case {@code namespace:path} key. */
   public InventoryKey(final String value) {
     String normalized = Objects.requireNonNull(value, "value").trim().toLowerCase(Locale.ROOT);
     if (!VALID_KEY.matcher(normalized).matches()) {

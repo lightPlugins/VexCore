@@ -10,11 +10,11 @@ import java.util.Optional;
  */
 public interface ConfigurationOwner extends ServiceOwner {
   /** Returns the root directory used to store this owner's configuration files */
-  public Path getConfigurationDirectory();
+  Path getConfigurationDirectory();
 
   /** Opens a bundled configuration resource when it exists */
-  public Optional<InputStream> getConfigurationResource(String resourcePath);
+  Optional<InputStream> getConfigurationResource(String resourcePath);
 
   /** Reports a non-fatal warning produced while processing configuration data */
-  public void reportConfigurationWarning(String message, Throwable cause);
+  void reportConfigurationWarning(String message, Throwable cause);
 }

@@ -11,17 +11,17 @@ import java.util.Optional;
 public interface LanguageService extends VexService {
 
   /** Returns the language currently selected by a Vex player */
-  public Language getLanguage(VexPlayer player);
+  Language getLanguage(VexPlayer player);
 
   /** Finds a globally available language by its folder key */
-  public Optional<Language> findLanguage(String language);
+  Optional<Language> findLanguage(String language);
 
   /** Returns every language globally available through VexCore */
-  public Collection<Language> getLanguages();
+  Collection<Language> getLanguages();
 
   /** Changes the cached language selected by a Vex player */
-  public void setLanguage(VexPlayer player, LanguageKey language);
+  void setLanguage(VexPlayer player, LanguageKey language);
 
   /** Reloads every registered localization cache */
-  public void reload();
+  void reload();
 }

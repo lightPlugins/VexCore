@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
+/** Comparable, normalized Minecraft version composed of at least two numeric parts. */
 @Getter
 @EqualsAndHashCode
 public final class MinecraftVersion implements Comparable<MinecraftVersion> {

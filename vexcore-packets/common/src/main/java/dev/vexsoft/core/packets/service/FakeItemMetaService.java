@@ -13,7 +13,7 @@ import org.bukkit.entity.Player;
 public interface FakeItemMetaService extends VexService {
 
   /** Replaces the lore of every matching item for all viewers */
-  public default void setLore(
+  default void setLore(
       final NamespacedKey itemIdKey,
       final String itemId,
       final List<Component> lore
@@ -22,7 +22,7 @@ public interface FakeItemMetaService extends VexService {
   }
 
   /** Changes the lore of every matching item for all viewers */
-  public void setLore(
+  void setLore(
       NamespacedKey itemIdKey,
       String itemId,
       List<Component> lore,
@@ -30,7 +30,7 @@ public interface FakeItemMetaService extends VexService {
   );
 
   /** Replaces the lore of every matching item for one viewer */
-  public default void setLore(
+  default void setLore(
       final Player viewer,
       final NamespacedKey itemIdKey,
       final String itemId,
@@ -40,7 +40,7 @@ public interface FakeItemMetaService extends VexService {
   }
 
   /** Changes the lore of every matching item for one viewer */
-  public void setLore(
+  void setLore(
       Player viewer,
       NamespacedKey itemIdKey,
       String itemId,
@@ -49,10 +49,10 @@ public interface FakeItemMetaService extends VexService {
   );
 
   /** Sets the fake display name for all matching items */
-  public void setDisplayName(NamespacedKey itemIdKey, String itemId, Component displayName);
+  void setDisplayName(NamespacedKey itemIdKey, String itemId, Component displayName);
 
   /** Sets the fake display name for one viewer's matching items */
-  public void setDisplayName(
+  void setDisplayName(
       Player viewer,
       NamespacedKey itemIdKey,
       String itemId,
@@ -60,10 +60,10 @@ public interface FakeItemMetaService extends VexService {
   );
 
   /** Sets the fake item model for all matching items */
-  public void setItemModel(NamespacedKey itemIdKey, String itemId, NamespacedKey itemModel);
+  void setItemModel(NamespacedKey itemIdKey, String itemId, NamespacedKey itemModel);
 
   /** Sets the fake item model for one viewer's matching items */
-  public void setItemModel(
+  void setItemModel(
       Player viewer,
       NamespacedKey itemIdKey,
       String itemId,
@@ -71,32 +71,32 @@ public interface FakeItemMetaService extends VexService {
   );
 
   /** Clears the global fake lore for matching items */
-  public void clearLore(NamespacedKey itemIdKey, String itemId);
+  void clearLore(NamespacedKey itemIdKey, String itemId);
 
   /** Clears one viewer's fake lore for matching items */
-  public void clearLore(Player viewer, NamespacedKey itemIdKey, String itemId);
+  void clearLore(Player viewer, NamespacedKey itemIdKey, String itemId);
 
   /** Clears the global fake display name for matching items */
-  public void clearDisplayName(NamespacedKey itemIdKey, String itemId);
+  void clearDisplayName(NamespacedKey itemIdKey, String itemId);
 
   /** Clears one viewer's fake display name for matching items */
-  public void clearDisplayName(Player viewer, NamespacedKey itemIdKey, String itemId);
+  void clearDisplayName(Player viewer, NamespacedKey itemIdKey, String itemId);
 
   /** Clears the global fake item model for matching items */
-  public void clearItemModel(NamespacedKey itemIdKey, String itemId);
+  void clearItemModel(NamespacedKey itemIdKey, String itemId);
 
   /** Clears one viewer's fake item model for matching items */
-  public void clearItemModel(Player viewer, NamespacedKey itemIdKey, String itemId);
+  void clearItemModel(Player viewer, NamespacedKey itemIdKey, String itemId);
 
   /** Clears every fake item metadata rule owned by this service */
-  public void clearAll();
+  void clearAll();
 
   /** Clears every fake item metadata rule owned by this service for one viewer */
-  public void clearAll(Player viewer);
+  void clearAll(Player viewer);
 
   /** Resends the current inventory contents to one viewer */
-  public void refresh(Player viewer);
+  void refresh(Player viewer);
 
   /** Resends the current inventory contents to every online viewer */
-  public void refreshAll();
+  void refreshAll();
 }

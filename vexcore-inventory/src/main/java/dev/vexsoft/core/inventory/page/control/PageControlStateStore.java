@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface PageControlStateStore {
 
   /** Finds the active mode stored for the given viewer and control */
-  public Optional<String> getActiveMode(
+  Optional<String> getActiveMode(
       UUID viewerId,
       InventoryKey inventoryKey,
       String areaId,
@@ -19,7 +19,7 @@ public interface PageControlStateStore {
   );
 
   /** Stores the active mode for the given viewer and control */
-  public void setActiveMode(
+  void setActiveMode(
       UUID viewerId,
       InventoryKey inventoryKey,
       String areaId,
@@ -28,10 +28,10 @@ public interface PageControlStateStore {
   );
 
   /** Removes every control state associated with the given viewer */
-  public void clear(UUID viewerId);
+  void clear(UUID viewerId);
 
   /** Selects and stores the next mode exposed by this control */
-  public default String cycleNext(
+  default String cycleNext(
       final UUID viewerId,
       final InventoryKey inventoryKey,
       final String areaId,
@@ -41,7 +41,7 @@ public interface PageControlStateStore {
   }
 
   /** Selects and stores the previous mode exposed by this control */
-  public default String cyclePrevious(
+  default String cyclePrevious(
       final UUID viewerId,
       final InventoryKey inventoryKey,
       final String areaId,

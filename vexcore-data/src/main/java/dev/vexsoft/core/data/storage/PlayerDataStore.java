@@ -12,17 +12,17 @@ import java.util.concurrent.CompletableFuture;
 public interface PlayerDataStore extends AutoCloseable {
 
   /** Adds missing storage structures for the supplied containers */
-  public CompletableFuture<Void> reconcile(String owner, Collection<DataContainerKey<?>> keys);
+  CompletableFuture<Void> reconcile(String owner, Collection<DataContainerKey<?>> keys);
 
   /** Loads the stored JSON values for one plugin and player */
-  public CompletableFuture<Map<String, String>> load(
+  CompletableFuture<Map<String, String>> load(
       String owner,
       UUID uniqueId,
       Collection<DataContainerKey<?>> keys
   );
 
   /** Saves JSON values for one plugin and player */
-  public CompletableFuture<Void> save(
+  CompletableFuture<Void> save(
       String owner,
       UUID uniqueId,
       String playerName,
@@ -30,5 +30,5 @@ public interface PlayerDataStore extends AutoCloseable {
   );
 
   @Override
-  public void close();
+  void close();
 }

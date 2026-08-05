@@ -14,23 +14,23 @@ import dev.vexsoft.core.packets.display.DisplayLifecycle;
 public interface HologramTrackerService extends VexService {
 
   /** Stores a hologram for interaction routing and cleanup */
-  public void track(TrackedHologram hologram);
+  void track(TrackedHologram hologram);
 
   /** Finds a hologram by its viewer and interaction entity id */
-  public Optional<TrackedHologram> find(UUID viewerId, int interactionEntityId);
+  Optional<TrackedHologram> find(UUID viewerId, int interactionEntityId);
 
   /** Removes and returns a hologram by its public handle */
-  public Optional<TrackedHologram> remove(InteractableHologramHandle handle);
+  Optional<TrackedHologram> remove(InteractableHologramHandle handle);
 
   /** Returns all holograms owned by one plugin for one viewer */
-  public Collection<TrackedHologram> findOwned(ServiceOwner owner, UUID viewerId);
+  Collection<TrackedHologram> findOwned(ServiceOwner owner, UUID viewerId);
 
   /** Removes all holograms owned by one plugin */
-  public Collection<TrackedHologram> removeOwned(ServiceOwner owner);
+  Collection<TrackedHologram> removeOwned(ServiceOwner owner);
 
   /** Removes every hologram associated with one viewer */
-  public Collection<TrackedHologram> removeViewer(UUID viewerId);
+  Collection<TrackedHologram> removeViewer(UUID viewerId);
 
   /** Removes holograms configured for a viewer lifecycle event */
-  public Collection<TrackedHologram> removeViewer(UUID viewerId, DisplayLifecycle lifecycle);
+  Collection<TrackedHologram> removeViewer(UUID viewerId, DisplayLifecycle lifecycle);
 }

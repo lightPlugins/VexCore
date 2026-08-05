@@ -11,5 +11,5 @@ import java.lang.annotation.Target;
 public @interface Dependencies {
 
   /** Returns the services required before this implementation can be created */
-  public Class<? extends VexService>[] value() default {};
+  Class<? extends VexService>[] value() default {};
 }

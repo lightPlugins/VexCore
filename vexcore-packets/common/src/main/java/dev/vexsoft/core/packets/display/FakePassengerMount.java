@@ -3,6 +3,7 @@ package dev.vexsoft.core.packets.display;
 import java.util.Objects;
 import lombok.Value;
 
+/** Associates a fake display passenger with an offset from its real vehicle. */
 @Value
 public class FakePassengerMount {
   FakeDisplayHandle handle;
@@ -10,6 +11,7 @@ public class FakePassengerMount {
   float offsetY;
   float offsetZ;
 
+  /** Creates a mount with an explicit relative offset. */
   public FakePassengerMount(
       final FakeDisplayHandle handle,
       final float offsetX,
@@ -22,6 +24,7 @@ public class FakePassengerMount {
     this.offsetZ = offsetZ;
   }
 
+  /** Creates a mount without a relative offset. */
   public static FakePassengerMount of(final FakeDisplayHandle handle) {
     return new FakePassengerMount(handle, 0.0F, 0.0F, 0.0F);
   }

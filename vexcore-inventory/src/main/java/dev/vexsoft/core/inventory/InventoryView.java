@@ -9,20 +9,20 @@ import net.kyori.adventure.text.Component;
 public interface InventoryView {
 
   /** Returns the key represented by this view */
-  public InventoryKey getKey();
+  InventoryKey getKey();
 
   /** Returns the number of slots rendered by this view */
-  public int getSize();
+  int getSize();
 
   /** Creates the title shown to the current viewer */
-  public Component getTitle(InventoryContext context);
+  Component getTitle(InventoryContext context);
 
   /** Creates the slot elements shown to the current viewer */
-  public Map<Integer, InventoryElement> getElements(InventoryContext context);
+  Map<Integer, InventoryElement> getElements(InventoryContext context);
 
   /** Runs after this view has been opened */
-  public default void onOpen(InventoryContext context) { }
+  default void onOpen(InventoryContext context) { }
 
   /** Runs after this view has been closed or replaced */
-  public default void onClose(InventoryContext context) { }
+  default void onClose(InventoryContext context) { }
 }

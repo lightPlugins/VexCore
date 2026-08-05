@@ -9,17 +9,17 @@ import org.bukkit.entity.Player;
 public interface DialogService extends VexService {
 
   /** Creates a notice dialog builder for the player */
-  public NoticeDialogBuilder notice(Player player);
+  NoticeDialogBuilder notice(Player player);
 
   /** Creates a confirmation dialog builder for the player */
-  public ConfirmationDialogBuilder confirmation(Player player);
+  ConfirmationDialogBuilder confirmation(Player player);
 
   /** Creates a text input dialog builder for the player */
-  public TextInputDialogBuilder textInput(Player player);
+  TextInputDialogBuilder textInput(Player player);
 
   /** Creates a number range dialog builder for the player */
-  public NumberRangeDialogBuilder numberRange(Player player);
+  NumberRangeDialogBuilder numberRange(Player player);
 
   /** Closes the active dialog owned by this plugin for the player */
-  public void close(Player player);
+  void close(Player player);
 }

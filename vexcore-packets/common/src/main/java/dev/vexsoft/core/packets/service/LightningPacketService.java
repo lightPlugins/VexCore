@@ -10,5 +10,5 @@ import org.bukkit.entity.Player;
 public interface LightningPacketService extends VexService {
 
   /** Shows a lightning strike at the target to the given viewer */
-  public void strike(Player viewer, LivingEntity target);
+  void strike(Player viewer, LivingEntity target);
 }

@@ -9,5 +9,5 @@ import java.util.Optional;
 public interface HologramInteractionAdapterService extends VexService {
 
   /** Decodes a native packet when it represents an entity interaction */
-  public Optional<PacketInteractionInput> decode(Object packet);
+  Optional<PacketInteractionInput> decode(Object packet);
 }

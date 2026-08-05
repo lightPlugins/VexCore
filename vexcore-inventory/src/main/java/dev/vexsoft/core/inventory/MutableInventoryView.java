@@ -9,8 +9,8 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 public interface MutableInventoryView extends InventoryView {
 
   /** Handles a click anywhere inside this inventory view */
-  public default void onInventoryClick(InventoryContext context, InventoryClickEvent event) { }
+  default void onInventoryClick(InventoryContext context, InventoryClickEvent event) { }
 
   /** Handles dragged items inside this inventory view */
-  public default void onInventoryDrag(InventoryContext context, InventoryDragEvent event) { }
+  default void onInventoryDrag(InventoryContext context, InventoryDragEvent event) { }
 }

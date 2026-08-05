@@ -19,28 +19,28 @@ import org.bukkit.entity.Player;
 public interface DisplayPacketAdapterService extends VexService {
 
   /** Allocates an entity id that cannot collide with native server entities */
-  public int allocateEntityId();
+  int allocateEntityId();
 
   /** Spawns a virtual text display using the supplied handle */
-  public void spawnText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayRequest request);
+  void spawnText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayRequest request);
 
   /** Spawns a virtual item display using the supplied handle */
-  public void spawnItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayRequest request);
+  void spawnItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayRequest request);
 
   /** Applies an update to a virtual text display */
-  public void updateText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayUpdate update);
+  void updateText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayUpdate update);
 
   /** Applies an update to a virtual item display */
-  public void updateItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayUpdate update);
+  void updateItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayUpdate update);
 
   /** Teleports a virtual display entity */
-  public void teleport(Player viewer, FakeDisplayHandle handle, Location location);
+  void teleport(Player viewer, FakeDisplayHandle handle, Location location);
 
   /** Removes one or more virtual entity ids */
-  public void remove(Player viewer, int... entityIds);
+  void remove(Player viewer, int... entityIds);
 
   /** Spawns a virtual interaction hitbox */
-  public void spawnInteraction(
+  void spawnInteraction(
       Player viewer,
       int entityId,
       java.util.UUID entityUuid,
@@ -50,16 +50,16 @@ public interface DisplayPacketAdapterService extends VexService {
   );
 
   /** Updates a virtual interaction hitbox */
-  public void updateInteraction(Player viewer, int entityId, float width, float height);
+  void updateInteraction(Player viewer, int entityId, float width, float height);
 
   /** Teleports a virtual entity id without requiring a display handle */
-  public void teleport(Player viewer, int entityId, Location location);
+  void teleport(Player viewer, int entityId, Location location);
 
   /** Replaces the passengers mounted onto an entity id */
-  public void setPassengers(Player viewer, int vehicleEntityId, List<Integer> passengerEntityIds);
+  void setPassengers(Player viewer, int vehicleEntityId, List<Integer> passengerEntityIds);
 
   /** Applies a local passenger translation to a virtual display */
-  public void setTranslation(
+  void setTranslation(
       Player viewer,
       FakeDisplayHandle handle,
       float offsetX,
@@ -68,11 +68,11 @@ public interface DisplayPacketAdapterService extends VexService {
   );
 
   /** Removes native display state owned by one plugin */
-  public void removeOwned(ServiceOwner owner);
+  void removeOwned(ServiceOwner owner);
 
   /** Removes native display state associated with one viewer */
-  public void removeViewer(UUID viewerId);
+  void removeViewer(UUID viewerId);
 
   /** Removes displays configured for a viewer lifecycle event */
-  public void removeViewer(Player viewer, DisplayLifecycle lifecycle);
+  void removeViewer(Player viewer, DisplayLifecycle lifecycle);
 }

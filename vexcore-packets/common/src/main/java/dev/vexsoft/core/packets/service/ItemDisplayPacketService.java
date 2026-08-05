@@ -13,17 +13,17 @@ import org.bukkit.entity.Player;
 public interface ItemDisplayPacketService extends VexService {
 
   /** Spawns an item display visible only to the given viewer */
-  public FakeDisplayHandle spawn(Player viewer, FakeItemDisplayRequest request);
+  FakeDisplayHandle spawn(Player viewer, FakeItemDisplayRequest request);
 
   /** Applies the supplied properties to a tracked item display */
-  public void update(FakeDisplayHandle handle, FakeItemDisplayUpdate update);
+  void update(FakeDisplayHandle handle, FakeItemDisplayUpdate update);
 
   /** Teleports a tracked item display for its viewer */
-  public void teleport(FakeDisplayHandle handle, Location location);
+  void teleport(FakeDisplayHandle handle, Location location);
 
   /** Removes a tracked item display from its viewer */
-  public void remove(FakeDisplayHandle handle);
+  void remove(FakeDisplayHandle handle);
 
   /** Removes every item display owned by this service for the viewer */
-  public void removeAll(Player viewer);
+  void removeAll(Player viewer);
 }

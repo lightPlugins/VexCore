@@ -10,19 +10,23 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/** Element that returns a paged view and refreshes it after a successful transition. */
 public class PreviousPageInventoryElement extends AbstractInventoryElement {
 
   private final BooleanSupplier pageAction;
   private final Function<InventoryContext, ItemStack> itemProvider;
 
+  /** Creates a default arrow using the supplied page transition. */
   public PreviousPageInventoryElement(final BooleanSupplier pageAction) {
     this(context -> createDefaultItem(), pageAction);
   }
 
+  /** Creates a fixed custom item using the supplied page transition. */
   public PreviousPageInventoryElement(final ItemStack item, final BooleanSupplier pageAction) {
     this(context -> Objects.requireNonNull(item, "item").clone(), pageAction);
   }
 
+  /** Creates a context-sensitive item using the supplied page transition. */
   public PreviousPageInventoryElement(
       final Function<InventoryContext, ItemStack> itemProvider,
       final BooleanSupplier pageAction

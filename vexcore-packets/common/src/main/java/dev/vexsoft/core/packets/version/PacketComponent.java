@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.version;
 
+/** Replaceable adapter component that forms part of a packet-version definition. */
 public enum PacketComponent {
   TRANSPORT,
   DISPLAY,

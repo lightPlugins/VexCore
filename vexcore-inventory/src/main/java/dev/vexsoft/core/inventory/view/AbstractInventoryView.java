@@ -18,6 +18,7 @@ import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import org.bukkit.inventory.ItemStack;
 
+/** Base view for fixed-size inventories with configurable elements and lifecycle callbacks. */
 public abstract class AbstractInventoryView implements InventoryView {
 
   @Getter(AccessLevel.PROTECTED)

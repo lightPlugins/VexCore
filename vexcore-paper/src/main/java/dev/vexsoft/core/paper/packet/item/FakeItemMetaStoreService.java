@@ -14,7 +14,7 @@ import org.bukkit.NamespacedKey;
 public interface FakeItemMetaStoreService extends VexService, FakeItemMetaLookup {
 
   /** Updates a global or viewer-specific fake item rule */
-  public void update(
+  void update(
       ServiceOwner owner,
       UUID viewerId,
       NamespacedKey itemIdKey,
@@ -23,8 +23,8 @@ public interface FakeItemMetaStoreService extends VexService, FakeItemMetaLookup
   );
 
   /** Removes every fake item rule owned by one plugin */
-  public void clearOwned(ServiceOwner owner);
+  void clearOwned(ServiceOwner owner);
 
   /** Removes one plugin's fake item rules for one viewer */
-  public void clearOwned(ServiceOwner owner, UUID viewerId);
+  void clearOwned(ServiceOwner owner, UUID viewerId);
 }

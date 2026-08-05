@@ -7,11 +7,11 @@ import java.nio.file.Path;
  */
 public interface VexConfiguration extends ConfigurationSection {
   /** Returns the absolute path of the backing YAML file */
-  public Path getFile();
+  Path getFile();
 
   /** Reloads this configuration from its backing file */
-  public void reload();
+  void reload();
 
   /** Saves the current configuration state to its backing file */
-  public void save();
+  void save();
 }

@@ -10,15 +10,15 @@ import java.util.function.Function;
 public interface CacheService extends VexService {
 
   /** Creates a synchronous cache using safe default options */
-  public default <K, V> VexCache<K, V> create(final String name) {
+  default <K, V> VexCache<K, V> create(final String name) {
     return create(name, VexCacheOptions.defaults());
   }
 
   /** Creates a synchronous cache with the requested options */
-  public <K, V> VexCache<K, V> create(String name, VexCacheOptions options);
+  <K, V> VexCache<K, V> create(String name, VexCacheOptions options);
 
   /** Creates an asynchronous loading cache using safe default options */
-  public default <K, V> VexAsyncCache<K, V> createAsync(
+  default <K, V> VexAsyncCache<K, V> createAsync(
       final String name,
       final Function<? super K, ? extends CompletableFuture<V>> loader
   ) {
@@ -26,15 +26,15 @@ public interface CacheService extends VexService {
   }
 
   /** Creates an asynchronous cache whose loader returns without blocking the caller */
-  public <K, V> VexAsyncCache<K, V> createAsync(
+  <K, V> VexAsyncCache<K, V> createAsync(
       String name,
       VexCacheOptions options,
       Function<? super K, ? extends CompletableFuture<V>> loader
   );
 
   /** Destroys a named cache and invalidates all of its entries */
-  public void destroy(String name);
+  void destroy(String name);
 
   /** Destroys every cache owned by this service */
-  public void destroyAll();
+  void destroyAll();
 }

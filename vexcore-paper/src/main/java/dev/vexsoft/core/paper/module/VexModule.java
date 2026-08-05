@@ -8,11 +8,11 @@ import dev.vexsoft.core.api.service.VexServiceRegistry;
  */
 public interface VexModule extends ServiceOwner {
   /** Loads the module and registers the services it provides */
-  public void enable(VexServiceRegistry services);
+  void enable(VexServiceRegistry services);
 
   /** Activates runtime hooks after the owning plugin has been enabled */
-  public default void start() { }
+  default void start() { }
 
   /** Stops the module and releases resources owned by it */
-  public default void disable() { }
+  default void disable() { }
 }

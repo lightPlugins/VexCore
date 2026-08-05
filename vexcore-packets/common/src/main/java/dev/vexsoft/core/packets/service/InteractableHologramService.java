@@ -14,19 +14,19 @@ import org.bukkit.util.Vector;
 public interface InteractableHologramService extends VexService {
 
   /** Spawns an interactable hologram for the given viewer */
-  public InteractableHologramHandle spawn(Player viewer, InteractableHologramRequest request);
+  InteractableHologramHandle spawn(Player viewer, InteractableHologramRequest request);
 
   /** Updates the text display attached to a tracked hologram */
-  public void update(InteractableHologramHandle handle, FakeTextDisplayUpdate update);
+  void update(InteractableHologramHandle handle, FakeTextDisplayUpdate update);
 
   /** Changes the dimensions of the hologram interaction hitbox */
-  public void updateHitbox(InteractableHologramHandle handle, float width, float height);
+  void updateHitbox(InteractableHologramHandle handle, float width, float height);
 
   /** Changes the position of the hologram interaction hitbox */
-  public void updateHitboxOffset(InteractableHologramHandle handle, Vector offset);
+  void updateHitboxOffset(InteractableHologramHandle handle, Vector offset);
 
   /** Changes the position of the hologram interaction hitbox */
-  public default void updateHitboxOffset(
+  default void updateHitboxOffset(
       final InteractableHologramHandle handle,
       final double x,
       final double y,
@@ -36,11 +36,11 @@ public interface InteractableHologramService extends VexService {
   }
 
   /** Teleports the display and interaction hitbox together */
-  public void teleport(InteractableHologramHandle handle, Location location);
+  void teleport(InteractableHologramHandle handle, Location location);
 
   /** Removes a tracked hologram from its viewer */
-  public void remove(InteractableHologramHandle handle);
+  void remove(InteractableHologramHandle handle);
 
   /** Removes every hologram owned by this service for the viewer */
-  public void removeAll(Player viewer);
+  void removeAll(Player viewer);
 }

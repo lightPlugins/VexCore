@@ -11,6 +11,7 @@ import java.util.UUID;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 
+/** Immutable multi-mode sort control built from named comparators. */
 @Getter
 public final class BasicPageSortControl<T> implements PageSortControl<T> {
 
@@ -29,6 +30,7 @@ public final class BasicPageSortControl<T> implements PageSortControl<T> {
     validate();
   }
 
+  /** Starts a builder for a sort control with the given persistent identifier. */
   public static <T> Builder<T> builder(final String controlId) {
     return new Builder<>(controlId);
   }
@@ -49,6 +51,7 @@ public final class BasicPageSortControl<T> implements PageSortControl<T> {
     return Objects.requireNonNull(comparators.getOrDefault(modeId, comparators.get(defaultModeId)));
   }
 
+  /** Builds a sort control from ordered modes and one optional default mode. */
   public static final class Builder<T> {
     private final String controlId;
     private final List<String> modeIds = new ArrayList<>();
@@ -60,6 +63,7 @@ public final class BasicPageSortControl<T> implements PageSortControl<T> {
       this.controlId = Objects.requireNonNull(controlId, "controlId");
     }
 
+    /** Adds a selectable mode and the comparator applied while that mode is active. */
     public Builder<T> mode(
         final String modeId,
         final Component label,
@@ -74,11 +78,13 @@ public final class BasicPageSortControl<T> implements PageSortControl<T> {
       return this;
     }
 
+    /** Selects the mode used before a viewer has persisted a choice. */
     public Builder<T> defaultMode(final String modeId) {
       defaultModeId = Objects.requireNonNull(modeId, "modeId");
       return this;
     }
 
+    /** Validates the configured modes and creates an immutable sort control. */
     public BasicPageSortControl<T> build() {
       if (modeIds.isEmpty()) {
         throw new IllegalStateException("At least one mode is required");

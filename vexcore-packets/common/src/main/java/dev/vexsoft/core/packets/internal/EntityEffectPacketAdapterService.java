@@ -11,14 +11,14 @@ import org.bukkit.entity.Player;
 public interface EntityEffectPacketAdapterService extends VexService {
 
   /** Shows an entity hit animation to one viewer */
-  public void playHit(Player viewer, LivingEntity target);
+  void playHit(Player viewer, LivingEntity target);
 
   /** Enables a colored entity glow for one viewer */
-  public void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
+  void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
 
   /** Removes a viewer-specific entity glow */
-  public void clearGlow(Player viewer, LivingEntity target);
+  void clearGlow(Player viewer, LivingEntity target);
 
   /** Shows a client-side lightning strike at an entity */
-  public void strikeLightning(Player viewer, LivingEntity target);
+  void strikeLightning(Player viewer, LivingEntity target);
 }

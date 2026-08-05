@@ -8,12 +8,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/** Defines the ordered inventory slots available to paged content. */
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PageBounds {
 
   private final List<Integer> slots;
 
+  /** Creates bounds from distinct chest-inventory slots in rendering order. */
   public static PageBounds ofSlots(final List<Integer> slots) {
     List<Integer> checked = List.copyOf(Objects.requireNonNull(slots, "slots"));
     if (checked.isEmpty()) {
@@ -28,6 +30,7 @@ public final class PageBounds {
     return new PageBounds(checked);
   }
 
+  /** Creates row-major bounds for a rectangle inside a six-row chest inventory. */
   public static PageBounds rectangle(
       final int startColumn,
       final int startRow,
@@ -37,6 +40,7 @@ public final class PageBounds {
     return rectangle(startColumn, startRow, width, height, false);
   }
 
+  /** Creates alternating left-to-right and right-to-left bounds for a rectangle. */
   public static PageBounds snakeRectangle(
       final int startColumn,
       final int startRow,
@@ -46,10 +50,12 @@ public final class PageBounds {
     return rectangle(startColumn, startRow, width, height, true);
   }
 
+  /** Returns the number of content entries that fit on one page. */
   public int getCapacity() {
     return slots.size();
   }
 
+  /** Resolves a zero-based page-local index to its inventory slot. */
   public int getSlot(final int localIndex) {
     return slots.get(localIndex);
   }

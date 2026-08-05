@@ -10,5 +10,5 @@ import org.bukkit.entity.Player;
 public interface MobHitPacketService extends VexService {
 
   /** Shows the target's hit animation to the given viewer */
-  public void playHit(Player viewer, LivingEntity target);
+  void playHit(Player viewer, LivingEntity target);
 }

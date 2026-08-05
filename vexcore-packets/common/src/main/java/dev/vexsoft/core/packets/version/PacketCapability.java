@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.version;
 
+/** Feature that a selected packet-version definition can provide. */
 public enum PacketCapability {
   BUNDLE_PACKETS,
   DISPLAY_ENTITIES,

@@ -4,10 +4,12 @@ import java.util.Locale;
 import java.util.Objects;
 import lombok.Value;
 
+/** Immutable 24-bit RGB glow color for a fake display entity. */
 @Value
 public class DisplayGlowColor {
   int rgb;
 
+  /** Creates a color from a validated {@code 0xRRGGBB} integer. */
   public DisplayGlowColor(final int rgb) {
     if ((rgb & 0xFF000000) != 0) {
       throw new IllegalArgumentException("rgb must be a 24-bit color");
@@ -15,10 +17,12 @@ public class DisplayGlowColor {
     this.rgb = rgb;
   }
 
+  /** Creates a color from a validated {@code 0xRRGGBB} integer. */
   public static DisplayGlowColor of(final int rgb) {
     return new DisplayGlowColor(rgb);
   }
 
+  /** Parses a six-digit RGB value with an optional leading hash. */
   public static DisplayGlowColor hex(final String hex) {
     String normalized = Objects.requireNonNull(hex, "hex").trim();
     if (normalized.startsWith("#")) {
@@ -34,6 +38,7 @@ public class DisplayGlowColor {
     }
   }
 
+  /** Returns this color in lower-case {@code #rrggbb} form. */
   public String getHex() {
     return "#" + String.format(Locale.ROOT, "%06x", rgb);
   }

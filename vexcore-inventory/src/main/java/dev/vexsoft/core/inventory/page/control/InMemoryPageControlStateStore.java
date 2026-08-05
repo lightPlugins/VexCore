@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/** Thread-safe, process-local storage for each viewer's active page-control modes. */
 public final class InMemoryPageControlStateStore implements PageControlStateStore {
 
   private final ConcurrentMap<StateKey, String> states = new ConcurrentHashMap<>();

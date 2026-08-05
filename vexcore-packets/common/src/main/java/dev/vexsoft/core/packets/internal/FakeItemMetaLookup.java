@@ -10,8 +10,8 @@ import org.bukkit.inventory.ItemStack;
 public interface FakeItemMetaLookup {
 
   /** Finds the effective fake metadata rule for one viewer and item */
-  public Optional<FakeItemMetaRule> find(UUID viewerId, ItemStack itemStack);
+  Optional<FakeItemMetaRule> find(UUID viewerId, ItemStack itemStack);
 
   /** Checks whether any rule can affect packets for the viewer */
-  public boolean hasAny(UUID viewerId);
+  boolean hasAny(UUID viewerId);
 }

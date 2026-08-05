@@ -10,6 +10,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
+/** Immutable request combining a fake text display with an interaction hitbox and callback. */
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class InteractableHologramRequest {
@@ -20,6 +21,7 @@ public final class InteractableHologramRequest {
   private final Vector hitboxOffset;
   private final HologramInteractHandler interactHandler;
 
+  /** Starts a hologram request from a location and text using default display settings. */
   public static InteractableHologramRequestBuilder builder(
       final Location location,
       final Component text
@@ -27,6 +29,7 @@ public final class InteractableHologramRequest {
     return builder(FakeTextDisplayRequest.builder(location, text).build());
   }
 
+  /** Starts a hologram request around an existing text-display request. */
   public static InteractableHologramRequestBuilder builder(
       final FakeTextDisplayRequest textDisplayRequest
   ) {

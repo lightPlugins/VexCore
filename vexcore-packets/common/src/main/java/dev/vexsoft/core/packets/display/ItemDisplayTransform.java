@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.display;
 
+/** Selects the vanilla item-model transform used by an item display. */
 public enum ItemDisplayTransform {
   NONE,
   THIRD_PERSON_LEFT_HAND,

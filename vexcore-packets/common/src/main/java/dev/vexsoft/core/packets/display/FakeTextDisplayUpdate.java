@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
 
+/** Partial text-display update in which {@code null} properties remain unchanged. */
 @Value
 @Builder
 public class FakeTextDisplayUpdate {
@@ -27,6 +28,7 @@ public class FakeTextDisplayUpdate {
   Integer interpolationDuration;
   Integer teleportDuration;
 
+  /** Creates an update that only replaces the displayed text. */
   public static FakeTextDisplayUpdate text(final Component text) {
     return builder().text(text).build();
   }

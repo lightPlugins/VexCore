@@ -10,5 +10,5 @@ public interface ServiceOwner {
    *
    * @return the owner name
    */
-  public String getServiceOwnerName();
+  String getServiceOwnerName();
 }

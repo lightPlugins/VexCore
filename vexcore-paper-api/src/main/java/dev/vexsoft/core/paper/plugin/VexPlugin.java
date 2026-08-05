@@ -20,7 +20,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Provides the lifecycle and scoped infrastructure shared by every Vex plugin
+ * Base class that connects a Vex plugin to VexCore's scoped infrastructure and lifecycle.
+ *
+ * <p>During Bukkit's load phase it creates the plugin scope, registers infrastructure and queued
+ * plugin services, then invokes data, command, inventory, and load hooks in that order. During the
+ * enable phase it activates infrastructure before registering listeners and invoking
+ * {@link #onVexEnable()}. Disable always removes and closes services owned by this plugin, even when
+ * {@link #onVexDisable()} fails.</p>
+ *
+ * <p>Subclasses must declare VexCore as a required plugin dependency and override only the protected
+ * Vex lifecycle hooks; Bukkit lifecycle methods are final.</p>
  */
 public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
 
@@ -79,36 +88,41 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
     }
   }
 
-  /** Queues the services provided by this plugin */
+  /** Queues services provided by this plugin before data and feature registration begins. */
   protected void registerServices() { }
 
-  /** Registers the commands provided by this plugin */
+  /** Registers command classes through this plugin's scoped command service. */
   protected void registerCommands(final CommandService commands) { }
 
-  /** Registers the player data containers provided by this plugin */
+  /** Registers persistent player-data definitions before commands and inventories are loaded. */
   protected void registerData(final DataService data) { }
 
-  /** Registers the listeners provided by this plugin */
+  /** Registers listener classes after the plugin and its infrastructure have been enabled. */
   protected void registerListeners(final ListenerService listeners) { }
 
-  /** Registers the inventories provided by this plugin */
+  /** Registers inventory definitions during the plugin load phase. */
   protected void registerInventories(final InventoryService inventories) { }
 
-  /** Runs plugin-specific work after the loading phase */
+  /** Runs plugin-specific work after all load-phase registrations complete successfully. */
   protected void onVexLoad() { }
 
-  /** Runs plugin-specific work after the enabling phase */
+  /** Runs plugin-specific work after infrastructure and listeners are enabled. */
   protected void onVexEnable() { }
 
-  /** Runs plugin-specific work before infrastructure cleanup */
+  /** Runs plugin-specific shutdown work before owned services are removed and closed. */
   protected void onVexDisable() { }
 
-  /** Returns the MiniMessage prefix used for console output */
+  /** Returns the MiniMessage prefix prepended to this plugin's console output. */
   protected String getConsolePrefix() {
     return "<dark_gray>[<aqua>" + getName() + "</aqua>]</dark_gray> ";
   }
 
-  /** Returns the service registry scoped to this plugin */
+  /**
+   * Returns the service registry scoped to this plugin.
+   *
+   * @return owner-scoped service registry
+   * @throws IllegalStateException before the plugin load phase has initialized its scope
+   */
   public final VexServiceRegistry getServices() {
     if (services == null) {
       throw new IllegalStateException("VexPlugin has not been loaded yet");

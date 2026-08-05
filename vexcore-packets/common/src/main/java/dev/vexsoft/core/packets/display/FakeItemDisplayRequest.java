@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 
+/** Immutable creation request for one viewer-specific fake item display. */
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class FakeItemDisplayRequest {
@@ -32,6 +33,7 @@ public final class FakeItemDisplayRequest {
   private final DisplayGlowColor glowColor;
   private final Set<DisplayLifecycle> lifecycle;
 
+  /** Starts a request with safe display defaults and defensive copies of mutable inputs. */
   public static FakeItemDisplayRequestBuilder builder(
       final Location location,
       final ItemStack itemStack

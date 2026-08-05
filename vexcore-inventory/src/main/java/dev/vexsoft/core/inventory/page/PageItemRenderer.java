@@ -10,5 +10,5 @@ import dev.vexsoft.core.inventory.InventoryElement;
 public interface PageItemRenderer<T> {
 
   /** Renders one value at its absolute source index */
-  public InventoryElement render(InventoryContext context, T item, int absoluteIndex);
+  InventoryElement render(InventoryContext context, T item, int absoluteIndex);
 }

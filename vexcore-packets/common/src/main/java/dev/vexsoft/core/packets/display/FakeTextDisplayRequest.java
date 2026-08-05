@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 
+/** Immutable creation request for one viewer-specific fake text display. */
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class FakeTextDisplayRequest {
@@ -36,6 +37,7 @@ public final class FakeTextDisplayRequest {
   private final int teleportDuration;
   private final Set<DisplayLifecycle> lifecycle;
 
+  /** Starts a request with vanilla-like text defaults and defensive copies of mutable inputs. */
   public static FakeTextDisplayRequestBuilder builder(
       final Location location,
       final Component text

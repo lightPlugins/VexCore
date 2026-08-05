@@ -12,6 +12,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/** Renders and cycles one page filter or sort control for the current viewer. */
 public final class PageControlInventoryElement extends AbstractInventoryElement {
 
   private final Material material;
@@ -22,6 +23,7 @@ public final class PageControlInventoryElement extends AbstractInventoryElement 
   private final PageControlStateStore states;
   private final Consumer<InventoryContext> callback;
 
+  /** Creates an element whose left and right clicks cycle forward and backward through modes. */
   public PageControlInventoryElement(
       final Material material,
       final Component title,

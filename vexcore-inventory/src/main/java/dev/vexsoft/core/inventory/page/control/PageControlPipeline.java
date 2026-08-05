@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.UUID;
 import lombok.experimental.UtilityClass;
 
+/** Applies active filter controls followed by stable, combined sort controls. */
 @UtilityClass
 public class PageControlPipeline {
 
+  /** Returns an immutable filtered and sorted snapshot without modifying the supplied items. */
   public static <T> List<T> apply(
       final List<T> items,
       final UUID viewerId,

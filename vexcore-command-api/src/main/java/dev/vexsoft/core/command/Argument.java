@@ -11,5 +11,5 @@ import java.lang.annotation.Target;
 public @interface Argument {
 
   /** Returns the matching argument name from the command path */
-  public String value();
+  String value();
 }

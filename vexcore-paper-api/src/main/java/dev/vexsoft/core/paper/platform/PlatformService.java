@@ -10,17 +10,17 @@ import org.bukkit.entity.Entity;
 public interface PlatformService extends VexService {
 
   /** Returns the platform used by the current server */
-  public ServerPlatform getPlatform();
+  ServerPlatform getPlatform();
 
   /** Checks whether the current server is running Folia */
-  public boolean isFolia();
+  boolean isFolia();
 
   /** Checks whether the current thread owns the specified location */
-  public boolean isOwnedByCurrentRegion(Location location);
+  boolean isOwnedByCurrentRegion(Location location);
 
   /** Checks whether the current thread owns the specified entity */
-  public boolean isOwnedByCurrentRegion(Entity entity);
+  boolean isOwnedByCurrentRegion(Entity entity);
 
   /** Checks whether the current thread owns the global region */
-  public boolean isGlobalTickThread();
+  boolean isGlobalTickThread();
 }

@@ -7,6 +7,7 @@ import java.util.function.BiConsumer;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
+/** Base element that optionally delegates clicks to a supplied handler. */
 public abstract class AbstractInventoryElement implements InventoryElement {
 
   private final BiConsumer<InventoryContext, InventoryClickEvent> clickHandler;

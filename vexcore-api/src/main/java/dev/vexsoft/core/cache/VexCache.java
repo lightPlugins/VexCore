@@ -10,38 +10,38 @@ import java.util.function.Function;
 public interface VexCache<K, V> {
 
   /** Returns the owner-local name of this cache */
-  public String getName();
+  String getName();
 
   /** Returns a cached value without triggering a load */
-  public Optional<V> getIfPresent(K key);
+  Optional<V> getIfPresent(K key);
 
   /** Returns a cached value or atomically computes it when absent */
-  public V get(K key, Function<? super K, ? extends V> loader);
+  V get(K key, Function<? super K, ? extends V> loader);
 
   /** Returns an immutable snapshot of the requested cached entries */
-  public Map<K, V> getAllPresent(Iterable<? extends K> keys);
+  Map<K, V> getAllPresent(Iterable<? extends K> keys);
 
   /** Adds or replaces one cached value */
-  public void put(K key, V value);
+  void put(K key, V value);
 
   /** Adds or replaces multiple cached values */
-  public void putAll(Map<? extends K, ? extends V> values);
+  void putAll(Map<? extends K, ? extends V> values);
 
   /** Removes one cached value */
-  public void invalidate(K key);
+  void invalidate(K key);
 
   /** Removes multiple cached values */
-  public void invalidateAll(Iterable<? extends K> keys);
+  void invalidateAll(Iterable<? extends K> keys);
 
   /** Removes every value from this cache */
-  public void invalidateAll();
+  void invalidateAll();
 
   /** Returns the estimated number of cached entries */
-  public long getEstimatedSize();
+  long getEstimatedSize();
 
   /** Returns a snapshot of the recorded cache statistics */
-  public VexCacheStats getStats();
+  VexCacheStats getStats();
 
   /** Performs pending maintenance such as expiration and eviction */
-  public void cleanUp();
+  void cleanUp();
 }

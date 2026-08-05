@@ -9,11 +9,11 @@ import java.util.Set;
 public interface ItemVersionDefinition {
 
   /** Returns the base Minecraft version represented by this definition */
-  public String getAdapterVersion();
+  String getAdapterVersion();
 
   /** Returns every Minecraft version explicitly supported by this definition */
-  public Set<String> getSupportedVersions();
+  Set<String> getSupportedVersions();
 
   /** Returns the version-specific item component adapter */
-  public Class<? extends ItemComponentAdapterService> getComponentAdapter();
+  Class<? extends ItemComponentAdapterService> getComponentAdapter();
 }

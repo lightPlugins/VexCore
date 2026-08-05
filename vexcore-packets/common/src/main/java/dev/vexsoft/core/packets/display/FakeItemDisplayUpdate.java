@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Value;
 import org.bukkit.inventory.ItemStack;
 
+/** Partial item-display update in which {@code null} properties remain unchanged. */
 @Value
 @Builder
 public class FakeItemDisplayUpdate {
@@ -27,6 +28,7 @@ public class FakeItemDisplayUpdate {
     return itemStack == null ? null : itemStack.clone();
   }
 
+  /** Creates an update that only replaces the displayed item stack. */
   public static FakeItemDisplayUpdate item(final ItemStack itemStack) {
     return builder().itemStack(itemStack).build();
   }

@@ -9,8 +9,8 @@ import org.bukkit.entity.Player;
 public interface PacketConnectionService extends VexService {
 
   /** Installs the VexCore packet handler for one player */
-  public void inject(Player player);
+  void inject(Player player);
 
   /** Removes the VexCore packet handler from one player */
-  public void uninject(Player player);
+  void uninject(Player player);
 }

@@ -8,14 +8,14 @@ import net.kyori.adventure.text.Component;
 public interface ConfirmationDialogBuilder extends DialogBuilder<Boolean, ConfirmationDialogBuilder> {
 
   /** Sets the label of the confirmation button */
-  public ConfirmationDialogBuilder confirmButton(Component label);
+  ConfirmationDialogBuilder confirmButton(Component label);
 
   /** Sets the tooltip of the confirmation button */
-  public ConfirmationDialogBuilder confirmTooltip(Component tooltip);
+  ConfirmationDialogBuilder confirmTooltip(Component tooltip);
 
   /** Sets the label of the cancellation button */
-  public ConfirmationDialogBuilder cancelButton(Component label);
+  ConfirmationDialogBuilder cancelButton(Component label);
 
   /** Sets the tooltip of the cancellation button */
-  public ConfirmationDialogBuilder cancelTooltip(Component tooltip);
+  ConfirmationDialogBuilder cancelTooltip(Component tooltip);
 }

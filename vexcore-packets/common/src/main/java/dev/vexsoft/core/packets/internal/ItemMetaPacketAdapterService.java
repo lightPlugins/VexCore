@@ -9,8 +9,8 @@ import java.util.UUID;
 public interface ItemMetaPacketAdapterService extends VexService {
 
   /** Applies fake metadata to supported outbound item packets */
-  public Object rewriteOutbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
+  Object rewriteOutbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
 
   /** Removes fake metadata from supported inbound item packets */
-  public Object sanitizeInbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
+  Object sanitizeInbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
 }

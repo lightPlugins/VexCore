@@ -9,8 +9,8 @@ import org.bukkit.entity.Player;
 public interface PacketConnectionAdapterService extends VexService {
 
   /** Installs the central packet handler into one player's channel */
-  public void inject(Player player, PacketDuplexHandler handler);
+  void inject(Player player, PacketDuplexHandler handler);
 
   /** Removes the central packet handler from one player's channel */
-  public void uninject(Player player);
+  void uninject(Player player);
 }

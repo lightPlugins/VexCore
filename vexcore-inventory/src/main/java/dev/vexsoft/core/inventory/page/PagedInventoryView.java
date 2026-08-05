@@ -21,6 +21,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/** Base inventory view that maps a dynamic item source into bounded, navigable pages. */
 public abstract class PagedInventoryView<T> extends AbstractInventoryView {
 
   private final PageBounds bounds;
@@ -55,14 +56,17 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
     }
   }
 
+  /** Returns the current zero-based page index. */
   public final int getPage() {
     return page;
   }
 
+  /** Returns the number of pages currently required for the viewer's resolved items. */
   public final int getPageCount(final InventoryContext context) {
     return getMaximumPage(resolveItems(context)) + 1;
   }
 
+  /** Advances one page when another page exists. */
   public final boolean nextPage(final InventoryContext context) {
     int nextPage = Math.min(page + 1, getMaximumPage(resolveItems(context)));
     if (nextPage == page) {
@@ -72,6 +76,7 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
     return true;
   }
 
+  /** Moves back one page when the current page is not the first page. */
   public final boolean previousPage() {
     if (page == 0) {
       return false;
@@ -80,6 +85,7 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
     return true;
   }
 
+  /** Selects a page after clamping it to the currently available range. */
   public final void setPage(final InventoryContext context, final int page) {
     this.page = Math.max(0, Math.min(page, getMaximumPage(resolveItems(context))));
   }

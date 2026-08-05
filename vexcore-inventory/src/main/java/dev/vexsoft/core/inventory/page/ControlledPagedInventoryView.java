@@ -15,6 +15,7 @@ import java.util.Objects;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 
+/** Paged view that applies viewer-specific filter and sort controls before rendering. */
 public abstract class ControlledPagedInventoryView<T> extends PagedInventoryView<T> {
 
   private final PageSource<T> source;

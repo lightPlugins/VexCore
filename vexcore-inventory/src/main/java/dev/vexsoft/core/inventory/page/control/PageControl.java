@@ -10,19 +10,19 @@ import net.kyori.adventure.text.Component;
 public interface PageControl {
 
   /** Returns the identifier used to store this control state */
-  public String getControlId();
+  String getControlId();
 
   /** Returns the modes that can be selected for this control */
-  public List<String> getModeIds();
+  List<String> getModeIds();
 
   /** Returns the mode selected before a viewer changes this control */
-  public String getDefaultModeId();
+  String getDefaultModeId();
 
   /** Returns the component displayed for the given mode */
-  public Component getLabel(String modeId);
+  Component getLabel(String modeId);
 
   /** Validates the identifiers and modes exposed by this control */
-  public default void validate() {
+  default void validate() {
     if (Objects.requireNonNull(getControlId(), "controlId").isBlank()) {
       throw new IllegalArgumentException("controlId must not be blank");
     }

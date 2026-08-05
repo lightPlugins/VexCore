@@ -15,32 +15,32 @@ import java.util.Set;
 public interface PacketVersionDefinition {
 
   /** Returns the base Minecraft revision represented by this definition */
-  public MinecraftVersion getAdapterVersion();
+  MinecraftVersion getAdapterVersion();
 
   /** Returns every Minecraft version explicitly compatible with this definition */
-  public Set<MinecraftVersion> getSupportedVersions();
+  Set<MinecraftVersion> getSupportedVersions();
 
   /** Returns every packet capability provided by this definition */
-  public Set<PacketCapability> getCapabilities();
+  Set<PacketCapability> getCapabilities();
 
   /** Returns the revision used by each selected packet component */
-  public Map<PacketComponent, MinecraftVersion> getComponentVersions();
+  Map<PacketComponent, MinecraftVersion> getComponentVersions();
 
   /** Returns the selected native packet transport implementation */
-  public Class<? extends PacketTransportAdapterService> getTransportAdapter();
+  Class<? extends PacketTransportAdapterService> getTransportAdapter();
 
   /** Returns the selected display packet implementation */
-  public Class<? extends DisplayPacketAdapterService> getDisplayAdapter();
+  Class<? extends DisplayPacketAdapterService> getDisplayAdapter();
 
   /** Returns the selected entity effect packet implementation */
-  public Class<? extends EntityEffectPacketAdapterService> getEntityEffectAdapter();
+  Class<? extends EntityEffectPacketAdapterService> getEntityEffectAdapter();
 
   /** Returns the selected player connection implementation */
-  public Class<? extends PacketConnectionAdapterService> getConnectionAdapter();
+  Class<? extends PacketConnectionAdapterService> getConnectionAdapter();
 
   /** Returns the selected item metadata packet implementation */
-  public Class<? extends ItemMetaPacketAdapterService> getItemMetaAdapter();
+  Class<? extends ItemMetaPacketAdapterService> getItemMetaAdapter();
 
   /** Returns the selected hologram interaction decoder */
-  public Class<? extends HologramInteractionAdapterService> getHologramInteractionAdapter();
+  Class<? extends HologramInteractionAdapterService> getHologramInteractionAdapter();
 }

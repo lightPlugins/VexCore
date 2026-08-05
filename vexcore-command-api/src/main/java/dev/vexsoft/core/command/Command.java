@@ -11,11 +11,11 @@ import java.lang.annotation.Target;
 public @interface Command {
 
   /** Returns the path below the command root */
-  public String value();
+  String value();
 
   /** Returns the permission required for this command path */
-  public String permission() default "";
+  String permission() default "";
 
   /** Checks whether this command path requires a player */
-  public boolean playerOnly() default false;
+  boolean playerOnly() default false;
 }

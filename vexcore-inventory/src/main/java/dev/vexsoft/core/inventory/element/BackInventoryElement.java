@@ -9,15 +9,18 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+/** Inventory element that navigates backward through a viewer's inventory history. */
 public class BackInventoryElement extends AbstractInventoryElement {
 
   private final ItemStack item;
   private final Consumer<InventoryContext> action;
 
+  /** Creates a default arrow that returns to the previous inventory. */
   public BackInventoryElement() {
     this(createDefaultItem(), context -> context.getInventoryService().back(context.getViewer()));
   }
 
+  /** Creates a default arrow that moves backward by the requested number of history entries. */
   public BackInventoryElement(final int steps) {
     this(
         createDefaultItem(),
@@ -28,14 +31,17 @@ public class BackInventoryElement extends AbstractInventoryElement {
     }
   }
 
+  /** Creates a default arrow that returns to the most recent occurrence of a target inventory. */
   public BackInventoryElement(final InventoryKey target) {
     this(createDefaultItem(), targetAction(target));
   }
 
+  /** Creates a custom item that returns to the previous inventory. */
   public BackInventoryElement(final ItemStack item) {
     this(item, context -> context.getInventoryService().back(context.getViewer()));
   }
 
+  /** Creates a custom item that moves backward by the requested number of history entries. */
   public BackInventoryElement(final ItemStack item, final int steps) {
     this(item, context -> context.getInventoryService().back(context.getViewer(), steps));
     if (steps < 1) {
@@ -43,6 +49,7 @@ public class BackInventoryElement extends AbstractInventoryElement {
     }
   }
 
+  /** Creates a custom item that returns to the most recent occurrence of a target inventory. */
   public BackInventoryElement(final ItemStack item, final InventoryKey target) {
     this(item, targetAction(target));
   }

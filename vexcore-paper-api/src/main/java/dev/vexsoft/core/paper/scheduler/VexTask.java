@@ -1,19 +1,17 @@
 package dev.vexsoft.core.paper.scheduler;
 
-/**
- * Represents a scheduled task that can be cancelled
- */
+/** Represents an owner-bound scheduled task whose state mirrors Paper's scheduler handle. */
 public interface VexTask {
 
   /** Cancels this task when it has not completed yet */
-  public void cancel();
+  void cancel();
 
-  /** Checks whether this task has been cancelled */
-  public boolean isCancelled();
+  /** @return {@code true} if this task has been cancelled */
+  boolean isCancelled();
 
-  /** Checks whether this task has completed its final execution */
-  public boolean isFinished();
+  /** @return {@code true} if this task completed its final execution */
+  boolean isFinished();
 
-  /** Checks whether this task runs repeatedly */
-  public boolean isRepeating();
+  /** @return {@code true} if this task is scheduled repeatedly */
+  boolean isRepeating();
 }

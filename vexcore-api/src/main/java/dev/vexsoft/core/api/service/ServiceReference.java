@@ -3,7 +3,12 @@ package dev.vexsoft.core.api.service;
 import java.util.Optional;
 
 /**
- * Keeps a dynamic reference to a service that may be registered later
+ * Dynamically resolves a service that may be replaced, removed, or registered later.
+ *
+ * <p>The reference does not retain a resolved implementation. Each access observes the registry's
+ * current visible registration.</p>
+ *
+ * @param <T> referenced service contract
  */
 public interface ServiceReference<T extends VexService> {
 
@@ -12,19 +17,20 @@ public interface ServiceReference<T extends VexService> {
    *
    * @return the current service, or an empty optional
    */
-  public Optional<T> find();
+  Optional<T> find();
 
   /**
    * Resolves the currently registered service or fails when it is unavailable
    *
    * @return the current service
+   * @throws ServiceNotFoundException if the service is unavailable
    */
-  public T require();
+  T require();
 
   /**
    * Checks whether the referenced service is currently registered
    *
    * @return {@code true} when the service is available
    */
-  public boolean isAvailable();
+  boolean isAvailable();
 }
