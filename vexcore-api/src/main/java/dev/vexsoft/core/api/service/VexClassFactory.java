@@ -6,6 +6,7 @@ import java.lang.reflect.Modifier;
 import java.util.Objects;
 import lombok.experimental.UtilityClass;
 
+/** Creates dependency-checked extension classes through their service-registry constructor. */
 @UtilityClass
 public class VexClassFactory {
 

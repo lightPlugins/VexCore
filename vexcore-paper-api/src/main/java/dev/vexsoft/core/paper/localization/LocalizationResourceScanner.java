@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.zip.ZipFile;
 import lombok.experimental.UtilityClass;
 
+/** Discovers bundled localization resources inside a plugin JAR. */
 @UtilityClass
 public class LocalizationResourceScanner {
 

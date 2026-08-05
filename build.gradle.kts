@@ -4,6 +4,8 @@ import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsExtension
 import com.github.spotbugs.snom.SpotBugsTask
+import org.gradle.api.plugins.quality.Checkstyle
+import org.gradle.api.plugins.quality.CheckstyleExtension
 
 plugins {
     base
@@ -64,5 +66,26 @@ subprojects {
                 required.set(true)
             }
         }
+    }
+}
+
+val documentedApiProjects = setOf(
+    ":vexcore-api",
+    ":vexcore-command-api",
+    ":vexcore-paper-api",
+)
+
+configure(subprojects.filter { it.path in documentedApiProjects }) {
+    pluginManager.apply("checkstyle")
+
+    extensions.configure<CheckstyleExtension> {
+        toolVersion = "13.9.0"
+        configFile = rootProject.file("config/checkstyle-api.xml")
+        isIgnoreFailures = false
+        maxWarnings = 0
+    }
+
+    tasks.withType<Checkstyle>().matching { it.name == "checkstyleTest" }.configureEach {
+        enabled = false
     }
 }

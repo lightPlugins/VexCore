@@ -10,6 +10,7 @@ import lombok.Setter;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 
+/** Writes prefixed, MiniMessage-formatted log records to the Bukkit console. */
 public final class VexLogger extends Logger {
 
   private final MiniMessage miniMessage = MiniMessage.miniMessage();
@@ -18,6 +19,12 @@ public final class VexLogger extends Logger {
   @NonNull
   private volatile String prefix;
 
+  /**
+   * Creates a logger with the given console name and MiniMessage prefix.
+   *
+   * @param name logger name
+   * @param prefix MiniMessage prefix prepended to every record
+   */
   public VexLogger(final String name, final String prefix) {
     super(name, null);
     this.prefix = Objects.requireNonNull(prefix, "prefix");

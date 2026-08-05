@@ -11,6 +11,12 @@ import lombok.Getter;
 import lombok.Value;
 import org.jetbrains.annotations.ApiStatus;
 
+/**
+ * Holds the shared identity and registered data containers of an online Vex player.
+ *
+ * <p>Container access is synchronized per container. Callers should use {@link #read} for stable
+ * reads and {@link #update(DataContainerKey, Consumer)} for mutations that must be persisted.</p>
+ */
 public final class VexPlayer {
 
   @Getter
@@ -19,6 +25,7 @@ public final class VexPlayer {
   private volatile String name;
   private final Map<DataContainerKey<?>, ContainerState<?>> containers = new ConcurrentHashMap<>();
 
+  /** Creates an initially empty player instance for the data coordinator. */
   @ApiStatus.Internal
   public VexPlayer(final UUID uniqueId, final String name) {
     this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
@@ -54,11 +61,13 @@ public final class VexPlayer {
     return containers.containsKey(Objects.requireNonNull(key, "key"));
   }
 
+  /** Installs a clean container value when the key is not present yet. */
   @ApiStatus.Internal
   public <T> void install(final DataContainerKey<T> key, final T value) {
     install(key, value, false);
   }
 
+  /** Installs a container value with an explicit initial dirty state. */
   @ApiStatus.Internal
   public <T> void install(final DataContainerKey<T> key, final T value, final boolean dirty) {
     Objects.requireNonNull(key, "key");
@@ -66,11 +75,13 @@ public final class VexPlayer {
     containers.putIfAbsent(key, new ContainerState<>(checkedValue, dirty));
   }
 
+  /** Updates the last known player name. */
   @ApiStatus.Internal
   public void setName(final String name) {
     this.name = Objects.requireNonNull(name, "name");
   }
 
+  /** Returns the keys whose values have changed since their last successful save. */
   @ApiStatus.Internal
   public Set<DataContainerKey<?>> getDirtyKeys() {
     return containers.entrySet().stream()
@@ -79,11 +90,13 @@ public final class VexPlayer {
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
   }
 
+  /** Returns a registered container value without its generic type information. */
   @ApiStatus.Internal
   public Object getValue(final DataContainerKey<?> key) {
     return stateUnchecked(key).read();
   }
 
+  /** Creates a serialized snapshot paired with the container revision it represents. */
   @ApiStatus.Internal
   public <R> ContainerSnapshot<R> snapshot(
       final DataContainerKey<?> key,
@@ -92,6 +105,7 @@ public final class VexPlayer {
     return stateUnchecked(key).snapshot(Objects.requireNonNull(snapshotter, "snapshotter"));
   }
 
+  /** Marks a container clean if it has not changed since the supplied revision was saved. */
   @ApiStatus.Internal
   public void markClean(final DataContainerKey<?> key, final long revision) {
     stateUnchecked(key).markClean(revision);
@@ -159,6 +173,7 @@ public final class VexPlayer {
     }
   }
 
+  /** Pairs a copied container value with the revision observed while copying it. */
   @Value
   public static class ContainerSnapshot<T> {
     T value;

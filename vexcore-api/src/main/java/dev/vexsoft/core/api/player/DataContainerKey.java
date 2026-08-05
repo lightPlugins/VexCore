@@ -4,6 +4,11 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import lombok.Getter;
 
+/**
+ * Identifies a typed, persistable player data container and creates its default value.
+ *
+ * @param <T> mutable or immutable value stored in the container
+ */
 public final class DataContainerKey<T> {
 
   @Getter

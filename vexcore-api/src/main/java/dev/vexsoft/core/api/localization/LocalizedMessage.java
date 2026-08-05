@@ -5,6 +5,7 @@ import java.util.Objects;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 
+/** Represents a resolved localized value as either one component or a component list. */
 public final class LocalizedMessage {
 
   @Getter

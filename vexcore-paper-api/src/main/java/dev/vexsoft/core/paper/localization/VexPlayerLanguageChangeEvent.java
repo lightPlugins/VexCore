@@ -7,6 +7,7 @@ import lombok.NonNull;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
+/** Notifies Bukkit listeners after a Vex player's selected language changes. */
 @Getter
 public final class VexPlayerLanguageChangeEvent extends Event {
 
@@ -19,6 +20,14 @@ public final class VexPlayerLanguageChangeEvent extends Event {
   @NonNull
   private final Language newLanguage;
 
+  /**
+   * Creates a language change event with the threading state of its dispatcher.
+   *
+   * @param vexPlayer player whose language changed
+   * @param previousLanguage language selected before the change
+   * @param newLanguage newly selected language
+   * @param asynchronous whether Bukkit should expose this as an asynchronous event
+   */
   public VexPlayerLanguageChangeEvent(
       final VexPlayer vexPlayer,
       final Language previousLanguage,

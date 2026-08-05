@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.Objects;
 import lombok.Value;
 
+/** Identifies a language using a normalized {@code language_COUNTRY} value. */
 @Value
 public class LanguageKey implements Comparable<LanguageKey> {
 
