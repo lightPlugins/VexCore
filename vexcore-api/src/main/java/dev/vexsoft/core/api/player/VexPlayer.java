@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import org.jetbrains.annotations.ApiStatus;
@@ -87,7 +88,7 @@ public final class VexPlayer {
     return containers.entrySet().stream()
         .filter(entry -> entry.getValue().isDirty())
         .map(Map.Entry::getKey)
-        .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   /** Returns a registered container value without its generic type information. */

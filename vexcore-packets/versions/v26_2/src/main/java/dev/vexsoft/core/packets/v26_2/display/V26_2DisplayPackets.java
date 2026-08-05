@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.v26_2.display;
 
+import dev.vexsoft.core.packets.display.DisplayBillboard;
 import dev.vexsoft.core.packets.display.DisplayBrightness;
 import dev.vexsoft.core.packets.display.DisplayTransformation;
 import java.lang.reflect.Field;
@@ -7,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -31,7 +30,7 @@ public class V26_2DisplayPackets {
   public static void applyBase(
       final Display display,
       final DisplayTransformation transformation,
-      final dev.vexsoft.core.packets.display.DisplayBillboard billboard,
+      final DisplayBillboard billboard,
       final DisplayBrightness brightness,
       final float viewRange,
       final float shadowRadius,

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -70,7 +71,7 @@ public class BackInventoryElement extends AbstractInventoryElement {
   @Override
   public void onClick(
       final InventoryContext context,
-      final org.bukkit.event.inventory.InventoryClickEvent event
+      final InventoryClickEvent event
   ) {
     action.accept(Objects.requireNonNull(context, "context"));
   }

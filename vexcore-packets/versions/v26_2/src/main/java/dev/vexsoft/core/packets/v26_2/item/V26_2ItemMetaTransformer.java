@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.v26_2.item;
 
+import net.minecraft.network.chat.Component;
 import dev.vexsoft.core.packets.internal.FakeItemMetaLookup;
 import dev.vexsoft.core.packets.internal.FakeItemMetaRule;
 import io.papermc.paper.adventure.PaperAdventure;
@@ -73,10 +74,10 @@ public final class V26_2ItemMetaTransformer {
     if (rule.getLore() == null) {
       return;
     }
-    List<net.minecraft.network.chat.Component> fakeLore = rule.getLore().stream()
+    List<Component> fakeLore = rule.getLore().stream()
         .map(PaperAdventure::asVanilla)
         .toList();
-    List<net.minecraft.network.chat.Component> lore = switch (rule.getLoreMode()) {
+    List<Component> lore = switch (rule.getLoreMode()) {
       case REPLACE -> fakeLore;
       case PREPEND -> combine(fakeLore, existingLore(item));
       case APPEND -> combine(existingLore(item), fakeLore);
@@ -85,16 +86,16 @@ public final class V26_2ItemMetaTransformer {
     item.set(DataComponents.LORE, new ItemLore(List.copyOf(lore.subList(0, size))));
   }
 
-  private static List<net.minecraft.network.chat.Component> existingLore(final ItemStack item) {
+  private static List<Component> existingLore(final ItemStack item) {
     ItemLore lore = item.get(DataComponents.LORE);
     return lore == null ? List.of() : lore.lines();
   }
 
-  private static List<net.minecraft.network.chat.Component> combine(
-      final List<net.minecraft.network.chat.Component> first,
-      final List<net.minecraft.network.chat.Component> second
+  private static List<Component> combine(
+      final List<Component> first,
+      final List<Component> second
   ) {
-    List<net.minecraft.network.chat.Component> combined =
+    List<Component> combined =
         new ArrayList<>(first.size() + second.size());
     combined.addAll(first);
     combined.addAll(second);

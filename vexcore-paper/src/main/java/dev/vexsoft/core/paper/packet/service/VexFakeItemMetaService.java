@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.packet.service;
 
+import dev.vexsoft.core.packets.internal.FakeItemMetaRule;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
@@ -198,7 +199,7 @@ public final class VexFakeItemMetaService implements FakeItemMetaService, AutoCl
       final UUID viewerId,
       final NamespacedKey itemIdKey,
       final String itemId,
-      final UnaryOperator<dev.vexsoft.core.packets.internal.FakeItemMetaRule> updater
+      final UnaryOperator<FakeItemMetaRule> updater
   ) {
     store.update(owner, viewerId, itemIdKey, itemId, updater);
   }

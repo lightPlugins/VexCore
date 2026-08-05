@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.scheduler;
 
+import java.util.logging.Level;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.paper.platform.PlatformService;
@@ -232,7 +233,7 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
       try {
         checkedTask.run();
       } catch (Throwable throwable) {
-        owner.getLogger().log(java.util.logging.Level.SEVERE, "Scheduled task failed", throwable);
+        owner.getLogger().log(Level.SEVERE, "Scheduled task failed", throwable);
       } finally {
         if (!scheduled.isRepeatingTask()) {
           tasks.remove(scheduled);
@@ -252,7 +253,7 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
         }
       } catch (Throwable throwable) {
         owner.getLogger().log(
-            java.util.logging.Level.SEVERE,
+            Level.SEVERE,
             "Entity retired callback failed",
             throwable
         );

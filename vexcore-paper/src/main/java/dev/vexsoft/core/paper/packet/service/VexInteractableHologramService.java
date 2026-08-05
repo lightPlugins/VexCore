@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.packet.service;
 
+import java.util.Optional;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
@@ -163,7 +164,7 @@ public final class VexInteractableHologramService
     });
   }
 
-  private java.util.Optional<TrackedHologram> tracked(
+  private Optional<TrackedHologram> tracked(
       final InteractableHologramHandle handle
   ) {
     requireOwner(handle);

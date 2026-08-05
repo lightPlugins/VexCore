@@ -20,6 +20,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 @Dependencies(PacketTransportAdapterService.class)
+@SuppressWarnings("fullyQualifiedTypeName") // Bukkit and NMS expose the same simple type name.
 public final class VexEntityEffectPacketAdapterService
     implements EntityEffectPacketAdapterService {
 

@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.packet.connection;
 
+import org.bukkit.entity.Player;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.packets.internal.DisplayPacketAdapterService;
@@ -55,7 +56,7 @@ public final class VexPacketConnectionListener implements Listener {
   }
 
   private void removeHolograms(
-      final org.bukkit.entity.Player player,
+      final Player player,
       final DisplayLifecycle lifecycle
   ) {
     for (TrackedHologram hologram : holograms.removeViewer(player.getUniqueId(), lifecycle)) {

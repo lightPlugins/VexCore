@@ -43,7 +43,7 @@ public interface DisplayPacketAdapterService extends VexService {
   void spawnInteraction(
       Player viewer,
       int entityId,
-      java.util.UUID entityUuid,
+      UUID entityUuid,
       Location location,
       float width,
       float height

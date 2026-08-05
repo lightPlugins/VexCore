@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.inventory.InventoryContext;
 import dev.vexsoft.core.inventory.InventoryKey;
 import dev.vexsoft.core.inventory.page.control.InMemoryPageControlStateStore;
+import dev.vexsoft.core.inventory.page.control.PageControl;
 import dev.vexsoft.core.inventory.page.control.PageControlInventoryElement;
 import dev.vexsoft.core.inventory.page.control.PageControlPipeline;
 import dev.vexsoft.core.inventory.page.control.PageControlStateStore;
@@ -101,7 +102,7 @@ public abstract class ControlledPagedInventoryView<T> extends PagedInventoryView
 
   protected final String getActiveMode(
       final InventoryContext context,
-      final dev.vexsoft.core.inventory.page.control.PageControl control
+      final PageControl control
   ) {
     return states.getActiveMode(
         context.getViewer().getUniqueId(),

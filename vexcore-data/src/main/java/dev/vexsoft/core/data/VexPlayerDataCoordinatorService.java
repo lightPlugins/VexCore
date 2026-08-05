@@ -1,5 +1,6 @@
 package dev.vexsoft.core.data;
 
+import java.util.Locale;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.cache.CacheService;
@@ -291,7 +292,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   private static String normalizeOwner(final String ownerName) {
     String normalized = Objects.requireNonNull(ownerName, "ownerName")
         .trim()
-        .toLowerCase(java.util.Locale.ROOT)
+        .toLowerCase(Locale.ROOT)
         .replace('-', '_');
     if (!normalized.matches("[a-z][a-z0-9_]{0,50}")) {
       throw new IllegalArgumentException("Invalid player data owner name: " + ownerName);

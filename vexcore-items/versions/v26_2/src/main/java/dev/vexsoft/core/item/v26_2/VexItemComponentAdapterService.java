@@ -1,5 +1,6 @@
 package dev.vexsoft.core.item.v26_2;
 
+import dev.vexsoft.core.item.VexComponentTarget;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.item.VexComponentKey;
@@ -32,7 +33,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
   public void apply(final ItemStack itemStack, final VexComponentPatch patch) {
     ItemStack checkedItem = Objects.requireNonNull(itemStack, "itemStack");
     Objects.requireNonNull(patch, "patch").getOperations().forEach((component, operation) -> {
-      if (component.getTarget() == dev.vexsoft.core.item.VexComponentTarget.ITEM) {
+      if (component.getTarget() == VexComponentTarget.ITEM) {
         apply(checkedItem, component.getKey(), operation);
       }
     });

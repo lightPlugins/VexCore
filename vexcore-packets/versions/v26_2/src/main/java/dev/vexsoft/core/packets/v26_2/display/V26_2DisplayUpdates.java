@@ -1,6 +1,5 @@
 package dev.vexsoft.core.packets.v26_2.display;
 
-import dev.vexsoft.core.packets.display.FakeItemDisplayRequest;
 import dev.vexsoft.core.packets.display.FakeItemDisplayUpdate;
 import dev.vexsoft.core.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.packets.display.FakeTextDisplayUpdate;

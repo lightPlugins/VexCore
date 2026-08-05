@@ -1,5 +1,7 @@
 package dev.vexsoft.core.packets.v26_2;
 
+import io.netty.channel.ChannelPromise;
+import java.util.UUID;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.packets.internal.PacketConnectionAdapterService;
@@ -44,7 +46,7 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
 
   private static void addHandler(
       final ChannelPipeline pipeline,
-      final java.util.UUID viewerId,
+      final UUID viewerId,
       final PacketDuplexHandler handler
   ) {
     if (pipeline.get(HANDLER_NAME) != null) {
@@ -55,7 +57,7 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
       public void write(
           final ChannelHandlerContext context,
           final Object message,
-          final io.netty.channel.ChannelPromise promise
+          final ChannelPromise promise
       ) throws Exception {
         Object result = handler.write(viewerId, message);
         if (result != null) {

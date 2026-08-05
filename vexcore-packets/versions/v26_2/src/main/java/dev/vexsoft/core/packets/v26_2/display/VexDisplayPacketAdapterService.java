@@ -1,5 +1,7 @@
 package dev.vexsoft.core.packets.v26_2.display;
 
+import java.util.ArrayList;
+import org.joml.Vector3f;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
@@ -146,7 +148,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     if (update.getGlowColor() != null) {
       glowColors.put(handle, update.getGlowColor());
     }
-    List<Object> packets = new java.util.ArrayList<>();
+    List<Object> packets = new ArrayList<>();
     Object metadata = V26_2DisplayPackets.metadata(itemDisplay);
     if (metadata != null) {
       packets.add(metadata);
@@ -181,7 +183,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void remove(final Player viewer, final int... entityIds) {
-    List<Object> packets = new java.util.ArrayList<>();
+    List<Object> packets = new ArrayList<>();
     for (int entityId : entityIds) {
       displays.entrySet().stream()
           .filter(entry -> entry.getKey().getEntityId() == entityId)
@@ -284,7 +286,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     }
     V26_2DisplayPackets.setTranslation(
         display,
-        new org.joml.Vector3f(offsetX, offsetY, offsetZ)
+        new Vector3f(offsetX, offsetY, offsetZ)
     );
     sendMetadata(viewer, display);
   }

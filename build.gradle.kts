@@ -58,6 +58,18 @@ subprojects {
             useJUnitPlatform()
         }
 
+        pluginManager.apply("checkstyle")
+        extensions.configure<CheckstyleExtension> {
+            toolVersion = "13.9.0"
+            configFile = rootProject.file("config/checkstyle.xml")
+            isIgnoreFailures = false
+            maxWarnings = 0
+        }
+
+        tasks.withType<Checkstyle>().matching { it.name == "checkstyleTest" }.configureEach {
+            enabled = false
+        }
+
         extensions.configure<SpotBugsExtension> {
             effort.set(Effort.MAX)
             reportLevel.set(Confidence.MEDIUM)
@@ -84,22 +96,19 @@ val documentedApiProjects = setOf(
 
 configure(subprojects.filter { it.path in documentedApiProjects }) {
     plugins.withId("java") {
-        pluginManager.apply("checkstyle")
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
 
-        extensions.configure<CheckstyleExtension> {
-            toolVersion = "13.9.0"
+        val checkstyleApiJavadocs = tasks.register<Checkstyle>("checkstyleApiJavadocs") {
+            group = "verification"
+            description = "Checks Javadocs on the exported public API"
             configFile = rootProject.file("config/checkstyle-api.xml")
-            isIgnoreFailures = false
-            maxWarnings = 0
-        }
-
-        tasks.withType<Checkstyle>().matching { it.name == "checkstyleTest" }.configureEach {
-            enabled = false
-        }
-
-        tasks.withType<Checkstyle>().matching { it.name == "checkstyleMain" }.configureEach {
+            source = mainSourceSet.get().allJava
+            classpath = mainSourceSet.get().output + mainSourceSet.get().compileClasspath
             exclude("**/internal/**")
+        }
+
+        tasks.named("check") {
+            dependsOn(checkstyleApiJavadocs)
         }
 
         val delombok = tasks.register<JavaExec>("delombok") {

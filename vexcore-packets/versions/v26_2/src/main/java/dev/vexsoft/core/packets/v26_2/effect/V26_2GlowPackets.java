@@ -1,5 +1,6 @@
 package dev.vexsoft.core.packets.v26_2.effect;
 
+import java.util.Optional;
 import dev.vexsoft.core.packets.display.DisplayGlowColor;
 import dev.vexsoft.core.packets.v26_2.display.V26_2DisplayMapper;
 import java.lang.reflect.Field;
@@ -45,7 +46,7 @@ public class V26_2GlowPackets {
   private static PlayerTeam team(final Entity entity, final DisplayGlowColor color) {
     Scoreboard scoreboard = new Scoreboard();
     PlayerTeam team = scoreboard.addPlayerTeam(teamName(entity.getId()));
-    team.setColor(java.util.Optional.of(V26_2DisplayMapper.toNms(color)));
+    team.setColor(Optional.of(V26_2DisplayMapper.toNms(color)));
     scoreboard.addPlayerToTeam(entity.getScoreboardName(), team);
     return team;
   }

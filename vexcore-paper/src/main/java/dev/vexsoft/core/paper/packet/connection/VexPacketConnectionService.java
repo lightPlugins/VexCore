@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.packet.connection;
 
+import java.util.Optional;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.packets.hologram.HologramInteraction;
@@ -61,12 +62,12 @@ public final class VexPacketConnectionService
   @Override
   public Object read(final UUID viewerId, final Object packet) {
     Object sanitized = itemMeta.sanitizeInbound(viewerId, packet, itemMetaStore);
-    java.util.Optional<PacketInteractionInput> input = interactions.decode(sanitized);
+    Optional<PacketInteractionInput> input = interactions.decode(sanitized);
     if (input.isEmpty()) {
       return sanitized;
     }
     PacketInteractionInput interaction = input.get();
-    java.util.Optional<TrackedHologram> tracked = holograms.find(
+    Optional<TrackedHologram> tracked = holograms.find(
         viewerId,
         interaction.getEntityId()
     );

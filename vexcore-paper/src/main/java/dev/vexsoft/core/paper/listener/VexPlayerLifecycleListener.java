@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.listener;
 
+import net.kyori.adventure.text.Component;
 import dev.vexsoft.core.data.PlayerDataCoordinatorService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public final class VexPlayerLifecycleListener implements Listener {
       logger.log(Level.SEVERE, "Unable to load VexPlayer " + event.getUniqueId(), exception);
       event.disallow(
           AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
-          net.kyori.adventure.text.Component.text("Your player data could not be loaded")
+          Component.text("Your player data could not be loaded")
       );
     }
   }
