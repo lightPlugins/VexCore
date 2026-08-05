@@ -6,6 +6,9 @@
     <img alt="Paper 26.2" src="https://img.shields.io/badge/Paper-26.2-222222?style=flat-square">
     <img alt="Folia supported" src="https://img.shields.io/badge/Folia-supported-5C6BC0?style=flat-square">
     <img alt="Status" src="https://img.shields.io/badge/status-active_development-2E7D32?style=flat-square">
+    <a href="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml">
+      <img alt="Build" src="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml/badge.svg">
+    </a>
     <a href="https://www.codefactor.io/repository/github/lightplugins/vexcore">
       <img alt="CodeFactor" src="https://www.codefactor.io/repository/github/lightplugins/vexcore/badge">
     </a>
