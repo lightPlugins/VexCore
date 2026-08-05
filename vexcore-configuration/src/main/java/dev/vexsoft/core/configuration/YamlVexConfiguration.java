@@ -35,7 +35,7 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
   public void save() {
     write(() -> {
       try {
-        Files.createDirectories(file.getParent());
+        Files.createDirectories(requireParent(file));
         loader.save(node);
       } catch (IOException exception) {
         throw new IllegalStateException("Failed to save configuration " + file, exception);
@@ -48,7 +48,7 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
   private static CommentedConfigurationNode load(Path file) {
     Path normalized = file.toAbsolutePath().normalize();
     try {
-      Files.createDirectories(normalized.getParent());
+      Files.createDirectories(requireParent(normalized));
       if (Files.notExists(normalized)) {
         Files.createFile(normalized);
       }
@@ -60,5 +60,13 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
 
   private static YamlConfigurationLoader loader(Path file) {
     return YamlConfigurationLoader.builder().path(file).nodeStyle(NodeStyle.BLOCK).build();
+  }
+
+  private static Path requireParent(final Path path) {
+    Path parent = path.getParent();
+    if (parent == null) {
+      throw new IllegalArgumentException("Configuration path has no parent: " + path);
+    }
+    return parent;
   }
 }

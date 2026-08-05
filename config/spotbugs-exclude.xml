@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- Constructors deliberately reject invalid arguments; these classes do not use finalizers. -->
+  <Match>
+    <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+  </Match>
+
+  <!-- Paper mutates ItemStack and returns a status flag unknown to SpotBugs. -->
+  <Match>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
+    <Class name="~dev\.vexsoft\.core\.inventory\..*"/>
+  </Match>
+  <Match>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
+    <Class name="dev.vexsoft.core.paper.item.VexItemStackBuilder"/>
+  </Match>
+
+  <!-- Framework contracts intentionally expose their managed runtime object. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP"/>
+    <Or>
+      <Class name="dev.vexsoft.core.paper.VexCorePlugin"/>
+      <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
+      <Class name="dev.vexsoft.core.paper.inventory.VexInventoryHolder"/>
+    </Or>
+  </Match>
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+    <Or>
+      <Class name="dev.vexsoft.core.configuration.ConfigurateConfigurationSection"/>
+      <Class name="dev.vexsoft.core.paper.module.PacketModule"/>
+      <Class name="dev.vexsoft.core.paper.localization.VexPlayerLanguageChangeEvent"/>
+    </Or>
+  </Match>
+
+  <!-- The request stores an immutable Set.copyOf result. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP"/>
+    <Class name="dev.vexsoft.core.packets.display.FakeItemDisplayRequest"/>
+    <Method name="getLifecycle"/>
+  </Match>
+</FindBugsFilter>

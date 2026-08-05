@@ -56,8 +56,8 @@ final class DefaultPluginConfigurations {
 
     try (var files = Files.walk(directory)) {
       files.filter(Files::isRegularFile)
-          .filter(path -> path.getFileName().toString().endsWith(".yml"))
-          .filter(path -> !path.getFileName().toString().startsWith("_"))
+          .filter(path -> fileName(path).endsWith(".yml"))
+          .filter(path -> !fileName(path).startsWith("_"))
           .sorted(Comparator.comparing(Path::toString))
           .forEach(path -> {
             try {
@@ -95,7 +95,7 @@ final class DefaultPluginConfigurations {
       return;
     }
     try (InputStream resource = openResource(resourcePath)) {
-      Files.createDirectories(target.getParent());
+      Files.createDirectories(requireParent(target));
       Files.copy(resource, target, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException exception) {
       throw new IllegalStateException("Failed to copy default " + resourcePath + " to " + target, exception);
@@ -136,9 +136,11 @@ final class DefaultPluginConfigurations {
     }
 
     boolean changed = false;
-    if ((target.comment() == null || target.comment().isBlank())
-        && defaults.comment() != null && !defaults.comment().isBlank()) {
-      target.comment(defaults.comment());
+    String targetComment = target.comment();
+    String defaultComment = defaults.comment();
+    if ((targetComment == null || targetComment.isBlank())
+        && defaultComment != null && !defaultComment.isBlank()) {
+      target.comment(defaultComment);
       changed = true;
     }
 
@@ -218,5 +220,21 @@ final class DefaultPluginConfigurations {
       return "list";
     }
     return "scalar";
+  }
+
+  private static String fileName(final Path path) {
+    Path fileName = path.getFileName();
+    if (fileName == null) {
+      throw new IllegalArgumentException("Path has no file name: " + path);
+    }
+    return fileName.toString();
+  }
+
+  private static Path requireParent(final Path path) {
+    Path parent = path.getParent();
+    if (parent == null) {
+      throw new IllegalArgumentException("Path has no parent: " + path);
+    }
+    return parent;
   }
 }

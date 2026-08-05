@@ -88,7 +88,7 @@ final class PluginLocalizationCache {
     Set<String> reportedFolders = new HashSet<>();
     try (var paths = Files.walk(directory)) {
       paths.filter(Files::isRegularFile)
-          .filter(path -> path.getFileName().toString().endsWith(".yml"))
+          .filter(path -> fileName(path).endsWith(".yml"))
           .sorted(Comparator.comparing(Path::toString))
           .forEach(path -> {
             Path relative = directory.relativize(path);
@@ -210,7 +210,7 @@ final class PluginLocalizationCache {
       return;
     }
     try (InputStream input = owner.getLocalizationResource(resource).orElseThrow()) {
-      Files.createDirectories(target.getParent());
+      Files.createDirectories(requireParent(target));
       Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
     } catch (IOException exception) {
       throw new IllegalStateException("Unable to copy bundled language file " + resource, exception);
@@ -230,6 +230,22 @@ final class PluginLocalizationCache {
     }
     String keyPrefix = file.substring(0, file.length() - 4).replace('/', '.');
     return new ResourceLocation(language, relative, keyPrefix);
+  }
+
+  private static String fileName(final Path path) {
+    Path fileName = path.getFileName();
+    if (fileName == null) {
+      throw new IllegalArgumentException("Path has no file name: " + path);
+    }
+    return fileName.toString();
+  }
+
+  private static Path requireParent(final Path path) {
+    Path parent = path.getParent();
+    if (parent == null) {
+      throw new IllegalArgumentException("Localization path has no parent: " + path);
+    }
+    return parent;
   }
 
   @Value

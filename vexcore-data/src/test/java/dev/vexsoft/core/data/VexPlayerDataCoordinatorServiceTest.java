@@ -67,10 +67,10 @@ public final class VexPlayerDataCoordinatorServiceTest {
     public CompletableFuture<Map<String, String>> load(
         final String owner,
         final UUID uniqueId,
-        final Collection<DataContainerKey<?>> keys
+      final Collection<DataContainerKey<?>> keys
     ) {
       loads.incrementAndGet();
-      return loaded;
+      return loaded.thenApply(Map::copyOf);
     }
 
     @Override

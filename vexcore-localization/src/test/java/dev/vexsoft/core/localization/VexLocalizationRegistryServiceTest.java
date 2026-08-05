@@ -79,7 +79,7 @@ class VexLocalizationRegistryServiceTest {
         "prefix: \"Prefix \"\n"
     ));
     Path external = directory.resolve("en_EN/messages.yml");
-    java.nio.file.Files.createDirectories(external.getParent());
+    java.nio.file.Files.createDirectories(java.util.Objects.requireNonNull(external.getParent()));
     java.nio.file.Files.writeString(external, "existing: \"External\"\n");
     VexLocalizationRegistryService registry = new VexLocalizationRegistryService(new TestServices(owner));
     registry.register(owner);

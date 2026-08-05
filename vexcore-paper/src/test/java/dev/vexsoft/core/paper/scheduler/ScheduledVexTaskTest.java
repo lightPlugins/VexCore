@@ -40,7 +40,7 @@ class ScheduledVexTaskTest {
 
     @Override
     public Plugin getOwningPlugin() {
-      return null;
+      throw new UnsupportedOperationException("Owning plugin is not used by this test double");
     }
 
     @Override
