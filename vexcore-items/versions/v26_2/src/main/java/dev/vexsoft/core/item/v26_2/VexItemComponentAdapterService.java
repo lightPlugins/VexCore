@@ -7,6 +7,7 @@ import dev.vexsoft.core.item.VexCustomModelData;
 import dev.vexsoft.core.item.VexEnchantments;
 import dev.vexsoft.core.item.internal.ItemComponentAdapterService;
 import dev.vexsoft.core.item.internal.VexComponentOperation;
+import dev.vexsoft.core.item.internal.VexComponentOperationType;
 import dev.vexsoft.core.item.internal.VexComponentPatch;
 import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
@@ -15,6 +16,8 @@ import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.key.Key;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemRarity;
 import org.bukkit.inventory.ItemStack;
 
 @Dependencies
@@ -83,7 +86,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
           itemStack,
           DataComponentTypes.RARITY,
           operation,
-          org.bukkit.inventory.ItemRarity.class
+          ItemRarity.class
       );
       case ENCHANTMENTS -> applyEnchantments(itemStack, operation);
       case CUSTOM_MODEL_DATA -> applyCustomModelData(itemStack, operation);
@@ -123,13 +126,13 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
       final ItemStack itemStack,
       final VexComponentOperation operation
   ) {
-    if (operation.getType() != dev.vexsoft.core.item.internal.VexComponentOperationType.SET) {
+    if (operation.getType() != VexComponentOperationType.SET) {
       applyWithoutValue(itemStack, DataComponentTypes.ENCHANTMENTS, operation);
       return;
     }
     VexEnchantments enchantments = (VexEnchantments) operation.getValue();
     ItemEnchantments.Builder builder = ItemEnchantments.itemEnchantments();
-    for (Map.Entry<org.bukkit.enchantments.Enchantment, Integer> entry
+    for (Map.Entry<Enchantment, Integer> entry
         : enchantments.getEnchantments().entrySet()) {
       builder.add(entry.getKey(), entry.getValue());
     }
@@ -140,7 +143,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
       final ItemStack itemStack,
       final VexComponentOperation operation
   ) {
-    if (operation.getType() != dev.vexsoft.core.item.internal.VexComponentOperationType.SET) {
+    if (operation.getType() != VexComponentOperationType.SET) {
       applyWithoutValue(itemStack, DataComponentTypes.CUSTOM_MODEL_DATA, operation);
       return;
     }
