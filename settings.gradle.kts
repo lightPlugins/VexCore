@@ -4,6 +4,7 @@ include(
     "vexcore-api",
     "vexcore-service-registry",
     "vexcore-configuration",
+    "vexcore-command-api",
     "vexcore-command",
     "vexcore-cache",
     "vexcore-data",
@@ -14,5 +15,6 @@ include(
     "vexcore-items:versions:v26_2",
     "vexcore-packets:common",
     "vexcore-packets:versions:v26_2",
+    "vexcore-paper-api",
     "vexcore-paper",
 )

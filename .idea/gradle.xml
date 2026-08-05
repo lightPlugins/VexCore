@@ -11,6 +11,7 @@
             <option value="$PROJECT_DIR$/vexcore-api" />
             <option value="$PROJECT_DIR$/vexcore-cache" />
             <option value="$PROJECT_DIR$/vexcore-command" />
+            <option value="$PROJECT_DIR$/vexcore-command-api" />
             <option value="$PROJECT_DIR$/vexcore-configuration" />
             <option value="$PROJECT_DIR$/vexcore-data" />
             <option value="$PROJECT_DIR$/vexcore-dialog" />
@@ -25,6 +26,7 @@
             <option value="$PROJECT_DIR$/vexcore-packets/versions" />
             <option value="$PROJECT_DIR$/vexcore-packets/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-paper" />
+            <option value="$PROJECT_DIR$/vexcore-paper-api" />
             <option value="$PROJECT_DIR$/vexcore-service-registry" />
           </set>
         </option>

@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":vexcore-api"))
+    api(project(":vexcore-paper-api"))
     implementation(project(":vexcore-service-registry"))
     implementation(project(":vexcore-configuration"))
     implementation(project(":vexcore-command"))
@@ -40,5 +40,4 @@ tasks.shadowJar {
     relocate("io.leangen.geantyref", "dev.vexsoft.core.libs.geantyref")
 }
 
-tasks.jar { enabled = false }
 tasks.assemble { dependsOn(tasks.shadowJar) }

@@ -12,6 +12,8 @@ import dev.vexsoft.core.paper.module.LocalizationModule;
 import dev.vexsoft.core.paper.module.PacketModule;
 import dev.vexsoft.core.paper.module.DialogModule;
 import dev.vexsoft.core.paper.module.ItemModule;
+import dev.vexsoft.core.paper.bootstrap.PluginBootstrapService;
+import dev.vexsoft.core.paper.bootstrap.VexPluginBootstrapService;
 import dev.vexsoft.core.paper.listener.ListenerService;
 import dev.vexsoft.core.paper.listener.VexListenerService;
 import dev.vexsoft.core.paper.scheduler.ScheduleService;
@@ -93,6 +95,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
+    coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     coreServices.register(

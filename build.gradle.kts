@@ -1,3 +1,6 @@
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+
 plugins {
     base
 }
@@ -25,6 +28,18 @@ subprojects {
         extensions.configure<JavaPluginExtension> {
             toolchain.languageVersion.set(JavaLanguageVersion.of(25))
             withSourcesJar()
+        }
+
+        if (project.name != "vexcore-paper") {
+            pluginManager.apply("maven-publish")
+            extensions.configure<PublishingExtension> {
+                publications {
+                    create<MavenPublication>("mavenJava") {
+                        artifactId = project.path.removePrefix(":").replace(':', '-')
+                        from(components["java"])
+                    }
+                }
+            }
         }
 
         tasks.withType<Test>().configureEach {

@@ -1,11 +1,11 @@
 package dev.vexsoft.core.paper.scheduler;
 
 import dev.vexsoft.core.api.service.VexService;
+import java.time.Duration;
+import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.Plugin;
-import java.time.Duration;
-import java.util.Optional;
 
 /**
  * Schedules platform-safe tasks on Paper and Folia

@@ -1,61 +1,31 @@
 package dev.vexsoft.core.paper.plugin;
 
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
-import dev.vexsoft.core.api.configuration.ConfigurationService;
+import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.api.player.DataService;
-import dev.vexsoft.core.api.localization.LocalizationOwner;
-import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.command.CommandService;
-import dev.vexsoft.core.command.VexCommandService;
-import dev.vexsoft.core.cache.CacheService;
-import dev.vexsoft.core.cache.VexCacheService;
-import dev.vexsoft.core.configuration.VexConfigurationService;
-import dev.vexsoft.core.data.VexDataService;
-import dev.vexsoft.core.localization.VexLocalizationService;
 import dev.vexsoft.core.inventory.InventoryService;
-import dev.vexsoft.core.dialog.DialogService;
-import dev.vexsoft.core.paper.dialog.VexDialogService;
-import dev.vexsoft.core.item.ItemService;
-import dev.vexsoft.core.paper.item.VexItemService;
-import dev.vexsoft.core.paper.message.SendMessageService;
-import dev.vexsoft.core.paper.message.VexSendMessageService;
-import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
+import dev.vexsoft.core.paper.bootstrap.PluginBootstrapService;
 import dev.vexsoft.core.paper.listener.ListenerService;
-import dev.vexsoft.core.paper.listener.VexListenerService;
-import dev.vexsoft.core.paper.inventory.VexInventoryListener;
-import dev.vexsoft.core.paper.inventory.VexInventoryService;
-import dev.vexsoft.core.paper.scheduler.ScheduleService;
-import dev.vexsoft.core.paper.scheduler.VexScheduleService;
-import dev.vexsoft.core.packets.service.DisplayPassengerPacketService;
-import dev.vexsoft.core.packets.service.FakeItemMetaService;
-import dev.vexsoft.core.packets.service.InteractableHologramService;
-import dev.vexsoft.core.packets.service.ItemDisplayPacketService;
-import dev.vexsoft.core.packets.service.LightningPacketService;
-import dev.vexsoft.core.packets.service.MobGlowPacketService;
-import dev.vexsoft.core.packets.service.MobHitPacketService;
-import dev.vexsoft.core.packets.service.TextDisplayPacketService;
-import dev.vexsoft.core.paper.packet.service.VexDisplayPassengerPacketService;
-import dev.vexsoft.core.paper.packet.service.VexFakeItemMetaService;
-import dev.vexsoft.core.paper.packet.service.VexInteractableHologramService;
-import dev.vexsoft.core.paper.packet.service.VexItemDisplayPacketService;
-import dev.vexsoft.core.paper.packet.service.VexLightningPacketService;
-import dev.vexsoft.core.paper.packet.service.VexMobGlowPacketService;
-import dev.vexsoft.core.paper.packet.service.VexMobHitPacketService;
-import dev.vexsoft.core.paper.packet.service.VexTextDisplayPacketService;
+import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
+import java.io.InputStream;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
-import java.io.InputStream;
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.Collection;
-import java.util.logging.Level;
 
+/**
+ * Provides the lifecycle and scoped infrastructure shared by every Vex plugin
+ */
 public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
 
   private VexServiceRegistry services;
+  private PluginBootstrapService bootstrap;
   private VexLogger logger;
 
   @Override
@@ -67,27 +37,10 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
           "VexCore is not loaded. Add VexCore as a required plugin dependency."
       );
     }
+    bootstrap = registry.require(PluginBootstrapService.class);
     services = registry.scoped(this);
     try {
-      services.register(ConfigurationService.class, VexConfigurationService.class);
-      services.register(ScheduleService.class, VexScheduleService.class);
-      services.register(InventoryService.class, VexInventoryService.class);
-      services.register(CommandService.class, VexCommandService.class);
-      services.register(CacheService.class, VexCacheService.class);
-      services.register(ListenerService.class, VexListenerService.class);
-      services.register(DialogService.class, VexDialogService.class);
-      services.register(ItemService.class, VexItemService.class);
-      services.register(DataService.class, VexDataService.class);
-      services.register(LocalizationService.class, VexLocalizationService.class);
-      services.register(SendMessageService.class, VexSendMessageService.class);
-      services.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
-      services.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
-      services.register(DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
-      services.register(InteractableHologramService.class, VexInteractableHologramService.class);
-      services.register(MobHitPacketService.class, VexMobHitPacketService.class);
-      services.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
-      services.register(LightningPacketService.class, VexLightningPacketService.class);
-      services.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
+      bootstrap.initialize(services);
       registerServices();
       services.registerQueuedServices();
       registerData(services.require(DataService.class));
@@ -102,9 +55,8 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   @Override
   public final void onEnable() {
-    ListenerService listeners = services.require(ListenerService.class);
-    listeners.register(VexInventoryListener.class);
-    registerListeners(listeners);
+    bootstrap.enable(services);
+    registerListeners(services.require(ListenerService.class));
     onVexEnable();
   }
 
@@ -132,16 +84,21 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   /** Registers the inventories provided by this plugin */
   protected void registerInventories(final InventoryService inventories) { }
 
+  /** Runs plugin-specific work after the loading phase */
   protected void onVexLoad() { }
 
+  /** Runs plugin-specific work after the enabling phase */
   protected void onVexEnable() { }
 
+  /** Runs plugin-specific work before infrastructure cleanup */
   protected void onVexDisable() { }
 
+  /** Returns the MiniMessage prefix used for console output */
   protected String getConsolePrefix() {
     return "<dark_gray>[<aqua>" + getName() + "</aqua>]</dark_gray> ";
   }
 
+  /** Returns the service registry scoped to this plugin */
   public final VexServiceRegistry getServices() {
     if (services == null) {
       throw new IllegalStateException("VexPlugin has not been loaded yet");
