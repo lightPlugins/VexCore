@@ -33,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.Value;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,6 +43,35 @@ import static io.papermc.paper.command.brigadier.Commands.literal;
 
 @Dependencies
 public final class VexCommandService implements CommandService {
+
+  private static final Map<Class<?>, ArgumentReader> DIRECT_ARGUMENT_READERS = Map.ofEntries(
+      Map.entry(String.class, StringArgumentType::getString),
+      Map.entry(int.class, IntegerArgumentType::getInteger),
+      Map.entry(Integer.class, IntegerArgumentType::getInteger),
+      Map.entry(long.class, LongArgumentType::getLong),
+      Map.entry(Long.class, LongArgumentType::getLong),
+      Map.entry(double.class, DoubleArgumentType::getDouble),
+      Map.entry(Double.class, DoubleArgumentType::getDouble),
+      Map.entry(float.class, FloatArgumentType::getFloat),
+      Map.entry(Float.class, FloatArgumentType::getFloat),
+      Map.entry(boolean.class, BoolArgumentType::getBool),
+      Map.entry(Boolean.class, BoolArgumentType::getBool)
+  );
+  private static final Map<Class<?>, Function<String, Object>> DEFAULT_VALUE_PARSERS = Map.ofEntries(
+      Map.entry(String.class, value -> value),
+      Map.entry(boolean.class, Boolean::parseBoolean),
+      Map.entry(Boolean.class, Boolean::parseBoolean),
+      Map.entry(int.class, Integer::parseInt),
+      Map.entry(Integer.class, Integer::parseInt),
+      Map.entry(long.class, Long::parseLong),
+      Map.entry(Long.class, Long::parseLong),
+      Map.entry(double.class, Double::parseDouble),
+      Map.entry(Double.class, Double::parseDouble),
+      Map.entry(float.class, Float::parseFloat),
+      Map.entry(Float.class, Float::parseFloat),
+      Map.entry(UUID.class, UUID::fromString),
+      Map.entry(Duration.class, VexCommandService::parseDuration)
+  );
 
   private final VexServiceRegistry services;
   private final Map<String, CommandTree> commands = new LinkedHashMap<>();
@@ -348,23 +378,9 @@ public final class VexCommandService implements CommandService {
       final String name,
       final Class<?> type
   ) {
-    if (type == String.class) {
-      return StringArgumentType.getString(context, name);
-    }
-    if (type == int.class || type == Integer.class) {
-      return IntegerArgumentType.getInteger(context, name);
-    }
-    if (type == long.class || type == Long.class) {
-      return LongArgumentType.getLong(context, name);
-    }
-    if (type == double.class || type == Double.class) {
-      return DoubleArgumentType.getDouble(context, name);
-    }
-    if (type == float.class || type == Float.class) {
-      return FloatArgumentType.getFloat(context, name);
-    }
-    if (type == boolean.class || type == Boolean.class) {
-      return BoolArgumentType.getBool(context, name);
+    ArgumentReader reader = DIRECT_ARGUMENT_READERS.get(type);
+    if (reader != null) {
+      return reader.read(context, name);
     }
     String raw = StringArgumentType.getString(context, name);
     if (type == Player.class) {
@@ -388,46 +404,11 @@ public final class VexCommandService implements CommandService {
 
   private Object defaultValue(final Class<?> type, final String value) {
     if (value.isEmpty()) {
-      if (type == boolean.class || type == Boolean.class) {
-        return false;
-      }
-      if (type == int.class || type == Integer.class) {
-        return 0;
-      }
-      if (type == long.class || type == Long.class) {
-        return 0L;
-      }
-      if (type == double.class || type == Double.class) {
-        return 0D;
-      }
-      if (type == float.class || type == Float.class) {
-        return 0F;
-      }
-      return null;
+      return emptyDefaultValue(type);
     }
-    if (type == String.class) {
-      return value;
-    }
-    if (type == boolean.class || type == Boolean.class) {
-      return Boolean.parseBoolean(value);
-    }
-    if (type == int.class || type == Integer.class) {
-      return Integer.parseInt(value);
-    }
-    if (type == long.class || type == Long.class) {
-      return Long.parseLong(value);
-    }
-    if (type == double.class || type == Double.class) {
-      return Double.parseDouble(value);
-    }
-    if (type == float.class || type == Float.class) {
-      return Float.parseFloat(value);
-    }
-    if (type == UUID.class) {
-      return UUID.fromString(value);
-    }
-    if (type == Duration.class) {
-      return parseDuration(value);
+    Function<String, Object> parser = DEFAULT_VALUE_PARSERS.get(type);
+    if (parser != null) {
+      return parser.apply(value);
     }
     if (type.isEnum()) {
       return enumValue(type, value);
@@ -435,7 +416,26 @@ public final class VexCommandService implements CommandService {
     throw new IllegalArgumentException("Unsupported optional argument type: " + type.getName());
   }
 
-  private Duration parseDuration(final String input) {
+  private Object emptyDefaultValue(final Class<?> type) {
+    if (type == boolean.class || type == Boolean.class) {
+      return false;
+    }
+    if (type == int.class || type == Integer.class) {
+      return 0;
+    }
+    if (type == long.class || type == Long.class) {
+      return 0L;
+    }
+    if (type == double.class || type == Double.class) {
+      return 0D;
+    }
+    if (type == float.class || type == Float.class) {
+      return 0F;
+    }
+    return null;
+  }
+
+  private static Duration parseDuration(final String input) {
     String value = input.trim().toLowerCase(Locale.ROOT);
     if (value.isEmpty()) {
       throw new IllegalArgumentException("Duration must not be empty");
@@ -459,13 +459,19 @@ public final class VexCommandService implements CommandService {
     return Duration.ofMillis(Math.multiplyExact(Long.parseLong(number), multiplier));
   }
 
-  private Object enumValue(final Class<?> type, final String value) {
+  private static Object enumValue(final Class<?> type, final String value) {
     @SuppressWarnings({"rawtypes", "unchecked"})
     Object result = Enum.valueOf(
         (Class<? extends Enum>) type.asSubclass(Enum.class),
         value.toUpperCase(Locale.ROOT)
     );
     return result;
+  }
+
+  @FunctionalInterface
+  private interface ArgumentReader {
+
+    Object read(CommandContext<CommandSourceStack> context, String name);
   }
 
   private boolean canAccessNode(
