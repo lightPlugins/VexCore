@@ -20,6 +20,7 @@
             <option value="$PROJECT_DIR$/vexcore-items/versions" />
             <option value="$PROJECT_DIR$/vexcore-items/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-localization" />
+            <option value="$PROJECT_DIR$/vexcore-messaging" />
             <option value="$PROJECT_DIR$/vexcore-packets" />
             <option value="$PROJECT_DIR$/vexcore-packets/common" />
             <option value="$PROJECT_DIR$/vexcore-packets/versions" />
@@ -27,6 +28,8 @@
             <option value="$PROJECT_DIR$/vexcore-paper" />
             <option value="$PROJECT_DIR$/vexcore-paper-api" />
             <option value="$PROJECT_DIR$/vexcore-service-registry" />
+            <option value="$PROJECT_DIR$/vexcore-velocity" />
+            <option value="$PROJECT_DIR$/vexcore-velocity-api" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="true" />

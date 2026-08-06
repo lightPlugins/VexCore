@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.bootstrap;
 
 import dev.vexsoft.core.api.configuration.ConfigurationService;
 import dev.vexsoft.core.api.localization.LocalizationService;
+import dev.vexsoft.core.api.messaging.MessagingService;
 import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
@@ -15,6 +16,7 @@ import dev.vexsoft.core.dialog.DialogService;
 import dev.vexsoft.core.inventory.InventoryService;
 import dev.vexsoft.core.item.ItemService;
 import dev.vexsoft.core.localization.VexLocalizationService;
+import dev.vexsoft.core.messaging.VexMessagingService;
 import dev.vexsoft.core.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.packets.service.InteractableHologramService;
@@ -64,6 +66,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(DataService.class, VexDataService.class);
     checkedServices.register(LocalizationService.class, VexLocalizationService.class);
     checkedServices.register(SendMessageService.class, VexSendMessageService.class);
+    checkedServices.register(MessagingService.class, VexMessagingService.class);
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     checkedServices.register(

@@ -8,6 +8,7 @@ include(
     "vexcore-cache",
     "vexcore-data",
     "vexcore-localization",
+    "vexcore-messaging",
     "vexcore-inventory",
     "vexcore-dialog",
     "vexcore-items:common",
@@ -16,4 +17,6 @@ include(
     "vexcore-packets:versions:v26_2",
     "vexcore-paper-api",
     "vexcore-paper",
+    "vexcore-velocity-api",
+    "vexcore-velocity",
 )

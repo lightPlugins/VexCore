@@ -42,7 +42,7 @@ subprojects {
             withSourcesJar()
         }
 
-        if (project.name != "vexcore-paper") {
+        if (project.name !in setOf("vexcore-paper", "vexcore-velocity")) {
             pluginManager.apply("maven-publish")
             extensions.configure<PublishingExtension> {
                 publications {
@@ -91,6 +91,7 @@ val documentedApiProjects = setOf(
     ":vexcore-items:common",
     ":vexcore-packets:common",
     ":vexcore-paper-api",
+    ":vexcore-velocity-api",
 )
 
 configure(subprojects.filter { it.path in documentedApiProjects }) {

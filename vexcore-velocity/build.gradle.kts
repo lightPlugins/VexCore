@@ -4,38 +4,27 @@ plugins {
 }
 
 dependencies {
-    api(project(":vexcore-paper-api"))
+    implementation(project(":vexcore-velocity-api"))
     implementation(project(":vexcore-service-registry"))
     implementation(project(":vexcore-configuration"))
-    implementation(project(":vexcore-command"))
     implementation(project(":vexcore-cache"))
-    implementation(project(":vexcore-data"))
-    implementation(project(":vexcore-localization"))
     implementation(project(":vexcore-messaging"))
-    implementation(project(":vexcore-inventory"))
-    implementation(project(":vexcore-dialog"))
-    implementation(project(":vexcore-items:common"))
-    implementation(project(":vexcore-items:versions:v26_2"))
-    implementation(project(":vexcore-packets:common"))
-    implementation(project(":vexcore-packets:versions:v26_2"))
-    compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
 
-    testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
+    compileOnly("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
+
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.processResources {
-    filesMatching("plugin.yml") {
-        expand("version" to project.version)
-    }
-}
-
 tasks.shadowJar {
-    archiveBaseName.set("VexCore")
+    archiveBaseName.set("VexCore-Velocity")
     archiveClassifier.set("")
     mergeServiceFiles()
+    relocate("com.fasterxml.jackson", "dev.vexsoft.core.libs.jackson")
+    relocate("com.github.benmanes.caffeine", "dev.vexsoft.core.libs.caffeine")
     relocate("org.spongepowered.configurate", "dev.vexsoft.core.libs.configurate")
     relocate("org.yaml.snakeyaml", "dev.vexsoft.core.libs.snakeyaml")
     relocate("io.leangen.geantyref", "dev.vexsoft.core.libs.geantyref")

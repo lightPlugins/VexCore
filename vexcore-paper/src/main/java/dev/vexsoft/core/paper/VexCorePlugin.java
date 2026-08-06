@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizationService;
+import dev.vexsoft.core.api.messaging.MessagingService;
 import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.paper.module.ModuleManager;
 import dev.vexsoft.core.paper.module.PlatformModule;
@@ -34,10 +35,15 @@ import dev.vexsoft.core.cache.VexCacheService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexCorePlayerData;
 import dev.vexsoft.core.localization.VexLocalizationService;
+import dev.vexsoft.core.messaging.MessageCodecService;
+import dev.vexsoft.core.messaging.MessageTransportService;
+import dev.vexsoft.core.messaging.VexMessageCodecService;
+import dev.vexsoft.core.messaging.VexMessagingService;
 import dev.vexsoft.core.paper.command.VexCoreCommand;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.paper.message.VexSendMessageService;
+import dev.vexsoft.core.paper.messaging.VexPaperMessageTransportService;
 import dev.vexsoft.core.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.packets.service.InteractableHologramService;
@@ -83,6 +89,11 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(ScheduleService.class, VexScheduleService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);
+    coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
+    coreServices.register(
+        MessageTransportService.class,
+        VexPaperMessageTransportService.class
+    );
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
     modules.enable(new LocalizationModule());
@@ -92,6 +103,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(DataService.class, VexDataService.class);
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
+    coreServices.register(MessagingService.class, VexMessagingService.class);
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
@@ -121,6 +133,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
       return;
     }
     modules.startAll();
+    coreServices.require(MessageTransportService.class).start();
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     getServer().getPluginManager().registerEvents(
