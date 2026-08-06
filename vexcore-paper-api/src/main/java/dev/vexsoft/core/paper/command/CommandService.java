@@ -1,4 +1,4 @@
-package dev.vexsoft.core.command;
+package dev.vexsoft.core.paper.command;
 
 import dev.vexsoft.core.api.service.VexService;
 

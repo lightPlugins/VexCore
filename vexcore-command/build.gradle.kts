@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":vexcore-command-api"))
+    implementation(project(":vexcore-paper-api"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")

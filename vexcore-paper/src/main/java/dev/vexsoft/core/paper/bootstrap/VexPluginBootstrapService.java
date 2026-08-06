@@ -7,7 +7,7 @@ import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;
-import dev.vexsoft.core.command.CommandService;
+import dev.vexsoft.core.paper.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;

@@ -176,8 +176,7 @@ VexCore is deliberately split into small modules. Public contracts are kept sepa
 | Module | Responsibility |
 | --- | --- |
 | `vexcore-api` | Shared contracts for services, configurations, localization, player data, and caching |
-| `vexcore-paper-api` | Public Paper and Folia contracts together with the VexPlugin foundation |
-| `vexcore-command-api` | Public command contracts and annotations |
+| `vexcore-paper-api` | Public Paper, Folia, and command contracts together with the VexPlugin foundation |
 | `vexcore-service-registry` | Service resolution, scopes, and dependency-aware creation |
 | `vexcore-configuration` | Loading and managing configuration files |
 | `vexcore-data` | VexPlayer instances, data containers, and persistence |

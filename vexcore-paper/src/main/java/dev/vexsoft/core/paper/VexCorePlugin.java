@@ -27,7 +27,7 @@ import dev.vexsoft.core.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.paper.platform.PlatformService;
 import dev.vexsoft.core.paper.plugin.VexLogger;
 import dev.vexsoft.core.service.DefaultServiceRegistry;
-import dev.vexsoft.core.command.CommandService;
+import dev.vexsoft.core.paper.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;

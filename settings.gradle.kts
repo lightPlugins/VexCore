@@ -4,7 +4,6 @@ include(
     "vexcore-api",
     "vexcore-service-registry",
     "vexcore-configuration",
-    "vexcore-command-api",
     "vexcore-command",
     "vexcore-cache",
     "vexcore-data",

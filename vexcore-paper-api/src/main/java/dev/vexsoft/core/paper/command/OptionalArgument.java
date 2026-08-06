@@ -1,11 +1,11 @@
-package dev.vexsoft.core.command;
+package dev.vexsoft.core.paper.command;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Binds a method parameter to an optional named command argument. */
+/** Binds a method parameter to an optional named command argument */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
 public @interface OptionalArgument {

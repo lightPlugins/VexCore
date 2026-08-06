@@ -5,7 +5,7 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.command.CommandService;
+import dev.vexsoft.core.paper.command.CommandService;
 import dev.vexsoft.core.inventory.InventoryService;
 import dev.vexsoft.core.paper.bootstrap.PluginBootstrapService;
 import dev.vexsoft.core.paper.listener.ListenerService;

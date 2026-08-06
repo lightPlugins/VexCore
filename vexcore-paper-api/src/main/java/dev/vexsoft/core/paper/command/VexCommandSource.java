@@ -1,4 +1,4 @@
-package dev.vexsoft.core.command;
+package dev.vexsoft.core.paper.command;
 
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import lombok.Getter;
@@ -8,7 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 
-/** Provides the Paper command context passed to Vex command handlers. */
+/** Provides the Paper command context passed to Vex command handlers */
 @Getter
 @RequiredArgsConstructor
 public final class VexCommandSource {

@@ -1,11 +1,11 @@
-package dev.vexsoft.core.command;
+package dev.vexsoft.core.paper.command;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Declares the root metadata shared by every command method in a command class. */
+/** Declares the root metadata shared by every command method in a command class */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface CommandRoot {
