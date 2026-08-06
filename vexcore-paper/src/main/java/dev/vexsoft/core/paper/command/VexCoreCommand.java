@@ -12,6 +12,7 @@ import dev.vexsoft.core.api.player.PlayerService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.theme.ThemeColorService;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.messaging.debug.ProxyDebugMessages;
 import dev.vexsoft.core.messaging.debug.ProxyPingRequest;
@@ -39,7 +40,8 @@ import org.bukkit.entity.Player;
     SendMessageService.class,
     MessagingService.class,
     ProxyPingService.class,
-    PerformanceBossBarService.class
+    PerformanceBossBarService.class,
+    ThemeColorService.class
 })
 public final class VexCoreCommand {
 
@@ -50,6 +52,7 @@ public final class VexCoreCommand {
   private final MessagingService messaging;
   private final ProxyPingService proxyPings;
   private final PerformanceBossBarService performanceBossBars;
+  private final ThemeColorService themeColors;
   private final Logger logger;
 
   public VexCoreCommand(final VexServiceRegistry services) {
@@ -61,6 +64,7 @@ public final class VexCoreCommand {
     messaging = services.require(MessagingService.class);
     proxyPings = services.require(ProxyPingService.class);
     performanceBossBars = services.require(PerformanceBossBarService.class);
+    themeColors = services.require(ThemeColorService.class);
     logger = Logger.getLogger("VexCore");
   }
 
@@ -70,11 +74,12 @@ public final class VexCoreCommand {
   )
   public int reload(final VexCommandSource source) {
     try {
+      themeColors.reload();
       languages.reload();
       send(source.getSender(), "commands.vexcore.reload.success", Map.of());
       return 1;
     } catch (RuntimeException exception) {
-      logger.log(Level.SEVERE, "Unable to reload VexCore localizations", exception);
+      logger.log(Level.SEVERE, "Unable to reload VexCore configuration and localizations", exception);
       send(source.getSender(), "commands.vexcore.reload.failed", Map.of());
       return 0;
     }

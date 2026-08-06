@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.theme.ThemeColorService;
 import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCache;
 import dev.vexsoft.core.cache.VexCacheOptions;
@@ -22,17 +23,20 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import lombok.Value;
 
-@Dependencies(CacheService.class)
+@Dependencies({CacheService.class, ThemeColorService.class})
 public final class VexLocalizationRegistryService implements LocalizationRegistryService {
 
   private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z0-9_.-]+)}");
 
   private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
   private final MiniMessage miniMessage = MiniMessage.miniMessage();
+  private final ThemeColorService themeColors;
   private final VexCache<StaticMessageKey, LocalizedMessage> staticMessages;
 
   public VexLocalizationRegistryService(final VexServiceRegistry services) {
-    staticMessages = Objects.requireNonNull(services, "services")
+    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
+    themeColors = checkedServices.require(ThemeColorService.class);
+    staticMessages = checkedServices
         .require(CacheService.class)
         .create(
             "localization-static-messages",
@@ -152,7 +156,7 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
       ));
     }
     List<Component> components = template.getLines().stream()
-        .map(line -> miniMessage.deserialize(replace(line, replacements)))
+        .map(line -> themeColors.deserialize(replace(line, replacements)))
         .toList();
     return template.isList()
         ? LocalizedMessage.list(components)

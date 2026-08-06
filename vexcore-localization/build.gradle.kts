@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api(project(":vexcore-api"))
     implementation(project(":vexcore-cache"))
+    implementation(project(":vexcore-configuration"))
     implementation(project(":vexcore-data"))
     implementation("org.spongepowered:configurate-yaml:4.2.0")
     implementation(platform("net.kyori:adventure-bom:5.2.0"))

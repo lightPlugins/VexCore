@@ -2,6 +2,9 @@ package dev.vexsoft.core.paper;
 
 import dev.vexsoft.core.api.service.ServiceRegistry;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.configuration.ConfigurationOwner;
+import dev.vexsoft.core.api.configuration.ConfigurationService;
+import dev.vexsoft.core.api.theme.ThemeColorService;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.api.messaging.MessagingService;
@@ -32,9 +35,11 @@ import dev.vexsoft.core.paper.command.CommandService;
 import dev.vexsoft.core.command.VexCommandService;
 import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;
+import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.localization.VexCorePlayerData;
 import dev.vexsoft.core.localization.VexLocalizationService;
+import dev.vexsoft.core.localization.VexThemeColorService;
 import dev.vexsoft.core.messaging.MessageCodecService;
 import dev.vexsoft.core.messaging.MessageTransportService;
 import dev.vexsoft.core.messaging.VexMessageCodecService;
@@ -79,7 +84,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Optional;
 
-public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner {
+public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
   private DefaultServiceRegistry services;
   private VexServiceRegistry coreServices;
   private ModuleManager modules;
@@ -97,6 +102,8 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(ScheduleService.class, VexScheduleService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);
+    coreServices.register(ConfigurationService.class, VexConfigurationService.class);
+    coreServices.register(ThemeColorService.class, VexThemeColorService.class);
     coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
     coreServices.register(
         MessageTransportService.class,
@@ -219,11 +226,16 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
 
   @Override
   public Path getLocalizationDirectory() {
+    return getConfigurationDirectory().resolve("languages");
+  }
+
+  @Override
+  public Path getConfigurationDirectory() {
     Path pluginsDirectory = getDataFolder().toPath().toAbsolutePath().normalize().getParent();
     if (pluginsDirectory == null) {
       throw new IllegalStateException("Unable to resolve the plugins directory");
     }
-    return pluginsDirectory.resolve("VexSoft").resolve(getName()).resolve("languages").normalize();
+    return pluginsDirectory.resolve("VexSoft").resolve(getName()).normalize();
   }
 
   @Override
@@ -237,12 +249,26 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
   }
 
   @Override
+  public Optional<InputStream> getConfigurationResource(final String resourcePath) {
+    return Optional.ofNullable(getResource(resourcePath));
+  }
+
+  @Override
   public String getMessagePrefixKey() {
     return "general.prefix";
   }
 
   @Override
   public void reportLocalizationWarning(final String message, final Throwable cause) {
+    reportWarning(message, cause);
+  }
+
+  @Override
+  public void reportConfigurationWarning(final String message, final Throwable cause) {
+    reportWarning(message, cause);
+  }
+
+  private void reportWarning(final String message, final Throwable cause) {
     if (cause == null) {
       getLogger().warning(message);
     } else {

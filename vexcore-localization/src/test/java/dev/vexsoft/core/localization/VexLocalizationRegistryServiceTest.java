@@ -13,6 +13,7 @@ import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.ServiceReference;
 import dev.vexsoft.core.api.service.VexService;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.theme.ThemeColorService;
 import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;
 import java.io.ByteArrayInputStream;
@@ -26,6 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ArrayList;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -208,6 +212,7 @@ class VexLocalizationRegistryServiceTest {
 
     private final ServiceOwner owner;
     private final CacheService cache;
+    private final ThemeColorService themeColors = new TestThemeColors();
 
     private TestServices(final ServiceOwner owner) {
       this.owner = owner;
@@ -242,6 +247,9 @@ class VexLocalizationRegistryServiceTest {
       if (serviceType == CacheService.class) {
         return Optional.of(serviceType.cast(cache));
       }
+      if (serviceType == ThemeColorService.class) {
+        return Optional.of(serviceType.cast(themeColors));
+      }
       return Optional.empty();
     }
 
@@ -268,6 +276,33 @@ class VexLocalizationRegistryServiceTest {
     @Override
     public void unregisterOwnedServices() {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  private static final class TestThemeColors implements ThemeColorService {
+
+    @Override
+    public Optional<TextColor> findColor(final String name) {
+      return Optional.empty();
+    }
+
+    @Override
+    public TextColor requireColor(final String name) {
+      throw new IllegalArgumentException("Unknown theme color: " + name);
+    }
+
+    @Override
+    public Map<String, TextColor> getColors() {
+      return Map.of();
+    }
+
+    @Override
+    public Component deserialize(final String input) {
+      return MiniMessage.miniMessage().deserialize(input);
+    }
+
+    @Override
+    public void reload() {
     }
   }
 }

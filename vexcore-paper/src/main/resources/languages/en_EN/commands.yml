@@ -1,17 +1,17 @@
 vexcore:
   reload:
-    success: "<green>VexCore was reloaded successfully"
+    success: "<#969696>VexCore was reloaded successfully"
     failed: "<red>VexCore could not be reloaded, check the console for details"
   language:
-    set: "<green>Your language was changed to <yellow>{language}</yellow>"
-    not-found: "<red>The language <yellow>{language}</yellow> is not available"
+    set: "<#969696>Your language was changed to <#547ee8>{language}"
+    not-found: "<#c22323>The language <#9c0505>{language}<#c22323> is not available"
   debug:
     performance:
-      enabled: "<green>The live performance display is now enabled"
-      disabled: "<yellow>The live performance display is now disabled"
+      enabled: "<#969696>The live performance display is now <#547ee8>enabled"
+      disabled: "<#969696>The live performance display is now <#c22323>disabled"
     proxy:
       ping:
-        started: "<yellow>Sending a ping to the Velocity proxy..."
-        success: "<green>Velocity responded in <yellow>{latency} ms</yellow>"
-        timeout: "<red>The Velocity proxy did not respond within 5 seconds"
-        failed: "<red>Unable to send the proxy ping: <yellow>{reason}</yellow>"
+        started: "<#969696>Sending a ping to the Velocity proxy..."
+        success: "<#969696>Velocity responded in <#547ee8>>{latency} <gray>ms"
+        timeout: "<#c22323>The Velocity proxy did not respond within <#c22323>5 <#c22323>seconds"
+        failed: "<#c22323>Unable to send the proxy ping: <#c22323>{reason}"
