@@ -5,6 +5,7 @@
     <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?logo=coffeescript&logoColor=white">
     <img alt="Paper 26.2" src="https://img.shields.io/badge/Paper-26.2-222222?logo=paperlessngx&logoColor=white">
     <img alt="Folia supported" src="https://img.shields.io/badge/Folia-supported-5C6BC0?logo=leaflet&logoColor=white">
+    <img alt="Velocity 4.1" src="https://img.shields.io/badge/Velocity-4.1-1198D4?logo=velocity&logoColor=white">
     <img alt="Status" src="https://img.shields.io/badge/Status-Active_development-2E7D32?logo=githubactions&logoColor=white">
     <a href="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml"><img alt="Build" src="https://github.com/lightPlugins/VexCore/actions/workflows/build.yml/badge.svg"></a>
     <a href="https://www.codefactor.io/repository/github/lightplugins/vexcore"><img alt="CodeFactor" src="https://www.codefactor.io/repository/github/lightplugins/vexcore/badge"></a>
@@ -20,35 +21,41 @@ VexCore brings together the technical foundations that would otherwise have to b
 
 | Foundation | Player-facing systems | Runtime | Compatibility |
 | --- | --- | --- | --- |
-| Scoped service registry | Localization | Paper and Folia scheduler | Minecraft version adapters |
-| Shared plugin lifecycle | Commands and inventories | Player data and caching | Packet abstraction |
-| Configuration system | Dialogs and messages | PostgreSQL persistence | Data Component abstraction |
+| Scoped service registries | Localization | Paper, Folia, and Velocity | Minecraft version adapters |
+| Server and proxy plugin lifecycles | Commands and inventories | Player data and caching | Packet abstraction |
+| Configuration and messaging | Dialogs and messages | PostgreSQL persistence | Data Component abstraction |
 
 ## Purpose
 
-Every VexSoft plugin receives its own isolated service scope. Services can be published through a central registry and accessed by other systems without exposing or depending on their concrete implementations.
+Every VexSoft plugin receives its own isolated service scope. Paper plugins and Velocity plugins use their own platform registry, while shared contracts keep their structure consistent without exposing concrete implementations.
 
-VexCore also manages the shared plugin lifecycle. Services, commands, listeners, inventories, and data containers follow the same registration rules and are released in a controlled way when a plugin shuts down.
+VexCore also manages the shared plugin lifecycle. Services, commands, listeners, inventories, message handlers, and data containers follow the same registration rules and are released in a controlled way when a plugin shuts down. A typed messaging layer connects backend servers through the Velocity proxy when communication has to cross process boundaries.
 
 The goal is simple: provide a modern and predictable foundation for new plugins without rebuilding the same infrastructure every time.
 
 ```mermaid
 flowchart TD
-    Core["VexCore infrastructure"]
-    Registry["Scoped service registry"]
-    Systems["Shared systems and platform services"]
+    Core["Shared VexCore contracts"]
+    Paper["VexCore Paper"]
+    Velocity["VexCore Velocity"]
+    PaperRegistry["Paper service registry"]
+    ProxyRegistry["Velocity service registry"]
+    Messaging["Typed messaging bridge"]
     Items["VexItems"]
     Skills["VexSkills"]
     Essentials["VexEssentials"]
+    ProxyPlugin["Vex proxy plugins"]
 
-    Core --> Registry
-    Core --> Systems
-    Registry --> Items
-    Registry --> Skills
-    Registry --> Essentials
-    Systems --> Items
-    Systems --> Skills
-    Systems --> Essentials
+    Core --> Paper
+    Core --> Velocity
+    Paper --> PaperRegistry
+    Velocity --> ProxyRegistry
+    PaperRegistry --> Items
+    PaperRegistry --> Skills
+    PaperRegistry --> Essentials
+    ProxyRegistry --> ProxyPlugin
+    PaperRegistry <--> Messaging
+    Messaging <--> ProxyRegistry
 ```
 
 > [!NOTE]
@@ -68,12 +75,26 @@ flowchart TD
 
 ### Shared Plugin Foundation
 
-- A consistent lifecycle for every VexSoft plugin
+- Consistent lifecycles through `VexPlugin` and `VexProxyPlugin`
 - Central registration of services, commands, listeners, and inventories
 - An isolated service registry for each plugin
 - Configurable and colored console prefixes
-- Automatic connection to the VexCore infrastructure
+- Automatic connection to the local Paper or Velocity infrastructure
 - Clear separation between public APIs and runtime implementations
+
+### Cross-Server Messaging
+
+- Typed messages shared by Paper and Velocity plugins
+- Versioned and validated message envelopes
+- JSON payloads without Java serialization
+- Targets for the proxy, individual servers, players, or the complete network
+- Owner and source-server metadata for received messages
+- Class-based message handler registration through scoped services
+- Short-lived pending delivery for temporarily empty backend servers
+- A built-in proxy ping diagnostic with localized results
+
+> [!NOTE]
+> Paper and Velocity run in separate processes and therefore keep separate service registries. Messaging connects those registries without pretending that Java service instances can be shared across process boundaries.
 
 ### Configuration System
 
@@ -175,8 +196,10 @@ VexCore is deliberately split into small modules. Public contracts are kept sepa
 
 | Module | Responsibility |
 | --- | --- |
-| `vexcore-api` | Shared contracts for services, configurations, localization, player data, and caching |
+| `vexcore-api` | Shared contracts for services, configurations, localization, player data, caching, and messaging |
+| `vexcore-messaging` | Versioned message protocol, payload handling, and shared messaging runtime |
 | `vexcore-paper-api` | Public Paper, Folia, and command contracts together with the VexPlugin foundation |
+| `vexcore-velocity-api` | Public Velocity contracts together with the VexProxyPlugin foundation |
 | `vexcore-service-registry` | Service resolution, scopes, and dependency-aware creation |
 | `vexcore-configuration` | Loading and managing configuration files |
 | `vexcore-data` | VexPlayer instances, data containers, and persistence |
@@ -188,10 +211,13 @@ VexCore is deliberately split into small modules. Public contracts are kept sepa
 | `vexcore-items` | Data Components and version-specific item adapters |
 | `vexcore-packets` | Packet contracts and Minecraft-specific adapters |
 | `vexcore-paper` | The server plugin that connects and starts every module |
+| `vexcore-velocity` | The proxy plugin that owns Velocity services and routes network messages |
 
 ## Platforms
 
-VexCore is built for modern Paper servers and supports Folia from the start. Platform-specific behavior is hidden behind shared services, so plugins built on top of VexCore do not need their own Paper and Folia branches.
+VexCore is built for modern Paper servers, supports Folia from the start, and provides a dedicated Velocity plugin for proxy-side infrastructure. Platform-specific behavior is hidden behind shared services, while `VexPlugin` and `VexProxyPlugin` provide the appropriate lifecycle for each environment.
+
+Paper and Velocity keep independent service registries because they run in different processes. The messaging system provides the controlled bridge between them and can route typed messages across backend servers through Velocity.
 
 Version-sensitive areas such as packets and Data Components live in dedicated submodules. This allows new Minecraft versions to be added without copying implementations that are still compatible.
 
