@@ -1,74 +1,63 @@
 package dev.vexsoft.core.paper.message;
 
-import dev.vexsoft.core.api.localization.LocalizedMessage;
-import dev.vexsoft.core.api.localization.LocalizationOwner;
-import dev.vexsoft.core.api.localization.LocalizationService;
-import dev.vexsoft.core.api.localization.LanguageContainer;
 import dev.vexsoft.core.api.localization.LanguageKey;
-import dev.vexsoft.core.api.player.PlayerService;
+import dev.vexsoft.core.api.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.paper.player.PaperPlayerService;
 import java.util.Map;
 import java.util.Objects;
-import net.kyori.adventure.text.Component;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 @Dependencies({
-    LocalizationService.class,
-    PlayerService.class
+    LocalizedMessageService.class,
+    PaperPlayerService.class
 })
 public final class VexSendMessageService implements SendMessageService {
 
-  private final LocalizationService localization;
-  private final PlayerService players;
-  private final String prefixKey;
+  private final LocalizedMessageService messages;
+  private final PaperPlayerService players;
 
   public VexSendMessageService(final VexServiceRegistry services) {
     Objects.requireNonNull(services, "services");
-    if (!(services.getOwner() instanceof LocalizationOwner owner)) {
-      throw new IllegalArgumentException("SendMessageService owner must support localizations");
-    }
-    localization = services.require(LocalizationService.class);
-    players = services.require(PlayerService.class);
-    prefixKey = owner.getMessagePrefixKey();
+    messages = services.require(LocalizedMessageService.class);
+    players = services.require(PaperPlayerService.class);
   }
 
   @Override
-  public void send(final Player player, final String key) {
-    send(player, key, false, Map.of());
+  public void send(final CommandSender sender, final String key) {
+    send(sender, key, false, Map.of());
   }
 
   @Override
-  public void send(final Player player, final String key, final boolean withPrefix) {
-    send(player, key, withPrefix, Map.of());
+  public void send(final CommandSender sender, final String key, final boolean withPrefix) {
+    send(sender, key, withPrefix, Map.of());
   }
 
   @Override
   public void send(
-      final Player player,
+      final CommandSender sender,
       final String key,
       final Map<String, String> replacements
   ) {
-    send(player, key, false, replacements);
+    send(sender, key, false, replacements);
   }
 
   @Override
   public void send(
-      final Player player,
+      final CommandSender sender,
       final String key,
       final boolean withPrefix,
       final Map<String, String> replacements
   ) {
-    Objects.requireNonNull(player, "player");
-    VexPlayer vexPlayer = players.require(player.getUniqueId());
-    LanguageKey language = vexPlayer.getContainer(LanguageContainer.class).getLanguage().getKey();
-    LocalizedMessage message = localization.resolve(language, key, replacements);
-    Component prefix = withPrefix
-        ? localization.resolve(language, prefixKey, Map.of()).getLines().getFirst()
-        : Component.empty();
-    for (Component line : message.getLines()) {
-      player.sendMessage(withPrefix ? prefix.append(line) : line);
+    CommandSender checkedSender = Objects.requireNonNull(sender, "sender");
+    if (checkedSender instanceof Player player) {
+      VexPlayer vexPlayer = players.require(player);
+      messages.send(vexPlayer, key, withPrefix, replacements);
+      return;
     }
+    messages.send(checkedSender, LanguageKey.EN_EN, key, withPrefix, replacements);
   }
 }

@@ -1,11 +1,8 @@
 package dev.vexsoft.core.paper.command;
 
 import dev.vexsoft.core.api.localization.Language;
-import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LanguageService;
 import dev.vexsoft.core.api.localization.LanguageContainer;
-import dev.vexsoft.core.api.localization.LocalizedMessage;
-import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.api.messaging.DeliveryResult;
 import dev.vexsoft.core.api.messaging.MessageTarget;
 import dev.vexsoft.core.api.messaging.MessagingService;
@@ -26,8 +23,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.kyori.adventure.text.Component;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 @CommandRoot(
@@ -36,7 +31,6 @@ import org.bukkit.entity.Player;
 )
 @Dependencies({
     LanguageService.class,
-    LocalizationService.class,
     PlayerService.class,
     SendMessageService.class,
     MessagingService.class,
@@ -47,7 +41,6 @@ import org.bukkit.entity.Player;
 public final class VexCoreCommand {
 
   private final LanguageService languages;
-  private final LocalizationService localization;
   private final PlayerService players;
   private final SendMessageService messages;
   private final MessagingService messaging;
@@ -59,7 +52,6 @@ public final class VexCoreCommand {
   public VexCoreCommand(final VexServiceRegistry services) {
     Objects.requireNonNull(services, "services");
     languages = services.require(LanguageService.class);
-    localization = services.require(LocalizationService.class);
     players = services.require(PlayerService.class);
     messages = services.require(SendMessageService.class);
     messaging = services.require(MessagingService.class);
@@ -77,11 +69,11 @@ public final class VexCoreCommand {
     try {
       themeColors.reload();
       languages.reload();
-      send(source.getSender(), "commands.vexcore.reload.success", Map.of());
+      messages.send(source.getSender(), "commands.vexcore.reload.success", true);
       return 1;
     } catch (RuntimeException exception) {
       logger.log(Level.SEVERE, "Unable to reload VexCore configuration and localizations", exception);
-      send(source.getSender(), "commands.vexcore.reload.failed", Map.of());
+      messages.send(source.getSender(), "commands.vexcore.reload.failed", true);
       return 0;
     }
   }
@@ -163,20 +155,4 @@ public final class VexCoreCommand {
     return 1;
   }
 
-  private void send(
-      final CommandSender sender,
-      final String key,
-      final Map<String, String> replacements
-  ) {
-    if (sender instanceof Player player) {
-      messages.send(player, key, true, replacements);
-      return;
-    }
-    LocalizedMessage prefix = localization.resolve(LanguageKey.EN_EN, "general.prefix", Map.of());
-    LocalizedMessage message = localization.resolve(LanguageKey.EN_EN, key, replacements);
-    Component prefixComponent = prefix.getLines().getFirst();
-    for (Component line : message.getLines()) {
-      sender.sendMessage(prefixComponent.append(line));
-    }
-  }
 }
