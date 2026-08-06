@@ -17,7 +17,7 @@ import net.kyori.adventure.key.Key;
  */
 public interface SignalRegistryService extends VexService {
 
-  /** Registers a typed listener belonging to the supplied service owner. */
+  /** Registers a listener for one exact concrete signal type and service owner. */
   <S extends VexSignal> SignalSubscription subscribe(
       ServiceOwner owner,
       Class<S> signalType,

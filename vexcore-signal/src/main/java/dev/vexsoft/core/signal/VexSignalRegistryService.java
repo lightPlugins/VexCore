@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -58,6 +59,9 @@ public final class VexSignalRegistryService implements SignalRegistryService {
   ) {
     Objects.requireNonNull(signalType, "signalType");
     Objects.requireNonNull(listener, "listener");
+    if (signalType.isInterface() || Modifier.isAbstract(signalType.getModifiers())) {
+      throw new IllegalArgumentException("Signal listener type must be concrete: " + signalType.getName());
+    }
     return register(
         Objects.requireNonNull(owner, "owner"),
         signal -> listener.handle(signalType.cast(signal)),
@@ -171,11 +175,7 @@ public final class VexSignalRegistryService implements SignalRegistryService {
 
   private RegisteredListener[] buildRoute(final RouteKey route) {
     List<RegisteredListener> matching = new ArrayList<>();
-    typeListeners.forEach((type, listeners) -> {
-      if (type.isAssignableFrom(route.signalType())) {
-        matching.addAll(listeners);
-      }
-    });
+    matching.addAll(typeListeners.getOrDefault(route.signalType(), List.of()));
     matching.addAll(keyListeners.getOrDefault(route.signalKey(), List.of()));
     if (matching.isEmpty()) {
       return EMPTY_ROUTE;

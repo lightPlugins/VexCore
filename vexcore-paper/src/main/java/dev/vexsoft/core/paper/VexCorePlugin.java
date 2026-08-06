@@ -170,10 +170,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(ListenerService.class).register(VexPerformanceBossBarListener.class);
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
-    getServer().getPluginManager().registerEvents(
-        new VexPlayerLifecycleListener(players, getLogger()),
-        this
-    );
+    coreServices.require(ListenerService.class).register(VexPlayerLifecycleListener.class);
     getServer().getOnlinePlayers().forEach(player -> players.create(
         player.getUniqueId(),
         player.getName()

@@ -8,7 +8,11 @@ import net.kyori.adventure.key.Key;
  */
 public interface SignalService extends VexService {
 
-  /** Registers a listener for a concrete Java signal type. */
+  /**
+   * Registers a listener for one exact concrete Java signal type.
+   *
+   * <p>Interfaces and abstract classes are rejected to prevent broad wildcard subscriptions.</p>
+   */
   <S extends VexSignal> SignalSubscription subscribe(
       Class<S> signalType,
       SignalListener<? super S> listener

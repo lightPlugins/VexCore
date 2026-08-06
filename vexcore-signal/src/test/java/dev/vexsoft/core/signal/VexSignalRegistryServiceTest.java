@@ -48,6 +48,11 @@ class VexSignalRegistryServiceTest {
 
     assertThrows(IllegalArgumentException.class, () -> registry.publish(signal(0L)));
     assertThrows(IllegalArgumentException.class, () -> registry.publish(signal(-1L)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> registry.subscribe(owner, VexSignal.class, ignored -> {
+        })
+    );
   }
 
   @Test
