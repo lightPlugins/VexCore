@@ -44,6 +44,9 @@ import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.paper.message.VexSendMessageService;
 import dev.vexsoft.core.paper.messaging.VexPaperMessageTransportService;
+import dev.vexsoft.core.paper.messaging.ProxyPingService;
+import dev.vexsoft.core.paper.messaging.VexProxyPingResponseHandler;
+import dev.vexsoft.core.paper.messaging.VexProxyPingService;
 import dev.vexsoft.core.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.packets.service.InteractableHologramService;
@@ -104,6 +107,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(MessagingService.class, VexMessagingService.class);
+    coreServices.register(ProxyPingService.class, VexProxyPingService.class);
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
@@ -120,6 +124,7 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
     coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
     coreServices.registerQueuedServices();
+    coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
     initialized = true;

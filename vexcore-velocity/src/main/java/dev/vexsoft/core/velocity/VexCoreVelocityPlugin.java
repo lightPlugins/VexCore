@@ -24,6 +24,7 @@ import dev.vexsoft.core.service.DefaultServiceRegistry;
 import dev.vexsoft.core.velocity.bootstrap.ProxyPluginBootstrapService;
 import dev.vexsoft.core.velocity.bootstrap.VexProxyPluginBootstrapService;
 import dev.vexsoft.core.velocity.messaging.VexVelocityMessageTransportService;
+import dev.vexsoft.core.velocity.messaging.VexProxyPingMessageHandler;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -81,6 +82,7 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
           VexProxyPluginBootstrapService.class
       );
       coreServices.registerQueuedServices();
+      coreServices.require(MessagingService.class).register(VexProxyPingMessageHandler.class);
       coreServices.require(MessageTransportService.class).start();
       platformLogger.info("[VexCore] Velocity messaging successfully enabled");
     } catch (RuntimeException | Error throwable) {

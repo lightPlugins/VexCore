@@ -5,3 +5,10 @@ vexcore:
   language:
     set: "<green>Your language was changed to <yellow>{language}</yellow>"
     not-found: "<red>The language <yellow>{language}</yellow> is not available"
+  debug:
+    proxy:
+      ping:
+        started: "<yellow>Sending a ping to the Velocity proxy..."
+        success: "<green>Velocity responded in <yellow>{latency} ms</yellow>"
+        timeout: "<red>The Velocity proxy did not respond within 5 seconds"
+        failed: "<red>Unable to send the proxy ping: <yellow>{reason}</yellow>"

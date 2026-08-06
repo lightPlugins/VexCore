@@ -5,14 +5,22 @@ import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LanguageService;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationService;
+import dev.vexsoft.core.api.messaging.DeliveryResult;
+import dev.vexsoft.core.api.messaging.MessageTarget;
+import dev.vexsoft.core.api.messaging.MessagingService;
 import dev.vexsoft.core.api.player.PlayerService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import dev.vexsoft.core.paper.message.SendMessageService;
+import dev.vexsoft.core.messaging.debug.ProxyDebugMessages;
+import dev.vexsoft.core.messaging.debug.ProxyPingRequest;
+import dev.vexsoft.core.paper.messaging.ProxyPingService;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
@@ -27,7 +35,9 @@ import org.bukkit.entity.Player;
     LanguageService.class,
     LocalizationService.class,
     PlayerService.class,
-    SendMessageService.class
+    SendMessageService.class,
+    MessagingService.class,
+    ProxyPingService.class
 })
 public final class VexCoreCommand {
 
@@ -35,6 +45,8 @@ public final class VexCoreCommand {
   private final LocalizationService localization;
   private final PlayerService players;
   private final SendMessageService messages;
+  private final MessagingService messaging;
+  private final ProxyPingService proxyPings;
   private final Logger logger;
 
   public VexCoreCommand(final VexServiceRegistry services) {
@@ -43,6 +55,8 @@ public final class VexCoreCommand {
     localization = services.require(LocalizationService.class);
     players = services.require(PlayerService.class);
     messages = services.require(SendMessageService.class);
+    messaging = services.require(MessagingService.class);
+    proxyPings = services.require(ProxyPingService.class);
     logger = Logger.getLogger("VexCore");
   }
 
@@ -92,6 +106,33 @@ public final class VexCoreCommand {
         Map.of("language", selected.get().getKey().getValue())
     );
     return 1;
+  }
+
+  @Command(
+      value = "debug proxy ping",
+      permission = "vexcore.command.debug.proxy.ping",
+      playerOnly = true
+  )
+  public int proxyPing(final VexCommandSource source) {
+    Player player = (Player) source.getSender();
+    UUID requestId = proxyPings.begin(player);
+    DeliveryResult result = messaging.send(
+        MessageTarget.proxy(),
+        ProxyDebugMessages.PING_REQUEST,
+        new ProxyPingRequest(requestId)
+    );
+    if (result == DeliveryResult.SENT || result == DeliveryResult.QUEUED) {
+      messages.send(player, "commands.vexcore.debug.proxy.ping.started", true);
+      return 1;
+    }
+    proxyPings.cancel(requestId);
+    messages.send(
+        player,
+        "commands.vexcore.debug.proxy.ping.failed",
+        true,
+        Map.of("reason", result.name().toLowerCase(Locale.ROOT))
+    );
+    return 0;
   }
 
   private void send(
