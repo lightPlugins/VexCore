@@ -26,29 +26,36 @@ class VexThemeColorServiceTest {
 
   @Test
   void loadsThemeTagsAndReloadsExternalChanges() throws Exception {
-    TestOwner owner = new TestOwner(directory, "primary: '#123456'\nsecondary: blue\n");
+    TestOwner owner = new TestOwner(directory, "red:\n  - '#123456'\n  - '#654321'\n");
     VexThemeColorService themes = new VexThemeColorService(new TestServices(owner));
 
-    assertEquals(TextColor.color(0x123456), themes.requireColor("PRIMARY"));
+    assertEquals(TextColor.color(0x123456), themes.requireColor("TAILWIND", "RED", 1));
+    assertEquals(
+        TextColor.color(0x654321),
+        themes.deserialize("<tailwind:red>Text</tailwind:red>").color()
+    );
     assertEquals(
         TextColor.color(0x123456),
-        themes.deserialize("<primary>Text</primary>").color()
+        themes.deserialize("<tailwind:red:1>Text</tailwind:red:1>").color()
     );
 
-    Files.writeString(directory.resolve("theme-colors.yml"), "primary: '#abcdef'\nsecondary: blue\n");
+    Files.writeString(
+        directory.resolve("themes/tailwind.yml"),
+        "red:\n  - '#abcdef'\n  - '#654321'\n"
+    );
     themes.reload();
 
-    assertEquals(TextColor.color(0xabcdef), themes.requireColor("primary"));
+    assertEquals(TextColor.color(0xabcdef), themes.requireColor("tailwind", "red", 1));
   }
 
   @Test
   void keepsPreviousSnapshotWhenReloadedColorIsInvalid() throws Exception {
-    TestOwner owner = new TestOwner(directory, "primary: '#123456'\nsecondary: blue\n");
+    TestOwner owner = new TestOwner(directory, "red:\n  - '#123456'\n");
     VexThemeColorService themes = new VexThemeColorService(new TestServices(owner));
-    Files.writeString(directory.resolve("theme-colors.yml"), "primary: nope\nsecondary: blue\n");
+    Files.writeString(directory.resolve("themes/tailwind.yml"), "red:\n  - nope\n");
 
     assertThrows(IllegalArgumentException.class, themes::reload);
-    assertEquals(TextColor.color(0x123456), themes.requireColor("primary"));
+    assertEquals(TextColor.color(0x123456), themes.requireColor("tailwind", "red", 1));
   }
 
   private static final class TestOwner implements ConfigurationOwner {
@@ -68,7 +75,7 @@ class VexThemeColorServiceTest {
 
     @Override
     public Optional<InputStream> getConfigurationResource(final String resourcePath) {
-      return "theme-colors.yml".equals(resourcePath)
+      return "themes/tailwind.yml".equals(resourcePath)
           ? Optional.of(new ByteArrayInputStream(defaults))
           : Optional.empty();
     }

@@ -1,7 +1,7 @@
-prefix: "<#547ee8>VexCore <#4f4f4f>» "
+prefix: "<tailwind:sky>VexCore <tailwind:zinc:7>» "
 performance:
   bossbar:
-    good: "<#969696>TPS: <green>{tps} <dark_gray>| <#969696>MSPT: <green>{mspt} ms <dark_gray>| <#969696>Ping: <gray>{ping} ms"
-    moderate: "<#969696>TPS: <yellow>{tps}</yellow> <dark_gray>| <gray>MSPT: <yellow>{mspt} ms</yellow> <dark_gray>| <gray>Ping: <aqua>{ping} ms</aqua>"
-    critical: "<#969696>TPS: <red>{tps}</red> <dark_gray>| <gray>MSPT: <red>{mspt} ms</red> <dark_gray>| <gray>Ping: <gray>{ping} ms</aqua>"
-    unavailable: "<#969696>TPS: <dark_gray>{tps}</dark_gray> <dark_gray>| <gray>MSPT: <dark_gray>{mspt}</dark_gray> <dark_gray>| <gray>Ping: <gray>{ping} ms</aqua>"
+    good: "<tailwind:zinc>TPS: <tailwind:lime>{tps} <tailwind:zinc:7>| <tailwind:zinc>MSPT: <tailwind:lime>{mspt} <tailwind:zinc>ms <tailwind:zinc:7>| <tailwind:zinc>Ping: <tailwind:lime>{ping} <tailwind:zinc>ms"
+    moderate: "<tailwind:zinc>TPS: <tailwind:amber>{tps} <tailwind:zinc:7>| <tailwind:zinc>MSPT: <tailwind:amber>{mspt} <tailwind:zinc>ms <tailwind:zinc:7>| <tailwind:zinc>Ping: <tailwind:amber>{ping} <tailwind:zinc>ms"
+    critical: "<tailwind:zinc>TPS: <tailwind:red>{tps} <tailwind:zinc:7>| <tailwind:zinc>MSPT: <tailwind:red>{mspt} <tailwind:zinc>ms <tailwind:zinc:7>| <tailwind:zinc>Ping: <tailwind:red>{ping} <tailwind:zinc>ms"
+    unavailable: "<tailwind:zinc>TPS: <tailwind:red>{tps} <tailwind:zinc:7>| <tailwind:zinc>MSPT: <tailwind:red>{mspt} <tailwind:zinc>ms <tailwind:zinc:7>| <tailwind:zinc>Ping: <tailwind:red>{ping} <tailwind:zinc>ms"

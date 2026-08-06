@@ -1,0 +1,304 @@
+# Tailwind theme shared by all VexSoft plugins.
+# Browse the complete palette at:
+# https://htmlcolorcodes.com/color-chart/tailwind-color-chart/
+#
+# Every color family contains 11 shades ordered from lightest (1) to darkest (11).
+# Shade 6 is the default and can be omitted:
+#   <tailwind:sky>Text</tailwind:sky>      -> sky shade 6
+#   <tailwind:sky:7>Text</tailwind:sky:7> -> sky shade 7
+#
+# VexSoft plugins mainly use these colors to keep all messages consistent:
+#   zinc   - normal text
+#   sky    - primary color, important values and neutral highlights
+#   lime   - successful actions and positive states
+#   amber  - warnings and states that require attention
+#   red    - errors, failed actions and negative states
+#   zinc:7 - separators and secondary structural elements
+#   red:7  - important details inside a complete red error message
+#
+# All other color families remain available for custom messages and designs.
+red:
+  - "#FEF2F2"
+  - "#FFE2E2"
+  - "#FFC9C9"
+  - "#FFA2A2"
+  - "#FF6467"
+  - "#FB2C36"
+  - "#E7180B"
+  - "#C11007"
+  - "#9F0712"
+  - "#82181A"
+  - "#460809"
+
+orange:
+  - "#FFF7ED"
+  - "#FFEDD4"
+  - "#FFD6A7"
+  - "#FFB86A"
+  - "#FF8904"
+  - "#FF692A"
+  - "#F54927"
+  - "#CA3519"
+  - "#9F2D01"
+  - "#7E2A0C"
+  - "#441306"
+
+amber:
+  - "#FFFBEB"
+  - "#FEF3C6"
+  - "#FEE685"
+  - "#FFD230"
+  - "#FFB93B"
+  - "#FE9A37"
+  - "#E1712B"
+  - "#BB4D1A"
+  - "#973C08"
+  - "#7B3306"
+  - "#461901"
+
+yellow:
+  - "#FEFCE8"
+  - "#FEF9C2"
+  - "#FFF085"
+  - "#FFDF20"
+  - "#FDC745"
+  - "#F0B13B"
+  - "#D0872E"
+  - "#A65F1B"
+  - "#894B0A"
+  - "#733E0A"
+  - "#432004"
+
+lime:
+  - "#F7FEE7"
+  - "#ECFCCA"
+  - "#D8F999"
+  - "#BBF451"
+  - "#9AE630"
+  - "#7CCF35"
+  - "#5EA529"
+  - "#497D15"
+  - "#3C6301"
+  - "#35530E"
+  - "#192E03"
+
+green:
+  - "#F0FDF4"
+  - "#DCFCE7"
+  - "#B9F8CF"
+  - "#7BF1A8"
+  - "#05DF72"
+  - "#31C950"
+  - "#2AA63E"
+  - "#178236"
+  - "#016630"
+  - "#0D542B"
+  - "#032E15"
+
+emerald:
+  - "#ECFDF5"
+  - "#D0FAE5"
+  - "#A4F4CF"
+  - "#5EE9B5"
+  - "#31D492"
+  - "#37BC7D"
+  - "#2D9966"
+  - "#1F7A55"
+  - "#116045"
+  - "#034F3B"
+  - "#012C22"
+
+teal:
+  - "#F0FDFA"
+  - "#CBFBF1"
+  - "#96F7E4"
+  - "#46ECD5"
+  - "#38D5BE"
+  - "#36BBA7"
+  - "#2A9689"
+  - "#18786F"
+  - "#075F5A"
+  - "#0B4F4A"
+  - "#022F2E"
+
+cyan:
+  - "#ECFEFF"
+  - "#CEFAFE"
+  - "#A2F4FD"
+  - "#53EAFD"
+  - "#42D3F2"
+  - "#3BB8DB"
+  - "#2C92B8"
+  - "#1A7595"
+  - "#015F78"
+  - "#104E64"
+  - "#053345"
+
+sky:
+  - "#F0F9FF"
+  - "#DFF2FE"
+  - "#B8E6FE"
+  - "#74D4FF"
+  - "#21BCFF"
+  - "#34A6F4"
+  - "#2984D1"
+  - "#1C69A8"
+  - "#10598A"
+  - "#024A70"
+  - "#052F4A"
+
+blue:
+  - "#EFF6FF"
+  - "#DBEAFE"
+  - "#BEDBFF"
+  - "#8EC5FF"
+  - "#51A2FF"
+  - "#2B7FFF"
+  - "#155DFC"
+  - "#1447E6"
+  - "#193CB8"
+  - "#1C398E"
+  - "#162456"
+
+indigo:
+  - "#EEF2FF"
+  - "#E0E7FF"
+  - "#C6D2FF"
+  - "#A3B3FF"
+  - "#7C86FF"
+  - "#615FFF"
+  - "#4F39F6"
+  - "#432DD7"
+  - "#372AAC"
+  - "#312C85"
+  - "#1E1A4D"
+
+violet:
+  - "#F5F3FF"
+  - "#EDE9FE"
+  - "#DDD6FF"
+  - "#C4B4FF"
+  - "#A684FF"
+  - "#8E51FF"
+  - "#7F22FE"
+  - "#7008E7"
+  - "#5D0EC0"
+  - "#4D179A"
+  - "#2F0D68"
+
+purple:
+  - "#FAF5FF"
+  - "#F3E8FF"
+  - "#E9D4FF"
+  - "#DAB2FF"
+  - "#C27AFF"
+  - "#AD46FF"
+  - "#9810FA"
+  - "#8207DB"
+  - "#6E11B0"
+  - "#59168B"
+  - "#3C0366"
+
+fuchsia:
+  - "#FDF4FF"
+  - "#FAE8FF"
+  - "#F6CFFF"
+  - "#F4A8FF"
+  - "#ED6AFF"
+  - "#E12AFB"
+  - "#C81CDE"
+  - "#A813B7"
+  - "#8A0194"
+  - "#721378"
+  - "#4B004F"
+
+pink:
+  - "#FDF2F8"
+  - "#FCE7F3"
+  - "#FCCEE8"
+  - "#FDA5D5"
+  - "#FB64B6"
+  - "#F6339A"
+  - "#E61876"
+  - "#C6185C"
+  - "#A3044C"
+  - "#861043"
+  - "#510424"
+
+rose:
+  - "#FFF1F2"
+  - "#FFE4E6"
+  - "#FFCCD3"
+  - "#FFA1AD"
+  - "#FF637E"
+  - "#FF2056"
+  - "#EC253F"
+  - "#C71D36"
+  - "#A50C36"
+  - "#8B0836"
+  - "#4D0218"
+
+slate:
+  - "#F8FAFC"
+  - "#F1F5F9"
+  - "#E2E8F0"
+  - "#CAD5E2"
+  - "#90A1B9"
+  - "#62748E"
+  - "#45556C"
+  - "#314158"
+  - "#1D293D"
+  - "#0F172B"
+  - "#020618"
+
+gray:
+  - "#F9FAFB"
+  - "#F3F4F6"
+  - "#E5E7EB"
+  - "#D1D5DC"
+  - "#99A1AF"
+  - "#6A7282"
+  - "#4A5565"
+  - "#364153"
+  - "#1E2939"
+  - "#101828"
+  - "#030712"
+
+zinc:
+  - "#FAFAFA"
+  - "#F4F4F5"
+  - "#E4E4E7"
+  - "#D4D4D8"
+  - "#9F9FA9"
+  - "#71717B"
+  - "#52525C"
+  - "#3F3F46"
+  - "#27272A"
+  - "#18181B"
+  - "#09090B"
+
+neutral:
+  - "#FAFAFA"
+  - "#F5F5F5"
+  - "#E5E5E5"
+  - "#D4D4D4"
+  - "#A1A1A1"
+  - "#737373"
+  - "#525252"
+  - "#404040"
+  - "#262626"
+  - "#171717"
+  - "#0A0A0A"
+
+stone:
+  - "#FAFAF9"
+  - "#F5F5F4"
+  - "#E7E5E4"
+  - "#D6D3D1"
+  - "#A6A09B"
+  - "#79716B"
+  - "#57534D"
+  - "#44403B"
+  - "#292524"
+  - "#1C1917"
+  - "#0C0A09"

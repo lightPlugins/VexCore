@@ -282,17 +282,21 @@ class VexLocalizationRegistryServiceTest {
   private static final class TestThemeColors implements ThemeColorService {
 
     @Override
-    public Optional<TextColor> findColor(final String name) {
+    public Optional<TextColor> findColor(
+        final String theme,
+        final String color,
+        final int shade
+    ) {
       return Optional.empty();
     }
 
     @Override
-    public TextColor requireColor(final String name) {
-      throw new IllegalArgumentException("Unknown theme color: " + name);
+    public TextColor requireColor(final String theme, final String color, final int shade) {
+      throw new IllegalArgumentException("Unknown theme color: " + theme + ":" + color);
     }
 
     @Override
-    public Map<String, TextColor> getColors() {
+    public Map<String, Map<String, List<TextColor>>> getThemes() {
       return Map.of();
     }
 
