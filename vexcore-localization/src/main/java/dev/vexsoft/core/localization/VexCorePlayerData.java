@@ -10,10 +10,10 @@ import java.util.Objects;
 @Dependencies
 public final class VexCorePlayerData implements PlayerDataDefinition {
 
-  public static final DataContainerKey<LanguageContainer> LANGUAGE = DataContainerKey.of(
+  static final DataContainerKey<LanguageData> LANGUAGE = DataContainerKey.of(
       "language",
-      LanguageContainer.class,
-      LanguageContainer::new
+      LanguageData.class,
+      LanguageData::new
   );
 
   public VexCorePlayerData(final VexServiceRegistry services) {

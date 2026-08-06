@@ -2,9 +2,11 @@ package dev.vexsoft.core.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.player.PlayerContainer;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.ServiceReference;
 import dev.vexsoft.core.api.service.VexService;
@@ -48,6 +50,37 @@ public final class VexPlayerDataCoordinatorServiceTest {
 
     assertSame(firstPlayer, secondPlayer);
     assertEquals("loaded", firstPlayer.require(PROFILE));
+  }
+
+  @Test
+  public void installsAndRemovesDenseFeatureContainersForLoadedPlayers() {
+    DelayedPlayerDataStore store = new DelayedPlayerDataStore();
+    store.loaded.complete(Map.of());
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.registerContainer(
+        services.getOwner(),
+        TestContainer.class,
+        ignored -> new TestContainer()
+    );
+
+    VexPlayer player = coordinator.load(UUID.randomUUID(), "Alex").join();
+    TestContainer container = player.getContainer(TestContainer.class);
+
+    coordinator.unregisterContainers(services.getOwner());
+
+    assertTrue(container.closed);
+    assertTrue(player.findContainer(TestContainer.class).isEmpty());
+  }
+
+  private static final class TestContainer implements PlayerContainer {
+
+    private boolean closed;
+
+    @Override
+    public void close() {
+      closed = true;
+    }
   }
 
   private static final class DelayedPlayerDataStore implements PlayerDataStore {

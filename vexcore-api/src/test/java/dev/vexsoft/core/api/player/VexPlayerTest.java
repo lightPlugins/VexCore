@@ -3,6 +3,8 @@ package dev.vexsoft.core.api.player;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
 import lombok.Getter;
@@ -55,6 +57,34 @@ class VexPlayerTest {
     );
     player.markClean(SKILLS, current.getRevision());
     assertFalse(player.getDirtyKeys().contains(SKILLS));
+  }
+
+  @Test
+  void resolvesFeatureContainersAndPlatformPlayerWithoutPlayerLocalMaps() {
+    TestContainer container = new TestContainer();
+    Object platformPlayer = new Object();
+    VexPlayer player = new VexPlayer(
+        UUID.randomUUID(),
+        "VexPlayer",
+        type -> type == TestContainer.class ? 2 : -1
+    );
+
+    player.installContainer(2, TestContainer.class, container);
+    player.bindPlatformPlayer(platformPlayer);
+
+    assertSame(container, player.getContainer(TestContainer.class));
+    assertSame(container, player.findContainer(TestContainer.class).orElseThrow());
+    assertSame(platformPlayer, player.requirePlatformPlayer(Object.class));
+
+    player.unbindPlatformPlayer();
+    assertTrue(player.findPlatformPlayer(Object.class).isEmpty());
+    assertThrows(
+        IllegalStateException.class,
+        () -> player.requirePlatformPlayer(Object.class)
+    );
+  }
+
+  private static final class TestContainer implements PlayerContainer {
   }
 
   @Getter

@@ -9,6 +9,8 @@ import dev.vexsoft.core.cache.VexCacheOptions;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.DataContainerRegistry;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
+import dev.vexsoft.core.api.player.PlayerContainer;
+import dev.vexsoft.core.api.player.PlayerContainerFactory;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.ServiceOwner;
@@ -34,6 +36,20 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   private final Map<UUID, VexPlayer> players = new ConcurrentHashMap<>();
   private final Map<UUID, CompletableFuture<Void>> saveChains = new ConcurrentHashMap<>();
   private final Map<String, OwnerContainers> containersByOwner = new LinkedHashMap<>();
+  private final Map<Class<? extends PlayerContainer>, RegisteredContainer<?>> featureContainers =
+      new LinkedHashMap<>();
+  private volatile Map<Class<? extends PlayerContainer>, Integer> featureContainerSlotSnapshot =
+      Map.of();
+  private final ClassValue<Integer> featureContainerSlots = new ClassValue<>() {
+    @Override
+    protected Integer computeValue(final Class<?> type) {
+      if (!PlayerContainer.class.isAssignableFrom(type)) {
+        return -1;
+      }
+      return featureContainerSlotSnapshot.getOrDefault(type, -1);
+    }
+  };
+  private int nextFeatureContainerSlot;
   private final Object saveLock = new Object();
   private final PlayerDataStore store;
   private final VexAsyncCache<PlayerLoadRequest, VexPlayer> playerLoads;
@@ -101,16 +117,81 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   }
 
   @Override
+  public synchronized <T extends PlayerContainer> void registerContainer(
+      final ServiceOwner owner,
+      final Class<T> type,
+      final PlayerContainerFactory<? extends T> factory
+  ) {
+    Objects.requireNonNull(owner, "owner");
+    Class<T> checkedType = Objects.requireNonNull(type, "type");
+    PlayerContainerFactory<? extends T> checkedFactory = Objects.requireNonNull(
+        factory,
+        "factory"
+    );
+    if (featureContainers.containsKey(checkedType)) {
+      throw new IllegalStateException(
+          "Player feature container is already registered: " + checkedType.getName()
+      );
+    }
+    RegisteredContainer<T> registered = new RegisteredContainer<>(
+        owner,
+        checkedType,
+        checkedFactory,
+        nextFeatureContainerSlot++
+    );
+    featureContainers.put(checkedType, registered);
+    refreshFeatureContainerSlotSnapshot();
+    featureContainerSlots.remove(checkedType);
+    List<VexPlayer> installed = new ArrayList<>();
+    try {
+      for (VexPlayer player : players.values()) {
+        installContainer(player, registered);
+        installed.add(player);
+      }
+    } catch (RuntimeException exception) {
+      featureContainers.remove(checkedType, registered);
+      refreshFeatureContainerSlotSnapshot();
+      featureContainerSlots.remove(checkedType);
+      for (VexPlayer player : installed) {
+        player.removeContainer(registered.slot);
+      }
+      throw exception;
+    }
+  }
+
+  @Override
+  public synchronized void unregisterContainers(final ServiceOwner owner) {
+    Objects.requireNonNull(owner, "owner");
+    List<RegisteredContainer<?>> removed = featureContainers.values().stream()
+        .filter(container -> container.owner == owner)
+        .toList();
+    for (RegisteredContainer<?> container : removed) {
+      featureContainers.remove(container.type, container);
+    }
+    refreshFeatureContainerSlotSnapshot();
+    for (RegisteredContainer<?> container : removed) {
+      featureContainerSlots.remove(container.type);
+      for (VexPlayer player : players.values()) {
+        player.removeContainer(container.slot);
+      }
+    }
+  }
+
+  @Override
   public synchronized VexPlayer create(final UUID uniqueId, final String name) {
     Objects.requireNonNull(uniqueId, "uniqueId");
     Objects.requireNonNull(name, "name");
-    VexPlayer player = players.computeIfAbsent(uniqueId, ignored -> new VexPlayer(uniqueId, name));
+    VexPlayer player = players.computeIfAbsent(
+        uniqueId,
+        ignored -> new VexPlayer(uniqueId, name, this::findContainerSlot)
+    );
     player.setName(name);
     for (OwnerContainers owner : containersByOwner.values()) {
       for (DataContainerKey<?> key : owner.keys.values()) {
         installDefault(player, key, true);
       }
     }
+    installMissingContainers(player);
     return player;
   }
 
@@ -154,7 +235,11 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             .thenAccept(values -> readOwnerValues(entry.getValue(), values, loaded)))
         .toArray(CompletableFuture[]::new);
     return CompletableFuture.allOf(loads).thenApply(ignored -> {
-      VexPlayer player = new VexPlayer(request.getUniqueId(), request.getName());
+      VexPlayer player = new VexPlayer(
+          request.getUniqueId(),
+          request.getName(),
+          this::findContainerSlot
+      );
       for (OwnerContainers owner : owners.values()) {
         for (DataContainerKey<?> key : owner.keys.values()) {
           Object value = loaded.get(key);
@@ -165,8 +250,13 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
           }
         }
       }
+      installMissingContainers(player);
       VexPlayer previous = players.putIfAbsent(request.getUniqueId(), player);
-      return previous == null ? player : previous;
+      if (previous != null) {
+        player.closeContainers();
+        return previous;
+      }
+      return player;
     });
   }
 
@@ -177,7 +267,11 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
   @Override
   public Optional<VexPlayer> remove(final UUID uniqueId) {
-    return Optional.ofNullable(players.remove(Objects.requireNonNull(uniqueId, "uniqueId")));
+    VexPlayer removed = players.remove(Objects.requireNonNull(uniqueId, "uniqueId"));
+    if (removed != null) {
+      removed.closeContainers();
+    }
+    return Optional.ofNullable(removed);
   }
 
   @Override
@@ -187,7 +281,11 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
       return CompletableFuture.completedFuture(null);
     }
     CompletableFuture<Void> save = queueSave(player);
-    save.whenComplete((ignored, throwable) -> players.remove(uniqueId, player));
+    save.whenComplete((ignored, throwable) -> {
+      if (players.remove(uniqueId, player)) {
+        player.closeContainers();
+      }
+    });
     return save;
   }
 
@@ -300,6 +398,45 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     return normalized;
   }
 
+  private int findContainerSlot(final Class<? extends PlayerContainer> type) {
+    return featureContainerSlots.get(type);
+  }
+
+  private void refreshFeatureContainerSlotSnapshot() {
+    Map<Class<? extends PlayerContainer>, Integer> slots = new LinkedHashMap<>();
+    for (RegisteredContainer<?> container : featureContainers.values()) {
+      slots.put(container.type, container.slot);
+    }
+    featureContainerSlotSnapshot = Map.copyOf(slots);
+  }
+
+  private synchronized void installMissingContainers(final VexPlayer player) {
+    for (RegisteredContainer<?> container : featureContainers.values()) {
+      if (player.findContainer(container.type).isEmpty()) {
+        installContainerUnchecked(player, container);
+      }
+    }
+  }
+
+  private static <T extends PlayerContainer> void installContainer(
+      final VexPlayer player,
+      final RegisteredContainer<T> registered
+  ) {
+    T container = registered.type.cast(Objects.requireNonNull(
+        registered.factory.create(player),
+        "Player container factory returned null for " + registered.type.getName()
+    ));
+    player.installContainer(registered.slot, registered.type, container);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void installContainerUnchecked(
+      final VexPlayer player,
+      final RegisteredContainer<?> registered
+  ) {
+    installContainer(player, (RegisteredContainer<PlayerContainer>) registered);
+  }
+
   private static <T> void installDefault(
       final VexPlayer player,
       final DataContainerKey<T> key,
@@ -325,6 +462,26 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
     private OwnerContainers(final ServiceOwner owner) {
       this.owner = owner;
+    }
+  }
+
+  private static final class RegisteredContainer<T extends PlayerContainer> {
+
+    private final ServiceOwner owner;
+    private final Class<T> type;
+    private final PlayerContainerFactory<? extends T> factory;
+    private final int slot;
+
+    private RegisteredContainer(
+        final ServiceOwner owner,
+        final Class<T> type,
+        final PlayerContainerFactory<? extends T> factory,
+        final int slot
+    ) {
+      this.owner = owner;
+      this.type = type;
+      this.factory = factory;
+      this.slot = slot;
     }
   }
 

@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import dev.vexsoft.core.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.api.signal.SignalService;
 import dev.vexsoft.core.api.signal.core.PlayerDataLoadedSignal;
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import org.bukkit.event.EventHandler;
@@ -48,17 +49,18 @@ public final class VexPlayerLifecycleListener implements Listener {
 
   @EventHandler
   public void onPlayerJoin(final PlayerJoinEvent event) {
-    players.find(event.getPlayer().getUniqueId()).orElseThrow(() -> new IllegalStateException(
-        "VexPlayer was not loaded before join: " + event.getPlayer().getUniqueId()
-    ));
-    signals.publish(new PlayerDataLoadedSignal(
-        event.getPlayer().getUniqueId(),
-        event.getPlayer().getName()
-    ));
+    VexPlayer player = players.find(event.getPlayer().getUniqueId()).orElseThrow(
+        () -> new IllegalStateException(
+            "VexPlayer was not loaded before join: " + event.getPlayer().getUniqueId()
+        )
+    );
+    player.bindPlatformPlayer(event.getPlayer());
+    signals.publish(new PlayerDataLoadedSignal(player));
   }
 
   @EventHandler
   public void onPlayerQuit(final PlayerQuitEvent event) {
+    players.find(event.getPlayer().getUniqueId()).ifPresent(VexPlayer::unbindPlatformPlayer);
     players.saveAndRemove(event.getPlayer().getUniqueId()).exceptionally(throwable -> {
       logger.log(Level.SEVERE, "Unable to save VexPlayer " + event.getPlayer().getUniqueId(), throwable);
       return null;

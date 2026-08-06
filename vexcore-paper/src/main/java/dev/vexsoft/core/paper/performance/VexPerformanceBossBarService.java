@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.performance;
 
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationService;
+import dev.vexsoft.core.api.localization.LanguageContainer;
 import dev.vexsoft.core.api.player.PlayerService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
@@ -137,7 +138,7 @@ public final class VexPerformanceBossBarService implements
     ServerPerformanceSnapshot snapshot = performance.getSnapshot();
     PerformanceState state = snapshot.getState();
     LocalizedMessage title = localization.resolve(
-        vexPlayer,
+        vexPlayer.getContainer(LanguageContainer.class).getLanguage().getKey(),
         localizationKey(state),
         replacements(player, snapshot)
     );

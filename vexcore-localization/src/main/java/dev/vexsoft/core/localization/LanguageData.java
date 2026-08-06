@@ -5,10 +5,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** Persisted language selection kept separate from the player-bound feature container. */
 @Getter
 @Setter
 @NoArgsConstructor
-public final class LanguageContainer {
+final class LanguageData {
 
   private String language = LanguageKey.EN_EN.getValue();
 }

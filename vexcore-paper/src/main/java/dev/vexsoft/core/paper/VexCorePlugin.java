@@ -10,6 +10,8 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.api.messaging.MessagingService;
 import dev.vexsoft.core.api.player.DataService;
+import dev.vexsoft.core.api.player.PlayerContainerService;
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.paper.module.ModuleManager;
 import dev.vexsoft.core.paper.module.PlatformModule;
 import dev.vexsoft.core.paper.module.PlayerModule;
@@ -38,6 +40,7 @@ import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;
 import dev.vexsoft.core.configuration.VexConfigurationService;
 import dev.vexsoft.core.data.VexDataService;
+import dev.vexsoft.core.data.VexPlayerContainerService;
 import dev.vexsoft.core.localization.VexCorePlayerData;
 import dev.vexsoft.core.localization.VexLocalizationService;
 import dev.vexsoft.core.localization.VexThemeColorService;
@@ -56,6 +59,8 @@ import dev.vexsoft.core.paper.messaging.VexPaperMessageTransportService;
 import dev.vexsoft.core.paper.messaging.ProxyPingService;
 import dev.vexsoft.core.paper.messaging.VexProxyPingResponseHandler;
 import dev.vexsoft.core.paper.messaging.VexProxyPingService;
+import dev.vexsoft.core.paper.player.PaperPlayerService;
+import dev.vexsoft.core.paper.player.VexPaperPlayerService;
 import dev.vexsoft.core.paper.performance.PerformanceBossBarService;
 import dev.vexsoft.core.paper.performance.ServerPerformanceService;
 import dev.vexsoft.core.paper.performance.VexPerformanceBossBarListener;
@@ -117,11 +122,13 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     );
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
+    coreServices.register(DataService.class, VexDataService.class);
+    coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
+    coreServices.registerQueuedServices();
     modules.enable(new LocalizationModule());
     modules.enable(new PacketModule(this));
     modules.enable(new DialogModule());
     modules.enable(new ItemModule());
-    coreServices.register(DataService.class, VexDataService.class);
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(MessagingService.class, VexMessagingService.class);
@@ -138,6 +145,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
     coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
+    coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     coreServices.register(
@@ -171,10 +179,10 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     coreServices.require(ListenerService.class).register(VexPlayerLifecycleListener.class);
-    getServer().getOnlinePlayers().forEach(player -> players.create(
-        player.getUniqueId(),
-        player.getName()
-    ));
+    getServer().getOnlinePlayers().forEach(player -> {
+      VexPlayer vexPlayer = players.create(player.getUniqueId(), player.getName());
+      vexPlayer.bindPlatformPlayer(player);
+    });
     playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
         this,
         task -> players.saveAll().exceptionally(throwable -> {

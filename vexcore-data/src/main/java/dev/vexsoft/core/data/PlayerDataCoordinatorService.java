@@ -2,6 +2,8 @@ package dev.vexsoft.core.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
+import dev.vexsoft.core.api.player.PlayerContainer;
+import dev.vexsoft.core.api.player.PlayerContainerFactory;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.ServiceOwner;
 import dev.vexsoft.core.api.service.VexService;
@@ -17,6 +19,16 @@ public interface PlayerDataCoordinatorService extends VexService {
 
   /** Registers every container declared by a plugin data definition */
   void register(ServiceOwner owner, PlayerDataDefinition definition);
+
+  /** Registers a player feature container owned by a plugin. */
+  <T extends PlayerContainer> void registerContainer(
+      ServiceOwner owner,
+      Class<T> type,
+      PlayerContainerFactory<? extends T> factory
+  );
+
+  /** Removes and closes every player feature container registered by an owner. */
+  void unregisterContainers(ServiceOwner owner);
 
   /** Creates or refreshes a cached player with every registered container */
   VexPlayer create(UUID uniqueId, String name);

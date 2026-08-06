@@ -2,6 +2,7 @@ package dev.vexsoft.core.api.signal.core;
 
 import dev.vexsoft.core.api.signal.SignalAttributes;
 import dev.vexsoft.core.api.signal.VexSignal;
+import dev.vexsoft.core.api.player.VexPlayer;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,20 +21,17 @@ public class PlayerDataLoadedSignal implements VexSignal {
   /** Stable key used for key-based subscriptions to this signal. */
   public static final Key KEY = Key.key("vexcore", "player_data_loaded");
 
-  UUID playerId;
-  String playerName;
+  VexPlayer player;
   SignalAttributes attributes;
 
   /**
    * Creates a player-data-loaded signal.
    *
-   * @param playerId unique identifier of the loaded player
-   * @param playerName current name of the loaded player
+   * @param player fully loaded player session
    */
-  public PlayerDataLoadedSignal(final UUID playerId, final String playerName) {
-    this.playerId = Objects.requireNonNull(playerId, "playerId");
-    this.playerName = requireName(playerName);
-    attributes = SignalAttributes.builder().putString("player_name", this.playerName).build();
+  public PlayerDataLoadedSignal(final VexPlayer player) {
+    this.player = Objects.requireNonNull(player, "player");
+    attributes = SignalAttributes.builder().putString("player_name", player.getName()).build();
   }
 
   @Override
@@ -43,7 +41,7 @@ public class PlayerDataLoadedSignal implements VexSignal {
 
   @Override
   public Optional<UUID> getSubject() {
-    return Optional.of(playerId);
+    return Optional.of(player.getUniqueId());
   }
 
   @Override
@@ -56,11 +54,4 @@ public class PlayerDataLoadedSignal implements VexSignal {
     return attributes;
   }
 
-  private static String requireName(final String playerName) {
-    String checkedName = Objects.requireNonNull(playerName, "playerName").trim();
-    if (checkedName.isEmpty()) {
-      throw new IllegalArgumentException("playerName must not be empty");
-    }
-    return checkedName;
-  }
 }

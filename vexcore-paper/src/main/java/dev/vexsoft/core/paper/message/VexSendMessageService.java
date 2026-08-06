@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.message;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizationService;
+import dev.vexsoft.core.api.localization.LanguageContainer;
+import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.player.PlayerService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.Dependencies;
@@ -60,9 +62,10 @@ public final class VexSendMessageService implements SendMessageService {
   ) {
     Objects.requireNonNull(player, "player");
     VexPlayer vexPlayer = players.require(player.getUniqueId());
-    LocalizedMessage message = localization.resolve(vexPlayer, key, replacements);
+    LanguageKey language = vexPlayer.getContainer(LanguageContainer.class).getLanguage().getKey();
+    LocalizedMessage message = localization.resolve(language, key, replacements);
     Component prefix = withPrefix
-        ? localization.resolve(vexPlayer, prefixKey).getLines().getFirst()
+        ? localization.resolve(language, prefixKey, Map.of()).getLines().getFirst()
         : Component.empty();
     for (Component line : message.getLines()) {
       player.sendMessage(withPrefix ? prefix.append(line) : line);

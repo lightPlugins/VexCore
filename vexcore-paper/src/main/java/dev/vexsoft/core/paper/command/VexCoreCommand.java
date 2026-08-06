@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.command;
 import dev.vexsoft.core.api.localization.Language;
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LanguageService;
+import dev.vexsoft.core.api.localization.LanguageContainer;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationService;
 import dev.vexsoft.core.api.messaging.DeliveryResult;
@@ -107,7 +108,7 @@ public final class VexCoreCommand {
     }
 
     VexPlayer vexPlayer = players.require(player.getUniqueId());
-    languages.setLanguage(vexPlayer, selected.get().getKey());
+    vexPlayer.getContainer(LanguageContainer.class).setLanguage(selected.get().getKey());
     messages.send(
         player,
         "commands.vexcore.language.set",

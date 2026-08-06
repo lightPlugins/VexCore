@@ -4,7 +4,8 @@ import dev.vexsoft.core.api.localization.Language;
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LanguageService;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
-import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.localization.LanguageContainer;
+import dev.vexsoft.core.api.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.Dependencies;
 import dev.vexsoft.core.api.service.VexServiceRegistry;
 import java.util.Collection;
@@ -15,7 +16,8 @@ import net.kyori.adventure.text.Component;
 
 @Dependencies({
     LocalizationRegistryService.class,
-    LanguageChangeDispatcherService.class
+    LanguageChangeDispatcherService.class,
+    PlayerContainerService.class
 })
 public final class VexLanguageService implements LanguageService {
 
@@ -28,12 +30,10 @@ public final class VexLanguageService implements LanguageService {
     Objects.requireNonNull(services, "services");
     localizations = services.require(LocalizationRegistryService.class);
     changes = services.require(LanguageChangeDispatcherService.class);
-  }
-
-  @Override
-  public Language getLanguage(final VexPlayer player) {
-    String selected = player.read(VexCorePlayerData.LANGUAGE, LanguageContainer::getLanguage);
-    return findLanguage(selected).orElseGet(() -> requireLanguage(LanguageKey.EN_EN));
+    services.require(PlayerContainerService.class).register(
+        LanguageContainer.class,
+        player -> new VexLanguageContainer(player, this, changes)
+    );
   }
 
   @Override
@@ -55,23 +55,6 @@ public final class VexLanguageService implements LanguageService {
         .sorted()
         .map(this::language)
         .toList();
-  }
-
-  @Override
-  public void setLanguage(
-      final VexPlayer player,
-      final LanguageKey language
-  ) {
-    Objects.requireNonNull(player, "player");
-    Language selected = requireLanguage(Objects.requireNonNull(language, "language"));
-    Language previous = getLanguage(player);
-    if (previous.getKey().equals(selected.getKey())) {
-      return;
-    }
-    player.update(VexCorePlayerData.LANGUAGE, container -> {
-      container.setLanguage(selected.getKey().getValue());
-    });
-    changes.dispatch(player, previous, selected);
   }
 
   @Override
