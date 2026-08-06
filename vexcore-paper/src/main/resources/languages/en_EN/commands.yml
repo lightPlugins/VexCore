@@ -1,17 +1,17 @@
 vexcore:
   reload:
-    success: "<tailwind:zinc>VexCore was reloaded <tailwind:lime>successfully"
+    success: "<tailwind:zinc:4>VexCore was reloaded <tailwind:lime>successfully"
     failed: "<tailwind:red>VexCore could not be reloaded, <tailwind:red:7>check the console for details"
   language:
-    set: "<tailwind:zinc>Your language was changed to <tailwind:sky>{language}"
+    set: "<tailwind:zinc:4>Your language was changed to <tailwind:sky>{language}"
     not-found: "<tailwind:red>The language <tailwind:red:7>{language}<tailwind:red> is not available"
   debug:
     performance:
-      enabled: "<tailwind:zinc>The live performance display is now <tailwind:lime>enabled"
-      disabled: "<tailwind:zinc>The live performance display is now <tailwind:red>disabled"
+      enabled: "<tailwind:zinc:4>The live performance display is now <tailwind:lime>enabled"
+      disabled: "<tailwind:zinc:4>The live performance display is now <tailwind:red>disabled"
     proxy:
       ping:
-        started: "<tailwind:zinc>Sending a ping to the <tailwind:sky>Velocity proxy<tailwind:zinc>..."
-        success: "<tailwind:zinc>Velocity responded in <tailwind:lime>{latency} ms"
+        started: "<tailwind:zinc:4>Sending a ping to the <tailwind:sky>Velocity proxy<tailwind:zinc:4>..."
+        success: "<tailwind:zinc:4>Velocity responded in <tailwind:lime>{latency} ms"
         timeout: "<tailwind:red>The Velocity proxy did not respond within <tailwind:red:7>5 seconds"
         failed: "<tailwind:red>Unable to send the proxy ping: <tailwind:red:7>{reason}"

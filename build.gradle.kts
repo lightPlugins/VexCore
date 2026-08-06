@@ -91,6 +91,7 @@ val documentedApiProjects = setOf(
     ":vexcore-items:common",
     ":vexcore-packets:common",
     ":vexcore-paper-api",
+    ":vexcore-signal",
     ":vexcore-velocity-api",
 )
 

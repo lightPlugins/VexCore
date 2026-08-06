@@ -6,6 +6,7 @@ include(
     "vexcore-configuration",
     "vexcore-command",
     "vexcore-cache",
+    "vexcore-signal",
     "vexcore-data",
     "vexcore-localization",
     "vexcore-messaging",

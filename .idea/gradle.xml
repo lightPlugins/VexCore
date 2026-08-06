@@ -28,6 +28,7 @@
             <option value="$PROJECT_DIR$/vexcore-paper" />
             <option value="$PROJECT_DIR$/vexcore-paper-api" />
             <option value="$PROJECT_DIR$/vexcore-service-registry" />
+            <option value="$PROJECT_DIR$/vexcore-signal" />
             <option value="$PROJECT_DIR$/vexcore-velocity" />
             <option value="$PROJECT_DIR$/vexcore-velocity-api" />
           </set>

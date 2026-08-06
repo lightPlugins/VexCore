@@ -8,7 +8,7 @@
 #   <tailwind:sky:7>Text</tailwind:sky:7> -> sky shade 7
 #
 # VexSoft plugins mainly use these colors to keep all messages consistent:
-#   zinc   - normal text
+#   zinc:4 - normal chat text
 #   sky    - primary color, important values and neutral highlights
 #   lime   - successful actions and positive states
 #   amber  - warnings and states that require attention

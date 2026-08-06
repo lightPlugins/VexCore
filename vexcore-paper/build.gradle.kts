@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":vexcore-configuration"))
     implementation(project(":vexcore-command"))
     implementation(project(":vexcore-cache"))
+    implementation(project(":vexcore-signal"))
     implementation(project(":vexcore-data"))
     implementation(project(":vexcore-localization"))
     implementation(project(":vexcore-messaging"))
