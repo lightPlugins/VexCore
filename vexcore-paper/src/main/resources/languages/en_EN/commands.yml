@@ -6,6 +6,9 @@ vexcore:
     set: "<green>Your language was changed to <yellow>{language}</yellow>"
     not-found: "<red>The language <yellow>{language}</yellow> is not available"
   debug:
+    performance:
+      enabled: "<green>The live performance display is now enabled"
+      disabled: "<yellow>The live performance display is now disabled"
     proxy:
       ping:
         started: "<yellow>Sending a ping to the Velocity proxy..."

@@ -16,6 +16,7 @@ import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.messaging.debug.ProxyDebugMessages;
 import dev.vexsoft.core.messaging.debug.ProxyPingRequest;
 import dev.vexsoft.core.paper.messaging.ProxyPingService;
+import dev.vexsoft.core.paper.performance.PerformanceBossBarService;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Objects;
@@ -37,7 +38,8 @@ import org.bukkit.entity.Player;
     PlayerService.class,
     SendMessageService.class,
     MessagingService.class,
-    ProxyPingService.class
+    ProxyPingService.class,
+    PerformanceBossBarService.class
 })
 public final class VexCoreCommand {
 
@@ -47,6 +49,7 @@ public final class VexCoreCommand {
   private final SendMessageService messages;
   private final MessagingService messaging;
   private final ProxyPingService proxyPings;
+  private final PerformanceBossBarService performanceBossBars;
   private final Logger logger;
 
   public VexCoreCommand(final VexServiceRegistry services) {
@@ -57,6 +60,7 @@ public final class VexCoreCommand {
     messages = services.require(SendMessageService.class);
     messaging = services.require(MessagingService.class);
     proxyPings = services.require(ProxyPingService.class);
+    performanceBossBars = services.require(PerformanceBossBarService.class);
     logger = Logger.getLogger("VexCore");
   }
 
@@ -133,6 +137,24 @@ public final class VexCoreCommand {
         Map.of("reason", result.name().toLowerCase(Locale.ROOT))
     );
     return 0;
+  }
+
+  @Command(
+      value = "debug performance toggle",
+      permission = "vexcore.command.debug.performance",
+      playerOnly = true
+  )
+  public int togglePerformance(final VexCommandSource source) {
+    Player player = (Player) source.getSender();
+    boolean visible = performanceBossBars.toggle(player);
+    messages.send(
+        player,
+        visible
+            ? "commands.vexcore.debug.performance.enabled"
+            : "commands.vexcore.debug.performance.disabled",
+        true
+    );
+    return 1;
   }
 
   private void send(

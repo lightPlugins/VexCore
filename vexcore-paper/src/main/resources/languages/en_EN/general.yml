@@ -1,1 +1,7 @@
 prefix: "<dark_gray>[<gradient:#8A2BE2:#00BFFF>VexCore</gradient>]</dark_gray> "
+performance:
+  bossbar:
+    good: "<gray>TPS: <green>{tps}</green> <dark_gray>| <gray>MSPT: <green>{mspt} ms</green> <dark_gray>| <gray>Ping: <aqua>{ping} ms</aqua>"
+    moderate: "<gray>TPS: <yellow>{tps}</yellow> <dark_gray>| <gray>MSPT: <yellow>{mspt} ms</yellow> <dark_gray>| <gray>Ping: <aqua>{ping} ms</aqua>"
+    critical: "<gray>TPS: <red>{tps}</red> <dark_gray>| <gray>MSPT: <red>{mspt} ms</red> <dark_gray>| <gray>Ping: <aqua>{ping} ms</aqua>"
+    unavailable: "<gray>TPS: <dark_gray>{tps}</dark_gray> <dark_gray>| <gray>MSPT: <dark_gray>{mspt}</dark_gray> <dark_gray>| <gray>Ping: <aqua>{ping} ms</aqua>"

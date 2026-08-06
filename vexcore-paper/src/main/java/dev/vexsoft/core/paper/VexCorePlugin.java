@@ -47,6 +47,11 @@ import dev.vexsoft.core.paper.messaging.VexPaperMessageTransportService;
 import dev.vexsoft.core.paper.messaging.ProxyPingService;
 import dev.vexsoft.core.paper.messaging.VexProxyPingResponseHandler;
 import dev.vexsoft.core.paper.messaging.VexProxyPingService;
+import dev.vexsoft.core.paper.performance.PerformanceBossBarService;
+import dev.vexsoft.core.paper.performance.ServerPerformanceService;
+import dev.vexsoft.core.paper.performance.VexPerformanceBossBarListener;
+import dev.vexsoft.core.paper.performance.VexPerformanceBossBarService;
+import dev.vexsoft.core.paper.performance.VexServerPerformanceService;
 import dev.vexsoft.core.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.packets.service.InteractableHologramService;
@@ -108,6 +113,14 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(MessagingService.class, VexMessagingService.class);
     coreServices.register(ProxyPingService.class, VexProxyPingService.class);
+    coreServices.register(
+        ServerPerformanceService.class,
+        VexServerPerformanceService.class
+    );
+    coreServices.register(
+        PerformanceBossBarService.class,
+        VexPerformanceBossBarService.class
+    );
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(ItemService.class, VexItemService.class);
@@ -139,6 +152,9 @@ public final class VexCorePlugin extends JavaPlugin implements LocalizationOwner
     }
     modules.startAll();
     coreServices.require(MessageTransportService.class).start();
+    coreServices.require(ServerPerformanceService.class).start();
+    coreServices.require(PerformanceBossBarService.class).start();
+    coreServices.require(ListenerService.class).register(VexPerformanceBossBarListener.class);
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     getServer().getPluginManager().registerEvents(
