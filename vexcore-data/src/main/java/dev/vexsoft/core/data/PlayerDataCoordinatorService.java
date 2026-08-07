@@ -50,4 +50,25 @@ public interface PlayerDataCoordinatorService extends VexService {
 
   /** Returns all container keys registered by an owner */
   Collection<DataContainerKey<?>> getKeys(ServiceOwner owner);
+
+  /** Returns the user-facing names of every registered persistent container. */
+  Collection<String> getContainerIds();
+
+  /** Returns the number of registered player-facing feature containers. */
+  int getFeatureContainerCount();
+
+  /** Resets one registered container for one player. */
+  CompletableFuture<Void> resetPlayerContainer(UUID uniqueId, String containerId);
+
+  /** Resets every registered container for one player. */
+  CompletableFuture<Void> resetPlayerContainers(UUID uniqueId);
+
+  /** Resets one registered container for all stored and loaded players. */
+  CompletableFuture<Void> resetGlobalContainer(String containerId);
+
+  /** Resets every registered container for all stored and loaded players. */
+  CompletableFuture<Void> resetGlobalContainers();
+
+  /** Resolves a loaded or stored player identity from a name or UUID. */
+  CompletableFuture<Optional<UUID>> resolveUniqueId(String player);
 }

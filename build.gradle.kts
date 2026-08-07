@@ -87,6 +87,7 @@ subprojects {
 val documentedApiProjects = setOf(
     ":vexcore-api",
     ":vexcore-dialog",
+    ":vexcore-gameplay-api",
     ":vexcore-inventory",
     ":vexcore-items:common",
     ":vexcore-packets:common",

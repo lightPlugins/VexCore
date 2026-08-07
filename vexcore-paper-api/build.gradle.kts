@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api(project(":vexcore-api"))
+    api(project(":vexcore-gameplay-api"))
     api(project(":vexcore-dialog"))
     api(project(":vexcore-inventory"))
     api(project(":vexcore-items:common"))

@@ -36,6 +36,26 @@ public final class PlayerModule implements VexModule, ConfigurationOwner {
   }
 
   @Override
+  public void start() {
+    PlayerDataStoreService storage = services.require(PlayerDataStoreService.class);
+    String storageType = storage.getStorageType();
+    if (storageType.equals("memory")) {
+      plugin.getLogger().warning(
+          "Player storage is using memory mode; data will not survive a server restart"
+      );
+    } else {
+      String displayName = storageType.equals("postgresql") ? "PostgreSQL" : storageType;
+      plugin.getLogger().info("Player storage initialized using " + displayName);
+    }
+    PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
+    plugin.getLogger().info(
+        "Player data initialized with " + players.getContainerIds().size()
+            + " persistent containers and " + players.getFeatureContainerCount()
+            + " feature containers"
+    );
+  }
+
+  @Override
   public void disable() {
     if (services != null) {
       services.unregisterOwnedServices();

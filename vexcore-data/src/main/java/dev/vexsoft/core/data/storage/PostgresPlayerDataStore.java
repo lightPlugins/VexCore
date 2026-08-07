@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -227,6 +228,70 @@ public final class PostgresPlayerDataStore implements PlayerDataStore {
   }
 
   @Override
+  public CompletableFuture<Integer> reset(
+      final String owner,
+      final UUID uniqueId,
+      final Collection<String> containers
+  ) {
+    Objects.requireNonNull(uniqueId, "uniqueId");
+    if (containers.isEmpty()) {
+      return CompletableFuture.completedFuture(0);
+    }
+    String sql = "UPDATE " + table(owner) + " SET " + resetAssignments(containers)
+        + " WHERE player_id = ?";
+    return CompletableFuture.supplyAsync(() -> {
+      try (Connection connection = dataSource.getConnection();
+           PreparedStatement statement = connection.prepareStatement(sql)) {
+        statement.setObject(1, uniqueId);
+        return statement.executeUpdate();
+      } catch (SQLException exception) {
+        throw new IllegalStateException("Unable to reset player data for " + uniqueId, exception);
+      }
+    }, executor);
+  }
+
+  @Override
+  public CompletableFuture<Integer> resetAll(
+      final String owner,
+      final Collection<String> containers
+  ) {
+    if (containers.isEmpty()) {
+      return CompletableFuture.completedFuture(0);
+    }
+    String sql = "UPDATE " + table(owner) + " SET " + resetAssignments(containers);
+    return CompletableFuture.supplyAsync(() -> {
+      try (Connection connection = dataSource.getConnection();
+           PreparedStatement statement = connection.prepareStatement(sql)) {
+        return statement.executeUpdate();
+      } catch (SQLException exception) {
+        throw new IllegalStateException("Unable to reset player data table " + table(owner), exception);
+      }
+    }, executor);
+  }
+
+  @Override
+  public CompletableFuture<Optional<UUID>> findUniqueId(
+      final String owner,
+      final String playerName
+  ) {
+    String sql = "SELECT player_id FROM " + table(owner)
+        + " WHERE LOWER(player_name) = LOWER(?) LIMIT 1";
+    return CompletableFuture.supplyAsync(() -> {
+      try (Connection connection = dataSource.getConnection();
+           PreparedStatement statement = connection.prepareStatement(sql)) {
+        statement.setString(1, playerName);
+        try (ResultSet result = statement.executeQuery()) {
+          return result.next()
+              ? Optional.of(result.getObject("player_id", UUID.class))
+              : Optional.empty();
+        }
+      } catch (SQLException exception) {
+        throw new IllegalStateException("Unable to resolve stored player " + playerName, exception);
+      }
+    }, executor);
+  }
+
+  @Override
   public void close() {
     executor.close();
     dataSource.close();
@@ -241,5 +306,12 @@ public final class PostgresPlayerDataStore implements PlayerDataStore {
       throw new IllegalArgumentException("Unsafe SQL identifier: " + value);
     }
     return '"' + value + '"';
+  }
+
+  private static String resetAssignments(final Collection<String> containers) {
+    return containers.stream()
+        .map(container -> column(container) + " = NULL")
+        .reduce((left, right) -> left + ", " + right)
+        .orElseThrow();
   }
 }

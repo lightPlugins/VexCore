@@ -15,7 +15,9 @@ import dev.vexsoft.core.cache.CacheService;
 import dev.vexsoft.core.cache.VexCacheService;
 import dev.vexsoft.core.data.storage.PlayerDataStore;
 import dev.vexsoft.core.data.storage.PlayerDataStoreService;
+import dev.vexsoft.core.data.storage.MemoryPlayerDataStore;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,6 +73,31 @@ public final class VexPlayerDataCoordinatorServiceTest {
 
     assertTrue(container.closed);
     assertTrue(player.findContainer(TestContainer.class).isEmpty());
+  }
+
+  @Test
+  public void resetsLoadedAndOfflineContainersThroughStableContainerIds() {
+    MemoryPlayerDataStore store = new MemoryPlayerDataStore();
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.register(services.getOwner(), registry -> registry.register(PROFILE));
+    UUID loadedId = UUID.randomUUID();
+    UUID offlineId = UUID.randomUUID();
+    store.save("vexcoretest", loadedId, "Alex", Map.of("profile", "\"custom\"")).join();
+    store.save("vexcoretest", offlineId, "Steve", Map.of("profile", "\"offline\"")).join();
+    VexPlayer loaded = coordinator.load(loadedId, "Alex").join();
+
+    coordinator.resetPlayerContainer(loadedId, "profile").join();
+    assertEquals("default", loaded.require(PROFILE));
+    assertEquals("\"default\"", store.load(
+        "vexcoretest",
+        loadedId,
+        List.of(PROFILE)
+    ).join().get("profile"));
+
+    coordinator.resetGlobalContainer("profile").join();
+    assertTrue(store.load("vexcoretest", offlineId, List.of(PROFILE)).join().isEmpty());
+    assertEquals(offlineId, coordinator.resolveUniqueId("Steve").join().orElseThrow());
   }
 
   private static final class TestContainer implements PlayerContainer {

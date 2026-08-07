@@ -9,4 +9,9 @@ public interface PlayerDataStoreService extends VexService {
 
   /** Returns the configured player data store */
   PlayerDataStore getStore();
+
+  /** Returns the configured storage backend name for diagnostics. */
+  default String getStorageType() {
+    return getStore().getClass().getSimpleName();
+  }
 }

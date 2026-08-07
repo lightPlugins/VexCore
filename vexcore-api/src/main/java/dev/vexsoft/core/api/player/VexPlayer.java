@@ -257,6 +257,18 @@ public final class VexPlayer {
     stateUnchecked(key).markClean(revision);
   }
 
+  /** Replaces one persistent value with a fresh default and informs feature containers. */
+  @ApiStatus.Internal
+  public void reset(final DataContainerKey<?> key) {
+    DataContainerKey<?> checkedKey = Objects.requireNonNull(key, "key");
+    resetUnchecked(checkedKey);
+    for (PlayerContainer container : featureContainers) {
+      if (container != null) {
+        container.onDataReset(checkedKey);
+      }
+    }
+  }
+
   private <T> ContainerState<T> state(final DataContainerKey<T> key) {
     return castState(key, stateUnchecked(key));
   }
@@ -270,6 +282,11 @@ public final class VexPlayer {
   }
 
   @SuppressWarnings("unchecked")
+  private <T> void resetUnchecked(final DataContainerKey<T> key) {
+    state(key).reset(key.createDefaultValue());
+  }
+
+  @SuppressWarnings("unchecked")
   private <T> ContainerState<T> castState(
       final DataContainerKey<T> key,
       final ContainerState<?> state
@@ -280,7 +297,7 @@ public final class VexPlayer {
 
   private static final class ContainerState<T> {
 
-    private final T value;
+    private T value;
     private boolean dirty;
     private long revision;
 
@@ -316,6 +333,12 @@ public final class VexPlayer {
       if (revision == savedRevision) {
         dirty = false;
       }
+    }
+
+    private synchronized void reset(final T resetValue) {
+      value = Objects.requireNonNull(resetValue, "resetValue");
+      dirty = true;
+      revision++;
     }
   }
 

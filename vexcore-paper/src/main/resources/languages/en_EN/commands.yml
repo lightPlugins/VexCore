@@ -5,6 +5,17 @@ vexcore:
   language:
     set: "<tailwind:zinc:4>Your language was changed to <tailwind:sky>{language}"
     not-found: "<tailwind:red>The language <tailwind:red:7>{language}<tailwind:red> is not available"
+  reset:
+    player-container:
+      success: "<tailwind:zinc:4>Reset <tailwind:sky>{container}<tailwind:zinc:4> for <tailwind:sky>{player}"
+    player-all:
+      success: "<tailwind:zinc:4>Reset all containers for <tailwind:sky>{player}"
+    global-container:
+      success: "<tailwind:zinc:4>Reset <tailwind:sky>{container}<tailwind:zinc:4> for every player"
+    global-all:
+      success: "<tailwind:zinc:4>Reset all containers for every player"
+    player-not-found: "<tailwind:red>No stored player was found for <tailwind:red:7>{player}"
+    failed: "<tailwind:red>The reset failed, <tailwind:red:7>check the console for details"
   debug:
     performance:
       enabled: "<tailwind:zinc:4>The live performance display is now <tailwind:lime>enabled"

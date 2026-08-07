@@ -10,6 +10,8 @@ include(
     "vexcore-data",
     "vexcore-localization",
     "vexcore-messaging",
+    "vexcore-gameplay-api",
+    "vexcore-gameplay",
     "vexcore-inventory",
     "vexcore-dialog",
     "vexcore-items:common",

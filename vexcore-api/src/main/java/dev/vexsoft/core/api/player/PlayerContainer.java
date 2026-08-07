@@ -8,6 +8,10 @@ package dev.vexsoft.core.api.player;
  */
 public interface PlayerContainer extends AutoCloseable {
 
+  /** Reacts after one persistent data value was replaced with a fresh default. */
+  default void onDataReset(final DataContainerKey<?> key) {
+  }
+
   /** Releases resources owned by this player's container. */
   @Override
   default void close() {

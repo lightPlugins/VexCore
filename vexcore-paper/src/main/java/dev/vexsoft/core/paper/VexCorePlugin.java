@@ -12,10 +12,10 @@ import dev.vexsoft.core.api.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.messaging.MessagingService;
 import dev.vexsoft.core.api.player.DataService;
 import dev.vexsoft.core.api.player.PlayerContainerService;
-import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.paper.module.ModuleManager;
 import dev.vexsoft.core.paper.module.PlatformModule;
 import dev.vexsoft.core.paper.module.PlayerModule;
+import dev.vexsoft.core.paper.module.GameplayModule;
 import dev.vexsoft.core.paper.module.LocalizationModule;
 import dev.vexsoft.core.paper.module.PacketModule;
 import dev.vexsoft.core.paper.module.DialogModule;
@@ -54,6 +54,9 @@ import dev.vexsoft.core.messaging.MessageTransportService;
 import dev.vexsoft.core.messaging.VexMessageCodecService;
 import dev.vexsoft.core.messaging.VexMessagingService;
 import dev.vexsoft.core.paper.command.VexCoreCommand;
+import dev.vexsoft.core.paper.command.VexCoreDebugCommand;
+import dev.vexsoft.core.paper.command.VexCoreLanguageCommand;
+import dev.vexsoft.core.paper.command.VexCoreResetCommand;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
 import dev.vexsoft.core.paper.message.SendMessageService;
 import dev.vexsoft.core.paper.message.VexSendMessageService;
@@ -102,9 +105,11 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
   private VexLogger logger;
   private ScheduledTask playerAutosaveTask;
   private boolean initialized;
+  private long startupNanos;
 
   @Override
   public void onLoad() {
+    long loadStartedAt = System.nanoTime();
     services = new DefaultServiceRegistry();
     getServer().getServicesManager().register(ServiceRegistry.class, services, this, ServicePriority.Normal);
     coreServices = services.scoped(this);
@@ -128,9 +133,10 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
     coreServices.registerQueuedServices();
     modules.enable(new LocalizationModule());
+    modules.enable(new GameplayModule());
     modules.enable(new PacketModule(this));
     modules.enable(new DialogModule());
-    modules.enable(new ItemModule());
+    modules.enable(new ItemModule(this));
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
     coreServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
@@ -164,11 +170,16 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
+    coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
+    coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
+    coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
     initialized = true;
+    startupNanos = System.nanoTime() - loadStartedAt;
   }
 
   @Override
   public void onEnable() {
+    long enableStartedAt = System.nanoTime();
     if (!initialized) {
       getLogger().severe("VexCore cannot be enabled because its loading phase failed");
       getServer().getPluginManager().disablePlugin(this);
@@ -182,10 +193,6 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     coreServices.require(ListenerService.class).register(VexPlayerLifecycleListener.class);
-    getServer().getOnlinePlayers().forEach(player -> {
-      VexPlayer vexPlayer = players.create(player.getUniqueId(), player.getName());
-      vexPlayer.bindPlatformPlayer(player);
-    });
     playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
         this,
         task -> players.saveAll().exceptionally(throwable -> {
@@ -196,7 +203,12 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         5,
         TimeUnit.MINUTES
     );
-    getLogger().info("VexCore successfully enabled on " + platform.getPlatform());
+    long startupMillis = TimeUnit.NANOSECONDS.toMillis(
+        startupNanos + System.nanoTime() - enableStartedAt
+    );
+    getLogger().info(
+        "VexCore successfully enabled on " + platform.getPlatform() + " in " + startupMillis + " ms"
+    );
   }
 
   @Override

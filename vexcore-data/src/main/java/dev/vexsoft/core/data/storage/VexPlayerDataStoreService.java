@@ -14,13 +14,15 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
 
   @Getter
   private final PlayerDataStore store;
+  @Getter
+  private final String storageType;
 
   public VexPlayerDataStoreService(final VexServiceRegistry services) {
     VexConfiguration configuration = Objects.requireNonNull(services, "services")
         .require(ConfigurationService.class)
         .load(Path.of("database.yml"), "database.yml");
-    String type = configuration.getString("storage", "postgresql").toLowerCase(Locale.ROOT);
-    store = switch (type) {
+    storageType = configuration.getString("storage", "postgresql").toLowerCase(Locale.ROOT);
+    store = switch (storageType) {
       case "memory" -> new MemoryPlayerDataStore();
       case "postgresql" -> new PostgresPlayerDataStore(
           configuration.getString("postgresql.jdbc-url", "jdbc:postgresql://localhost:5432/vexcore"),
@@ -30,7 +32,9 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
           configuration.getBoolean("postgresql.auto-create-database", true),
           configuration.getString("postgresql.maintenance-database", "postgres")
       );
-      default -> throw new IllegalArgumentException("Unsupported player data storage: " + type);
+      default -> throw new IllegalArgumentException(
+          "Unsupported player data storage: " + storageType
+      );
     };
   }
 

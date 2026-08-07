@@ -309,6 +309,164 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     return List.copyOf(ownerContainers.keys.values());
   }
 
+  @Override
+  public synchronized Collection<String> getContainerIds() {
+    return containersByOwner.values().stream()
+        .flatMap(owner -> owner.keys.keySet().stream())
+        .distinct()
+        .sorted()
+        .toList();
+  }
+
+  @Override
+  public synchronized int getFeatureContainerCount() {
+    return featureContainers.size();
+  }
+
+  @Override
+  public CompletableFuture<Void> resetPlayerContainer(
+      final UUID uniqueId,
+      final String containerId
+  ) {
+    UUID checkedUniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
+    ContainerSelection selection = requireContainer(containerId);
+    VexPlayer loaded = players.get(checkedUniqueId);
+    if (loaded != null) {
+      loaded.reset(selection.key);
+    }
+    CompletableFuture<?> reset = store.reset(
+        selection.owner,
+        checkedUniqueId,
+        List.of(selection.key.getName())
+    );
+    return loaded == null
+        ? reset.thenApply(ignored -> null)
+        : CompletableFuture.allOf(reset, queueSave(loaded));
+  }
+
+  @Override
+  public CompletableFuture<Void> resetPlayerContainers(final UUID uniqueId) {
+    UUID checkedUniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
+    Map<String, OwnerContainers> owners = ownerSnapshot();
+    VexPlayer loaded = players.get(checkedUniqueId);
+    if (loaded != null) {
+      resetPlayer(loaded, owners);
+    }
+    CompletableFuture<?>[] resets = owners.entrySet().stream()
+        .map(entry -> store.reset(
+            entry.getKey(),
+            checkedUniqueId,
+            entry.getValue().keys.keySet()
+        ))
+        .toArray(CompletableFuture[]::new);
+    CompletableFuture<Void> stored = CompletableFuture.allOf(resets);
+    return loaded == null ? stored : CompletableFuture.allOf(stored, queueSave(loaded));
+  }
+
+  @Override
+  public CompletableFuture<Void> resetGlobalContainer(final String containerId) {
+    ContainerSelection selection = requireContainer(containerId);
+    List<VexPlayer> loaded = List.copyOf(players.values());
+    for (VexPlayer player : loaded) {
+      player.reset(selection.key);
+    }
+    CompletableFuture<?> reset = store.resetAll(
+        selection.owner,
+        List.of(selection.key.getName())
+    );
+    return CompletableFuture.allOf(reset, savePlayers(loaded));
+  }
+
+  @Override
+  public CompletableFuture<Void> resetGlobalContainers() {
+    Map<String, OwnerContainers> owners = ownerSnapshot();
+    List<VexPlayer> loaded = List.copyOf(players.values());
+    for (VexPlayer player : loaded) {
+      resetPlayer(player, owners);
+    }
+    CompletableFuture<?>[] resets = owners.entrySet().stream()
+        .map(entry -> store.resetAll(entry.getKey(), entry.getValue().keys.keySet()))
+        .toArray(CompletableFuture[]::new);
+    return CompletableFuture.allOf(
+        CompletableFuture.allOf(resets),
+        savePlayers(loaded)
+    );
+  }
+
+  @Override
+  public CompletableFuture<Optional<UUID>> resolveUniqueId(final String player) {
+    String checkedPlayer = Objects.requireNonNull(player, "player").trim();
+    try {
+      return CompletableFuture.completedFuture(Optional.of(UUID.fromString(checkedPlayer)));
+    } catch (IllegalArgumentException ignored) {
+      Optional<UUID> loaded = players.values().stream()
+          .filter(value -> value.getName().equalsIgnoreCase(checkedPlayer))
+          .map(VexPlayer::getUniqueId)
+          .findFirst();
+      if (loaded.isPresent()) {
+        return CompletableFuture.completedFuture(loaded);
+      }
+    }
+    List<String> owners;
+    synchronized (this) {
+      owners = List.copyOf(containersByOwner.keySet());
+    }
+    CompletableFuture<Optional<UUID>> result = CompletableFuture.completedFuture(Optional.empty());
+    for (String owner : owners) {
+      result = result.thenCompose(found -> found.isPresent()
+          ? CompletableFuture.completedFuture(found)
+          : store.findUniqueId(owner, checkedPlayer));
+    }
+    return result;
+  }
+
+  private synchronized ContainerSelection requireContainer(final String containerId) {
+    String checkedName = Objects.requireNonNull(containerId, "containerId")
+        .trim()
+        .toLowerCase(Locale.ROOT);
+    ContainerSelection found = null;
+    for (Map.Entry<String, OwnerContainers> entry : containersByOwner.entrySet()) {
+      DataContainerKey<?> key = entry.getValue().keys.get(checkedName);
+      if (key == null) {
+        continue;
+      }
+      if (found != null) {
+        throw new IllegalArgumentException(
+            "Player data container name is ambiguous: " + checkedName
+        );
+      }
+      found = new ContainerSelection(entry.getKey(), key);
+    }
+    if (found == null) {
+      throw new IllegalArgumentException(
+          "Player data container is not registered: " + checkedName
+      );
+    }
+    return found;
+  }
+
+  private synchronized Map<String, OwnerContainers> ownerSnapshot() {
+    return new LinkedHashMap<>(containersByOwner);
+  }
+
+  private static void resetPlayer(
+      final VexPlayer player,
+      final Map<String, OwnerContainers> owners
+  ) {
+    for (OwnerContainers owner : owners.values()) {
+      for (DataContainerKey<?> key : owner.keys.values()) {
+        player.reset(key);
+      }
+    }
+  }
+
+  private CompletableFuture<Void> savePlayers(final Collection<VexPlayer> loaded) {
+    CompletableFuture<?>[] saves = loaded.stream()
+        .map(this::queueSave)
+        .toArray(CompletableFuture[]::new);
+    return CompletableFuture.allOf(saves);
+  }
+
   private void readOwnerValues(
       final OwnerContainers owner,
       final Map<String, String> values,
@@ -483,6 +641,9 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
       this.factory = factory;
       this.slot = slot;
     }
+  }
+
+  private record ContainerSelection(String owner, DataContainerKey<?> key) {
   }
 
   @Value

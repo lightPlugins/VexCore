@@ -13,6 +13,7 @@ dependencies {
     implementation(project(":vexcore-data"))
     implementation(project(":vexcore-localization"))
     implementation(project(":vexcore-messaging"))
+    implementation(project(":vexcore-gameplay"))
     implementation(project(":vexcore-inventory"))
     implementation(project(":vexcore-dialog"))
     implementation(project(":vexcore-items:common"))

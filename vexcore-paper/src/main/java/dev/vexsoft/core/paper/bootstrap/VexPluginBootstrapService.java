@@ -18,6 +18,8 @@ import dev.vexsoft.core.data.VexDataService;
 import dev.vexsoft.core.data.VexPlayerContainerService;
 import dev.vexsoft.core.dialog.DialogService;
 import dev.vexsoft.core.inventory.InventoryService;
+import dev.vexsoft.core.gameplay.stat.StatRegistry;
+import dev.vexsoft.core.gameplay.stat.VexStatRegistry;
 import dev.vexsoft.core.item.ItemService;
 import dev.vexsoft.core.localization.VexLocalizationService;
 import dev.vexsoft.core.localization.VexLocalizedMessageService;
@@ -76,6 +78,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
     checkedServices.register(SendMessageService.class, VexSendMessageService.class);
     checkedServices.register(MessagingService.class, VexMessagingService.class);
+    checkedServices.register(StatRegistry.class, VexStatRegistry.class);
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     checkedServices.register(
