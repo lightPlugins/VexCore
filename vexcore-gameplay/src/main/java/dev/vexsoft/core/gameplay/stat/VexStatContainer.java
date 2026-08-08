@@ -66,20 +66,22 @@ public final class VexStatContainer implements StatContainer {
   }
 
   @Override
-  public synchronized void close() {
-    if (closed) {
-      return;
-    }
-    closed = true;
-    activeStats = new RegisteredStat[0];
-    views = new VexPlayerStat[0];
-    permanentValues = new double[0];
-    flatModifiers = new double[0];
-    additiveMultipliers = new double[0];
-    totalMultipliers = new double[0];
-    calculatedValues = new double[0];
-    changed = new boolean[0];
+  public void close() {
     registry.detach(this);
+    synchronized (this) {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      activeStats = new RegisteredStat[0];
+      views = new VexPlayerStat[0];
+      permanentValues = new double[0];
+      flatModifiers = new double[0];
+      additiveMultipliers = new double[0];
+      totalMultipliers = new double[0];
+      calculatedValues = new double[0];
+      changed = new boolean[0];
+    }
   }
 
   @Override

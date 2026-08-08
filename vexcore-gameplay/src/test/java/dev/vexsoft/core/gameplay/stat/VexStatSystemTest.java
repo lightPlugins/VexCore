@@ -3,6 +3,7 @@ package dev.vexsoft.core.gameplay.stat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,6 +69,23 @@ class VexStatSystemTest {
     fixture.stats.synchronize(List.of());
     assertTrue(fixture.stats.find(STRENGTH).isEmpty());
     assertTrue(container.findStat(strength).isEmpty());
+  }
+
+  @Test
+  void reloadsDefinitionsForAlreadyLoadedPlayers() {
+    Fixture fixture = new Fixture();
+    VexStatContainer container = fixture.newContainer();
+    Stat strength = fixture.stats.synchronize(List.of(definition(STRENGTH, 5D))).getFirst();
+    PlayerStat playerStat = container.getStat(strength);
+
+    Stat reloaded = fixture.stats.synchronize(List.of(definition(STRENGTH, 12D))).getFirst();
+
+    assertSame(strength, reloaded);
+    assertEquals(12D, playerStat.getValue());
+
+    container.close();
+    fixture.stats.synchronize(List.of(definition(STRENGTH, 20D)));
+    assertThrows(IllegalStateException.class, playerStat::getValue);
   }
 
   private static StatDefinition definition(final StatKey key, final double defaultValue) {

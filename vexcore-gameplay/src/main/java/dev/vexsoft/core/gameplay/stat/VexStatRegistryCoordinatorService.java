@@ -76,6 +76,7 @@ public final class VexStatRegistryCoordinatorService implements StatRegistryCoor
         throw new IllegalArgumentException("Duplicate stat definition: " + checked.getKey());
       }
     }
+    validateOwnership(ownerName, desired.keySet());
 
     Set<StatKey> removed = new HashSet<>();
     for (Map.Entry<StatKey, Slot> entry : slots.entrySet()) {
@@ -165,6 +166,15 @@ public final class VexStatRegistryCoordinatorService implements StatRegistryCoor
   private void notifyDefinitionChanged(final RegisteredStat stat) {
     for (VexStatContainer container : containers) {
       container.definitionChanged(stat);
+    }
+  }
+
+  private void validateOwnership(final String owner, final Collection<StatKey> keys) {
+    for (StatKey key : keys) {
+      Slot slot = slots.get(key);
+      if (slot != null && slot.active != null && !slot.active.getOwner().equals(owner)) {
+        throw new IllegalStateException("Stat is owned by another plugin: " + key);
+      }
     }
   }
 
