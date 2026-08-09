@@ -3,7 +3,7 @@ package dev.vexsoft.core.paper.service.packets.connection;
 import org.bukkit.entity.Player;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.service.packets.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;

@@ -4,6 +4,7 @@ import dev.vexsoft.core.paper.packet.PacketVersions;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.packets.service.PacketVersionService;
 import dev.vexsoft.core.paper.packets.version.MinecraftVersion;
 import dev.vexsoft.core.paper.packets.version.PacketCapability;
 import dev.vexsoft.core.paper.packets.version.PacketComponent;

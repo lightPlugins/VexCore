@@ -5,7 +5,7 @@ import dev.vexsoft.core.paper.packets.v26_2.item.V26_2ItemMetaPacketRewriter;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaLookup;
-import dev.vexsoft.core.paper.service.packets.ItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import java.util.UUID;
 
 @Dependencies

@@ -2,7 +2,7 @@ package dev.vexsoft.core.paper.service.packets.v26_2;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.service.packets.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import java.util.List;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;

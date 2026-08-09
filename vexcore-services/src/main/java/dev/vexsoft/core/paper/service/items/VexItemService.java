@@ -7,7 +7,7 @@ import dev.vexsoft.core.paper.items.ItemStackBuilder;
 import dev.vexsoft.core.paper.items.VexItemKeys;
 import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.service.ItemService;
-import dev.vexsoft.core.paper.service.packets.FakeItemMetaService;
+import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import java.util.Objects;
 import java.util.Optional;
 import org.bukkit.Material;

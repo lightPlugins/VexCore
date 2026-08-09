@@ -1,10 +1,11 @@
-package dev.vexsoft.core.paper.command;
+package dev.vexsoft.core.paper.commands;
 
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import dev.vexsoft.core.api.service.localization.LanguageService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.command.VexCommandSource;
 import dev.vexsoft.core.paper.command.suggestion.SuggestionProvider;
 import java.util.Locale;
 import java.util.Objects;

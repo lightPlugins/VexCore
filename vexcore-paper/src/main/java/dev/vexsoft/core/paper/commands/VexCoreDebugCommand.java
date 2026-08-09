@@ -1,4 +1,4 @@
-package dev.vexsoft.core.paper.command;
+package dev.vexsoft.core.paper.commands;
 
 import dev.vexsoft.core.api.messaging.DeliveryResult;
 import dev.vexsoft.core.api.messaging.MessageTarget;
@@ -7,6 +7,9 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.messaging.ProxyDebugMessages;
 import dev.vexsoft.core.common.messaging.ProxyPingRequest;
+import dev.vexsoft.core.paper.command.Command;
+import dev.vexsoft.core.paper.command.CommandRoot;
+import dev.vexsoft.core.paper.command.VexCommandSource;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import dev.vexsoft.core.paper.service.messaging.ProxyPingService;
 import dev.vexsoft.core.paper.service.performance.PerformanceBossBarService;

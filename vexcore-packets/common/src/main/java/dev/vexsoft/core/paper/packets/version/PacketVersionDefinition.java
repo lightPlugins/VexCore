@@ -1,11 +1,11 @@
 package dev.vexsoft.core.paper.packets.version;
 
-import dev.vexsoft.core.paper.service.packets.DisplayPacketAdapterService;
-import dev.vexsoft.core.paper.service.packets.EntityEffectPacketAdapterService;
-import dev.vexsoft.core.paper.service.packets.HologramInteractionAdapterService;
-import dev.vexsoft.core.paper.service.packets.ItemMetaPacketAdapterService;
-import dev.vexsoft.core.paper.service.packets.PacketConnectionAdapterService;
-import dev.vexsoft.core.paper.service.packets.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import java.util.Map;
 import java.util.Set;
 

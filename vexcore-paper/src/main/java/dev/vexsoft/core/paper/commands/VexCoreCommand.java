@@ -1,9 +1,12 @@
-package dev.vexsoft.core.paper.command;
+package dev.vexsoft.core.paper.commands;
 
 import dev.vexsoft.core.api.service.localization.LanguageService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.localization.ThemeColorService;
+import dev.vexsoft.core.paper.command.Command;
+import dev.vexsoft.core.paper.command.CommandRoot;
+import dev.vexsoft.core.paper.command.VexCommandSource;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import java.util.Objects;
 import java.util.logging.Level;

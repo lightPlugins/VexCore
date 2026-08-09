@@ -4,7 +4,7 @@ import io.netty.channel.ChannelPromise;
 import java.util.UUID;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.service.packets.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;

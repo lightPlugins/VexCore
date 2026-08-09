@@ -1,4 +1,4 @@
-package dev.vexsoft.core.paper.service.packets;
+package dev.vexsoft.core.paper.packets.service;
 
 import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
 

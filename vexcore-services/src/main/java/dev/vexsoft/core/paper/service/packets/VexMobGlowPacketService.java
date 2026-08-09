@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.service.packets;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
+import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 

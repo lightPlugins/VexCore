@@ -10,6 +10,8 @@ import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
 import dev.vexsoft.core.paper.packets.hologram.InteractableHologramHandle;
 import dev.vexsoft.core.paper.packets.hologram.InteractableHologramRequest;
+import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
 import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
 import dev.vexsoft.core.paper.service.packets.hologram.TrackedHologram;
 import java.util.UUID;

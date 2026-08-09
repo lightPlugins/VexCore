@@ -1,4 +1,4 @@
-package dev.vexsoft.core.paper.command;
+package dev.vexsoft.core.paper.commands;
 
 import dev.vexsoft.core.api.localization.Language;
 import dev.vexsoft.core.api.localization.LanguageContainer;
@@ -7,6 +7,11 @@ import dev.vexsoft.core.api.service.player.PlayerService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.command.Argument;
+import dev.vexsoft.core.paper.command.Command;
+import dev.vexsoft.core.paper.command.CommandRoot;
+import dev.vexsoft.core.paper.command.Suggest;
+import dev.vexsoft.core.paper.command.VexCommandSource;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import java.util.Map;
 import java.util.Objects;

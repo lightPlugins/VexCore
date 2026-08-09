@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.item.FakeItemLoreMode;
+import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import java.util.List;
 import java.util.UUID;

@@ -3,7 +3,7 @@ package dev.vexsoft.core.paper.service.packets.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.hologram.HologramInteractionType;
-import dev.vexsoft.core.paper.service.packets.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import java.util.Optional;
 import net.minecraft.network.protocol.game.ServerboundAttackPacket;
