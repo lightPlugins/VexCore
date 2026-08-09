@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -85,7 +86,9 @@ public final class VexReactorRegistryCoordinatorService implements
     Objects.requireNonNull(services, "services");
     Class<?> checkedType = Objects.requireNonNull(componentType, "componentType");
     String id = componentId(checkedType);
-    requireAvailable(kind, id);
+    if (!isAvailable(kind, id, owner)) {
+      return;
+    }
     Object component = VexClassFactory.create(checkedType, services, kind.name());
     switch (kind) {
       case TRIGGER -> register(triggers, id, owner, Trigger.class.cast(component));
@@ -359,7 +362,11 @@ public final class VexReactorRegistryCoordinatorService implements
     return id;
   }
 
-  private void requireAvailable(final ReactorComponentKind kind, final String id) {
+  private boolean isAvailable(
+      final ReactorComponentKind kind,
+      final String id,
+      final ServiceOwner registeringOwner
+  ) {
     RegisteredReactorComponent<?> existing = switch (kind) {
       case TRIGGER -> triggers.get(id);
       case FILTER -> filters.get(id);
@@ -368,11 +375,16 @@ public final class VexReactorRegistryCoordinatorService implements
       default -> throw new IllegalStateException("Unsupported reaction component kind: " + kind);
     };
     if (existing != null) {
-      throw new IllegalStateException(
-          "Reaction component '" + id + "' is already registered by "
-              + existing.getOwner().getServiceOwnerName()
+      LOGGER.log(
+          System.Logger.Level.WARNING,
+          "Plugin '" + registeringOwner.getServiceOwnerName() + "' tried to register the reactor "
+              + kind.name().toLowerCase(Locale.ROOT) + " ID '" + id + "', but this ID is already "
+              + "registered by plugin '" + existing.getOwner().getServiceOwnerName() + "'. "
+              + "Reactor IDs must be unique. The duplicate registration was ignored."
       );
+      return false;
     }
+    return true;
   }
 
   private static <T> void register(
