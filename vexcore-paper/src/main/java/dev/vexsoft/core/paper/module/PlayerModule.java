@@ -1,15 +1,15 @@
 package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
-import dev.vexsoft.core.api.configuration.ConfigurationService;
-import dev.vexsoft.core.api.player.PlayerService;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.configuration.VexConfigurationService;
-import dev.vexsoft.core.data.PlayerDataCoordinatorService;
-import dev.vexsoft.core.data.VexPlayerDataCoordinatorService;
-import dev.vexsoft.core.data.VexPlayerService;
-import dev.vexsoft.core.data.storage.PlayerDataStoreService;
-import dev.vexsoft.core.data.storage.VexPlayerDataStoreService;
+import dev.vexsoft.core.api.service.configuration.ConfigurationService;
+import dev.vexsoft.core.api.service.player.PlayerService;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.VexPlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.VexPlayerService;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.VexPlayerDataStoreService;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;

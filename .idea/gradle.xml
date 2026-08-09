@@ -9,28 +9,18 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/vexcore-api" />
-            <option value="$PROJECT_DIR$/vexcore-cache" />
-            <option value="$PROJECT_DIR$/vexcore-command" />
-            <option value="$PROJECT_DIR$/vexcore-configuration" />
-            <option value="$PROJECT_DIR$/vexcore-data" />
-            <option value="$PROJECT_DIR$/vexcore-dialog" />
-            <option value="$PROJECT_DIR$/vexcore-gameplay" />
-            <option value="$PROJECT_DIR$/vexcore-gameplay-api" />
-            <option value="$PROJECT_DIR$/vexcore-inventory" />
+            <option value="$PROJECT_DIR$/vexcore-common" />
             <option value="$PROJECT_DIR$/vexcore-items" />
             <option value="$PROJECT_DIR$/vexcore-items/common" />
             <option value="$PROJECT_DIR$/vexcore-items/versions" />
             <option value="$PROJECT_DIR$/vexcore-items/versions/v26_2" />
-            <option value="$PROJECT_DIR$/vexcore-localization" />
-            <option value="$PROJECT_DIR$/vexcore-messaging" />
             <option value="$PROJECT_DIR$/vexcore-packets" />
             <option value="$PROJECT_DIR$/vexcore-packets/common" />
             <option value="$PROJECT_DIR$/vexcore-packets/versions" />
             <option value="$PROJECT_DIR$/vexcore-packets/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-paper" />
             <option value="$PROJECT_DIR$/vexcore-paper-api" />
-            <option value="$PROJECT_DIR$/vexcore-service-registry" />
-            <option value="$PROJECT_DIR$/vexcore-signal" />
+            <option value="$PROJECT_DIR$/vexcore-services" />
             <option value="$PROJECT_DIR$/vexcore-velocity" />
             <option value="$PROJECT_DIR$/vexcore-velocity-api" />
           </set>

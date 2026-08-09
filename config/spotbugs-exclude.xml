@@ -8,11 +8,11 @@
   <!-- Paper mutates ItemStack and returns a status flag unknown to SpotBugs. -->
   <Match>
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
-    <Class name="~dev\.vexsoft\.core\.inventory\..*"/>
+    <Class name="~dev\.vexsoft\.core\.paper\.(?:inventory|service\.inventory)\..*"/>
   </Match>
   <Match>
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
-    <Class name="dev.vexsoft.core.paper.item.VexItemStackBuilder"/>
+    <Class name="dev.vexsoft.core.paper.service.items.VexItemStackBuilder"/>
   </Match>
 
   <!-- Framework contracts intentionally expose their managed runtime object. -->
@@ -21,13 +21,13 @@
     <Or>
       <Class name="dev.vexsoft.core.paper.VexCorePlugin"/>
       <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
-      <Class name="dev.vexsoft.core.paper.inventory.VexInventoryHolder"/>
+      <Class name="dev.vexsoft.core.paper.service.inventory.VexInventoryHolder"/>
     </Or>
   </Match>
   <Match>
     <Bug pattern="EI_EXPOSE_REP2"/>
     <Or>
-      <Class name="dev.vexsoft.core.configuration.ConfigurateConfigurationSection"/>
+      <Class name="dev.vexsoft.core.common.configuration.ConfigurateConfigurationSection"/>
       <Class name="dev.vexsoft.core.paper.module.PacketModule"/>
       <Class name="dev.vexsoft.core.paper.localization.VexPlayerLanguageChangeEvent"/>
     </Or>
@@ -36,7 +36,7 @@
   <!-- The request stores an immutable Set.copyOf result. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP"/>
-    <Class name="dev.vexsoft.core.packets.display.FakeItemDisplayRequest"/>
+    <Class name="dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest"/>
     <Method name="getLifecycle"/>
   </Match>
 </FindBugsFilter>

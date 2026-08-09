@@ -1,8 +1,8 @@
 package dev.vexsoft.core.paper.item;
 
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.item.v26_2.V26_2ItemVersionDefinition;
-import dev.vexsoft.core.item.version.ItemVersionDefinition;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.items.v26_2.V26_2ItemVersionDefinition;
+import dev.vexsoft.core.paper.items.version.ItemVersionDefinition;
 import lombok.experimental.UtilityClass;
 import org.bukkit.Bukkit;
 

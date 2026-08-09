@@ -5,20 +5,9 @@ plugins {
 
 dependencies {
     api(project(":vexcore-paper-api"))
-    implementation(project(":vexcore-service-registry"))
-    implementation(project(":vexcore-configuration"))
-    implementation(project(":vexcore-command"))
-    implementation(project(":vexcore-cache"))
-    implementation(project(":vexcore-signal"))
-    implementation(project(":vexcore-data"))
-    implementation(project(":vexcore-localization"))
-    implementation(project(":vexcore-messaging"))
-    implementation(project(":vexcore-gameplay"))
-    implementation(project(":vexcore-inventory"))
-    implementation(project(":vexcore-dialog"))
-    implementation(project(":vexcore-items:common"))
+    implementation(project(":vexcore-common"))
+    implementation(project(":vexcore-services"))
     implementation(project(":vexcore-items:versions:v26_2"))
-    implementation(project(":vexcore-packets:common"))
     implementation(project(":vexcore-packets:versions:v26_2"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
 

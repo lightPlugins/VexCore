@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

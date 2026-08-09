@@ -1,25 +1,25 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.ServiceOwner;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.packets.internal.DisplayPacketAdapterService;
-import dev.vexsoft.core.packets.internal.EntityEffectPacketAdapterService;
-import dev.vexsoft.core.packets.internal.HologramInteractionAdapterService;
-import dev.vexsoft.core.packets.internal.ItemMetaPacketAdapterService;
-import dev.vexsoft.core.packets.internal.PacketConnectionAdapterService;
-import dev.vexsoft.core.packets.internal.PacketTransportAdapterService;
-import dev.vexsoft.core.packets.version.PacketVersionDefinition;
-import dev.vexsoft.core.packets.version.PacketVersionService;
-import dev.vexsoft.core.paper.listener.ListenerService;
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.service.packets.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.service.packets.EntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.service.packets.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.service.packets.ItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.service.packets.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.service.packets.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
+import dev.vexsoft.core.paper.service.packets.PacketVersionService;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.packet.PacketVersions;
-import dev.vexsoft.core.paper.packet.VexPacketVersionService;
-import dev.vexsoft.core.paper.packet.connection.PacketConnectionService;
-import dev.vexsoft.core.paper.packet.connection.VexPacketConnectionListener;
-import dev.vexsoft.core.paper.packet.connection.VexPacketConnectionService;
-import dev.vexsoft.core.paper.packet.hologram.HologramTrackerService;
-import dev.vexsoft.core.paper.packet.hologram.VexHologramTrackerService;
-import dev.vexsoft.core.paper.packet.item.FakeItemMetaStoreService;
-import dev.vexsoft.core.paper.packet.item.VexFakeItemMetaStoreService;
+import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
+import dev.vexsoft.core.paper.service.packets.connection.PacketConnectionService;
+import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionListener;
+import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionService;
+import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
+import dev.vexsoft.core.paper.service.packets.hologram.VexHologramTrackerService;
+import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
+import dev.vexsoft.core.paper.service.packets.item.VexFakeItemMetaStoreService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -62,7 +62,7 @@ public final class PacketModule implements VexModule {
     if (services == null) {
       throw new IllegalStateException("PacketModule has not been loaded yet");
     }
-    services.require(ListenerService.class).register(VexPacketConnectionListener.class);
+    services.require(ListenerService.class).register(VexPacketConnectionListener.class, services);
     Bukkit.getOnlinePlayers().forEach(services.require(PacketConnectionService.class)::inject);
     PacketVersionService version = services.require(PacketVersionService.class);
     plugin.getLogger().info(

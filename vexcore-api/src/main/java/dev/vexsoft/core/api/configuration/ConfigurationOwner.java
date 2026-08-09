@@ -1,6 +1,6 @@
 package dev.vexsoft.core.api.configuration;
 
-import dev.vexsoft.core.api.service.ServiceOwner;
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;

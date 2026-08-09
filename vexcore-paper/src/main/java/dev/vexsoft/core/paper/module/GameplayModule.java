@@ -1,14 +1,14 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.gameplay.reactor.condition.ChanceCondition;
-import dev.vexsoft.core.gameplay.reactor.condition.StatComparisonCondition;
-import dev.vexsoft.core.gameplay.reactor.effect.AddStatEffect;
-import dev.vexsoft.core.gameplay.reactor.registry.ReactorRegistryCoordinatorService;
-import dev.vexsoft.core.gameplay.reactor.registry.VexConditionRegistry;
-import dev.vexsoft.core.gameplay.reactor.registry.VexEffectRegistry;
-import dev.vexsoft.core.gameplay.reactor.registry.VexFilterRegistry;
-import dev.vexsoft.core.gameplay.reactor.registry.VexReactorRegistryCoordinatorService;
-import dev.vexsoft.core.gameplay.reactor.registry.VexTriggerRegistry;
+import dev.vexsoft.core.common.gameplay.reactor.condition.ChanceCondition;
+import dev.vexsoft.core.common.gameplay.reactor.condition.StatComparisonCondition;
+import dev.vexsoft.core.common.gameplay.reactor.effect.AddStatEffect;
+import dev.vexsoft.core.common.service.reactor.ReactorRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.reactor.VexConditionRegistry;
+import dev.vexsoft.core.common.service.reactor.VexEffectRegistry;
+import dev.vexsoft.core.common.service.reactor.VexFilterRegistry;
+import dev.vexsoft.core.common.service.reactor.VexReactorRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.reactor.VexTriggerRegistry;
 import dev.vexsoft.core.paper.reactor.condition.PermissionCondition;
 import dev.vexsoft.core.paper.reactor.effect.CancelTriggerEffect;
 import dev.vexsoft.core.paper.reactor.effect.ModifyDamageEffect;
@@ -23,43 +23,43 @@ import dev.vexsoft.core.paper.reactor.listener.VexReactorListener;
 import dev.vexsoft.core.paper.reactor.provider.MinecraftBlockTypeProvider;
 import dev.vexsoft.core.paper.reactor.provider.MinecraftEntityTypeProvider;
 import dev.vexsoft.core.paper.reactor.provider.MinecraftItemTypeProvider;
-import dev.vexsoft.core.paper.reactor.registry.BlockTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.EntityTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.ItemTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.VexBlockTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.VexBlockTypeRegistry;
-import dev.vexsoft.core.paper.reactor.registry.VexEntityTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.VexEntityTypeRegistry;
-import dev.vexsoft.core.paper.reactor.registry.VexItemTypeCoordinatorService;
-import dev.vexsoft.core.paper.reactor.registry.VexItemTypeRegistry;
+import dev.vexsoft.core.paper.service.reactor.BlockTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.EntityTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.ItemTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.VexBlockTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.VexBlockTypeRegistry;
+import dev.vexsoft.core.paper.service.reactor.VexEntityTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.VexEntityTypeRegistry;
+import dev.vexsoft.core.paper.service.reactor.VexItemTypeCoordinatorService;
+import dev.vexsoft.core.paper.service.reactor.VexItemTypeRegistry;
 import dev.vexsoft.core.paper.reactor.trigger.BreakBlockTrigger;
 import dev.vexsoft.core.paper.reactor.trigger.DamageEntityTrigger;
 import dev.vexsoft.core.paper.reactor.trigger.KillTrigger;
 
-import dev.vexsoft.core.api.player.DataService;
-import dev.vexsoft.core.api.player.PlayerContainerService;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.data.VexDataService;
-import dev.vexsoft.core.data.VexPlayerContainerService;
-import dev.vexsoft.core.gameplay.stat.GameplayPlayerData;
+import dev.vexsoft.core.api.service.player.DataService;
+import dev.vexsoft.core.api.service.player.PlayerContainerService;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.data.VexDataService;
+import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
+import dev.vexsoft.core.common.service.stats.GameplayPlayerData;
 import dev.vexsoft.core.gameplay.stat.StatContainer;
-import dev.vexsoft.core.gameplay.stat.StatRegistry;
-import dev.vexsoft.core.gameplay.stat.StatRegistryCoordinatorService;
-import dev.vexsoft.core.gameplay.stat.VexStatContainer;
-import dev.vexsoft.core.gameplay.stat.VexStatRegistry;
-import dev.vexsoft.core.gameplay.stat.VexStatRegistryCoordinatorService;
-import dev.vexsoft.core.gameplay.reactor.condition.ConditionRegistry;
-import dev.vexsoft.core.gameplay.reactor.effect.EffectRegistry;
-import dev.vexsoft.core.gameplay.reactor.filter.FilterRegistry;
-import dev.vexsoft.core.gameplay.reactor.ReactorEngine;
-import dev.vexsoft.core.gameplay.reactor.trigger.TriggerRegistry;
-import dev.vexsoft.core.gameplay.reactor.VexReactorEngine;
-import dev.vexsoft.core.gameplay.reactor.expression.ExpressionService;
-import dev.vexsoft.core.gameplay.reactor.expression.VexExpressionService;
-import dev.vexsoft.core.paper.listener.ListenerService;
-import dev.vexsoft.core.paper.reactor.provider.BlockTypeRegistry;
-import dev.vexsoft.core.paper.reactor.provider.EntityTypeRegistry;
-import dev.vexsoft.core.paper.reactor.provider.ItemTypeRegistry;
+import dev.vexsoft.core.api.service.stats.StatRegistry;
+import dev.vexsoft.core.common.service.stats.StatRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.stats.VexStatContainer;
+import dev.vexsoft.core.common.service.stats.VexStatRegistry;
+import dev.vexsoft.core.common.service.stats.VexStatRegistryCoordinatorService;
+import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
+import dev.vexsoft.core.api.service.reactor.EffectRegistry;
+import dev.vexsoft.core.api.service.reactor.FilterRegistry;
+import dev.vexsoft.core.api.service.reactor.ReactorEngine;
+import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
+import dev.vexsoft.core.common.service.reactor.VexReactorEngine;
+import dev.vexsoft.core.api.service.reactor.ExpressionService;
+import dev.vexsoft.core.common.service.reactor.VexExpressionService;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
+import dev.vexsoft.core.paper.service.reactor.BlockTypeRegistry;
+import dev.vexsoft.core.paper.service.reactor.EntityTypeRegistry;
+import dev.vexsoft.core.paper.service.reactor.ItemTypeRegistry;
 
 /** Installs the shared stat runtime and its player container. */
 public final class GameplayModule implements VexModule {
@@ -106,7 +106,7 @@ public final class GameplayModule implements VexModule {
 
   @Override
   public void start() {
-    services.require(ListenerService.class).register(VexReactorListener.class);
+    services.require(ListenerService.class).register(VexReactorListener.class, services);
   }
 
   @Override

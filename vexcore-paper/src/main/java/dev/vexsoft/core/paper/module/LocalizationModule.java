@@ -1,14 +1,14 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.localization.LanguageService;
-import dev.vexsoft.core.api.player.PlayerContainerService;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.localization.LocalizationRegistryService;
-import dev.vexsoft.core.localization.VexLanguageService;
-import dev.vexsoft.core.localization.VexLocalizationRegistryService;
-import dev.vexsoft.core.localization.LanguageChangeDispatcherService;
-import dev.vexsoft.core.data.VexPlayerContainerService;
-import dev.vexsoft.core.paper.localization.VexLanguageChangeDispatcherService;
+import dev.vexsoft.core.api.service.localization.LanguageService;
+import dev.vexsoft.core.api.service.player.PlayerContainerService;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.localization.LocalizationRegistryService;
+import dev.vexsoft.core.common.service.localization.VexLanguageService;
+import dev.vexsoft.core.common.service.localization.VexLocalizationRegistryService;
+import dev.vexsoft.core.common.service.localization.LanguageChangeDispatcherService;
+import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
+import dev.vexsoft.core.paper.service.localization.VexLanguageChangeDispatcherService;
 
 public final class LocalizationModule implements VexModule {
 

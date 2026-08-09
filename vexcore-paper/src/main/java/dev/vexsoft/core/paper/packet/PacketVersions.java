@@ -1,9 +1,10 @@
 package dev.vexsoft.core.paper.packet;
 
-import dev.vexsoft.core.packets.version.MinecraftVersion;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.packets.v26_2.V26_2PacketVersionDefinition;
-import dev.vexsoft.core.packets.version.PacketVersionDefinition;
+import dev.vexsoft.core.paper.service.packets.VexPacketVersionRegistry;
+import dev.vexsoft.core.paper.packets.version.MinecraftVersion;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.packets.v26_2.V26_2PacketVersionDefinition;
+import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
 import lombok.experimental.UtilityClass;
 import org.bukkit.Bukkit;
 

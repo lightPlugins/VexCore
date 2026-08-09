@@ -1,0 +1,14 @@
+package dev.vexsoft.core.paper.inventory.page.control;
+
+import dev.vexsoft.core.paper.inventory.InventoryKey;
+import java.util.UUID;
+import java.util.function.Predicate;
+
+/**
+ * Filters the values displayed by a controlled paged inventory
+ */
+public interface PageFilterControl<T> extends PageControl {
+
+  /** Returns the predicate applied for the selected mode and viewer */
+  Predicate<T> getPredicate(String modeId, InventoryKey inventoryKey, UUID viewerId);
+}

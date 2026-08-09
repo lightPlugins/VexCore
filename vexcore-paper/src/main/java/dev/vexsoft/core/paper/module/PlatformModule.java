@@ -1,8 +1,8 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.paper.platform.PlatformService;
-import dev.vexsoft.core.paper.platform.VexPlatformService;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.service.platform.PlatformService;
+import dev.vexsoft.core.paper.service.platform.VexPlatformService;
 
 public final class PlatformModule implements VexModule {
 

@@ -5,10 +5,7 @@ plugins {
 
 dependencies {
     implementation(project(":vexcore-velocity-api"))
-    implementation(project(":vexcore-service-registry"))
-    implementation(project(":vexcore-configuration"))
-    implementation(project(":vexcore-cache"))
-    implementation(project(":vexcore-messaging"))
+    implementation(project(":vexcore-common"))
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
 
     compileOnly("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")

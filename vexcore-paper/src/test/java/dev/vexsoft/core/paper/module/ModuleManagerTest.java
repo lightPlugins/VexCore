@@ -1,7 +1,7 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.service.DefaultServiceRegistry;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;

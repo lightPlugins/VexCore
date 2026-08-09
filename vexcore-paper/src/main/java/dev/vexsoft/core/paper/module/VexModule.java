@@ -1,7 +1,7 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.ServiceOwner;
-import dev.vexsoft.core.api.service.VexServiceRegistry;
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 
 /**
  * Defines a VexCore module with a managed enable and disable lifecycle

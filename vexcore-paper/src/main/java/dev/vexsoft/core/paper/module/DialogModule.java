@@ -1,10 +1,10 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.api.service.VexServiceRegistry;
-import dev.vexsoft.core.paper.dialog.DialogCoordinatorService;
-import dev.vexsoft.core.paper.dialog.VexDialogCoordinatorService;
-import dev.vexsoft.core.paper.dialog.VexDialogListener;
-import dev.vexsoft.core.paper.listener.ListenerService;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.service.dialogs.DialogCoordinatorService;
+import dev.vexsoft.core.paper.service.dialogs.VexDialogCoordinatorService;
+import dev.vexsoft.core.paper.service.dialogs.VexDialogListener;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
 
 public final class DialogModule implements VexModule {
 
@@ -22,7 +22,7 @@ public final class DialogModule implements VexModule {
     if (services == null) {
       throw new IllegalStateException("DialogModule has not been loaded yet");
     }
-    services.require(ListenerService.class).register(VexDialogListener.class);
+    services.require(ListenerService.class).register(VexDialogListener.class, services);
   }
 
   @Override
