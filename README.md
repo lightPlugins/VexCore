@@ -31,7 +31,7 @@ Every VexSoft plugin receives its own isolated service scope. Paper plugins and 
 
 VexCore also manages the shared plugin lifecycle. Services, commands, listeners, inventories, message handlers, and data containers follow the same registration rules and are released in a controlled way when a plugin shuts down. A typed messaging layer connects backend servers through the Velocity proxy when communication has to cross process boundaries.
 
-The goal is simple: provide a modern and predictable foundation for new plugins without rebuilding the same infrastructure every time.
+The goal is simple: provide a modern and predictable foundation for VexSoft plugins without rebuilding the same infrastructure in every project.
 
 ```mermaid
 flowchart TD
@@ -212,7 +212,8 @@ flowchart TD
 
 ## Architecture
 
-VexCore is deliberately split into small modules. Public contracts are kept separate from their implementations, allowing other plugins to compile against the APIs without pulling in the runtime.
+VexCore is deliberately split into small modules. API contracts are kept separate from their
+implementations so VexSoft projects only depend on the platform contracts they actually use.
 
 | Module | Responsibility |
 | --- | --- |
@@ -228,132 +229,90 @@ VexCore is deliberately split into small modules. Public contracts are kept sepa
 | `vexcore-velocity-api` | Public Velocity contracts together with the `VexProxyPlugin` foundation |
 | `vexcore-velocity` | The proxy plugin that owns Velocity services and routes network messages |
 
-## Creating a Paper Plugin
+## For Server Owners
 
-Compile a Paper plugin against the Paper API module. VexCore itself remains a required runtime
-dependency and supplies the implementations.
+VexCore is installed as a dependency of VexSoft plugins. It does not add gameplay content by
+itself, and server owners normally do not configure its internal services individually.
 
-```kotlin
-dependencies {
-    compileOnly("dev.vexsoft:vexcore-paper-api:1.0.0-SNAPSHOT")
-}
-```
+### Installation
 
-```yaml
-name: VexSkills
-main: dev.vexsoft.skills.VexSkillsPlugin
-version: 1.0.0
-api-version: "1.21"
-depend:
-  - VexCore
-```
+1. Install the VexCore Paper jar on every backend server that runs a VexSoft plugin.
+2. Start the server once so VexCore can create its files below `plugins/VexSoft/VexCore`.
+3. Configure player-data storage in `database.yml` before opening the server to players.
+4. Install the VexCore Velocity jar on the proxy when cross-server VexSoft features are required.
+5. Restart the affected server or proxy after replacing a VexCore jar.
 
-Extend `VexPlugin` and use its scoped services from the appropriate lifecycle hook:
+Paper and Velocity use separate jars because they run in different processes. The Velocity plugin
+is only required for proxy-side services and network messaging; a standalone Paper server does not
+need it.
 
-```java
-public final class VexSkillsPlugin extends VexPlugin {
+### Player-Data Storage
 
-  @Override
-  protected void registerServices() {
-    getServices().register(SkillService.class, VexSkillService.class);
-  }
-
-  @Override
-  protected void onVexLoad() {
-    PlaceholderService placeholders = getServices().require(PlaceholderService.class);
-    placeholders.register(SkillPlaceholder.class);
-  }
-}
-```
-
-Each placeholder class owns one local ID. VexCore adds the plugin namespace automatically:
-
-```java
-@PlaceholderId("skill")
-@Dependencies(SkillService.class)
-public final class SkillPlaceholder implements VexPlaceholder {
-
-  private final SkillService skills;
-
-  public SkillPlaceholder(VexServiceRegistry services) {
-    skills = services.require(SkillService.class);
-  }
-
-  @Override
-  public String resolve(VexPlayer player, PlaceholderArguments arguments) {
-    return skills.resolve(player, arguments.asList());
-  }
-}
-```
-
-This class resolves placeholders such as `%vexskills_skill_mining_level%`. Local values that only
-exist for one render can be supplied with `PlaceholderContext.of(player).with("level", level)` and
-are not exposed to PlaceholderAPI.
-
-### Registering and Localizing Stats
-
-Stat keys use the normalized plugin name as their namespace. By default, the following definition
-loads its presentation from `stats.strength.name` and `stats.strength.description` in the owning
-plugin's language files:
-
-```java
-StatDefinition strength = StatDefinition.builder(StatKey.of("vexskills", "strength"))
-    .defaultValue(0)
-    .minimum(0)
-    .build();
-
-StatRegistry stats = getServices().require(StatRegistry.class);
-stats.synchronize(List.of(strength));
-```
+PostgreSQL is the default and recommended storage for persistent player data:
 
 ```yaml
-# languages/en_EN.yml
-stats:
-  strength:
-    name: "<red>Strength"
-    description:
-      - "<gray>Increases your physical damage."
-      - "<gray>Current value: <white>%vexskills_stat_strength_value%"
+storage: postgresql
+
+postgresql:
+  jdbc-url: jdbc:postgresql://localhost:5432/vexcore
+  username: postgres
+  password: change-me
+  maximum-pool-size: 10
+  auto-create-database: true
+  maintenance-database: postgres
 ```
 
-Use `StatLocalizationService#getName` and `getDescription` with a `VexPlayer`; resolution always
-uses the stat owner's language files, even when a different plugin displays the stat.
+With `auto-create-database: true`, VexCore attempts to create the configured database through the
+maintenance database when necessary. The configured PostgreSQL account must have the corresponding
+permission.
 
-### Loading Reactions from Configuration
+`storage: memory` is available for temporary development environments. Its player data is lost on
+shutdown and it should not be used for a production server.
 
-`ReactionConfigurationService` accepts any list path. The section name is owned by the consuming
-plugin and is not prescribed by VexCore. Each trigger has its own filters, while conditions apply
-to every trigger in that reaction:
+### Optional Integrations
 
-```yaml
-xp-gain-methods:
-  - reaction-id: mining-stone
-    enabled: true
-    triggers:
-      - id: break-block
-        filters:
-          blocks:
-            - minecraft:stone
-            - minecraft:deepslate
-    conditions:
-      - id: permission
-        args:
-          permission: vexskills.xp.mining
-    effects:
-      - id: vexskills-give-xp
-        args:
-          skill: mining
-          amount: "10 + (%vexskills_skill_mining_level% * 0.25)"
-```
+PlaceholderAPI is optional. When it is installed, VexCore exposes the player-bound placeholders of
+VexSoft plugins to PlaceholderAPI and can resolve placeholders provided by other expansions. Without
+PlaceholderAPI, the internal placeholder system continues to work and no expansion registration is
+attempted.
 
-Plugins register their own trigger, filter, condition, and effect classes through their scoped
-registries. Reactor IDs are global: a duplicate registration is ignored with a clear console
-warning naming both plugins.
+### Administration Commands
 
-For a reload, first build the complete desired stat definition collection and then call the
-three-argument `ReactionConfigurationService#reload`. VexCore synchronizes the plugin's stats,
-compiles the complete reaction set, and restores the previous stats if compilation fails. No other
-plugin and no VexCore-wide reload is affected.
+| Command | Permission | Purpose |
+| --- | --- | --- |
+| `/vexcore reload` | `vexcore.command.reload` | Reloads VexCore themes and language resources |
+| `/vexcore language set <language>` | `vexcore.command.language` | Changes the executing player's language |
+| `/vexcore debug performance toggle` | `vexcore.command.debug.performance` | Toggles the live performance display |
+| `/vexcore debug proxy ping` | `vexcore.command.debug.proxy.ping` | Tests the connection to the Velocity plugin |
+
+VexCore also provides explicit player-data reset commands. Every destructive command ends with the
+literal `confirm` argument to reduce accidental execution:
+
+| Command | Permission |
+| --- | --- |
+| `/vexcore reset player <player> container <container> confirm` | `vexcore.command.reset.player.container` |
+| `/vexcore reset player <player> all confirm` | `vexcore.command.reset.player.all` |
+| `/vexcore reset global container <container> confirm` | `vexcore.command.reset.global.container` |
+| `/vexcore reset global all confirm` | `vexcore.command.reset.global.all` |
+
+> [!CAUTION]
+> Reset commands replace stored values with their defaults. Global resets can affect every stored
+> player and should only be executed after confirming the intended scope and available backups.
+
+### What Happens at Runtime
+
+- Online players are represented by one shared `VexPlayer` and loaded only when their session begins.
+- Player data is cached while required and saved on disconnect, shutdown, and scheduled autosaves.
+- Dynamically removed stats disappear from runtime without deleting their stored player values.
+- Configured reactions are compiled into immutable runtime snapshots instead of repeatedly parsing
+  configuration during gameplay events.
+- Plugin-specific reloads replace only the definitions belonging to that plugin.
+- Invalid or duplicate Reactor registrations produce console messages that identify the affected
+  plugin and configuration component.
+
+The technical APIs and module boundaries are documented in the architecture and feature sections
+for developers who want to understand how VexCore operates. They are not intended as a general
+third-party plugin development framework.
 
 ## Platforms
 
