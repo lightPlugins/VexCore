@@ -5,6 +5,8 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.ItemStackBuilder;
 import dev.vexsoft.core.paper.items.VexItemKeys;
+import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
+import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.paper.service.packets.FakeItemMetaService;
 import java.util.Objects;
 import java.util.Optional;

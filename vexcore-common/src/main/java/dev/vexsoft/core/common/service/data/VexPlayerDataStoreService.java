@@ -1,8 +1,8 @@
 package dev.vexsoft.core.common.service.data;
 
-import dev.vexsoft.core.common.data.storage.MemoryPlayerDataStore;
-import dev.vexsoft.core.common.data.storage.PlayerDataStore;
-import dev.vexsoft.core.common.data.storage.PostgresPlayerDataStore;
+import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
+import dev.vexsoft.core.common.data.PlayerDataStore;
+import dev.vexsoft.core.common.data.PostgresPlayerDataStore;
 
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.configuration.VexConfiguration;

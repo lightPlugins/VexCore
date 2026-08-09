@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.cache.internal;
+package dev.vexsoft.core.common.cache;
 
 /**
  * Provides lifecycle operations shared by managed cache implementations

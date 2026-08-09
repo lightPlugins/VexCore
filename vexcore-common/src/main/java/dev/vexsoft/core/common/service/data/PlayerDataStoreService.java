@@ -1,6 +1,6 @@
 package dev.vexsoft.core.common.service.data;
 
-import dev.vexsoft.core.common.data.storage.PlayerDataStore;
+import dev.vexsoft.core.common.data.PlayerDataStore;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 

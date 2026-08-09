@@ -1,7 +1,7 @@
 package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.service.items.ItemComponentAdapterService;
+import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.version.ItemVersionDefinition;
 import dev.vexsoft.core.paper.item.ItemVersions;
 import java.util.Objects;

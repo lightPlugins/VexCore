@@ -4,8 +4,8 @@ import dev.vexsoft.core.cache.VexCache;
 import dev.vexsoft.core.cache.VexCacheStats;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import dev.vexsoft.core.common.cache.internal.ManagedVexCache;
-import dev.vexsoft.core.common.cache.internal.VexCacheStatistics;
+import dev.vexsoft.core.common.cache.ManagedVexCache;
+import dev.vexsoft.core.common.cache.VexCacheStatistics;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;

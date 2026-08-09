@@ -5,8 +5,8 @@ import dev.vexsoft.core.api.messaging.MessageHandler;
 import dev.vexsoft.core.api.messaging.MessageType;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.common.messaging.debug.ProxyDebugMessages;
-import dev.vexsoft.core.common.messaging.debug.ProxyPingResponse;
+import dev.vexsoft.core.common.messaging.ProxyDebugMessages;
+import dev.vexsoft.core.common.messaging.ProxyPingResponse;
 import java.util.Objects;
 
 @Dependencies({ProxyPingService.class})

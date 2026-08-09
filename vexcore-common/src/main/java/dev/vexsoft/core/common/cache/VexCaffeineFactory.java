@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.cache.internal;
+package dev.vexsoft.core.common.cache;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.vexsoft.core.cache.VexCacheOptions;

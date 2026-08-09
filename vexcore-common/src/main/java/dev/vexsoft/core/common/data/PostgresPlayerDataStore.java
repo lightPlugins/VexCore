@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.data.storage;
+package dev.vexsoft.core.common.data;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

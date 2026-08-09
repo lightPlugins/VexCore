@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.data.storage;
+package dev.vexsoft.core.common.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import java.util.Collection;

@@ -7,9 +7,9 @@ import dev.vexsoft.core.api.messaging.MessageType;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.common.messaging.debug.ProxyDebugMessages;
-import dev.vexsoft.core.common.messaging.debug.ProxyPingRequest;
-import dev.vexsoft.core.common.messaging.debug.ProxyPingResponse;
+import dev.vexsoft.core.common.messaging.ProxyDebugMessages;
+import dev.vexsoft.core.common.messaging.ProxyPingRequest;
+import dev.vexsoft.core.common.messaging.ProxyPingResponse;
 import java.util.Objects;
 
 @Dependencies({MessagingService.class})

@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.items.version;
 
-import dev.vexsoft.core.paper.service.items.ItemComponentAdapterService;
+import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import java.util.Set;
 
 /**

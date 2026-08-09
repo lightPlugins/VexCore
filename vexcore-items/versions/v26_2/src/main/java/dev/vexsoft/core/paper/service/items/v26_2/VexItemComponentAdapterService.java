@@ -6,7 +6,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.VexComponentKey;
 import dev.vexsoft.core.paper.items.VexCustomModelData;
 import dev.vexsoft.core.paper.items.VexEnchantments;
-import dev.vexsoft.core.paper.service.items.ItemComponentAdapterService;
+import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperation;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperationType;
 import dev.vexsoft.core.paper.items.internal.VexComponentPatch;

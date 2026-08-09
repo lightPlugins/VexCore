@@ -37,7 +37,7 @@ import dev.vexsoft.core.common.service.reactor.VexReactorEngine;
 import dev.vexsoft.core.paper.service.reactor.BlockTypeRegistry;
 import dev.vexsoft.core.paper.service.reactor.EntityTypeRegistry;
 import dev.vexsoft.core.paper.service.reactor.ItemTypeRegistry;
-import dev.vexsoft.core.paper.service.items.ItemService;
+import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;

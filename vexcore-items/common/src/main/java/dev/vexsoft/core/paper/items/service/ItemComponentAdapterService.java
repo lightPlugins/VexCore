@@ -1,4 +1,4 @@
-package dev.vexsoft.core.paper.service.items;
+package dev.vexsoft.core.paper.items.service;
 
 import dev.vexsoft.core.paper.items.internal.VexComponentPatch;
 

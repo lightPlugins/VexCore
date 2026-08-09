@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.items.VexItemKeys;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperation;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperationType;
 import dev.vexsoft.core.paper.items.internal.VexComponentPatch;
+import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.service.packets.FakeItemMetaService;
 import java.util.LinkedHashMap;
 import java.util.List;

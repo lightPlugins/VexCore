@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.messaging.debug;
+package dev.vexsoft.core.common.messaging;
 
 import java.util.UUID;
 import lombok.Value;

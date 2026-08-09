@@ -1,4 +1,4 @@
-package dev.vexsoft.core.common.messaging.debug;
+package dev.vexsoft.core.common.messaging;
 
 import dev.vexsoft.core.api.messaging.MessageKey;
 import dev.vexsoft.core.api.messaging.MessageType;

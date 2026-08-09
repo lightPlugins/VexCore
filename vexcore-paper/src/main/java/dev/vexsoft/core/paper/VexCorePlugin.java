@@ -28,7 +28,7 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.dialogs.DialogService;
 import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
-import dev.vexsoft.core.paper.service.items.ItemService;
+import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.paper.service.items.VexItemService;
 import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;

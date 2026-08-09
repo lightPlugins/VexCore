@@ -16,7 +16,7 @@ import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.common.data.storage.PlayerDataStore;
+import dev.vexsoft.core.common.data.PlayerDataStore;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
