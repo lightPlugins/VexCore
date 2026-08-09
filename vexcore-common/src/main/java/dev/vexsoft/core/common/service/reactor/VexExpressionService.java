@@ -1,8 +1,9 @@
 package dev.vexsoft.core.common.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.expression.CompiledExpression;
+import dev.vexsoft.core.reactor.expression.CompiledExpression;
 
 import dev.vexsoft.core.api.service.reactor.ExpressionService;
+import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 
 import com.ezylang.evalex.Expression;
 import com.ezylang.evalex.EvaluationException;
@@ -11,7 +12,8 @@ import com.ezylang.evalex.data.EvaluationValue;
 import com.ezylang.evalex.parser.ParseException;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.context.PlayerReactorContext;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,18 +23,20 @@ import java.util.regex.Pattern;
 import lombok.Value;
 
 /** EvalEx-backed expression compiler with reusable parsed syntax trees. */
-@Dependencies
+@Dependencies(PlaceholderService.class)
 public final class VexExpressionService implements ExpressionService {
 
   private static final Pattern PLACEHOLDER = Pattern.compile(
-      "%([a-z][a-z0-9]*(?:-[a-z0-9]+)*)%"
+      "%([a-z][a-z0-9]*(?:[-_][a-z0-9]+)*)%"
   );
   private static final Pattern NUMBER = Pattern.compile("[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)");
   private final ExpressionConfiguration configuration;
+  private final PlaceholderService placeholderService;
 
   /** Creates the shared immutable EvalEx configuration. */
   public VexExpressionService(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
+    placeholderService = Objects.requireNonNull(services, "services")
+        .require(PlaceholderService.class);
     configuration = ExpressionConfiguration.builder()
         .decimalPlacesRounding(16)
         .build();
@@ -54,7 +58,7 @@ public final class VexExpressionService implements ExpressionService {
     } catch (ParseException exception) {
       throw new IllegalArgumentException("Invalid expression '" + source + '\'', exception);
     }
-    return new EvalExExpression(source, prototype, parsed.placeholders);
+    return new EvalExExpression(source, prototype, parsed.placeholders, placeholderService);
   }
 
   private ParsedSource parsePlaceholders(final String source) {
@@ -89,15 +93,18 @@ public final class VexExpressionService implements ExpressionService {
 
     private final String source;
     private final List<Placeholder> placeholders;
+    private final PlaceholderService placeholderService;
     private final ThreadLocal<Expression> expressions;
 
     private EvalExExpression(
         final String source,
         final Expression prototype,
-        final List<Placeholder> placeholders
+        final List<Placeholder> placeholders,
+        final PlaceholderService placeholderService
     ) {
       this.source = source;
       this.placeholders = placeholders;
+      this.placeholderService = placeholderService;
       expressions = ThreadLocal.withInitial(() -> copy(prototype));
     }
 
@@ -121,6 +128,13 @@ public final class VexExpressionService implements ExpressionService {
       Expression expression = expressions.get();
       for (Placeholder placeholder : placeholders) {
         Object value = checkedContext.getVariable(placeholder.contextName);
+        if (value == null && checkedContext instanceof PlayerReactorContext playerContext) {
+          String unresolved = '%' + placeholder.contextName + '%';
+          String resolved = placeholderService.resolve(playerContext.getPlayer(), unresolved);
+          if (!unresolved.equals(resolved)) {
+            value = NUMBER.matcher(resolved).matches() ? new BigDecimal(resolved) : resolved;
+          }
+        }
         if (value == null) {
           throw new IllegalStateException(
               "Expression '" + source + "' requires unavailable variable %"

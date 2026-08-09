@@ -10,6 +10,7 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.paper.module.ModuleManager;
@@ -53,6 +54,8 @@ import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
 import dev.vexsoft.core.common.service.messaging.VexMessageCodecService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
+import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.paper.commands.VexCoreCommand;
 import dev.vexsoft.core.paper.commands.VexCoreDebugCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLanguageCommand;
@@ -71,6 +74,9 @@ import dev.vexsoft.core.paper.service.performance.ServerPerformanceService;
 import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarListener;
 import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarService;
 import dev.vexsoft.core.paper.service.performance.VexServerPerformanceService;
+import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
+import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
@@ -118,6 +124,11 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(ScheduleService.class, VexScheduleService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);
+    coreServices.register(
+        PlaceholderRegistryCoordinatorService.class,
+        VexPlaceholderRegistryCoordinatorService.class
+    );
+    coreServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
     coreServices.register(SignalRegistryService.class, VexSignalRegistryService.class);
     coreServices.register(SignalService.class, VexSignalService.class);
     coreServices.register(ConfigurationService.class, VexConfigurationService.class);
@@ -129,6 +140,10 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     );
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
+    coreServices.register(
+        PlaceholderApiBridgeService.class,
+        VexPlaceholderApiBridgeService.class
+    );
     coreServices.register(DataService.class, VexDataService.class);
     coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
     coreServices.registerQueuedServices();
@@ -186,6 +201,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
       return;
     }
     modules.startAll();
+    coreServices.require(PlaceholderApiBridgeService.class).enable();
     coreServices.require(MessageTransportService.class).start();
     coreServices.require(ServerPerformanceService.class).start();
     coreServices.require(PerformanceBossBarService.class).start();

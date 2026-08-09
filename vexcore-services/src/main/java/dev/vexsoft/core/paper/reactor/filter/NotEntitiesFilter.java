@@ -5,9 +5,9 @@ import dev.vexsoft.core.paper.service.reactor.EntityTypeRegistry;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.filter.CompiledFilter;
-import dev.vexsoft.core.gameplay.reactor.filter.Filter;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
+import dev.vexsoft.core.reactor.filter.CompiledFilter;
+import dev.vexsoft.core.reactor.filter.Filter;
+import dev.vexsoft.core.reactor.ReactorId;
 import java.util.Objects;
 import java.util.function.Predicate;
 import org.bukkit.entity.Entity;

@@ -7,18 +7,19 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.cache.VexCache;
 import dev.vexsoft.core.cache.VexCacheOptions;
-import dev.vexsoft.core.gameplay.reactor.ReactionComponentDefinition;
-import dev.vexsoft.core.gameplay.reactor.ReactionDefinition;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
-import dev.vexsoft.core.gameplay.reactor.condition.CompiledCondition;
-import dev.vexsoft.core.gameplay.reactor.condition.Condition;
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
-import dev.vexsoft.core.gameplay.reactor.effect.CompiledEffect;
-import dev.vexsoft.core.gameplay.reactor.effect.Effect;
-import dev.vexsoft.core.common.gameplay.reactor.execution.CompiledReaction;
-import dev.vexsoft.core.gameplay.reactor.filter.CompiledFilter;
-import dev.vexsoft.core.gameplay.reactor.filter.Filter;
-import dev.vexsoft.core.gameplay.reactor.trigger.Trigger;
+import dev.vexsoft.core.reactor.ReactionComponentDefinition;
+import dev.vexsoft.core.reactor.ReactionDefinition;
+import dev.vexsoft.core.reactor.ReactionTriggerDefinition;
+import dev.vexsoft.core.reactor.ReactorId;
+import dev.vexsoft.core.reactor.condition.CompiledCondition;
+import dev.vexsoft.core.reactor.condition.Condition;
+import dev.vexsoft.core.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.effect.CompiledEffect;
+import dev.vexsoft.core.reactor.effect.Effect;
+import dev.vexsoft.core.common.reactor.execution.CompiledReaction;
+import dev.vexsoft.core.reactor.filter.CompiledFilter;
+import dev.vexsoft.core.reactor.filter.Filter;
+import dev.vexsoft.core.reactor.trigger.Trigger;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -182,14 +183,24 @@ public final class VexReactorRegistryCoordinatorService implements
     if (definition.getTriggers().isEmpty()) {
       throw new IllegalArgumentException("Reaction '" + reactionId + "' has no triggers");
     }
-    for (String triggerIdValue : definition.getTriggers()) {
-      String triggerId = requireId(triggerIdValue, "trigger");
+    for (ReactionTriggerDefinition triggerDefinition : definition.getTriggers()) {
+      ReactionTriggerDefinition checkedTrigger = Objects.requireNonNull(
+          triggerDefinition,
+          "triggerDefinition"
+      );
+      String triggerId = requireId(checkedTrigger.getId(), "trigger");
       Trigger<?> trigger = require(triggers, triggerId, "trigger").getComponent();
       Class<? extends ReactorContext> contextType = trigger.getContextType();
       result.add(new TriggerBinding(
           triggerId,
           contextType,
-          compileReactionForTrigger(owner, definition, reactionId, contextType)
+          compileReactionForTrigger(
+              owner,
+              definition,
+              checkedTrigger,
+              reactionId,
+              contextType
+          )
       ));
     }
   }
@@ -198,28 +209,50 @@ public final class VexReactorRegistryCoordinatorService implements
   private CompiledReaction compileReactionForTrigger(
       final ServiceOwner owner,
       final ReactionDefinition definition,
+      final ReactionTriggerDefinition triggerDefinition,
       final String reactionId,
       final Class<? extends ReactorContext> contextType
   ) {
     List<CompiledFilter<ReactorContext>> compiledFilters = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : definition.getFilters().entrySet()) {
+    for (Map.Entry<String, Object> entry : triggerDefinition.getFilters().entrySet()) {
       String id = requireId(entry.getKey(), "filter");
       Filter<?> filter = require(filters, id, "filter").getComponent();
-      requireCompatible(reactionId, contextType, filter.getContextType(), "filter", id);
+      requireCompatible(
+          reactionId,
+          triggerDefinition.getId(),
+          contextType,
+          filter.getContextType(),
+          "filter",
+          id
+      );
       compiledFilters.add(compileFilter(filter, entry.getValue()));
     }
     List<CompiledCondition<ReactorContext>> compiledConditions = new ArrayList<>();
     for (ReactionComponentDefinition conditionDefinition : definition.getConditions()) {
       String id = requireId(conditionDefinition.getId(), "condition");
       Condition<?> condition = require(conditions, id, "condition").getComponent();
-      requireCompatible(reactionId, contextType, condition.getContextType(), "condition", id);
+      requireCompatible(
+          reactionId,
+          triggerDefinition.getId(),
+          contextType,
+          condition.getContextType(),
+          "condition",
+          id
+      );
       compiledConditions.add(compileCondition(condition, conditionDefinition.getArguments()));
     }
     List<CompiledReaction.NamedEffect> compiledEffects = new ArrayList<>();
     for (ReactionComponentDefinition effectDefinition : definition.getEffects()) {
       String id = requireId(effectDefinition.getId(), "effect");
       Effect<?> effect = require(effects, id, "effect").getComponent();
-      requireCompatible(reactionId, contextType, effect.getContextType(), "effect", id);
+      requireCompatible(
+          reactionId,
+          triggerDefinition.getId(),
+          contextType,
+          effect.getContextType(),
+          "effect",
+          id
+      );
       compiledEffects.add(new CompiledReaction.NamedEffect(
           id,
           compileEffect(effect, effectDefinition.getArguments())
@@ -329,6 +362,7 @@ public final class VexReactorRegistryCoordinatorService implements
 
   private static void requireCompatible(
       final String reactionId,
+      final String triggerId,
       final Class<? extends ReactorContext> provided,
       final Class<? extends ReactorContext> required,
       final String role,
@@ -336,8 +370,9 @@ public final class VexReactorRegistryCoordinatorService implements
   ) {
     if (!required.isAssignableFrom(provided)) {
       throw new IllegalArgumentException(
-          "Reaction '" + reactionId + "' uses " + role + " '" + componentId + "' requiring "
-              + required.getSimpleName() + ", but its trigger provides " + provided.getSimpleName()
+          "Reaction '" + reactionId + "' cannot use " + role + " '" + componentId
+              + "' with trigger '" + triggerId + "'. This " + role
+              + " is not supported by that trigger"
       );
     }
   }

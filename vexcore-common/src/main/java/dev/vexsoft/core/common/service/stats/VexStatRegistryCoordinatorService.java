@@ -1,8 +1,8 @@
 package dev.vexsoft.core.common.service.stats;
 
-import dev.vexsoft.core.gameplay.stat.Stat;
-import dev.vexsoft.core.gameplay.stat.StatDefinition;
-import dev.vexsoft.core.gameplay.stat.StatKey;
+import dev.vexsoft.core.stats.Stat;
+import dev.vexsoft.core.stats.StatDefinition;
+import dev.vexsoft.core.stats.StatKey;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;

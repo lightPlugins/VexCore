@@ -21,9 +21,9 @@ VexCore brings together the technical foundations that would otherwise have to b
 
 | Foundation | Player-facing systems | Runtime | Compatibility |
 | --- | --- | --- | --- |
-| Scoped service registries | Localization | Paper, Folia, and Velocity | Minecraft version adapters |
-| Server and proxy plugin lifecycles | Commands and inventories | Player data and caching | Packet abstraction |
-| Configuration and messaging | Dialogs and messages | PostgreSQL persistence | Data Component abstraction |
+| Scoped service registries | Localization and placeholders | Paper, Folia, and Velocity | Minecraft version adapters |
+| Server and proxy plugin lifecycles | Commands and inventories | Player data, stats, and caching | Packet abstraction |
+| Configuration and messaging | Reactor triggers and effects | PostgreSQL persistence | Data Component abstraction |
 
 ## Purpose
 
@@ -114,6 +114,26 @@ flowchart TD
 - One centrally stored player language shared by all VexSoft plugins
 - Language files can be reloaded while the server is running
 
+### Placeholder System
+
+- Every placeholder is resolved from a loaded `VexPlayer`
+- Class-based registration with automatic plugin namespaces
+- Dynamic argument paths such as `%vexskills_skill_mining_level%`
+- Request-local placeholders such as `%level%` for one expression or render operation
+- Cached templates avoid reparsing frequently rendered text
+- PlaceholderAPI support in both directions when it is installed
+
+### Stats and Reactor
+
+- Dynamically registered, namespaced stats with stable persistence keys
+- Array-backed values for loaded players and retained database values while a stat is unloaded
+- Permanent values and temporary flat or multiplicative modifiers
+- Stat names and descriptions resolved from the owning plugin's language files
+- Class-registered triggers, filters, conditions, and effects with globally unique IDs
+- Trigger-specific filters and global conditions in configuration
+- Atomic compiled reaction snapshots and owner-scoped reloads
+- Namespaced Minecraft resource keys such as `minecraft:stone`, ready for custom providers
+
 ### Command Framework
 
 - Class-based command registration without command entries in `plugin.yml`
@@ -196,22 +216,144 @@ VexCore is deliberately split into small modules. Public contracts are kept sepa
 
 | Module | Responsibility |
 | --- | --- |
-| `vexcore-api` | Shared contracts for services, configurations, localization, player data, caching, and messaging |
-| `vexcore-messaging` | Versioned message protocol, payload handling, and shared messaging runtime |
-| `vexcore-paper-api` | Public Paper, Folia, and command contracts together with the VexPlugin foundation |
-| `vexcore-velocity-api` | Public Velocity contracts together with the VexProxyPlugin foundation |
-| `vexcore-service-registry` | Service resolution, scopes, and dependency-aware creation |
-| `vexcore-configuration` | Loading and managing configuration files |
-| `vexcore-data` | VexPlayer instances, data containers, and persistence |
-| `vexcore-localization` | Language files, caching, and localized message resolution |
-| `vexcore-cache` | Shared cache implementations |
-| `vexcore-command` | Runtime implementation of the command framework |
-| `vexcore-inventory` | Inventory framework and navigation |
-| `vexcore-dialog` | Dialog definitions and sessions |
-| `vexcore-items` | Data Components and version-specific item adapters |
-| `vexcore-packets` | Packet contracts and Minecraft-specific adapters |
+| `vexcore-api` | Platform-neutral contracts for services, player data, localization, placeholders, stats, Reactor, caching, configuration, and messaging |
+| `vexcore-common` | Platform-neutral implementations shared by the server and proxy runtimes |
+| `vexcore-paper-api` | Public Paper and Folia contracts together with the `VexPlugin` foundation |
+| `vexcore-services` | Paper-only implementations for commands, inventories, dialogs, scheduling, gameplay events, and other stable services |
+| `vexcore-items:common` | Public item and Data Component contracts |
+| `vexcore-items:versions:v26_2` | Minecraft 26.2 Data Component implementation |
+| `vexcore-packets:common` | Public packet contracts |
+| `vexcore-packets:versions:v26_2` | Minecraft 26.2 packet implementation |
 | `vexcore-paper` | The server plugin that connects and starts every module |
+| `vexcore-velocity-api` | Public Velocity contracts together with the `VexProxyPlugin` foundation |
 | `vexcore-velocity` | The proxy plugin that owns Velocity services and routes network messages |
+
+## Creating a Paper Plugin
+
+Compile a Paper plugin against the Paper API module. VexCore itself remains a required runtime
+dependency and supplies the implementations.
+
+```kotlin
+dependencies {
+    compileOnly("dev.vexsoft:vexcore-paper-api:1.0.0-SNAPSHOT")
+}
+```
+
+```yaml
+name: VexSkills
+main: dev.vexsoft.skills.VexSkillsPlugin
+version: 1.0.0
+api-version: "1.21"
+depend:
+  - VexCore
+```
+
+Extend `VexPlugin` and use its scoped services from the appropriate lifecycle hook:
+
+```java
+public final class VexSkillsPlugin extends VexPlugin {
+
+  @Override
+  protected void registerServices() {
+    getServices().register(SkillService.class, VexSkillService.class);
+  }
+
+  @Override
+  protected void onVexLoad() {
+    PlaceholderService placeholders = getServices().require(PlaceholderService.class);
+    placeholders.register(SkillPlaceholder.class);
+  }
+}
+```
+
+Each placeholder class owns one local ID. VexCore adds the plugin namespace automatically:
+
+```java
+@PlaceholderId("skill")
+@Dependencies(SkillService.class)
+public final class SkillPlaceholder implements VexPlaceholder {
+
+  private final SkillService skills;
+
+  public SkillPlaceholder(VexServiceRegistry services) {
+    skills = services.require(SkillService.class);
+  }
+
+  @Override
+  public String resolve(VexPlayer player, PlaceholderArguments arguments) {
+    return skills.resolve(player, arguments.asList());
+  }
+}
+```
+
+This class resolves placeholders such as `%vexskills_skill_mining_level%`. Local values that only
+exist for one render can be supplied with `PlaceholderContext.of(player).with("level", level)` and
+are not exposed to PlaceholderAPI.
+
+### Registering and Localizing Stats
+
+Stat keys use the normalized plugin name as their namespace. By default, the following definition
+loads its presentation from `stats.strength.name` and `stats.strength.description` in the owning
+plugin's language files:
+
+```java
+StatDefinition strength = StatDefinition.builder(StatKey.of("vexskills", "strength"))
+    .defaultValue(0)
+    .minimum(0)
+    .build();
+
+StatRegistry stats = getServices().require(StatRegistry.class);
+stats.synchronize(List.of(strength));
+```
+
+```yaml
+# languages/en_EN.yml
+stats:
+  strength:
+    name: "<red>Strength"
+    description:
+      - "<gray>Increases your physical damage."
+      - "<gray>Current value: <white>%vexskills_stat_strength_value%"
+```
+
+Use `StatLocalizationService#getName` and `getDescription` with a `VexPlayer`; resolution always
+uses the stat owner's language files, even when a different plugin displays the stat.
+
+### Loading Reactions from Configuration
+
+`ReactionConfigurationService` accepts any list path. The section name is owned by the consuming
+plugin and is not prescribed by VexCore. Each trigger has its own filters, while conditions apply
+to every trigger in that reaction:
+
+```yaml
+xp-gain-methods:
+  - reaction-id: mining-stone
+    enabled: true
+    triggers:
+      - id: break-block
+        filters:
+          blocks:
+            - minecraft:stone
+            - minecraft:deepslate
+    conditions:
+      - id: permission
+        args:
+          permission: vexskills.xp.mining
+    effects:
+      - id: vexskills-give-xp
+        args:
+          skill: mining
+          amount: "10 + (%vexskills_skill_mining_level% * 0.25)"
+```
+
+Plugins register their own trigger, filter, condition, and effect classes through their scoped
+registries. Reactor IDs are global: a duplicate registration is ignored with a clear console
+warning naming both plugins.
+
+For a reload, first build the complete desired stat definition collection and then call the
+three-argument `ReactionConfigurationService#reload`. VexCore synchronizes the plugin's stats,
+compiles the complete reaction set, and restores the previous stats if compilation fails. No other
+plugin and no VexCore-wide reload is affected.
 
 ## Platforms
 

@@ -1,6 +1,6 @@
 package dev.vexsoft.core.api.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.trigger.Trigger;
+import dev.vexsoft.core.reactor.trigger.Trigger;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 

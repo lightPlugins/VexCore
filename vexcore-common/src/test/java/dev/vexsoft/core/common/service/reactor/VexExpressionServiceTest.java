@@ -1,22 +1,25 @@
 package dev.vexsoft.core.common.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.expression.CompiledExpression;
+import dev.vexsoft.core.reactor.expression.CompiledExpression;
 
 import dev.vexsoft.core.api.service.reactor.ExpressionService;
+import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.reactor.context.ReactorContext;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
+import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.placeholder.VexPlaceholderService;
 import org.junit.jupiter.api.Test;
 
 class VexExpressionServiceTest {
 
-  private final ExpressionService expressions = new VexExpressionService(
-      new DefaultServiceRegistry().scoped((ServiceOwner) () -> "test")
-  );
+  private final ExpressionService expressions = createExpressionService();
 
   @Test
   void evaluatesHyphenatedContextPlaceholdersFromCachedSyntaxTree() {
@@ -42,5 +45,18 @@ class VexExpressionServiceTest {
         return expectedName.equals(name) ? value : null;
       }
     };
+  }
+
+  private static ExpressionService createExpressionService() {
+    VexServiceRegistry services = new DefaultServiceRegistry().scoped(
+        (ServiceOwner) () -> "test"
+    );
+    services.register(
+        PlaceholderRegistryCoordinatorService.class,
+        VexPlaceholderRegistryCoordinatorService.class
+    );
+    services.register(PlaceholderService.class, VexPlaceholderService.class);
+    services.registerQueuedServices();
+    return new VexExpressionService(services);
   }
 }

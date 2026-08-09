@@ -1,6 +1,6 @@
 package dev.vexsoft.core.common.service.localization;
 
-import dev.vexsoft.core.gameplay.reactor.filter.Filter;
+import dev.vexsoft.core.reactor.filter.Filter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;

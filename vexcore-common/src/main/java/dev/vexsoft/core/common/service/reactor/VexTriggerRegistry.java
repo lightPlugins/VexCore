@@ -2,7 +2,7 @@ package dev.vexsoft.core.common.service.reactor;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.trigger.Trigger;
+import dev.vexsoft.core.reactor.trigger.Trigger;
 import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
 
 /** Default owner-scoped trigger registry. */

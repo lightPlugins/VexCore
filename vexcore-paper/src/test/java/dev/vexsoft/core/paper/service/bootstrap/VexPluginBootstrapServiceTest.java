@@ -10,6 +10,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
+import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +51,7 @@ public final class VexPluginBootstrapServiceTest {
       @Override
       public void unregisterAll() { }
     };
+    private final PlaceholderApiBridgeService placeholders = () -> { };
     private Class<? extends Listener> listenerType;
 
     @Override
@@ -82,6 +84,9 @@ public final class VexPluginBootstrapServiceTest {
     public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
       if (serviceType == ListenerService.class) {
         return Optional.of(serviceType.cast(listeners));
+      }
+      if (serviceType == PlaceholderApiBridgeService.class) {
+        return Optional.of(serviceType.cast(placeholders));
       }
       return Optional.empty();
     }

@@ -1,9 +1,9 @@
 package dev.vexsoft.core.api.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.ReactionDefinition;
+import dev.vexsoft.core.reactor.ReactionDefinition;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.context.ReactorContext;
 import java.util.Collection;
 
 /** Compiles owner reactions atomically and dispatches registered runtime triggers. */

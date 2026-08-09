@@ -2,7 +2,7 @@ package dev.vexsoft.core.common.service.reactor;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.effect.Effect;
+import dev.vexsoft.core.reactor.effect.Effect;
 import dev.vexsoft.core.api.service.reactor.EffectRegistry;
 
 /** Default owner-scoped effect registry. */

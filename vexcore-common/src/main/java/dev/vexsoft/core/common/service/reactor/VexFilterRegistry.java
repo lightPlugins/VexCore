@@ -2,7 +2,7 @@ package dev.vexsoft.core.common.service.reactor;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.filter.Filter;
+import dev.vexsoft.core.reactor.filter.Filter;
 import dev.vexsoft.core.api.service.reactor.FilterRegistry;
 
 /** Default owner-scoped filter registry. */

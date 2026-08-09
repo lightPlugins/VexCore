@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.reactor.context;
 
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.context.ReactorContext;
 
 /** Allows an effect to inspect or change event cancellation. */
 public interface CancellableReactorContext extends ReactorContext {

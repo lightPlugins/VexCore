@@ -4,9 +4,9 @@ import dev.vexsoft.core.paper.reactor.context.DamageReactorContext;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.filter.CompiledFilter;
-import dev.vexsoft.core.gameplay.reactor.filter.Filter;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
+import dev.vexsoft.core.reactor.filter.CompiledFilter;
+import dev.vexsoft.core.reactor.filter.Filter;
+import dev.vexsoft.core.reactor.ReactorId;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;

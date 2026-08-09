@@ -1,6 +1,6 @@
 package dev.vexsoft.core.api.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.expression.CompiledExpression;
+import dev.vexsoft.core.reactor.expression.CompiledExpression;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 

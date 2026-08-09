@@ -1,10 +1,12 @@
 package dev.vexsoft.core.common.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.ReactionComponentDefinition;
-import dev.vexsoft.core.gameplay.reactor.ReactionDefinition;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
+import dev.vexsoft.core.reactor.ReactionComponentDefinition;
+import dev.vexsoft.core.reactor.ReactionDefinition;
+import dev.vexsoft.core.reactor.ReactionTriggerDefinition;
+import dev.vexsoft.core.reactor.ReactorId;
 
 import dev.vexsoft.core.api.service.reactor.ReactorEngine;
+import dev.vexsoft.core.api.service.reactor.ReactionConfigurationService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,20 +16,28 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
+import dev.vexsoft.core.common.configuration.ConfigurateConfigurationSection;
 import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
-import dev.vexsoft.core.gameplay.reactor.context.ReactorContext;
-import dev.vexsoft.core.gameplay.reactor.effect.CompiledEffect;
-import dev.vexsoft.core.gameplay.reactor.effect.Effect;
+import dev.vexsoft.core.reactor.context.ReactorContext;
+import dev.vexsoft.core.reactor.effect.CompiledEffect;
+import dev.vexsoft.core.reactor.effect.Effect;
 import dev.vexsoft.core.api.service.reactor.EffectRegistry;
 import dev.vexsoft.core.api.service.reactor.FilterRegistry;
-import dev.vexsoft.core.gameplay.reactor.trigger.Trigger;
+import dev.vexsoft.core.reactor.trigger.Trigger;
 import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
+import dev.vexsoft.core.api.service.stats.StatRegistry;
+import dev.vexsoft.core.common.service.stats.StatRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.stats.VexStatRegistry;
+import dev.vexsoft.core.common.service.stats.VexStatRegistryCoordinatorService;
+import dev.vexsoft.core.stats.StatDefinition;
+import dev.vexsoft.core.stats.StatKey;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.spongepowered.configurate.CommentedConfigurationNode;
 
 class VexReactorEngineTest {
 
@@ -35,6 +45,8 @@ class VexReactorEngineTest {
 
   private ReactorEngine reactions;
   private EffectRegistry effects;
+  private ReactionConfigurationService configurations;
+  private StatRegistry stats;
 
   @BeforeEach
   void setUp() {
@@ -45,6 +57,10 @@ class VexReactorEngineTest {
         ReactorRegistryCoordinatorService.class,
         VexReactorRegistryCoordinatorService.class
     );
+    infrastructure.register(
+        StatRegistryCoordinatorService.class,
+        VexStatRegistryCoordinatorService.class
+    );
     infrastructure.registerQueuedServices();
 
     VexServiceRegistry plugin = infrastructure.scoped(new Owner("test-plugin"));
@@ -53,12 +69,19 @@ class VexReactorEngineTest {
     plugin.register(ConditionRegistry.class, VexConditionRegistry.class);
     plugin.register(EffectRegistry.class, VexEffectRegistry.class);
     plugin.register(ReactorEngine.class, VexReactorEngine.class);
+    plugin.register(StatRegistry.class, VexStatRegistry.class);
+    plugin.register(
+        ReactionConfigurationService.class,
+        VexReactionConfigurationService.class
+    );
     plugin.registerQueuedServices();
     plugin.require(TriggerRegistry.class).register(TestTrigger.class);
     effects = plugin.require(EffectRegistry.class);
     effects.register(CountingEffect.class);
     effects.register(FailingEffect.class);
     reactions = plugin.require(ReactorEngine.class);
+    configurations = plugin.require(ReactionConfigurationService.class);
+    stats = plugin.require(StatRegistry.class);
   }
 
   @Test
@@ -79,7 +102,7 @@ class VexReactorEngineTest {
   void stopsFailingReactionButContinuesWithOtherReactions() {
     ReactionDefinition failing = ReactionDefinition.builder()
         .id("failing")
-        .trigger("test-trigger")
+        .trigger(ReactionTriggerDefinition.builder().id("test-trigger").build())
         .effect(component("fail"))
         .effect(component("count"))
         .build();
@@ -90,10 +113,54 @@ class VexReactorEngineTest {
     assertEquals(1, EXECUTIONS.get());
   }
 
+  @Test
+  void loadsTriggerSpecificFiltersAndGlobalComponents() throws Exception {
+    CommentedConfigurationNode root = CommentedConfigurationNode.root();
+    root.node("xp-gain-methods").set(List.of(Map.of(
+        "triggers", List.of(
+            Map.of("id", "test-trigger", "filters", Map.of("blocks", List.of("minecraft:stone"))),
+            Map.of("id", "test-trigger")
+        ),
+        "conditions", List.of(Map.of("id", "chance", "args", Map.of("chance", 0.5D))),
+        "effects", List.of(Map.of("id", "count", "args", Map.of("amount", 2)))
+    )));
+
+    ReactionDefinition loaded = configurations.load(
+        new ConfigurateConfigurationSection(root),
+        "xp-gain-methods"
+    ).getFirst();
+
+    assertEquals("xp-gain-methods-1", loaded.getId());
+    assertEquals(List.of("minecraft:stone"), loaded.getTriggers().getFirst()
+        .getFilters().get("blocks"));
+    assertEquals(Map.of(), loaded.getTriggers().get(1).getFilters());
+    assertEquals("chance", loaded.getConditions().getFirst().getId());
+    assertEquals("count", loaded.getEffects().getFirst().getId());
+  }
+
+  @Test
+  void restoresStatsWhenReactionCompilationFails() throws Exception {
+    StatKey power = StatKey.of("test_plugin", "power");
+    stats.synchronize(List.of(StatDefinition.builder(power).defaultValue(5D).build()));
+    CommentedConfigurationNode root = CommentedConfigurationNode.root();
+    root.node("reactions").set(List.of(Map.of(
+        "triggers", List.of(Map.of("id", "test-trigger")),
+        "effects", List.of(Map.of("id", "missing-effect"))
+    )));
+
+    assertThrows(IllegalArgumentException.class, () -> configurations.reload(
+        new ConfigurateConfigurationSection(root),
+        "reactions",
+        List.of(StatDefinition.builder(power).defaultValue(12D).build())
+    ));
+
+    assertEquals(5D, stats.require(power).getDefinition().getDefaultValue());
+  }
+
   private static ReactionDefinition reaction(final String id, final String effect) {
     return ReactionDefinition.builder()
         .id(id)
-        .trigger("test-trigger")
+        .trigger(ReactionTriggerDefinition.builder().id("test-trigger").build())
         .effect(component(effect))
         .build();
   }

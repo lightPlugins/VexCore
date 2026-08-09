@@ -2,7 +2,7 @@ package dev.vexsoft.core.common.service.reactor;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.condition.Condition;
+import dev.vexsoft.core.reactor.condition.Condition;
 import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
 
 /** Default owner-scoped condition registry. */

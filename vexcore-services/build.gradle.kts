@@ -7,6 +7,7 @@ dependencies {
     implementation(project(":vexcore-common"))
 
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
+    compileOnly("me.clip:placeholderapi:2.12.2")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))

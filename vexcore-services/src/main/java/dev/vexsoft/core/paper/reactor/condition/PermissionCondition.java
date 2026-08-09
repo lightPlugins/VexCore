@@ -2,10 +2,10 @@ package dev.vexsoft.core.paper.reactor.condition;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.condition.CompiledCondition;
-import dev.vexsoft.core.gameplay.reactor.condition.Condition;
-import dev.vexsoft.core.gameplay.reactor.context.PlayerReactorContext;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
+import dev.vexsoft.core.reactor.condition.CompiledCondition;
+import dev.vexsoft.core.reactor.condition.Condition;
+import dev.vexsoft.core.reactor.context.PlayerReactorContext;
+import dev.vexsoft.core.reactor.ReactorId;
 import java.util.Map;
 import java.util.Objects;
 import org.bukkit.entity.Player;

@@ -4,9 +4,9 @@ import dev.vexsoft.core.paper.reactor.context.CancellableReactorContext;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.gameplay.reactor.effect.CompiledEffect;
-import dev.vexsoft.core.gameplay.reactor.effect.Effect;
-import dev.vexsoft.core.gameplay.reactor.ReactorId;
+import dev.vexsoft.core.reactor.effect.CompiledEffect;
+import dev.vexsoft.core.reactor.effect.Effect;
+import dev.vexsoft.core.reactor.ReactorId;
 import java.util.Map;
 import java.util.Objects;
 

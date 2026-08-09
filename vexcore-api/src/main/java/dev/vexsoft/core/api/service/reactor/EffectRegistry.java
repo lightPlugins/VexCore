@@ -1,6 +1,6 @@
 package dev.vexsoft.core.api.service.reactor;
 
-import dev.vexsoft.core.gameplay.reactor.effect.Effect;
+import dev.vexsoft.core.reactor.effect.Effect;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 

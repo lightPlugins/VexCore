@@ -1,8 +1,8 @@
 package dev.vexsoft.core.paper.module;
 
-import dev.vexsoft.core.common.gameplay.reactor.condition.ChanceCondition;
-import dev.vexsoft.core.common.gameplay.reactor.condition.StatComparisonCondition;
-import dev.vexsoft.core.common.gameplay.reactor.effect.AddStatEffect;
+import dev.vexsoft.core.common.reactor.condition.ChanceCondition;
+import dev.vexsoft.core.common.reactor.condition.StatComparisonCondition;
+import dev.vexsoft.core.common.reactor.effect.AddStatEffect;
 import dev.vexsoft.core.common.service.reactor.ReactorRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.reactor.VexConditionRegistry;
 import dev.vexsoft.core.common.service.reactor.VexEffectRegistry;
@@ -42,18 +42,22 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.data.VexDataService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
 import dev.vexsoft.core.common.service.stats.GameplayPlayerData;
-import dev.vexsoft.core.gameplay.stat.StatContainer;
+import dev.vexsoft.core.stats.StatContainer;
 import dev.vexsoft.core.api.service.stats.StatRegistry;
+import dev.vexsoft.core.api.service.stats.StatLocalizationService;
 import dev.vexsoft.core.common.service.stats.StatRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.stats.VexStatContainer;
 import dev.vexsoft.core.common.service.stats.VexStatRegistry;
 import dev.vexsoft.core.common.service.stats.VexStatRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.stats.VexStatLocalizationService;
 import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
 import dev.vexsoft.core.api.service.reactor.EffectRegistry;
 import dev.vexsoft.core.api.service.reactor.FilterRegistry;
 import dev.vexsoft.core.api.service.reactor.ReactorEngine;
+import dev.vexsoft.core.api.service.reactor.ReactionConfigurationService;
 import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
 import dev.vexsoft.core.common.service.reactor.VexReactorEngine;
+import dev.vexsoft.core.common.service.reactor.VexReactionConfigurationService;
 import dev.vexsoft.core.api.service.reactor.ExpressionService;
 import dev.vexsoft.core.common.service.reactor.VexExpressionService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
@@ -83,6 +87,7 @@ public final class GameplayModule implements VexModule {
     services.register(EntityTypeCoordinatorService.class, VexEntityTypeCoordinatorService.class);
     services.register(ItemTypeCoordinatorService.class, VexItemTypeCoordinatorService.class);
     services.register(StatRegistry.class, VexStatRegistry.class);
+    services.register(StatLocalizationService.class, VexStatLocalizationService.class);
     services.register(ExpressionService.class, VexExpressionService.class);
     services.register(TriggerRegistry.class, VexTriggerRegistry.class);
     services.register(FilterRegistry.class, VexFilterRegistry.class);
@@ -92,6 +97,10 @@ public final class GameplayModule implements VexModule {
     services.register(EntityTypeRegistry.class, VexEntityTypeRegistry.class);
     services.register(ItemTypeRegistry.class, VexItemTypeRegistry.class);
     services.register(ReactorEngine.class, VexReactorEngine.class);
+    services.register(
+        ReactionConfigurationService.class,
+        VexReactionConfigurationService.class
+    );
     services.registerQueuedServices();
     services.require(DataService.class).register(GameplayPlayerData.class);
     StatRegistryCoordinatorService coordinator = services.require(

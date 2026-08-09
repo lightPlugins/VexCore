@@ -12,6 +12,7 @@ import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
@@ -32,8 +33,10 @@ import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
 import dev.vexsoft.core.api.service.reactor.EffectRegistry;
 import dev.vexsoft.core.api.service.reactor.FilterRegistry;
 import dev.vexsoft.core.api.service.reactor.ReactorEngine;
+import dev.vexsoft.core.api.service.reactor.ReactionConfigurationService;
 import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
 import dev.vexsoft.core.common.service.reactor.VexReactorEngine;
+import dev.vexsoft.core.common.service.reactor.VexReactionConfigurationService;
 import dev.vexsoft.core.paper.service.reactor.BlockTypeRegistry;
 import dev.vexsoft.core.paper.service.reactor.EntityTypeRegistry;
 import dev.vexsoft.core.paper.service.reactor.ItemTypeRegistry;
@@ -68,6 +71,9 @@ import dev.vexsoft.core.paper.service.packets.VexMobHitPacketService;
 import dev.vexsoft.core.paper.service.packets.VexTextDisplayPacketService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
+import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
+import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
 import java.util.Objects;
 
 @Dependencies
@@ -95,6 +101,11 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
     checkedServices.register(SendMessageService.class, VexSendMessageService.class);
     checkedServices.register(MessagingService.class, VexMessagingService.class);
+    checkedServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
+    checkedServices.register(
+        PlaceholderApiBridgeService.class,
+        VexPlaceholderApiBridgeService.class
+    );
     checkedServices.register(StatRegistry.class, VexStatRegistry.class);
     checkedServices.register(TriggerRegistry.class, VexTriggerRegistry.class);
     checkedServices.register(FilterRegistry.class, VexFilterRegistry.class);
@@ -104,6 +115,10 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(EntityTypeRegistry.class, VexEntityTypeRegistry.class);
     checkedServices.register(ItemTypeRegistry.class, VexItemTypeRegistry.class);
     checkedServices.register(ReactorEngine.class, VexReactorEngine.class);
+    checkedServices.register(
+        ReactionConfigurationService.class,
+        VexReactionConfigurationService.class
+    );
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     checkedServices.register(
@@ -122,8 +137,8 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
 
   @Override
   public void enable(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services")
-        .require(ListenerService.class)
-        .register(VexInventoryListener.class, services);
+    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
+    checkedServices.require(PlaceholderApiBridgeService.class).enable();
+    checkedServices.require(ListenerService.class).register(VexInventoryListener.class, services);
   }
 }

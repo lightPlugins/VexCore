@@ -10,11 +10,14 @@ import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
+import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.ServiceReference;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.placeholder.PlaceholderContext;
+import dev.vexsoft.core.placeholder.VexPlaceholder;
 import java.io.InputStream;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
@@ -108,6 +111,30 @@ class VexLocalizedMessageServiceTest {
       public void reload() {
       }
     };
+    private final PlaceholderService placeholders = new PlaceholderService() {
+      @Override
+      public <T extends VexPlaceholder> T register(final Class<T> placeholderType) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public String resolve(final VexPlayer player, final String input) {
+        return input;
+      }
+
+      @Override
+      public String resolve(final PlaceholderContext context, final String input) {
+        return input;
+      }
+
+      @Override
+      public Component resolve(final VexPlayer player, final Component component) {
+        return component;
+      }
+
+      @Override
+      public void clear() { }
+    };
 
     @Override
     public ServiceOwner getOwner() {
@@ -121,9 +148,13 @@ class VexLocalizedMessageServiceTest {
 
     @Override
     public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
-      return serviceType == LocalizationService.class
-          ? Optional.of(serviceType.cast(localization))
-          : Optional.empty();
+      if (serviceType == LocalizationService.class) {
+        return Optional.of(serviceType.cast(localization));
+      }
+      if (serviceType == PlaceholderService.class) {
+        return Optional.of(serviceType.cast(placeholders));
+      }
+      return Optional.empty();
     }
 
     @Override

@@ -20,6 +20,8 @@
     <Bug pattern="EI_EXPOSE_REP"/>
     <Or>
       <Class name="dev.vexsoft.core.paper.VexCorePlugin"/>
+      <!-- Placeholder contexts deliberately carry the managed VexPlayer for one resolution. -->
+      <Class name="dev.vexsoft.core.placeholder.PlaceholderContext"/>
       <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
       <Class name="dev.vexsoft.core.paper.service.inventory.VexInventoryHolder"/>
     </Or>
@@ -38,5 +40,11 @@
     <Bug pattern="EI_EXPOSE_REP"/>
     <Class name="dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest"/>
     <Method name="getLifecycle"/>
+  </Match>
+
+  <!-- PlaceholderAPI's expansion base class defines equality without a matching hash code. -->
+  <Match>
+    <Bug pattern="HE_INHERITS_EQUALS_USE_HASHCODE"/>
+    <Class name="dev.vexsoft.core.paper.placeholder.VexPlaceholderExpansion"/>
   </Match>
 </FindBugsFilter>

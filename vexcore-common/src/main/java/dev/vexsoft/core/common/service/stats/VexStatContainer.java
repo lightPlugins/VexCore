@@ -1,13 +1,13 @@
 package dev.vexsoft.core.common.service.stats;
 
-import dev.vexsoft.core.gameplay.stat.PlayerStat;
-import dev.vexsoft.core.gameplay.stat.Stat;
-import dev.vexsoft.core.gameplay.stat.StatContainer;
-import dev.vexsoft.core.gameplay.stat.StatDefinition;
-import dev.vexsoft.core.gameplay.stat.StatKey;
-import dev.vexsoft.core.gameplay.stat.StatModifier;
-import dev.vexsoft.core.gameplay.stat.StatModifierHandle;
-import dev.vexsoft.core.gameplay.stat.StatUpdateBatch;
+import dev.vexsoft.core.stats.PlayerStat;
+import dev.vexsoft.core.stats.Stat;
+import dev.vexsoft.core.stats.StatContainer;
+import dev.vexsoft.core.stats.StatDefinition;
+import dev.vexsoft.core.stats.StatKey;
+import dev.vexsoft.core.stats.StatModifier;
+import dev.vexsoft.core.stats.StatModifierHandle;
+import dev.vexsoft.core.stats.StatUpdateBatch;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.DataContainerKey;
