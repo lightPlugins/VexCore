@@ -93,6 +93,12 @@ val documentedApiProjects = setOf(
     ":vexcore-velocity-api",
 )
 
+tasks.register("publishVexCoreApisToMavenLocal") {
+    group = "publishing"
+    description = "Publishes every public VexCore API artifact to the local Maven repository"
+    dependsOn(documentedApiProjects.map { "$it:publishToMavenLocal" })
+}
+
 configure(subprojects.filter { it.path in documentedApiProjects }) {
     plugins.withId("java") {
         val mainSourceSet = extensions.getByType<SourceSetContainer>().named("main")
