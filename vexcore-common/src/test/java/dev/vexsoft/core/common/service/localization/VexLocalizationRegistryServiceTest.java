@@ -42,7 +42,7 @@ class VexLocalizationRegistryServiceTest {
   void detectsStringsAndListsAndEscapesReplacements() {
     TestOwner owner = new TestOwner(directory, Map.of(
         "languages/en_EN/messages.yml",
-        "single: \"Hello {name}\"\nlist:\n  - \"First {name}\"\n  - \"Second\"\n"
+        "single: \"Hello %name%\"\nlist:\n  - \"First %name%\"\n  - \"Second\"\n"
     ));
     VexLocalizationRegistryService registry = new VexLocalizationRegistryService(new TestServices(owner));
     registry.register(owner);
@@ -69,9 +69,9 @@ class VexLocalizationRegistryServiceTest {
         owner,
         LanguageKey.EN_EN,
         "messages.single",
-        Map.of("name", "{other}", "other", "changed")
+        Map.of("name", "%other%", "other", "changed")
     );
-    assertEquals("Hello {other}", plain(nonCascading.getComponent()));
+    assertEquals("Hello %other%", plain(nonCascading.getComponent()));
   }
 
   @Test

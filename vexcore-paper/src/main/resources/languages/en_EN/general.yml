@@ -1,7 +1,7 @@
 prefix: "<tailwind:sky>VexCore <tailwind:zinc:7>» "
 performance:
   bossbar:
-    good: "<tailwind:zinc:4>TPS: <tailwind:lime>{tps} <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:lime>{mspt} <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:lime>{ping} <tailwind:zinc:4>ms"
-    moderate: "<tailwind:zinc:4>TPS: <tailwind:amber>{tps} <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:amber>{mspt} <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:amber>{ping} <tailwind:zinc:4>ms"
-    critical: "<tailwind:zinc:4>TPS: <tailwind:red>{tps} <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:red>{mspt} <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:red>{ping} <tailwind:zinc:4>ms"
-    unavailable: "<tailwind:zinc:4>TPS: <tailwind:red>{tps} <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:red>{mspt} <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:red>{ping} <tailwind:zinc:4>ms"
+    good: "<tailwind:zinc:4>TPS: <tailwind:lime>%tps% <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:lime>%mspt% <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:lime>%ping% <tailwind:zinc:4>ms"
+    moderate: "<tailwind:zinc:4>TPS: <tailwind:amber>%tps% <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:amber>%mspt% <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:amber>%ping% <tailwind:zinc:4>ms"
+    critical: "<tailwind:zinc:4>TPS: <tailwind:red>%tps% <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:red>%mspt% <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:red>%ping% <tailwind:zinc:4>ms"
+    unavailable: "<tailwind:zinc:4>TPS: <tailwind:red>%tps% <tailwind:zinc:7>| <tailwind:zinc:4>MSPT: <tailwind:red>%mspt% <tailwind:zinc:4>ms <tailwind:zinc:7>| <tailwind:zinc:4>Ping: <tailwind:red>%ping% <tailwind:zinc:4>ms"

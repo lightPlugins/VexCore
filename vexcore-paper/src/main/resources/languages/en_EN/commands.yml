@@ -3,18 +3,18 @@ vexcore:
     success: "<tailwind:zinc:4>VexCore was reloaded <tailwind:lime>successfully"
     failed: "<tailwind:red>VexCore could not be reloaded, <tailwind:red:7>check the console for details"
   language:
-    set: "<tailwind:zinc:4>Your language was changed to <tailwind:sky>{language}"
-    not-found: "<tailwind:red>The language <tailwind:red:7>{language}<tailwind:red> is not available"
+    set: "<tailwind:zinc:4>Your language was changed to <tailwind:sky>%language%"
+    not-found: "<tailwind:red>The language <tailwind:red:7>%language%<tailwind:red> is not available"
   reset:
     player-container:
-      success: "<tailwind:zinc:4>Reset <tailwind:sky>{container}<tailwind:zinc:4> for <tailwind:sky>{player}"
+      success: "<tailwind:zinc:4>Reset <tailwind:sky>%container%<tailwind:zinc:4> for <tailwind:sky>%player%"
     player-all:
-      success: "<tailwind:zinc:4>Reset all containers for <tailwind:sky>{player}"
+      success: "<tailwind:zinc:4>Reset all containers for <tailwind:sky>%player%"
     global-container:
-      success: "<tailwind:zinc:4>Reset <tailwind:sky>{container}<tailwind:zinc:4> for every player"
+      success: "<tailwind:zinc:4>Reset <tailwind:sky>%container%<tailwind:zinc:4> for every player"
     global-all:
       success: "<tailwind:zinc:4>Reset all containers for every player"
-    player-not-found: "<tailwind:red>No stored player was found for <tailwind:red:7>{player}"
+    player-not-found: "<tailwind:red>No stored player was found for <tailwind:red:7>%player%"
     failed: "<tailwind:red>The reset failed, <tailwind:red:7>check the console for details"
   debug:
     performance:
@@ -23,6 +23,6 @@ vexcore:
     proxy:
       ping:
         started: "<tailwind:zinc:4>Sending a ping to the <tailwind:sky>Velocity proxy<tailwind:zinc:4>..."
-        success: "<tailwind:zinc:4>Velocity responded in <tailwind:lime>{latency} ms"
+        success: "<tailwind:zinc:4>Velocity responded in <tailwind:lime>%latency% ms"
         timeout: "<tailwind:red>The Velocity proxy did not respond within <tailwind:red:7>5 seconds"
-        failed: "<tailwind:red>Unable to send the proxy ping: <tailwind:red:7>{reason}"
+        failed: "<tailwind:red>Unable to send the proxy ping: <tailwind:red:7>%reason%"

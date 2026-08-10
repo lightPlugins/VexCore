@@ -69,7 +69,7 @@ class VexLocalizedMessageServiceTest {
     List<String> rendered = received.stream()
         .map(PlainTextComponentSerializer.plainText()::serialize)
         .toList();
-    assertEquals(List.of("[VexCore] Hello Alex", "Hello {name}"), rendered);
+    assertEquals(List.of("[VexCore] Hello Alex", "Hello %name%"), rendered);
   }
 
   private static Audience recordingAudience(final List<Component> received) {
@@ -103,7 +103,7 @@ class VexLocalizedMessageServiceTest {
           return LocalizedMessage.single(Component.text("[VexCore] "));
         }
         return LocalizedMessage.single(Component.text(
-            replacements.containsKey("name") ? "Hello " + replacements.get("name") : "Hello {name}"
+            replacements.containsKey("name") ? "Hello " + replacements.get("name") : "Hello %name%"
         ));
       }
 

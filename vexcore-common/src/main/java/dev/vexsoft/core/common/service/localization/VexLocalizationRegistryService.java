@@ -27,7 +27,7 @@ import lombok.Value;
 @Dependencies({CacheService.class, ThemeColorService.class})
 public final class VexLocalizationRegistryService implements LocalizationRegistryService {
 
-  private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z0-9_.-]+)}");
+  private static final Pattern PLACEHOLDER = Pattern.compile("%([A-Za-z0-9_.-]+)%");
 
   private final Map<String, Registration> registrations = new ConcurrentHashMap<>();
   private final MiniMessage miniMessage = MiniMessage.miniMessage();
