@@ -41,6 +41,9 @@ public final class VexPlaceholderApiBridgeService
     VexPlaceholderExpansion created = new VexPlaceholderExpansion(plugin, placeholders, players);
     if (created.register()) {
       expansion = created;
+      plugin.getLogger().info(
+          "PlaceholderAPI support enabled with expansion '" + created.getIdentifier() + "'"
+      );
     } else {
       plugin.getLogger().warning(
           "Could not register the " + created.getIdentifier() + " PlaceholderAPI expansion"
