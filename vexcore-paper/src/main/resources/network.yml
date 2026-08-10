@@ -1,2 +1,2 @@
 # Must match this backend's server name in Velocity's velocity.toml.
-server-id: server
+server-id: lobby

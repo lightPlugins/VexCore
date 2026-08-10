@@ -4,6 +4,8 @@ import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
+import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.service.commands.CommandService;
@@ -24,8 +26,9 @@ import org.jspecify.annotations.NonNull;
  * Base class that connects a Vex plugin to VexCore's scoped infrastructure and lifecycle.
  *
  * <p>During Bukkit's load phase it creates the plugin scope, registers infrastructure and queued
- * plugin services, then invokes data, command, inventory, and load hooks in that order. During the
- * enable phase it activates infrastructure before registering listeners and invoking
+ * plugin services, then invokes data, container, global-data, messaging, command, inventory, and
+ * load hooks in that order. During the enable phase it activates infrastructure before registering
+ * listeners and invoking
  * {@link #onVexEnable()}. Disable always removes and closes services owned by this plugin, even when
  * {@link #onVexDisable()} fails.</p>
  *
@@ -55,7 +58,9 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       registerServices();
       services.registerQueuedServices();
       registerData(services.require(DataService.class));
+      registerContainers(services.require(PlayerContainerService.class));
       registerGlobalData(services.require(GlobalDataService.class));
+      registerMessages(services.require(MessagingService.class));
       registerCommands(services.require(CommandService.class));
       registerInventories(services.require(InventoryService.class));
       onVexLoad();
@@ -99,8 +104,14 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
   /** Registers persistent player-data definitions before commands and inventories are loaded. */
   protected void registerData(final DataService data) { }
 
+  /** Registers player-facing feature containers backed by this plugin's player data. */
+  protected void registerContainers(final PlayerContainerService containers) { }
+
   /** Registers persistent global-data definitions before feature registration begins. */
   protected void registerGlobalData(final GlobalDataService data) { }
+
+  /** Registers typed message handlers through this plugin's scoped messaging service. */
+  protected void registerMessages(final MessagingService messages) { }
 
   /** Registers listener classes after the plugin and its infrastructure have been enabled. */
   protected void registerListeners(final ListenerService listeners) { }
