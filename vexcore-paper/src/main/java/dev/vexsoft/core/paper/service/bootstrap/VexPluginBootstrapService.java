@@ -12,6 +12,7 @@ import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
@@ -44,6 +45,7 @@ import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
@@ -74,6 +76,10 @@ import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
 import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
+import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
+import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
+import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
 import java.util.Objects;
 
 @Dependencies
@@ -101,7 +107,10 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
     checkedServices.register(SendMessageService.class, VexSendMessageService.class);
     checkedServices.register(MessagingService.class, VexMessagingService.class);
+    checkedServices.register(GlobalDataService.class, VexGlobalDataService.class);
     checkedServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
+    checkedServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
+    checkedServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
     checkedServices.register(
         PlaceholderApiBridgeService.class,
         VexPlaceholderApiBridgeService.class

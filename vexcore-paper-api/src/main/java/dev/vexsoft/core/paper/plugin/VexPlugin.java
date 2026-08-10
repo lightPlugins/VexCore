@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.plugin;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.player.DataService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.service.commands.CommandService;
@@ -54,6 +55,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
       registerServices();
       services.registerQueuedServices();
       registerData(services.require(DataService.class));
+      registerGlobalData(services.require(GlobalDataService.class));
       registerCommands(services.require(CommandService.class));
       registerInventories(services.require(InventoryService.class));
       onVexLoad();
@@ -96,6 +98,9 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   /** Registers persistent player-data definitions before commands and inventories are loaded. */
   protected void registerData(final DataService data) { }
+
+  /** Registers persistent global-data definitions before feature registration begins. */
+  protected void registerGlobalData(final GlobalDataService data) { }
 
   /** Registers listener classes after the plugin and its infrastructure have been enabled. */
   protected void registerListeners(final ListenerService listeners) { }

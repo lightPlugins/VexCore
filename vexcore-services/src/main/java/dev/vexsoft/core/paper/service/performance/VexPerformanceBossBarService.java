@@ -33,7 +33,8 @@ public final class VexPerformanceBossBarService implements
     PerformanceBossBarService,
     AutoCloseable {
 
-  private static final long UPDATE_TICKS = 20L;
+  private static final long UPDATE_TICKS = 5L;
+  private static final int PING_UPDATE_INTERVALS = 8;
   private static final double FULL_BAR_MSPT = 50.0D;
 
   private final ServerPerformanceService performance;
@@ -41,8 +42,10 @@ public final class VexPerformanceBossBarService implements
   private final LocalizationService localization;
   private final PlayerService players;
   private final Map<UUID, BossBar> viewers = new ConcurrentHashMap<>();
+  private final Map<UUID, Integer> cachedPings = new ConcurrentHashMap<>();
   private final AtomicBoolean started = new AtomicBoolean();
   private VexTask updateTask;
+  private int updatesUntilPingRefresh;
 
   public VexPerformanceBossBarService(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
@@ -73,7 +76,7 @@ public final class VexPerformanceBossBarService implements
         BossBar.Overlay.PROGRESS
     );
     viewers.put(checkedPlayer.getUniqueId(), bossBar);
-    update(checkedPlayer, bossBar);
+    update(checkedPlayer, bossBar, true);
     checkedPlayer.showBossBar(bossBar);
   }
 
@@ -81,6 +84,7 @@ public final class VexPerformanceBossBarService implements
   public void hide(final Player player) {
     Player checkedPlayer = Objects.requireNonNull(player, "player");
     BossBar bossBar = viewers.remove(checkedPlayer.getUniqueId());
+    cachedPings.remove(checkedPlayer.getUniqueId());
     if (bossBar != null) {
       checkedPlayer.hideBossBar(bossBar);
     }
@@ -115,25 +119,39 @@ public final class VexPerformanceBossBarService implements
       }
     }
     viewers.clear();
+    cachedPings.clear();
+    updatesUntilPingRefresh = 0;
     started.set(false);
   }
 
   private void updateAll() {
+    boolean refreshPing = updatesUntilPingRefresh == 0;
+    updatesUntilPingRefresh = refreshPing
+        ? PING_UPDATE_INTERVALS - 1
+        : updatesUntilPingRefresh - 1;
     for (Map.Entry<UUID, BossBar> viewer : viewers.entrySet()) {
       Player player = Bukkit.getPlayer(viewer.getKey());
       if (player == null) {
         viewers.remove(viewer.getKey(), viewer.getValue());
+        cachedPings.remove(viewer.getKey());
         continue;
       }
       schedules.runFor(
           player,
-          () -> update(player, viewer.getValue()),
-          () -> viewers.remove(viewer.getKey(), viewer.getValue())
+          () -> update(player, viewer.getValue(), refreshPing),
+          () -> {
+            viewers.remove(viewer.getKey(), viewer.getValue());
+            cachedPings.remove(viewer.getKey());
+          }
       );
     }
   }
 
-  private void update(final Player player, final BossBar bossBar) {
+  private void update(
+      final Player player,
+      final BossBar bossBar,
+      final boolean refreshPing
+  ) {
     VexPlayer vexPlayer = players.find(player.getUniqueId()).orElse(null);
     if (vexPlayer == null) {
       return;
@@ -143,7 +161,7 @@ public final class VexPerformanceBossBarService implements
     LocalizedMessage title = localization.resolve(
         vexPlayer.getContainer(LanguageContainer.class).getLanguage().getKey(),
         localizationKey(state),
-        replacements(player, snapshot)
+        replacements(player, snapshot, refreshPing)
     );
     bossBar.name(title.getComponent());
     bossBar.color(color(state));
@@ -152,20 +170,33 @@ public final class VexPerformanceBossBarService implements
 
   private Map<String, String> replacements(
       final Player player,
-      final ServerPerformanceSnapshot snapshot
+      final ServerPerformanceSnapshot snapshot,
+      final boolean refreshPing
   ) {
+    String ping = Integer.toString(ping(player, refreshPing));
     if (!snapshot.isAvailable()) {
       return Map.of(
           "tps", "N/A",
           "mspt", "N/A",
-          "ping", Integer.toString(player.getPing())
+          "ping", ping
       );
     }
     return Map.of(
         "tps", format(snapshot.getCurrentTps()),
         "mspt", format(snapshot.getAverageMspt()),
-        "ping", Integer.toString(player.getPing())
+        "ping", ping
     );
+  }
+
+  private int ping(final Player player, final boolean refresh) {
+    UUID playerId = player.getUniqueId();
+    Integer cached = cachedPings.get(playerId);
+    if (refresh || cached == null) {
+      int current = player.getPing();
+      cachedPings.put(playerId, current);
+      return current;
+    }
+    return cached;
   }
 
   private String localizationKey(final PerformanceState state) {

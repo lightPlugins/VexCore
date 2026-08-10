@@ -7,7 +7,7 @@ import org.bukkit.entity.Player;
 /** Displays localized live server performance data in player-specific boss bars */
 public interface PerformanceBossBarService extends VexService {
 
-  /** Starts the one-second boss bar updater */
+  /** Starts the four-times-per-second boss bar updater. */
   void start();
 
   /** Shows the live performance boss bar to a player */

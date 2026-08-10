@@ -5,6 +5,7 @@ import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.signals.core.PlayerDataLoadedSignal;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.service.player.PlayerIdentityService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import org.bukkit.event.EventHandler;
@@ -17,16 +18,18 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@Dependencies({PlayerDataCoordinatorService.class, SignalService.class})
+@Dependencies({PlayerDataCoordinatorService.class, PlayerIdentityService.class, SignalService.class})
 public final class VexPlayerLifecycleListener implements Listener {
 
   private final PlayerDataCoordinatorService players;
   private final SignalService signals;
+  private final PlayerIdentityService identities;
   private final Logger logger;
 
   public VexPlayerLifecycleListener(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
     players = checkedServices.require(PlayerDataCoordinatorService.class);
+    identities = checkedServices.require(PlayerIdentityService.class);
     signals = checkedServices.require(SignalService.class);
     if (!(checkedServices.getOwner() instanceof Plugin plugin)) {
       throw new IllegalArgumentException("Player lifecycle listener owner must be a Bukkit plugin");
@@ -37,7 +40,9 @@ public final class VexPlayerLifecycleListener implements Listener {
   @EventHandler
   public void onPlayerPreLogin(final AsyncPlayerPreLoginEvent event) {
     try {
-      players.load(event.getUniqueId(), event.getName()).join();
+      identities.record(event.getUniqueId(), event.getName())
+          .thenCompose(ignored -> players.load(event.getUniqueId(), event.getName()))
+          .join();
     } catch (RuntimeException exception) {
       logger.log(Level.SEVERE, "Unable to load VexPlayer " + event.getUniqueId(), exception);
       event.disallow(

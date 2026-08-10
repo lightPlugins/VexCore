@@ -10,9 +10,12 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
+import dev.vexsoft.core.api.service.player.PlayerIdentityService;
+import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
 import dev.vexsoft.core.paper.module.ModuleManager;
 import dev.vexsoft.core.paper.module.PlatformModule;
 import dev.vexsoft.core.paper.module.PlayerModule;
@@ -43,6 +46,7 @@ import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
 import dev.vexsoft.core.common.service.data.VexDataService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
+import dev.vexsoft.core.common.service.identity.VexPlayerIdentityService;
 import dev.vexsoft.core.common.service.localization.VexCorePlayerData;
 import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
@@ -54,6 +58,9 @@ import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
 import dev.vexsoft.core.common.service.messaging.VexMessageCodecService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
+import dev.vexsoft.core.common.service.globaldata.GlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
 import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.paper.commands.VexCoreCommand;
@@ -69,6 +76,20 @@ import dev.vexsoft.core.paper.service.messaging.VexProxyPingResponseHandler;
 import dev.vexsoft.core.paper.service.messaging.VexProxyPingService;
 import dev.vexsoft.core.paper.service.players.PaperPlayerService;
 import dev.vexsoft.core.paper.service.players.VexPaperPlayerService;
+import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.network.VexServerIdentityService;
+import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
+import dev.vexsoft.core.paper.service.teleport.TeleportCoordinatorService;
+import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
+import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportArrivalHandler;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportCompletionHandler;
+import dev.vexsoft.core.paper.service.world.VexWorldService;
+import dev.vexsoft.core.paper.service.world.WorldService;
+import dev.vexsoft.core.paper.service.directory.PlayerDirectoryCoordinatorService;
+import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryCoordinatorService;
+import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
 import dev.vexsoft.core.paper.service.performance.PerformanceBossBarService;
 import dev.vexsoft.core.paper.service.performance.ServerPerformanceService;
 import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarListener;
@@ -141,6 +162,12 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
     coreServices.register(
+        GlobalDataCoordinatorService.class,
+        VexGlobalDataCoordinatorService.class
+    );
+    coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
+    coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
+    coreServices.register(
         PlaceholderApiBridgeService.class,
         VexPlaceholderApiBridgeService.class
     );
@@ -156,6 +183,18 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(MessagingService.class, VexMessagingService.class);
+    coreServices.register(
+        PlayerDirectoryCoordinatorService.class,
+        VexPlayerDirectoryCoordinatorService.class
+    );
+    coreServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
+    coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
+    coreServices.register(WorldService.class, VexWorldService.class);
+    coreServices.register(
+        TeleportCoordinatorService.class,
+        VexTeleportCoordinatorService.class
+    );
+    coreServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
     coreServices.register(ProxyPingService.class, VexProxyPingService.class);
     coreServices.register(
         ServerPerformanceService.class,
@@ -183,6 +222,11 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
     coreServices.registerQueuedServices();
     coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
+    coreServices.require(MessagingService.class).register(VexTeleportArrivalHandler.class);
+    coreServices.require(MessagingService.class).register(VexTeleportCompletionHandler.class);
+    coreServices.require(MessagingService.class).register(
+        VexPlayerDirectoryResponseHandler.class
+    );
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
     coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
@@ -205,6 +249,10 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(MessageTransportService.class).start();
     coreServices.require(ServerPerformanceService.class).start();
     coreServices.require(PerformanceBossBarService.class).start();
+    getLogger().info(
+        "Network server ID initialized as "
+            + coreServices.require(ServerIdentityService.class).getServerId().value()
+    );
     coreServices.require(ListenerService.class).register(
         VexPerformanceBossBarListener.class,
         coreServices

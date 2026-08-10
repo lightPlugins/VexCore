@@ -7,6 +7,9 @@ dependencies {
     implementation(project(":vexcore-velocity-api"))
     implementation(project(":vexcore-common"))
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.2.4")
+    implementation("com.zaxxer:HikariCP:6.3.0")
+    implementation("org.postgresql:postgresql:42.7.8")
 
     compileOnly("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")

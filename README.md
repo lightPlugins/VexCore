@@ -92,6 +92,8 @@ flowchart TD
 - Class-based message handler registration through scoped services
 - Short-lived pending delivery for temporarily empty backend servers
 - A built-in proxy ping diagnostic with localized results
+- Velocity-backed online-player directory lookups
+- Cross-server player transfers with destination-server arrival handoff
 
 > [!NOTE]
 > Paper and Velocity run in separate processes and therefore keep separate service registries. Messaging connects those registries without pretending that Java service instances can be shared across process boundaries.
@@ -140,6 +142,8 @@ flowchart TD
 - Root commands, subcommands, and arguments
 - Optional and greedy arguments
 - Dynamic suggestions
+- Extensible typed argument parsers, including server IDs and namespaced world IDs
+- Non-blocking command handlers through `CompletionStage` return values
 - Permission checks for both execution and suggestions
 - One command structure shared across all plugins
 
@@ -152,6 +156,25 @@ flowchart TD
 - PostgreSQL persistence with automatic schema extension
 - Saving on disconnect, shutdown, and scheduled autosaves
 - New data containers can be introduced through later plugin updates
+- A central UUID and last-known-name index independent of individual plugin containers
+
+### Global Data
+
+- Plugin-owned typed values for shared data such as warps and server settings
+- One storage pool shared with player persistence within each VexCore process
+- Bounded Caffeine caching with PostgreSQL invalidation notifications
+- Revision-based atomic updates that do not lose concurrent changes from another server
+- Runtime unregistration without deleting stored values
+- Restoring existing values when the same owner and key are registered again
+
+### Worlds and Teleports
+
+- Persistent namespaced world IDs such as `minecraft:overworld`
+- No dependence on legacy Bukkit world names or filesystem folder paths
+- Local teleports through Paper's `Player#teleportAsync` API
+- The teleport result completes only after Paper's asynchronous chunk load and callback
+- Velocity transfers retain the exact target world ID, coordinates, yaw, and pitch
+- Clear results for unavailable servers, unloaded worlds, offline players, and timeouts
 
 ### Cache System
 
@@ -217,7 +240,7 @@ implementations so VexSoft projects only depend on the platform contracts they a
 
 | Module | Responsibility |
 | --- | --- |
-| `vexcore-api` | Platform-neutral contracts for services, player data, localization, placeholders, stats, Reactor, caching, configuration, and messaging |
+| `vexcore-api` | Platform-neutral contracts for services, player and global data, identities, world positions, localization, placeholders, stats, Reactor, caching, configuration, and messaging |
 | `vexcore-common` | Platform-neutral implementations shared by the server and proxy runtimes |
 | `vexcore-paper-api` | Public Paper and Folia contracts together with the `VexPlugin` foundation |
 | `vexcore-services` | Paper-only implementations for commands, inventories, dialogs, scheduling, gameplay events, and other stable services |
@@ -238,15 +261,17 @@ itself, and server owners normally do not configure its internal services indivi
 
 1. Install the VexCore Paper jar on every backend server that runs a VexSoft plugin.
 2. Start the server once so VexCore can create its files below `plugins/VexSoft/VexCore`.
-3. Configure player-data storage in `database.yml` before opening the server to players.
+3. Configure shared storage in `database.yml` before opening the server to players.
 4. Install the VexCore Velocity jar on the proxy when cross-server VexSoft features are required.
-5. Restart the affected server or proxy after replacing a VexCore jar.
+5. Set `server-id` in every Paper server's `network.yml` to its exact Velocity server name.
+6. Configure the Velocity VexCore instance to use the same PostgreSQL database.
+7. Restart the affected server or proxy after replacing a VexCore jar.
 
 Paper and Velocity use separate jars because they run in different processes. The Velocity plugin
 is only required for proxy-side services and network messaging; a standalone Paper server does not
 need it.
 
-### Player-Data Storage
+### Shared Storage
 
 PostgreSQL is the default and recommended storage for persistent player data:
 
@@ -266,8 +291,25 @@ With `auto-create-database: true`, VexCore attempts to create the configured dat
 maintenance database when necessary. The configured PostgreSQL account must have the corresponding
 permission.
 
-`storage: memory` is available for temporary development environments. Its player data is lost on
-shutdown and it should not be used for a production server.
+The same backend stores player containers, the central player identity index, and plugin-owned
+global values. Paper and Velocity each maintain one local connection pool and must point to the same
+database when global values are shared between them.
+
+`storage: memory` is available for temporary development environments. All values are lost on
+shutdown, instances cannot share changes, and it should not be used for a production network.
+
+### Network Identity and Worlds
+
+Each Paper backend has a `network.yml` file:
+
+```yaml
+server-id: lobby-1
+```
+
+The value must match the corresponding server name configured in Velocity. Cross-server positions
+store worlds as namespaced IDs, for example `minecraft:overworld`, `minecraft:the_nether`, or a
+custom ID such as `vexessentials:dungeon`. VexCore does not use legacy world names or paths below
+Paper's `world/dimensions` directory to identify a world.
 
 ### Optional Integrations
 
@@ -303,6 +345,11 @@ literal `confirm` argument to reduce accidental execution:
 
 - Online players are represented by one shared `VexPlayer` and loaded only when their session begins.
 - Player data is cached while required and saved on disconnect, shutdown, and scheduled autosaves.
+- Player UUIDs and last-known names are indexed centrally for plugin-independent lookups.
+- Global values are cached locally and invalidated across PostgreSQL-connected VexCore instances.
+- Local teleports wait for Paper's asynchronous chunk loading and teleport result.
+- Velocity transfers resolve the destination world by namespaced ID only after reaching the target
+  backend.
 - Dynamically removed stats disappear from runtime without deleting their stored player values.
 - Configured reactions are compiled into immutable runtime snapshots instead of repeatedly parsing
   configuration during gameplay events.

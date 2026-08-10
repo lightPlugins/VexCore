@@ -41,11 +41,11 @@ public final class PlayerModule implements VexModule, ConfigurationOwner {
     String storageType = storage.getStorageType();
     if (storageType.equals("memory")) {
       plugin.getLogger().warning(
-          "Player storage is using memory mode; data will not survive a server restart"
+          "Shared storage is using memory mode; data will not survive a server restart"
       );
     } else {
       String displayName = storageType.equals("postgresql") ? "PostgreSQL" : storageType;
-      plugin.getLogger().info("Player storage initialized using " + displayName);
+      plugin.getLogger().info("Shared storage initialized using " + displayName);
     }
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
     plugin.getLogger().info(

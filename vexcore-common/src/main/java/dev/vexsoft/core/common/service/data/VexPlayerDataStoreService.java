@@ -3,6 +3,8 @@ package dev.vexsoft.core.common.service.data;
 import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.PostgresPlayerDataStore;
+import dev.vexsoft.core.common.data.global.GlobalDataStore;
+import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.configuration.VexConfiguration;
@@ -40,6 +42,18 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
           "Unsupported player data storage: " + storageType
       );
     };
+    ((GlobalDataStore) store).reconcileGlobalData().join();
+    ((PlayerIdentityStore) store).reconcilePlayerIdentities().join();
+  }
+
+  @Override
+  public GlobalDataStore getGlobalStore() {
+    return (GlobalDataStore) store;
+  }
+
+  @Override
+  public PlayerIdentityStore getPlayerIdentityStore() {
+    return (PlayerIdentityStore) store;
   }
 
   @Override

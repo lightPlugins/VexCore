@@ -17,7 +17,7 @@ public final class VexServerPerformanceService implements
     ServerPerformanceService,
     AutoCloseable {
 
-  private static final int TICKS_PER_SAMPLE = 20;
+  private static final int SAMPLE_INTERVAL_TICKS = 5;
   private final Server server;
   private final PlatformService platform;
   private final ScheduleService schedules;
@@ -44,8 +44,8 @@ public final class VexServerPerformanceService implements
     }
     sample();
     samplingTask = schedules.runGlobalTimer(
-        TICKS_PER_SAMPLE,
-        TICKS_PER_SAMPLE,
+        SAMPLE_INTERVAL_TICKS,
+        SAMPLE_INTERVAL_TICKS,
         this::sample
     );
   }

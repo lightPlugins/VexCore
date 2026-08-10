@@ -152,7 +152,22 @@ public final class VexPlayerDataCoordinatorServiceTest {
     private final PlayerDataStoreService store;
 
     private TestServices(final PlayerDataStore playerDataStore) {
-      store = () -> playerDataStore;
+      store = new PlayerDataStoreService() {
+        @Override
+        public PlayerDataStore getStore() {
+          return playerDataStore;
+        }
+
+        @Override
+        public dev.vexsoft.core.common.data.global.GlobalDataStore getGlobalStore() {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public dev.vexsoft.core.common.data.identity.PlayerIdentityStore getPlayerIdentityStore() {
+          throw new UnsupportedOperationException();
+        }
+      };
       cache = new VexCacheService(this);
     }
 

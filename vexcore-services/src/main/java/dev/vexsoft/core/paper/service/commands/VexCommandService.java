@@ -22,7 +22,11 @@ import dev.vexsoft.core.paper.command.Greedy;
 import dev.vexsoft.core.paper.command.OptionalArgument;
 import dev.vexsoft.core.paper.command.Suggest;
 import dev.vexsoft.core.paper.command.VexCommandSource;
+import dev.vexsoft.core.paper.command.argument.CommandArgumentType;
 import dev.vexsoft.core.paper.command.suggestion.SuggestionProvider;
+import dev.vexsoft.core.paper.command.argument.ServerIdCommandArgument;
+import dev.vexsoft.core.paper.command.argument.WorldKeyCommandArgument;
+import dev.vexsoft.core.paper.service.world.WorldService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -41,7 +45,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
+import java.util.logging.Level;
 import lombok.Value;
 import lombok.Getter;
 import lombok.Setter;
@@ -82,13 +88,20 @@ public final class VexCommandService implements CommandService {
   );
 
   private final VexServiceRegistry services;
+  private final Plugin plugin;
   private final Map<String, CommandTree> commands = new LinkedHashMap<>();
+  private final Map<Class<?>, CommandArgumentType<?>> argumentTypes = new LinkedHashMap<>();
   private boolean bound;
 
   public VexCommandService(final VexServiceRegistry services) {
     this.services = Objects.requireNonNull(services, "services");
-    if (!(services.getOwner() instanceof Plugin plugin)) {
+    if (!(services.getOwner() instanceof Plugin ownerPlugin)) {
       throw new IllegalArgumentException("CommandService owner must be a Bukkit plugin");
+    }
+    plugin = ownerPlugin;
+    registerArgumentInstance(new ServerIdCommandArgument());
+    if (services.isAvailable(WorldService.class)) {
+      registerArgumentInstance(new WorldKeyCommandArgument(services));
     }
     plugin.getLifecycleManager().registerEventHandler(
         LifecycleEvents.COMMANDS,
@@ -111,6 +124,16 @@ public final class VexCommandService implements CommandService {
     tree.requireCompatible(root);
     scan(handler, tree.getRoot());
     return handler;
+  }
+
+  @Override
+  public synchronized void registerArgument(
+      final Class<? extends CommandArgumentType<?>> argumentType
+  ) {
+    if (bound) {
+      throw new IllegalStateException("Command arguments must be registered during plugin loading");
+    }
+    registerArgumentInstance(instantiate(Objects.requireNonNull(argumentType, "argumentType")));
   }
 
   private synchronized void bind(final Commands registrar) {
@@ -265,7 +288,10 @@ public final class VexCommandService implements CommandService {
   ) {
     RequiredArgumentBuilder<CommandSourceStack, ?> builder;
     Class<?> type = spec.getType();
-    if (type == int.class || type == Integer.class) {
+    CommandArgumentType<?> customArgument = argumentTypes.get(type);
+    if (customArgument != null) {
+      builder = argument(name, customArgument);
+    } else if (type == int.class || type == Integer.class) {
       builder = argument(name, IntegerArgumentType.integer());
     } else if (type == long.class || type == Long.class) {
       builder = argument(name, LongArgumentType.longArg());
@@ -291,10 +317,20 @@ public final class VexCommandService implements CommandService {
       final RequiredArgumentBuilder<CommandSourceStack, ?> builder,
       final ArgumentSpec spec
   ) {
+    CommandArgumentType<?> customArgument = argumentTypes.get(spec.getType());
     if (spec.getSuggestionType() != null) {
       SuggestionProvider provider = instantiate(spec.getSuggestionType());
       builder.suggests((context, suggestions) ->
           provider.suggest(new VexCommandSource(context.getSource()), suggestions));
+    } else if (customArgument != null) {
+      builder.suggests((context, suggestions) -> {
+        customArgument.suggest(
+            new VexCommandSource(context.getSource()),
+            suggestions.getRemainingLowerCase(),
+            suggestions::suggest
+        );
+        return suggestions.buildFuture();
+      });
     } else if (spec.getType() == Player.class) {
       builder.suggests((context, suggestions) -> {
         String remaining = suggestions.getRemainingLowerCase();
@@ -335,6 +371,13 @@ public final class VexCommandService implements CommandService {
           execution.getHandler(),
           invocationArguments(execution.getMethod(), context)
       );
+      if (result instanceof CompletionStage<?> stage) {
+        stage.whenComplete((ignored, throwable) -> {
+          if (throwable != null) {
+            plugin.getLogger().log(Level.SEVERE, "An asynchronous command failed", throwable);
+          }
+        });
+      }
       return result instanceof Integer value ? value : 1;
     } catch (IllegalAccessException exception) {
       throw new IllegalStateException("Unable to invoke command method", exception);
@@ -390,6 +433,10 @@ public final class VexCommandService implements CommandService {
     if (reader != null) {
       return reader.read(context, name);
     }
+    CommandArgumentType<?> customArgument = argumentTypes.get(type);
+    if (customArgument != null) {
+      return customArgument.read(context, name);
+    }
     String raw = StringArgumentType.getString(context, name);
     if (type == Player.class) {
       Player player = Bukkit.getPlayerExact(raw);
@@ -417,6 +464,10 @@ public final class VexCommandService implements CommandService {
     Function<String, Object> parser = DEFAULT_VALUE_PARSERS.get(type);
     if (parser != null) {
       return parser.apply(value);
+    }
+    CommandArgumentType<?> customArgument = argumentTypes.get(type);
+    if (customArgument != null) {
+      return customArgument.parseDefault(value);
     }
     if (type.isEnum()) {
       return enumValue(type, value);
@@ -541,7 +592,22 @@ public final class VexCommandService implements CommandService {
         || type == Player.class
         || type == UUID.class
         || type == Duration.class
-        || type.isEnum();
+        || type.isEnum()
+        || argumentTypes.containsKey(type);
+  }
+
+  private void registerArgumentInstance(final CommandArgumentType<?> argumentType) {
+    CommandArgumentType<?> checkedArgument = Objects.requireNonNull(argumentType, "argumentType");
+    Class<?> valueType = Objects.requireNonNull(
+        checkedArgument.getValueType(),
+        "Command argument value type"
+    );
+    CommandArgumentType<?> existing = argumentTypes.putIfAbsent(valueType, checkedArgument);
+    if (existing != null && existing.getClass() != checkedArgument.getClass()) {
+      throw new IllegalStateException(
+          "Command argument type is already registered: " + valueType.getName()
+      );
+    }
   }
 
   private boolean isRequired(final String token) {

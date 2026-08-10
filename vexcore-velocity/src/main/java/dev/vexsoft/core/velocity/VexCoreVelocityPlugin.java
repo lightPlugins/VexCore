@@ -11,6 +11,8 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
+import dev.vexsoft.core.api.service.player.PlayerIdentityService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.cache.CacheService;
@@ -20,11 +22,19 @@ import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
 import dev.vexsoft.core.common.service.messaging.VexMessageCodecService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.VexPlayerDataStoreService;
+import dev.vexsoft.core.common.service.globaldata.GlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
+import dev.vexsoft.core.common.service.identity.VexPlayerIdentityService;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import dev.vexsoft.core.velocity.service.bootstrap.ProxyPluginBootstrapService;
 import dev.vexsoft.core.velocity.service.bootstrap.VexProxyPluginBootstrapService;
 import dev.vexsoft.core.velocity.service.messaging.VexVelocityMessageTransportService;
 import dev.vexsoft.core.velocity.messaging.VexProxyPingMessageHandler;
+import dev.vexsoft.core.velocity.service.teleport.VexTeleportTransferHandler;
+import dev.vexsoft.core.velocity.service.directory.VexPlayerDirectoryRequestHandler;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -76,6 +86,13 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
       coreServices.registerQueuedServices();
       coreServices.register(ConfigurationService.class, VexConfigurationService.class);
       coreServices.register(CacheService.class, VexCacheService.class);
+      coreServices.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
+      coreServices.register(
+          GlobalDataCoordinatorService.class,
+          VexGlobalDataCoordinatorService.class
+      );
+      coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
+      coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
       coreServices.register(MessagingService.class, VexMessagingService.class);
       coreServices.register(
           ProxyPluginBootstrapService.class,
@@ -83,7 +100,16 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
       );
       coreServices.registerQueuedServices();
       coreServices.require(MessagingService.class).register(VexProxyPingMessageHandler.class);
+      coreServices.require(MessagingService.class).register(VexTeleportTransferHandler.class);
+      coreServices.require(MessagingService.class).register(
+          VexPlayerDirectoryRequestHandler.class
+      );
       coreServices.require(MessageTransportService.class).start();
+      String storageType = coreServices.require(PlayerDataStoreService.class).getStorageType();
+      platformLogger.info(
+          "[VexCore] Shared storage initialized using "
+              + (storageType.equals("postgresql") ? "PostgreSQL" : storageType)
+      );
       platformLogger.info("[VexCore] Velocity messaging successfully enabled");
     } catch (RuntimeException | Error throwable) {
       coreServices.unregisterOwnedServices();

@@ -7,6 +7,7 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.velocity.VexVelocityCore;
@@ -53,6 +54,7 @@ public abstract class VexProxyPlugin implements ConfigurationOwner {
       registry.require(ProxyPluginBootstrapService.class).initialize(services);
       registerServices();
       services.registerQueuedServices();
+      registerGlobalData(services.require(GlobalDataService.class));
       registerMessages(services.require(MessagingService.class));
       onVexProxyEnable();
       initialized = true;
@@ -81,6 +83,9 @@ public abstract class VexProxyPlugin implements ConfigurationOwner {
 
   /** Registers message handler classes through this plugin's scoped messaging service */
   protected void registerMessages(final MessagingService messages) { }
+
+  /** Registers persistent global-data definitions owned by this proxy plugin. */
+  protected void registerGlobalData(final GlobalDataService data) { }
 
   /** Runs plugin-specific work after scoped infrastructure has initialized */
   protected void onVexProxyEnable() { }
