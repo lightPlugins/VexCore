@@ -14,6 +14,14 @@ public final class PlayerDirectoryMessages {
       MessageKey.of("vexcore", "directory.player_response"),
       PlayerDirectoryResponse.class
   );
+  public static final MessageType<PlayerDirectoryListRequest> LIST_REQUEST = MessageType.json(
+      MessageKey.of("vexcore", "directory.player_list_request"),
+      PlayerDirectoryListRequest.class
+  );
+  public static final MessageType<PlayerDirectoryListResponse> LIST_RESPONSE = MessageType.json(
+      MessageKey.of("vexcore", "directory.player_list_response"),
+      PlayerDirectoryListResponse.class
+  );
 
   private PlayerDirectoryMessages() { }
 }

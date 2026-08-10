@@ -90,6 +90,7 @@ import dev.vexsoft.core.paper.service.directory.PlayerDirectoryCoordinatorServic
 import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryCoordinatorService;
 import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
 import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryListResponseHandler;
 import dev.vexsoft.core.paper.service.performance.PerformanceBossBarService;
 import dev.vexsoft.core.paper.service.performance.ServerPerformanceService;
 import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarListener;
@@ -227,6 +228,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(MessagingService.class).register(
         VexPlayerDirectoryResponseHandler.class
     );
+    coreServices.require(MessagingService.class).register(
+        VexPlayerDirectoryListResponseHandler.class
+    );
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
     coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
@@ -247,6 +251,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     modules.startAll();
     coreServices.require(PlaceholderApiBridgeService.class).enable();
     coreServices.require(MessageTransportService.class).start();
+    coreServices.require(PlayerDirectoryService.class).getOnlinePlayers();
     coreServices.require(ServerPerformanceService.class).start();
     coreServices.require(PerformanceBossBarService.class).start();
     getLogger().info(

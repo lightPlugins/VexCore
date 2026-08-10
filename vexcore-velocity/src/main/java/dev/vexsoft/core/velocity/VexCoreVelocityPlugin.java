@@ -35,6 +35,7 @@ import dev.vexsoft.core.velocity.service.messaging.VexVelocityMessageTransportSe
 import dev.vexsoft.core.velocity.messaging.VexProxyPingMessageHandler;
 import dev.vexsoft.core.velocity.service.teleport.VexTeleportTransferHandler;
 import dev.vexsoft.core.velocity.service.directory.VexPlayerDirectoryRequestHandler;
+import dev.vexsoft.core.velocity.service.directory.VexPlayerDirectoryListRequestHandler;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -103,6 +104,9 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
       coreServices.require(MessagingService.class).register(VexTeleportTransferHandler.class);
       coreServices.require(MessagingService.class).register(
           VexPlayerDirectoryRequestHandler.class
+      );
+      coreServices.require(MessagingService.class).register(
+          VexPlayerDirectoryListRequestHandler.class
       );
       coreServices.require(MessageTransportService.class).start();
       String storageType = coreServices.require(PlayerDataStoreService.class).getStorageType();

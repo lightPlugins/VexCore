@@ -41,14 +41,21 @@ public final class VexPlayerDirectoryRequestHandler implements
     if (context.getSourceServer().isBlank()) {
       return;
     }
-    String serverId = proxy.getPlayer(request.playerId())
-        .flatMap(player -> player.getCurrentServer())
+    var player = proxy.getPlayer(request.playerId());
+    String playerName = player.map(connected -> connected.getUsername()).orElse("");
+    String serverId = player
+        .flatMap(connected -> connected.getCurrentServer())
         .map(connection -> connection.getServerInfo().getName())
         .orElse("");
     messages.send(
         MessageTarget.server(context.getSourceServer()),
         PlayerDirectoryMessages.RESPONSE,
-        new PlayerDirectoryResponse(request.requestId(), request.playerId(), serverId)
+        new PlayerDirectoryResponse(
+            request.requestId(),
+            request.playerId(),
+            playerName,
+            serverId
+        )
     );
   }
 }
