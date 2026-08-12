@@ -1,13 +1,21 @@
 package dev.vexsoft.core.paper.service.bootstrap;
 
-import dev.vexsoft.core.common.service.reactor.VexConditionRegistry;
-import dev.vexsoft.core.common.service.reactor.VexEffectRegistry;
-import dev.vexsoft.core.common.service.reactor.VexFilterRegistry;
-import dev.vexsoft.core.common.service.reactor.VexTriggerRegistry;
-import dev.vexsoft.core.paper.service.reactor.VexBlockTypeRegistry;
-import dev.vexsoft.core.paper.service.reactor.VexEntityTypeRegistry;
-import dev.vexsoft.core.paper.service.reactor.VexItemTypeRegistry;
-
+import dev.vexsoft.core.api.service.cost.CostRegistry;
+import dev.vexsoft.core.api.service.cost.CostService;
+import dev.vexsoft.core.api.service.expression.ExpressionService;
+import dev.vexsoft.core.api.service.requirement.RequirementRegistry;
+import dev.vexsoft.core.api.service.requirement.RequirementService;
+import dev.vexsoft.core.api.service.reward.RewardRegistry;
+import dev.vexsoft.core.api.service.reward.RewardService;
+import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
+import dev.vexsoft.core.common.service.cost.VexCostRegistry;
+import dev.vexsoft.core.common.service.cost.VexCostService;
+import dev.vexsoft.core.common.service.expression.VexExpressionService;
+import dev.vexsoft.core.common.service.requirement.VexRequirementRegistry;
+import dev.vexsoft.core.common.service.requirement.VexRequirementService;
+import dev.vexsoft.core.common.service.reward.VexRewardRegistry;
+import dev.vexsoft.core.common.service.reward.VexRewardService;
+import dev.vexsoft.core.common.service.stats.contribution.VexStatContributionRegistry;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
@@ -30,17 +38,6 @@ import dev.vexsoft.core.paper.service.dialogs.DialogService;
 import dev.vexsoft.core.paper.service.inventory.InventoryService;
 import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.common.service.stats.VexStatRegistry;
-import dev.vexsoft.core.api.service.reactor.ConditionRegistry;
-import dev.vexsoft.core.api.service.reactor.EffectRegistry;
-import dev.vexsoft.core.api.service.reactor.FilterRegistry;
-import dev.vexsoft.core.api.service.reactor.ReactorEngine;
-import dev.vexsoft.core.api.service.reactor.ReactionConfigurationService;
-import dev.vexsoft.core.api.service.reactor.TriggerRegistry;
-import dev.vexsoft.core.common.service.reactor.VexReactorEngine;
-import dev.vexsoft.core.common.service.reactor.VexReactionConfigurationService;
-import dev.vexsoft.core.paper.service.reactor.BlockTypeRegistry;
-import dev.vexsoft.core.paper.service.reactor.EntityTypeRegistry;
-import dev.vexsoft.core.paper.service.reactor.ItemTypeRegistry;
 import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
@@ -116,17 +113,16 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         VexPlaceholderApiBridgeService.class
     );
     checkedServices.register(StatRegistry.class, VexStatRegistry.class);
-    checkedServices.register(TriggerRegistry.class, VexTriggerRegistry.class);
-    checkedServices.register(FilterRegistry.class, VexFilterRegistry.class);
-    checkedServices.register(ConditionRegistry.class, VexConditionRegistry.class);
-    checkedServices.register(EffectRegistry.class, VexEffectRegistry.class);
-    checkedServices.register(BlockTypeRegistry.class, VexBlockTypeRegistry.class);
-    checkedServices.register(EntityTypeRegistry.class, VexEntityTypeRegistry.class);
-    checkedServices.register(ItemTypeRegistry.class, VexItemTypeRegistry.class);
-    checkedServices.register(ReactorEngine.class, VexReactorEngine.class);
+    checkedServices.register(ExpressionService.class, VexExpressionService.class);
+    checkedServices.register(RewardRegistry.class, VexRewardRegistry.class);
+    checkedServices.register(RewardService.class, VexRewardService.class);
+    checkedServices.register(CostRegistry.class, VexCostRegistry.class);
+    checkedServices.register(CostService.class, VexCostService.class);
+    checkedServices.register(RequirementRegistry.class, VexRequirementRegistry.class);
+    checkedServices.register(RequirementService.class, VexRequirementService.class);
     checkedServices.register(
-        ReactionConfigurationService.class,
-        VexReactionConfigurationService.class
+        StatContributionRegistry.class,
+        VexStatContributionRegistry.class
     );
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);

@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.listener;
 import net.kyori.adventure.text.Component;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.stats.contribution.StatContributionCoordinatorService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.signals.core.PlayerDataLoadedSignal;
 import dev.vexsoft.core.api.player.VexPlayer;
@@ -28,7 +29,8 @@ import java.util.logging.Logger;
     PlayerDataCoordinatorService.class,
     PlayerDataStoreService.class,
     PlayerIdentityService.class,
-    SignalService.class
+    SignalService.class,
+    StatContributionCoordinatorService.class
 })
 public final class VexPlayerLifecycleListener implements Listener {
 
@@ -36,6 +38,7 @@ public final class VexPlayerLifecycleListener implements Listener {
   private final SignalService signals;
   private final PlayerIdentityService identities;
   private final PlayerDataStoreService dataStore;
+  private final StatContributionCoordinatorService statContributions;
   private final Logger logger;
   private final ConcurrentHashMap<UUID, UUID> loginAttempts = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<UUID, UUID> readyPlayers = new ConcurrentHashMap<>();
@@ -46,6 +49,7 @@ public final class VexPlayerLifecycleListener implements Listener {
     dataStore = checkedServices.require(PlayerDataStoreService.class);
     identities = checkedServices.require(PlayerIdentityService.class);
     signals = checkedServices.require(SignalService.class);
+    statContributions = checkedServices.require(StatContributionCoordinatorService.class);
     if (!(checkedServices.getOwner() instanceof Plugin plugin)) {
       throw new IllegalArgumentException("Player lifecycle listener owner must be a Bukkit plugin");
     }
@@ -112,12 +116,16 @@ public final class VexPlayerLifecycleListener implements Listener {
     );
     player.bindPlatformPlayer(event.getPlayer());
     signals.publish(new PlayerDataLoadedSignal(player));
+    statContributions.refreshPlayer(player);
   }
 
   @EventHandler
   public void onPlayerQuit(final PlayerQuitEvent event) {
     cleanupCurrentAttempt(event.getPlayer().getUniqueId());
-    players.find(event.getPlayer().getUniqueId()).ifPresent(VexPlayer::unbindPlatformPlayer);
+    players.find(event.getPlayer().getUniqueId()).ifPresent(player -> {
+      statContributions.removePlayer(player);
+      player.unbindPlatformPlayer();
+    });
     players.saveAndRemove(event.getPlayer().getUniqueId()).exceptionally(throwable -> {
       logger.log(Level.SEVERE, "Unable to save VexPlayer " + event.getPlayer().getUniqueId(), throwable);
       return null;

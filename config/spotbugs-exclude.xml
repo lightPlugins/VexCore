@@ -22,6 +22,8 @@
       <Class name="dev.vexsoft.core.paper.VexCorePlugin"/>
       <!-- Placeholder contexts deliberately carry the managed VexPlayer for one resolution. -->
       <Class name="dev.vexsoft.core.placeholder.PlaceholderContext"/>
+      <!-- Execution contexts deliberately carry the managed VexPlayer for one operation. -->
+      <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
       <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
       <Class name="dev.vexsoft.core.paper.service.inventory.VexInventoryHolder"/>
     </Or>
@@ -32,6 +34,7 @@
       <Class name="dev.vexsoft.core.common.configuration.ConfigurateConfigurationSection"/>
       <Class name="dev.vexsoft.core.paper.module.PacketModule"/>
       <Class name="dev.vexsoft.core.paper.localization.VexPlayerLanguageChangeEvent"/>
+      <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
     </Or>
   </Match>
 

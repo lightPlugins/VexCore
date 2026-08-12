@@ -39,6 +39,9 @@ public interface PlayerDataCoordinatorService extends VexService {
   /** Finds a player in the shared online cache */
   Optional<VexPlayer> find(UUID uniqueId);
 
+  /** Returns a snapshot of every currently loaded player session. */
+  Collection<VexPlayer> getLoadedPlayers();
+
   /** Removes a player from the shared online cache */
   Optional<VexPlayer> remove(UUID uniqueId);
 

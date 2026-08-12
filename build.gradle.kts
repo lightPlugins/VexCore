@@ -24,6 +24,7 @@ allprojects {
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://repo.spongepowered.org/repository/maven-public/")
         maven("https://repo.helpch.at/releases/")
+        maven("https://jitpack.io")
     }
 }
 

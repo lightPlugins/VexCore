@@ -268,6 +268,11 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   }
 
   @Override
+  public Collection<VexPlayer> getLoadedPlayers() {
+    return List.copyOf(players.values());
+  }
+
+  @Override
   public Optional<VexPlayer> remove(final UUID uniqueId) {
     VexPlayer removed = players.remove(Objects.requireNonNull(uniqueId, "uniqueId"));
     if (removed != null) {

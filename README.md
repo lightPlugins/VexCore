@@ -23,7 +23,7 @@ VexCore brings together the technical foundations that would otherwise have to b
 | --- | --- | --- | --- |
 | Scoped service registries | Localization and placeholders | Paper, Folia, and Velocity | Minecraft version adapters |
 | Server and proxy plugin lifecycles | Commands and inventories | Player data, stats, and caching | Packet abstraction |
-| Configuration and messaging | Reactor triggers and effects | PostgreSQL persistence | Data Component abstraction |
+| Configuration and messaging | Rewards, costs, and requirements | PostgreSQL persistence | Data Component abstraction |
 
 ## Purpose
 
@@ -125,16 +125,83 @@ flowchart TD
 - Cached templates avoid reparsing frequently rendered text
 - PlaceholderAPI support in both directions when it is installed
 
-### Stats and Reactor
+### Stats and Progression Primitives
 
 - Dynamically registered, namespaced stats with stable persistence keys
 - Array-backed values for loaded players and retained database values while a stat is unloaded
 - Permanent values and temporary flat or multiplicative modifiers
 - Stat names and descriptions resolved from the owning plugin's language files
-- Class-registered triggers, filters, conditions, and effects with globally unique IDs
-- Trigger-specific filters and global conditions in configuration
-- Atomic compiled reaction snapshots and owner-scoped reloads
-- Namespaced Minecraft resource keys such as `minecraft:stone`, ready for custom providers
+- Owner-scoped providers for reconstructable runtime stat contributions
+- Automatic contribution rebuilds after player data loads and explicit refreshes after plugin reloads
+- Complete contribution snapshots replace old values without persisting derived final stats
+- Extensible `rewards`, `costs`, and `requirements` sections compiled once during configuration reload
+- Built-in Stats support, Vault-backed Coins support, and online Permission requirements
+- Shared expression variables such as `%level%` without coupling VexCore to a skill system
+
+### Rewards, Costs, and Requirements
+
+Progression remains owned by external plugins. VexCore does not know what a skill level or
+collection level is; it compiles and executes the three sections supplied by those plugins.
+Installed plugins can register additional direct keys independently in each domain.
+
+```yaml
+rewards:
+  coins: "200 * %level%"
+  stats:
+    mining_chunk_damage: "1"
+    defense: "(2 * %level%) / 5"
+
+costs:
+  coins: "50 * %level%"
+
+requirements:
+  coins: "1000"
+  stats:
+    mining_power: "2 * %level%"
+  permission:
+    - "vexskills.mining"
+    - "vexskills.mining.advanced"
+```
+
+- Reward keys are registered through `RewardRegistry`
+- Cost keys are registered through `CostRegistry`
+- Requirement keys are registered through `RequirementRegistry`
+- Unknown keys fail configuration compilation instead of being silently skipped
+- Costs are checked before consumption and successful earlier entries are compensated if a later
+  entry fails
+- Requirement entries use AND semantics and never mutate player state
+- Reward and requirement implementations provide Adventure Components for consistent chat, lore,
+  and menu presentation
+
+`coins` is registered only when Vault and an economy provider are available. `stats` rewards are
+reconstructable contributions rather than permanent database mutations. Items are intentionally not
+part of this first implementation and will be designed separately.
+
+External systems with derived stats register a contribution provider:
+
+```java
+services.require(StatContributionRegistry.class)
+    .register("skills", SkillStatContributionProvider.class);
+```
+
+The provider returns its complete current snapshot for a player:
+
+```java
+@Override
+public Map<StatKey, StatModifier> calculate(final VexPlayer player) {
+  return Map.of(
+      StatKey.of("vexskills", "mining_chunk_damage"), StatModifier.flat(9D),
+      StatKey.of("vexskills", "mining_block_break_speed"), StatModifier.flat(40D)
+  );
+}
+```
+
+VexCore applies every provider after `PlayerDataLoadedSignal`, replaces the provider's previous
+snapshot in one stat update batch, and removes its runtime modifiers when the player leaves or the
+provider is unregistered. A plugin calls `refresh(player, "skills")` after relevant data changes and
+`refreshAll("skills")` after reloading its progression configuration. Only permanent stat values are
+stored in VexCore; skill, collection, equipment, and event contributions remain reconstructable from
+their owning systems.
 
 ### Command Framework
 
@@ -240,7 +307,7 @@ implementations so VexSoft projects only depend on the platform contracts they a
 
 | Module | Responsibility |
 | --- | --- |
-| `vexcore-api` | Platform-neutral contracts for services, player and global data, identities, world positions, localization, placeholders, stats, Reactor, caching, configuration, and messaging |
+| `vexcore-api` | Platform-neutral contracts for services, player and global data, identities, world positions, localization, placeholders, stats, expressions, rewards, costs, requirements, caching, configuration, and messaging |
 | `vexcore-common` | Platform-neutral implementations shared by the server and proxy runtimes |
 | `vexcore-paper-api` | Public Paper and Folia contracts together with the `VexPlugin` foundation |
 | `vexcore-services` | Paper-only implementations for commands, inventories, dialogs, scheduling, gameplay events, and other stable services |
@@ -351,11 +418,11 @@ literal `confirm` argument to reduce accidental execution:
 - Velocity transfers resolve the destination world by namespaced ID only after reaching the target
   backend.
 - Dynamically removed stats disappear from runtime without deleting their stored player values.
-- Configured reactions are compiled into immutable runtime snapshots instead of repeatedly parsing
-  configuration during gameplay events.
-- Plugin-specific reloads replace only the definitions belonging to that plugin.
-- Invalid or duplicate Reactor registrations produce console messages that identify the affected
-  plugin and configuration component.
+- Reward, cost, and requirement expressions are compiled during configuration reload instead of
+  being reparsed during progression events.
+- Plugin-specific reloads refresh only that plugin's stat contribution providers.
+- Unknown or duplicate execution keys fail with the affected domain and configuration key.
+- Derived stat snapshots are rebuilt after player data loads and never written as permanent values.
 
 The technical APIs and module boundaries are documented in the architecture and feature sections
 for developers who want to understand how VexCore operates. They are not intended as a general

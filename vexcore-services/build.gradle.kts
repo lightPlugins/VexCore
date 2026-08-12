@@ -8,6 +8,7 @@ dependencies {
 
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
     compileOnly("me.clip:placeholderapi:2.12.2")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
