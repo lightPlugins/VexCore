@@ -1,0 +1,31 @@
+# Technical defaults only. Visible menu text belongs in languages/<language>/levels.yml.
+menu:
+  size: 45
+  slots:
+    - 10
+    - 19
+    - 28
+    - 29
+    - 30
+    - 21
+    - 12
+    - 13
+    - 14
+    - 23
+    - 32
+    - 33
+    - 34
+    - 25
+    - 16
+    - 17
+  states:
+    claimed:
+      item-model: minecraft:lime_dye
+    claimable:
+      item-model: minecraft:yellow_dye
+    requirements-not-met:
+      item-model: minecraft:orange_dye
+    costs-not-affordable:
+      item-model: minecraft:red_dye
+    locked:
+      item-model: minecraft:gray_dye

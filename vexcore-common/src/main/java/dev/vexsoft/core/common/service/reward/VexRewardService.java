@@ -7,6 +7,7 @@ import dev.vexsoft.core.api.service.reward.RewardService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentKind;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.TypedExecutionDescription;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.CompiledRewards;
 import dev.vexsoft.core.reward.Reward;
@@ -60,10 +61,24 @@ public final class VexRewardService implements RewardService {
     Map<String, RewardResult> results = new LinkedHashMap<>();
     for (CompiledRewards.Entry entry : Objects.requireNonNull(rewards, "rewards").entries()) {
       if (entry.reward().getBehavior() == RewardBehavior.ACTION) {
-        results.put(entry.key(), entry.reward().grant(context));
+        results.put(uniqueResultKey(results, entry.key()), entry.reward().grant(context));
       }
     }
     return new RewardExecutionReport(results);
+  }
+
+  private static String uniqueResultKey(
+      final Map<String, RewardResult> results,
+      final String key
+  ) {
+    if (!results.containsKey(key)) {
+      return key;
+    }
+    int occurrence = 2;
+    while (results.containsKey(key + '#' + occurrence)) {
+      occurrence++;
+    }
+    return key + '#' + occurrence;
   }
 
   @Override
@@ -90,5 +105,16 @@ public final class VexRewardService implements RewardService {
       final PlayerExecutionContext context
   ) {
     return rewards.entries().stream().map(entry -> entry.reward().describe(context)).toList();
+  }
+
+  @Override
+  public List<TypedExecutionDescription> present(
+      final CompiledRewards rewards,
+      final PlayerExecutionContext context
+  ) {
+    return rewards.entries().stream()
+        .flatMap(entry -> entry.reward().describeEntries(context).stream()
+            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
+        .toList();
   }
 }

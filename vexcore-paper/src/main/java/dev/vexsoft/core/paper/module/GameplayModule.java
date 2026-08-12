@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.module;
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
 import dev.vexsoft.core.api.service.expression.ExpressionService;
+import dev.vexsoft.core.api.service.level.LevelClaimService;
+import dev.vexsoft.core.api.service.level.LevelService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -22,6 +24,8 @@ import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
 import dev.vexsoft.core.common.service.execution.VexExecutionComponentCoordinatorService;
 import dev.vexsoft.core.common.service.expression.VexExpressionService;
+import dev.vexsoft.core.common.service.level.VexLevelClaimService;
+import dev.vexsoft.core.common.service.level.VexLevelService;
 import dev.vexsoft.core.common.service.requirement.VexRequirementRegistry;
 import dev.vexsoft.core.common.service.requirement.VexRequirementService;
 import dev.vexsoft.core.common.service.reward.VexRewardRegistry;
@@ -72,6 +76,8 @@ public final class GameplayModule implements VexModule {
     services.register(CostService.class, VexCostService.class);
     services.register(RequirementRegistry.class, VexRequirementRegistry.class);
     services.register(RequirementService.class, VexRequirementService.class);
+    services.register(LevelService.class, VexLevelService.class);
+    services.register(LevelClaimService.class, VexLevelClaimService.class);
     services.register(StatContributionRegistry.class, VexStatContributionRegistry.class);
     if (Bukkit.getPluginManager().isPluginEnabled("Vault")) {
       services.register(EconomyService.class, VexVaultEconomyService.class);

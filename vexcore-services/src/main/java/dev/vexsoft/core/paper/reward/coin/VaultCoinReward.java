@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import dev.vexsoft.core.reward.CompiledReward;
@@ -11,6 +12,8 @@ import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
 import java.util.Objects;
+import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -50,6 +53,15 @@ public final class VaultCoinReward implements Reward {
     @Override
     public Component describe(final PlayerExecutionContext context) {
       return Component.text('+' + economy.format(evaluate(context)), NamedTextColor.GOLD);
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      String formatted = economy.format(evaluate(context));
+      Component fallback = describe(context);
+      return List.of(new ExecutionDescription(
+          "", Map.of("amount", Component.text(formatted)), fallback
+      ));
     }
 
     private double evaluate(final PlayerExecutionContext context) {

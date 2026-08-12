@@ -3,11 +3,13 @@ package dev.vexsoft.core.paper.requirement.permission;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.requirement.CompiledRequirement;
 import dev.vexsoft.core.requirement.Requirement;
 import dev.vexsoft.core.requirement.RequirementResult;
 import java.util.List;
 import java.util.Objects;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
@@ -60,6 +62,30 @@ public final class PermissionRequirement implements Requirement {
             .append(Component.text(permission, NamedTextColor.GRAY));
       }
       return result;
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      Player player = context.player().requirePlatformPlayer(Player.class);
+      return permissions.stream().map(permission -> {
+        boolean satisfied = player.hasPermission(permission);
+        Component fallback = Component.text(
+                satisfied ? "\u2714 " : "\u2718 ",
+                satisfied ? NamedTextColor.GREEN : NamedTextColor.RED
+            )
+            .append(Component.text(permission, NamedTextColor.GRAY));
+        return new ExecutionDescription(
+            satisfied ? "satisfied" : "missing",
+            Map.of(
+                "permission", Component.text(permission),
+                "state_symbol", Component.text(
+                    satisfied ? "\u2714" : "\u2718",
+                    satisfied ? NamedTextColor.GREEN : NamedTextColor.RED
+                )
+            ),
+            fallback
+        );
+      }).toList();
     }
   }
 }

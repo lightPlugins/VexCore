@@ -7,6 +7,7 @@ import dev.vexsoft.core.api.service.requirement.RequirementService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentKind;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.TypedExecutionDescription;
 import dev.vexsoft.core.requirement.CompiledRequirements;
 import dev.vexsoft.core.requirement.Requirement;
 import dev.vexsoft.core.requirement.RequirementExecutionResult;
@@ -69,6 +70,17 @@ public final class VexRequirementService implements RequirementService {
   ) {
     return requirements.entries().stream()
         .map(entry -> entry.requirement().describe(context))
+        .toList();
+  }
+
+  @Override
+  public List<TypedExecutionDescription> present(
+      final CompiledRequirements requirements,
+      final PlayerExecutionContext context
+  ) {
+    return requirements.entries().stream()
+        .flatMap(entry -> entry.requirement().describeEntries(context).stream()
+            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
         .toList();
   }
 }

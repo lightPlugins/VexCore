@@ -4,12 +4,15 @@ import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import dev.vexsoft.core.requirement.CompiledRequirement;
 import dev.vexsoft.core.requirement.Requirement;
 import dev.vexsoft.core.requirement.RequirementResult;
 import java.util.Objects;
+import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -52,6 +55,27 @@ public final class VaultCoinRequirement implements Requirement {
               satisfied ? NamedTextColor.GREEN : NamedTextColor.RED)
           .append(Component.text(economy.format(required), NamedTextColor.GOLD))
           .append(Component.text(" (" + economy.format(current) + ')', NamedTextColor.GRAY));
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      double required = evaluate(context);
+      boolean satisfied = economy.getBalance(context.player()) >= required;
+      return List.of(new ExecutionDescription(
+          satisfied ? "satisfied" : "missing",
+          Map.of(
+              "amount", Component.text(economy.format(required)),
+              "state_symbol", symbol(satisfied)
+          ),
+          describe(context)
+      ));
+    }
+
+    private static Component symbol(final boolean satisfied) {
+      return Component.text(
+          satisfied ? "\u2714" : "\u2718",
+          satisfied ? NamedTextColor.GREEN : NamedTextColor.RED
+      );
     }
 
     private double evaluate(final PlayerExecutionContext context) {

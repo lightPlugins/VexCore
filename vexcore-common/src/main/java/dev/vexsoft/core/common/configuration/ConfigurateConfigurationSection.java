@@ -20,6 +20,13 @@ public class ConfigurateConfigurationSection implements ConfigurationSection {
     this(node, new ReentrantReadWriteLock());
   }
 
+  /** Creates an independent section backed by an arbitrary Configurate-compatible value. */
+  public static ConfigurateConfigurationSection from(final Object value) {
+    CommentedConfigurationNode root = CommentedConfigurationNode.root();
+    root.raw(value);
+    return new ConfigurateConfigurationSection(root);
+  }
+
   public ConfigurateConfigurationSection(
       CommentedConfigurationNode node,
       ReentrantReadWriteLock lock

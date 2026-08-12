@@ -9,9 +9,12 @@ import dev.vexsoft.core.cost.CostCheckResult;
 import dev.vexsoft.core.cost.CostConsumeResult;
 import dev.vexsoft.core.cost.CostReceipt;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import java.util.Objects;
+import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -69,6 +72,15 @@ public final class VaultCoinCost implements Cost {
     @Override
     public Component describe(final PlayerExecutionContext context) {
       return Component.text(economy.format(evaluate(context)), NamedTextColor.RED);
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      return List.of(new ExecutionDescription(
+          "",
+          Map.of("amount", Component.text(economy.format(evaluate(context)))),
+          describe(context)
+      ));
     }
 
     private double evaluate(final PlayerExecutionContext context) {

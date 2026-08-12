@@ -7,6 +7,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.stats.StatLocalizationService;
 import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.requirement.CompiledRequirement;
 import dev.vexsoft.core.requirement.Requirement;
@@ -17,6 +18,7 @@ import dev.vexsoft.core.stats.StatKey;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -103,6 +105,37 @@ public final class StatRequirement implements Requirement {
         first = false;
       }
       return result;
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      StatContainer container = context.player().getContainer(StatContainer.class);
+      return values.entrySet().stream().map(entry -> {
+        double required = entry.getValue().evaluateNumber(context);
+        double current = container.getStat(entry.getKey()).getValue();
+        boolean satisfied = current >= required;
+        Component name = localizations.getName(context.player(), entry.getKey().getKey());
+        Component symbol = Component.text(
+            satisfied ? "\u2714" : "\u2718",
+            satisfied ? NamedTextColor.GREEN : NamedTextColor.RED
+        );
+        Component fallback = symbol.append(Component.space()).append(name)
+            .append(Component.text(" " + current + '/' + required, NamedTextColor.GRAY));
+        return new ExecutionDescription(
+            satisfied ? "satisfied" : "missing",
+            Map.of(
+                "amount", Component.text(format(required)),
+                "current", Component.text(format(current)),
+                "name", name,
+                "state_symbol", symbol
+            ),
+            fallback
+        );
+      }).toList();
+    }
+
+    private static String format(final double value) {
+      return value == Math.rint(value) ? Long.toString((long) value) : Double.toString(value);
     }
   }
 }

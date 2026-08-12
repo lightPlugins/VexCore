@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.service.bootstrap;
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
 import dev.vexsoft.core.api.service.expression.ExpressionService;
+import dev.vexsoft.core.api.service.level.LevelClaimService;
+import dev.vexsoft.core.api.service.level.LevelService;
 import dev.vexsoft.core.api.service.requirement.RequirementRegistry;
 import dev.vexsoft.core.api.service.requirement.RequirementService;
 import dev.vexsoft.core.api.service.reward.RewardRegistry;
@@ -11,6 +13,8 @@ import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostService;
 import dev.vexsoft.core.common.service.expression.VexExpressionService;
+import dev.vexsoft.core.common.service.level.VexLevelClaimService;
+import dev.vexsoft.core.common.service.level.VexLevelService;
 import dev.vexsoft.core.common.service.requirement.VexRequirementRegistry;
 import dev.vexsoft.core.common.service.requirement.VexRequirementService;
 import dev.vexsoft.core.common.service.reward.VexRewardRegistry;
@@ -120,6 +124,8 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(CostService.class, VexCostService.class);
     checkedServices.register(RequirementRegistry.class, VexRequirementRegistry.class);
     checkedServices.register(RequirementService.class, VexRequirementService.class);
+    checkedServices.register(LevelService.class, VexLevelService.class);
+    checkedServices.register(LevelClaimService.class, VexLevelClaimService.class);
     checkedServices.register(
         StatContributionRegistry.class,
         VexStatContributionRegistry.class

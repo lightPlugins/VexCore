@@ -7,6 +7,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.stats.StatLocalizationService;
 import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
@@ -19,6 +20,7 @@ import dev.vexsoft.core.stats.contribution.StatRewardContribution;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
@@ -106,6 +108,20 @@ public final class StatReward implements Reward {
         first = false;
       }
       return result;
+    }
+
+    @Override
+    public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+      return values.entrySet().stream().map(entry -> {
+        String amount = format(entry.getValue().evaluateNumber(context));
+        Component name = localizations.getName(context.player(), entry.getKey().getKey());
+        Component fallback = Component.text('+' + amount + ' ', NamedTextColor.GREEN).append(name);
+        return new ExecutionDescription(
+            "",
+            Map.of("amount", Component.text(amount), "name", name),
+            fallback
+        );
+      }).toList();
     }
 
     private static String format(final double value) {

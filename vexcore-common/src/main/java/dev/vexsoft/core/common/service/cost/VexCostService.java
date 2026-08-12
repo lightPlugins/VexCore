@@ -6,14 +6,14 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentKind;
-import dev.vexsoft.core.cost.CompiledCost;
 import dev.vexsoft.core.cost.CompiledCosts;
 import dev.vexsoft.core.cost.Cost;
 import dev.vexsoft.core.cost.CostCheckResult;
 import dev.vexsoft.core.cost.CostConsumeResult;
 import dev.vexsoft.core.cost.CostExecutionResult;
-import dev.vexsoft.core.cost.CostReceipt;
+import dev.vexsoft.core.cost.CostPayment;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.TypedExecutionDescription;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -68,22 +68,40 @@ public final class VexCostService implements CostService {
       final CompiledCosts costs,
       final PlayerExecutionContext context
   ) {
+    return pay(costs, context).result();
+  }
+
+  @Override
+  public CostPayment pay(
+      final CompiledCosts costs,
+      final PlayerExecutionContext context
+  ) {
     CostExecutionResult checked = check(costs, context);
     if (!checked.successful()) {
-      return checked;
+      return new CostPayment(false, checked, List.of());
     }
-    List<Consumed> consumed = new ArrayList<>();
+    List<CostPayment.Entry> consumed = new ArrayList<>();
     List<CostExecutionResult.Entry> results = new ArrayList<>();
     for (CompiledCosts.Entry entry : costs.entries()) {
       CostConsumeResult result = entry.cost().consume(context);
       results.add(new CostExecutionResult.Entry(entry.key(), result.successful(), result.message()));
       if (!result.successful()) {
         refund(consumed, context);
-        return new CostExecutionResult(false, results);
+        return new CostPayment(false, new CostExecutionResult(false, results), List.of());
       }
-      result.getReceipt().ifPresent(receipt -> consumed.add(new Consumed(entry.cost(), receipt)));
+      result.getReceipt().ifPresent(
+          receipt -> consumed.add(new CostPayment.Entry(entry.cost(), receipt))
+      );
     }
-    return new CostExecutionResult(true, results);
+    return new CostPayment(true, new CostExecutionResult(true, results), consumed);
+  }
+
+  @Override
+  public void refund(
+      final CostPayment payment,
+      final PlayerExecutionContext context
+  ) {
+    refund(Objects.requireNonNull(payment, "payment").entries(), context);
   }
 
   @Override
@@ -94,15 +112,24 @@ public final class VexCostService implements CostService {
     return costs.entries().stream().map(entry -> entry.cost().describe(context)).toList();
   }
 
+  @Override
+  public List<TypedExecutionDescription> present(
+      final CompiledCosts costs,
+      final PlayerExecutionContext context
+  ) {
+    return costs.entries().stream()
+        .flatMap(entry -> entry.cost().describeEntries(context).stream()
+            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
+        .toList();
+  }
+
   private static void refund(
-      final List<Consumed> consumed,
+      final List<CostPayment.Entry> consumed,
       final PlayerExecutionContext context
   ) {
     for (int index = consumed.size() - 1; index >= 0; index--) {
-      Consumed entry = consumed.get(index);
+      CostPayment.Entry entry = consumed.get(index);
       entry.cost().refund(context, entry.receipt());
     }
   }
-
-  private record Consumed(CompiledCost cost, CostReceipt receipt) {}
 }

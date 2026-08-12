@@ -14,6 +14,19 @@
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
     <Class name="dev.vexsoft.core.paper.service.items.VexItemStackBuilder"/>
   </Match>
+  <Match>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
+    <Class name="dev.vexsoft.core.paper.level.menu.LevelMenuItems"/>
+  </Match>
+
+  <!-- Adventure Components are immutable values despite not being annotated for SpotBugs. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    <Or>
+      <Class name="dev.vexsoft.core.execution.ExecutionDescription"/>
+      <Class name="dev.vexsoft.core.execution.TypedExecutionDescription"/>
+    </Or>
+  </Match>
 
   <!-- Framework contracts intentionally expose their managed runtime object. -->
   <Match>

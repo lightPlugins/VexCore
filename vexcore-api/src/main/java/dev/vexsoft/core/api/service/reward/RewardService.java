@@ -3,6 +3,7 @@ package dev.vexsoft.core.api.service.reward;
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.execution.TypedExecutionDescription;
 import dev.vexsoft.core.reward.CompiledRewards;
 import dev.vexsoft.core.reward.RewardContributions;
 import dev.vexsoft.core.reward.RewardExecutionReport;
@@ -24,6 +25,12 @@ public interface RewardService extends VexService {
 
   /** Renders every configured reward using its owning plugin's presentation. */
   List<Component> describe(CompiledRewards rewards, PlayerExecutionContext context);
+
+  /** Returns typed localization-ready reward lines. */
+  List<TypedExecutionDescription> present(
+      CompiledRewards rewards,
+      PlayerExecutionContext context
+  );
 
   /** Associates one compiled section with the variables of the progression point it represents. */
   record RewardInvocation(CompiledRewards rewards, PlayerExecutionContext context) {}

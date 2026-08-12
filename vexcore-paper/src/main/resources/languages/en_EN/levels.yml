@@ -1,0 +1,53 @@
+level-menu:
+  title: '<dark_gray>Levels'
+  states:
+    claimed:
+      name: '<green>Level %level%'
+      lore:
+        - '<gray>This level has been claimed.'
+        - ''
+        - '%rewards%'
+        - '%costs%'
+        - '%requirements%'
+    claimable:
+      name: '<yellow>Level %level%'
+      lore:
+        - '<yellow>Click to claim this level.'
+        - ''
+        - '%rewards%'
+        - '%costs%'
+        - '%requirements%'
+    requirements-not-met:
+      name: '<gold>Level %level%'
+      lore:
+        - '<red>You do not meet every requirement.'
+        - ''
+        - '%rewards%'
+        - '%costs%'
+        - '%requirements%'
+    costs-not-affordable:
+      name: '<red>Level %level%'
+      lore:
+        - '<red>You cannot afford this level.'
+        - ''
+        - '%rewards%'
+        - '%costs%'
+        - '%requirements%'
+    locked:
+      name: '<gray>Level %level%'
+      lore:
+        - '<dark_gray>This level has not been reached.'
+        - ''
+        - '%rewards%'
+        - '%costs%'
+        - '%requirements%'
+
+  reward-lines:
+    coins: '<green>+ %amount% Coins'
+    stats: '<green>+ %amount% %name%'
+  cost-lines:
+    coins: '<red>- %amount% Coins'
+  requirement-lines:
+    coins: '%state_symbol% <gray>%amount% Coins'
+    stats: '%state_symbol% <gray>%amount% %name%'
+    permission: '%state_symbol% <gray>%permission%'

@@ -203,6 +203,65 @@ provider is unregistered. A plugin calls `refresh(player, "skills")` after relev
 stored in VexCore; skill, collection, equipment, and event contributions remain reconstructable from
 their owning systems.
 
+### Level System
+
+The generic level runtime derives an available level from total experience while the owning plugin
+persists only its experience and highest claimed level. Manual claiming is the default; automatic
+claiming is an explicit configuration choice. Claims always run sequentially and evaluate
+requirements, consume reversible costs, grant action rewards, persist the claimed level, and then
+allow the owning plugin to refresh its reconstructed stat contribution.
+
+```yaml
+leveling:
+  min-level: 0
+  max-level: 100
+  claim-mode: MANUAL
+  claimed-level-overflow: KEEP
+  experience:
+    required: "100 + (25 * %level%)"
+
+levels:
+  - min-level: 1
+    step: 1
+    rewards:
+      coins: "200 * %level%"
+      stats:
+        mining_chunk_damage: "1"
+  - min-level: 5
+    step: 5
+    requirements:
+      permission: vexskills.mining.advanced
+    costs:
+      coins: "50 * %level%"
+```
+
+`LevelService` compiles curves and repeating rules on reload. `LevelClaimService` previews and
+executes claims, processes automatic claims when enabled, and reconstructs contribution rewards for
+every currently claimed level. Reloading a curve never executes historical action rewards. With
+`KEEP`, already claimed progression survives a curve nerf; `CLAMP` limits the effective claimed
+level to what the recalculated experience currently reaches.
+
+Progress is connected once through a typed `LevelProgressAccess`. Its reader returns an immutable
+snapshot; its claimed-level writer is invoked by VexCore only inside `VexPlayer.update(...)`.
+Progression plugins must also grant experience through the player container API:
+
+```java
+player.update(
+    VexSkillsData.KEY,
+    data -> data.addExperience(Skill.MINING, 100D)
+);
+```
+
+Neither experience nor claimed levels may be mutated through a retained container reference.
+
+Paper plugins can use the generic 16-entry snake menu layout. Its default slot order is
+`10, 19, 28, 29, 30, 21, 12, 13, 14, 23, 32, 33, 34, 25, 16, 17`, and every plugin may replace that
+ordered list in its technical settings. Menu variants are named `states`. Every displayed entry is
+physically a `NAME_TAG`; settings choose only a namespaced item model such as `minecraft:book` or
+`nexo:my_item`. Visible titles, names, lore, and type lines belong exclusively in language files,
+with English bundled as the default. State lore must contain dedicated `%rewards%`, `%costs%`, and
+`%requirements%` lines so localized multiline blocks are expanded uniformly.
+
 ### Command Framework
 
 - Class-based command registration without command entries in `plugin.yml`
