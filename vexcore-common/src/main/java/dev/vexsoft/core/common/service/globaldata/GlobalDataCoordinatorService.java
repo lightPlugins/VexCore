@@ -16,6 +16,9 @@ public interface GlobalDataCoordinatorService extends VexService {
   /** Loads one registered value. */
   <T> CompletableFuture<T> get(ServiceOwner owner, GlobalDataKey<T> key);
 
+  /** Invalidates and reloads one registered value from persistent storage. */
+  <T> CompletableFuture<T> refresh(ServiceOwner owner, GlobalDataKey<T> key);
+
   /** Stores one registered value. */
   <T> CompletableFuture<Void> set(ServiceOwner owner, GlobalDataKey<T> key, T value);
 

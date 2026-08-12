@@ -4,6 +4,7 @@ package dev.vexsoft.core.common.service.data;
 import java.util.Locale;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.cache.VexAsyncCache;
 import dev.vexsoft.core.cache.VexCacheOptions;
@@ -53,7 +54,8 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   private final Object saveLock = new Object();
   private final PlayerDataStore store;
   private final VexAsyncCache<PlayerLoadRequest, VexPlayer> playerLoads;
-  private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+  private final ObjectMapper objectMapper =
+      new ObjectMapper().registerModule(new JavaTimeModule());
 
   public VexPlayerDataCoordinatorService(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
@@ -287,6 +289,12 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
       }
     });
     return save;
+  }
+
+  @Override
+  public CompletableFuture<Void> save(final UUID uniqueId) {
+    VexPlayer player = players.get(Objects.requireNonNull(uniqueId, "uniqueId"));
+    return player == null ? CompletableFuture.completedFuture(null) : queueSave(player);
   }
 
   @Override

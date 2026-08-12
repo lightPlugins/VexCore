@@ -38,6 +38,11 @@ public final class VexGlobalDataService implements GlobalDataService, AutoClosea
   }
 
   @Override
+  public <T> CompletableFuture<T> refresh(final GlobalDataKey<T> key) {
+    return coordinator.refresh(services.getOwner(), key);
+  }
+
+  @Override
   public <T> CompletableFuture<Void> set(final GlobalDataKey<T> key, final T value) {
     return coordinator.set(services.getOwner(), key, value);
   }

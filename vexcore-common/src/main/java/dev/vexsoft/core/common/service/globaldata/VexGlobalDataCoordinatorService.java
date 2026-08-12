@@ -2,6 +2,7 @@ package dev.vexsoft.core.common.service.globaldata;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.vexsoft.core.api.globaldata.GlobalDataDefinition;
 import dev.vexsoft.core.api.globaldata.GlobalDataKey;
 import dev.vexsoft.core.api.globaldata.GlobalDataRegistry;
@@ -36,7 +37,7 @@ public final class VexGlobalDataCoordinatorService implements
   private final VexAsyncCache<GlobalDataReference, GlobalCacheEntry> cache;
   private final Map<GlobalDataReference, RegisteredGlobalData> registrations =
       new LinkedHashMap<>();
-  private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+  private final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
   private final AutoCloseable invalidationSubscription;
 
   public VexGlobalDataCoordinatorService(final VexServiceRegistry services) {
@@ -70,6 +71,16 @@ public final class VexGlobalDataCoordinatorService implements
       final GlobalDataKey<T> key
   ) {
     RegisteredGlobalData registration = requireRegistration(owner, key);
+    return cache.get(registration.reference()).thenApply(entry -> deserialize(key, entry));
+  }
+
+  @Override
+  public <T> CompletableFuture<T> refresh(
+      final ServiceOwner owner,
+      final GlobalDataKey<T> key
+  ) {
+    RegisteredGlobalData registration = requireRegistration(owner, key);
+    cache.invalidate(registration.reference());
     return cache.get(registration.reference()).thenApply(entry -> deserialize(key, entry));
   }
 

@@ -1,5 +1,9 @@
 storage: postgresql
 
+player-data:
+  login-timeout-seconds: 15
+  login-kick-message: "Your player data could not be loaded. Please try again."
+
 postgresql:
   jdbc-url: jdbc:postgresql://localhost:5432/vexcore
   username: postgres

@@ -45,6 +45,9 @@ public interface PlayerDataCoordinatorService extends VexService {
   /** Saves every changed container before removing a cached player */
   CompletableFuture<Void> saveAndRemove(UUID uniqueId);
 
+  /** Saves every changed container while retaining the cached player. */
+  CompletableFuture<Void> save(UUID uniqueId);
+
   /** Saves every changed container of every cached player */
   CompletableFuture<Void> saveAll();
 

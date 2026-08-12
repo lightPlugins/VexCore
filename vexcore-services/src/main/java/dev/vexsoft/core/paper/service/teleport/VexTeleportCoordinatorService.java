@@ -12,6 +12,7 @@ import dev.vexsoft.core.api.world.ServerPosition;
 import dev.vexsoft.core.common.messaging.teleport.TeleportCompletion;
 import dev.vexsoft.core.common.messaging.teleport.TeleportMessages;
 import dev.vexsoft.core.common.messaging.teleport.TeleportTransferRequest;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.paper.service.network.ServerIdentityService;
 import dev.vexsoft.core.paper.service.world.WorldService;
 import java.util.Objects;
@@ -24,7 +25,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /** Default async Paper teleport and Velocity transfer coordinator. */
-@Dependencies({WorldService.class, ServerIdentityService.class, MessagingService.class})
+@Dependencies({
+    WorldService.class,
+    ServerIdentityService.class,
+    MessagingService.class,
+    PlayerDataCoordinatorService.class
+})
 public final class VexTeleportCoordinatorService implements
     TeleportCoordinatorService,
     AutoCloseable {
@@ -35,6 +41,7 @@ public final class VexTeleportCoordinatorService implements
   private final WorldService worlds;
   private final ServerIdentityService serverIdentity;
   private final MessagingService messages;
+  private final PlayerDataCoordinatorService playerData;
   private final ConcurrentHashMap<UUID, CompletableFuture<TeleportResult>> pending =
       new ConcurrentHashMap<>();
 
@@ -47,6 +54,7 @@ public final class VexTeleportCoordinatorService implements
     worlds = checkedServices.require(WorldService.class);
     serverIdentity = checkedServices.require(ServerIdentityService.class);
     messages = checkedServices.require(MessagingService.class);
+    playerData = checkedServices.require(PlayerDataCoordinatorService.class);
   }
 
   @Override
@@ -151,6 +159,21 @@ public final class VexTeleportCoordinatorService implements
   }
 
   private CompletableFuture<TeleportResult> transfer(
+      final VexPlayer player,
+      final ServerPosition destination
+  ) {
+    return playerData.save(player.getUniqueId()).handle((ignored, throwable) -> {
+      if (throwable != null) {
+        return completed(
+            TeleportStatus.FAILED,
+            "Player data could not be saved before the server transfer"
+        );
+      }
+      return beginTransfer(player, destination);
+    }).thenCompose(result -> result);
+  }
+
+  private CompletableFuture<TeleportResult> beginTransfer(
       final VexPlayer player,
       final ServerPosition destination
   ) {

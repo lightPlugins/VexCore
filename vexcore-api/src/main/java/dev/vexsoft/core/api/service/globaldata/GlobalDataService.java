@@ -15,6 +15,9 @@ public interface GlobalDataService extends VexService {
   /** Loads a registered value, or its default when no value has been stored. */
   <T> CompletableFuture<T> get(GlobalDataKey<T> key);
 
+  /** Invalidates the cached value and reloads it from persistent storage. */
+  <T> CompletableFuture<T> refresh(GlobalDataKey<T> key);
+
   /** Stores a registered value and returns when persistence has completed. */
   <T> CompletableFuture<Void> set(GlobalDataKey<T> key, T value);
 

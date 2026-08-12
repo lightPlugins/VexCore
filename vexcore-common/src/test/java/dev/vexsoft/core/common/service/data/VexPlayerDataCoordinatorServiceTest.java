@@ -75,6 +75,27 @@ public final class VexPlayerDataCoordinatorServiceTest {
   }
 
   @Test
+  public void savesDirtyDataWithoutRemovingTheLoadedPlayer() {
+    MemoryPlayerDataStore store = new MemoryPlayerDataStore();
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.register(services.getOwner(), registry -> registry.register(PROFILE));
+    UUID uniqueId = UUID.randomUUID();
+    store.save("vexcoretest", uniqueId, "Alex", Map.of("profile", "\"custom\"")).join();
+    VexPlayer player = coordinator.load(uniqueId, "Alex").join();
+
+    player.reset(PROFILE);
+    coordinator.save(uniqueId).join();
+
+    assertSame(player, coordinator.find(uniqueId).orElseThrow());
+    assertEquals("\"default\"", store.load(
+        "vexcoretest",
+        uniqueId,
+        List.of(PROFILE)
+    ).join().get("profile"));
+  }
+
+  @Test
   public void resetsLoadedAndOfflineContainersThroughStableContainerIds() {
     MemoryPlayerDataStore store = new MemoryPlayerDataStore();
     TestServices services = new TestServices(store);
