@@ -23,7 +23,7 @@ VexCore brings together the technical foundations that would otherwise have to b
 | --- | --- | --- | --- |
 | Scoped service registries | Localization and placeholders | Paper, Folia, and Velocity | Minecraft version adapters |
 | Server and proxy plugin lifecycles | Commands and inventories | Player data, stats, and caching | Packet abstraction |
-| Configuration and messaging | Rewards, costs, and requirements | PostgreSQL persistence | Data Component abstraction |
+| Configuration and messaging | Rewards, costs, and requirements | SQLite and PostgreSQL persistence | Data Component abstraction |
 
 ## Purpose
 
@@ -279,7 +279,8 @@ with English bundled as the default. State lore must contain dedicated `%rewards
 - Extensible data containers owned by individual plugins
 - Shared access to cached player data
 - Controlled and thread-safe container updates
-- PostgreSQL persistence with automatic schema extension
+- SQLite persistence for standalone servers and PostgreSQL persistence for networks
+- Automatic schema extension on both persistent storage backends
 - Saving on disconnect, shutdown, and scheduled autosaves
 - New data containers can be introduced through later plugin updates
 - A central UUID and last-known-name index independent of individual plugin containers
@@ -288,7 +289,7 @@ with English bundled as the default. State lore must contain dedicated `%rewards
 
 - Plugin-owned typed values for shared data such as warps and server settings
 - One storage pool shared with player persistence within each VexCore process
-- Bounded Caffeine caching with PostgreSQL invalidation notifications
+- Bounded Caffeine caching with local or PostgreSQL network invalidation notifications
 - Revision-based atomic updates that do not lose concurrent changes from another server
 - Runtime unregistration without deleting stored values
 - Restoring existing values when the same owner and key are registered again
@@ -397,9 +398,23 @@ Paper and Velocity use separate jars because they run in different processes. Th
 is only required for proxy-side services and network messaging; a standalone Paper server does not
 need it.
 
-### Shared Storage
+### Persistent Storage
 
-PostgreSQL is the default and recommended storage for persistent player data:
+SQLite is the default for a standalone Paper server. Its database file is kept inside the VexCore
+configuration directory:
+
+```yaml
+storage: sqlite
+
+sqlite:
+  file: vexcore.db
+```
+
+SQLite is local to one server process. Do not share its file with another Paper server or a proxy,
+including through a network filesystem.
+
+PostgreSQL is required as soon as VexCore runs on Velocity or more than one server process needs to
+share data:
 
 ```yaml
 storage: postgresql
@@ -417,9 +432,9 @@ With `auto-create-database: true`, VexCore attempts to create the configured dat
 maintenance database when necessary. The configured PostgreSQL account must have the corresponding
 permission.
 
-The same backend stores player containers, the central player identity index, and plugin-owned
-global values. Paper and Velocity each maintain one local connection pool and must point to the same
-database when global values are shared between them.
+Both persistent backends store player containers, the central player identity index, and
+plugin-owned global values. In a network, Paper and Velocity each maintain one local PostgreSQL
+connection pool and must point to the same database.
 
 `storage: memory` is available for temporary development environments. All values are lost on
 shutdown, instances cannot share changes, and it should not be used for a production network.

@@ -1,3 +1,4 @@
+# Velocity always participates in a multi-process setup and therefore requires PostgreSQL.
 storage: postgresql
 
 postgresql:

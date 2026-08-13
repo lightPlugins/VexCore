@@ -1,8 +1,14 @@
-storage: postgresql
+storage: sqlite
 
 player-data:
   login-timeout-seconds: 15
   login-kick-message: "Your player data could not be loaded. Please try again."
+
+# SQLite is intended for one standalone Paper server. Use PostgreSQL when a proxy or
+# multiple VexCore server instances need to share data.
+sqlite:
+  # Path relative to the VexCore configuration directory.
+  file: vexcore.db
 
 postgresql:
   jdbc-url: jdbc:postgresql://localhost:5432/vexcore

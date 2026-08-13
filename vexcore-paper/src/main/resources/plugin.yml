@@ -14,3 +14,4 @@ libraries:
   - com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.2
   - com.zaxxer:HikariCP:6.3.0
   - org.postgresql:postgresql:42.7.8
+  - org.xerial:sqlite-jdbc:3.53.0.0

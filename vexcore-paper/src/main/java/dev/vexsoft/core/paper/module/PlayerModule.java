@@ -9,6 +9,7 @@ import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.VexPlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.VexPlayerService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.LocalStorageOwner;
 import dev.vexsoft.core.common.service.data.VexPlayerDataStoreService;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -19,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.java.JavaPlugin;
 
 @RequiredArgsConstructor
-public final class PlayerModule implements VexModule, ConfigurationOwner {
+public final class PlayerModule implements VexModule, ConfigurationOwner, LocalStorageOwner {
 
   @NonNull
   private final JavaPlugin plugin;
@@ -44,7 +45,11 @@ public final class PlayerModule implements VexModule, ConfigurationOwner {
           "Shared storage is using memory mode; data will not survive a server restart"
       );
     } else {
-      String displayName = storageType.equals("postgresql") ? "PostgreSQL" : storageType;
+      String displayName = switch (storageType) {
+        case "postgresql" -> "PostgreSQL";
+        case "sqlite" -> "SQLite";
+        default -> storageType;
+      };
       plugin.getLogger().info("Shared storage initialized using " + displayName);
     }
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
