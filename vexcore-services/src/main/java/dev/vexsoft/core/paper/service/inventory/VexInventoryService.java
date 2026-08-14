@@ -126,6 +126,11 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
   }
 
   @Override
+  public void openRoot(final Player player, final InventoryView view) {
+    execute(player, () -> openNow(player, view, false, true));
+  }
+
+  @Override
   public void close(final Player player) {
     execute(player, () -> closeNow(player));
   }

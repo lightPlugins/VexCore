@@ -32,6 +32,12 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.dialogs.DialogService;
 import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
+import dev.vexsoft.core.paper.service.inventory.InventoryService;
+import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
+import dev.vexsoft.core.paper.service.inventory.VexInventoryService;
+import dev.vexsoft.core.paper.service.localization.editor.LocalizationEditorUiService;
+import dev.vexsoft.core.paper.service.localization.editor.VexLocalizationEditorUiService;
+import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
 import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.paper.service.items.VexItemService;
 import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
@@ -207,6 +213,11 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     );
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
+    coreServices.register(InventoryService.class, VexInventoryService.class);
+    coreServices.register(
+        LocalizationEditorUiService.class,
+        VexLocalizationEditorUiService.class
+    );
     coreServices.register(ItemService.class, VexItemService.class);
     coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
     coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
@@ -236,6 +247,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
     coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
     coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
+    coreServices.require(CommandService.class).register(VexCoreLocalizationCommand.class);
     initialized = true;
     startupNanos = System.nanoTime() - loadStartedAt;
   }
@@ -268,6 +280,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         VexPlayerLifecycleListener.class,
         coreServices
     );
+    coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
     playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
         this,
         task -> players.saveAll().exceptionally(throwable -> {

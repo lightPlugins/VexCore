@@ -9,6 +9,8 @@ import dev.vexsoft.core.common.service.localization.VexLocalizationRegistryServi
 import dev.vexsoft.core.common.service.localization.LanguageChangeDispatcherService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
 import dev.vexsoft.core.paper.service.localization.VexLanguageChangeDispatcherService;
+import dev.vexsoft.core.common.service.localization.editor.LocalizationEditorService;
+import dev.vexsoft.core.common.service.localization.editor.VexLocalizationEditorService;
 
 public final class LocalizationModule implements VexModule {
 
@@ -20,6 +22,7 @@ public final class LocalizationModule implements VexModule {
     services.register(PlayerContainerService.class, VexPlayerContainerService.class);
     services.register(LanguageChangeDispatcherService.class, VexLanguageChangeDispatcherService.class);
     services.register(LocalizationRegistryService.class, VexLocalizationRegistryService.class);
+    services.register(LocalizationEditorService.class, VexLocalizationEditorService.class);
     services.register(LanguageService.class, VexLanguageService.class);
     services.registerQueuedServices();
   }

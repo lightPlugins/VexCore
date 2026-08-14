@@ -1,0 +1,56 @@
+title: "<tailwind:sky>%plugin% <tailwind:zinc:4>• <tailwind:zinc:7>%language% • %path%"
+item:
+  directory:
+    name: "<tailwind:sky>%directory%"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Path"
+      - "<tailwind:zinc:4>%path%"
+      - ""
+      - "<tailwind:zinc:7>%source%"
+      - ""
+      - "<tailwind:lime>%action%"
+  file:
+    name: "<tailwind:sky>%file%"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Path"
+      - "<tailwind:zinc:4>%path%"
+      - ""
+      - "<tailwind:zinc:7>%source%"
+      - ""
+      - "<tailwind:lime>%action%"
+placeholder:
+  source:
+    local: "Stored in this language"
+    inherited: "Inherited from en_EN"
+  action:
+    directory: "Click to open"
+    file: "Click to view entries"
+navigation:
+  previous:
+    name: "<tailwind:sky>Previous page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page backward through this directory."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  next:
+    name: "<tailwind:sky>Next page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page forward through this directory."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  back:
+    name: "<tailwind:red>Go back"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Return to the previous directory."
+      - ""
+      - "<tailwind:red:4>Click to go back"
+  page:
+    name: "<tailwind:zinc:4>Page <tailwind:sky>%page%<tailwind:zinc:7> / %pages%"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>File browser"

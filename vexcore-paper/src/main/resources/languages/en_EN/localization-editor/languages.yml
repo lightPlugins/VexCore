@@ -1,0 +1,36 @@
+title: "<tailwind:sky>%plugin% <tailwind:zinc:4>• Languages"
+item:
+  name: "<tailwind:sky>%language%"
+  lore:
+    - ""
+    - "<tailwind:zinc:7>Edit all localization files for"
+    - "<tailwind:zinc:4>%plugin% <tailwind:zinc:7>in <tailwind:zinc:4>%language%<tailwind:zinc:7>."
+    - ""
+    - "<tailwind:lime>Click to select"
+navigation:
+  previous:
+    name: "<tailwind:sky>Previous page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page backward through the languages."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  next:
+    name: "<tailwind:sky>Next page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page forward through the languages."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  back:
+    name: "<tailwind:red>Go back"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Return to the plugin selection."
+      - ""
+      - "<tailwind:red:4>Click to go back"
+  page:
+    name: "<tailwind:zinc:4>Page <tailwind:sky>%page%<tailwind:zinc:7> / %pages%"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Language overview"

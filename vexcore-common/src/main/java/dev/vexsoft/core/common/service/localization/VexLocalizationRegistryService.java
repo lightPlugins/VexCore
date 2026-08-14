@@ -99,6 +99,22 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
   }
 
   @Override
+  public Collection<LocalizationOwner> getOwners() {
+    return registrations.values().stream()
+        .map(Registration::getOwner)
+        .sorted((left, right) -> left.getServiceOwnerName().compareToIgnoreCase(
+            right.getServiceOwnerName()
+        ))
+        .toList();
+  }
+
+  @Override
+  public void reload(final String ownerName) {
+    require(normalizeOwner(ownerName)).cache.reload();
+    staticMessages.invalidateAll();
+  }
+
+  @Override
   public void reload(final LocalizationOwner owner) {
     Registration registration = require(normalizeOwner(owner.getServiceOwnerName()));
     if (registration.owner != owner) {

@@ -48,6 +48,9 @@ public interface InventoryService extends VexService {
   /** Opens a fresh registered view and clears the current history */
   void openRoot(Player player, InventoryKey key);
 
+  /** Opens a fresh dynamic view and clears the current history */
+  void openRoot(Player player, InventoryView view);
+
   /** Closes the managed inventory and removes its session */
   void close(Player player);
 

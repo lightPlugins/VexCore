@@ -38,6 +38,12 @@ public interface LocalizationRegistryService extends VexService {
   /** Returns every language loaded for the named owner */
   Collection<LanguageKey> getLanguages(String ownerName);
 
+  /** Returns every currently registered localization owner. */
+  Collection<LocalizationOwner> getOwners();
+
+  /** Reloads the cache registered for a named owner. */
+  void reload(String ownerName);
+
   /** Reloads the cache registered by an owner */
   void reload(LocalizationOwner owner);
 

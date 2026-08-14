@@ -1,0 +1,8 @@
+title: "<tailwind:sky>%plugin% <tailwind:zinc:7>• %language%"
+label: "<tailwind:zinc:4>%key%"
+location: "<tailwind:zinc:7>%file% • %key%"
+inherited: "<tailwind:amber>This value is currently inherited from en_EN. Saving creates a local translation."
+preview: "<tailwind:zinc:4>Current preview:"
+error: "<tailwind:red>The value could not be saved: <tailwind:red:7>%error%"
+save: "<tailwind:lime>Save"
+cancel: "<tailwind:red>Cancel"

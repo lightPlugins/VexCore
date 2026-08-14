@@ -1,0 +1,54 @@
+title: "<tailwind:sky>Entries <tailwind:zinc:4>• <tailwind:zinc:7>%file%"
+item:
+  name: "<tailwind:sky>%key%"
+  lore:
+    - ""
+    - "<tailwind:zinc:7>Value type <tailwind:zinc:4>%type%"
+    - "<tailwind:zinc:7>Lines <tailwind:zinc:4>%lines%"
+    - ""
+    - "<tailwind:zinc:7>%source%"
+    - ""
+    - "<tailwind:zinc:7>Preview"
+    - "%preview%"
+    - ""
+    - "<tailwind:lime>%action%"
+  preview:
+    empty:
+      - "<tailwind:zinc:7>(empty)"
+placeholder:
+  type:
+    string: "String"
+    list: "List"
+  source:
+    local: "Stored in this language"
+    inherited: "Inherited from en_EN"
+  action:
+    edit: "Click to edit"
+    create: "Click to create translation"
+navigation:
+  previous:
+    name: "<tailwind:sky>Previous page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page backward through the entries."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  next:
+    name: "<tailwind:sky>Next page"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Page forward through the entries."
+      - ""
+      - "<tailwind:lime>Click to navigate"
+  back:
+    name: "<tailwind:red>Go back"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Return to the file browser."
+      - ""
+      - "<tailwind:red:4>Click to go back"
+  page:
+    name: "<tailwind:zinc:4>Page <tailwind:sky>%page%<tailwind:zinc:7> / %pages%"
+    lore:
+      - ""
+      - "<tailwind:zinc:7>Localization entries"
