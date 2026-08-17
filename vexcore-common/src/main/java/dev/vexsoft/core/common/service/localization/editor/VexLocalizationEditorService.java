@@ -342,7 +342,11 @@ public final class VexLocalizationEditorService implements LocalizationEditorSer
   }
 
   private YamlConfigurationLoader loader(final Path file) {
-    return YamlConfigurationLoader.builder().path(file).nodeStyle(NodeStyle.BLOCK).build();
+    return YamlConfigurationLoader.builder()
+        .path(file)
+        .indent(2)
+        .nodeStyle(NodeStyle.BLOCK)
+        .build();
   }
 
   private Path safeResourcePath(final String value) {

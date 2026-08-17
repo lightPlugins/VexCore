@@ -59,7 +59,11 @@ public final class YamlVexConfiguration extends ConfigurateConfigurationSection 
   }
 
   private static YamlConfigurationLoader loader(Path file) {
-    return YamlConfigurationLoader.builder().path(file).nodeStyle(NodeStyle.BLOCK).build();
+    return YamlConfigurationLoader.builder()
+        .path(file)
+        .indent(2)
+        .nodeStyle(NodeStyle.BLOCK)
+        .build();
   }
 
   private static Path requireParent(final Path path) {
