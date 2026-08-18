@@ -8,6 +8,12 @@ import dev.vexsoft.core.api.service.registry.ServiceReference;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
+import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
+import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
+import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
+import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
+import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
+import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
@@ -32,6 +38,18 @@ public final class VexPluginBootstrapServiceTest {
         services.definitions.get(ConfigurationService.class)
     );
     assertEquals(VexInventoryListener.class, services.listenerType);
+    assertEquals(
+        VexBlockDisplayPacketService.class,
+        services.definitions.get(BlockDisplayPacketService.class)
+    );
+    assertEquals(
+        VexInteractionPacketService.class,
+        services.definitions.get(InteractionPacketService.class)
+    );
+    assertEquals(
+        VexPlayerAnimationPacketService.class,
+        services.definitions.get(PlayerAnimationPacketService.class)
+    );
   }
 
   private static final class TestServices implements VexServiceRegistry, ServiceOwner {

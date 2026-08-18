@@ -1,11 +1,13 @@
 package dev.vexsoft.core.paper.packets.v26_2.display;
 
+import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
 import io.papermc.paper.adventure.PaperAdventure;
 import lombok.experimental.UtilityClass;
 import net.minecraft.world.entity.Display;
+import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 
 @UtilityClass
@@ -80,6 +82,19 @@ public class V26_2DisplayUpdates {
     applyBase(display, update);
   }
 
+  public static void applyBlock(
+      final Display.BlockDisplay display,
+      final FakeBlockDisplayUpdate update
+  ) {
+    if (update.getBlockData() != null) {
+      display.setBlockState(((CraftBlockData) update.getBlockData()).getState());
+    }
+    if (update.getGlowing() != null) {
+      display.setGlowingTag(update.getGlowing());
+    }
+    applyBase(display, update);
+  }
+
   private static void applyBase(final Display display, final FakeTextDisplayUpdate update) {
     if (update.getTransformation() != null) {
       display.setTransformation(V26_2DisplayMapper.toNms(update.getTransformation()));
@@ -98,6 +113,23 @@ public class V26_2DisplayUpdates {
   }
 
   private static void applyBase(final Display display, final FakeItemDisplayUpdate update) {
+    if (update.getTransformation() != null) {
+      display.setTransformation(V26_2DisplayMapper.toNms(update.getTransformation()));
+    }
+    if (update.getBillboard() != null) {
+      display.setBillboardConstraints(V26_2DisplayMapper.toNms(update.getBillboard()));
+    }
+    if (update.getBrightness() != null) {
+      display.setBrightnessOverride(V26_2DisplayMapper.toNms(update.getBrightness()));
+    }
+    applyDimensions(
+        display, update.getViewRange(), update.getShadowRadius(), update.getShadowStrength(),
+        update.getDisplayWidth(), update.getDisplayHeight(), update.getInterpolationDelay(),
+        update.getInterpolationDuration(), update.getTeleportDuration()
+    );
+  }
+
+  private static void applyBase(final Display display, final FakeBlockDisplayUpdate update) {
     if (update.getTransformation() != null) {
       display.setTransformation(V26_2DisplayMapper.toNms(update.getTransformation()));
     }

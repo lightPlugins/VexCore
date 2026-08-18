@@ -1,6 +1,8 @@
 package dev.vexsoft.core.paper.packets.service;
 
 import dev.vexsoft.core.api.service.registry.VexService;
+import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayRequest;
+import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest;
@@ -24,11 +26,17 @@ public interface DisplayPacketAdapterService extends VexService {
   /** Spawns a virtual text display using the supplied handle */
   void spawnText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayRequest request);
 
+  /** Spawns a virtual block display using the supplied handle */
+  void spawnBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayRequest request);
+
   /** Spawns a virtual item display using the supplied handle */
   void spawnItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayRequest request);
 
   /** Applies an update to a virtual text display */
   void updateText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayUpdate update);
+
+  /** Applies an update to a virtual block display */
+  void updateBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayUpdate update);
 
   /** Applies an update to a virtual item display */
   void updateItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayUpdate update);

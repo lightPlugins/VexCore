@@ -11,24 +11,24 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
-import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
-import dev.vexsoft.core.paper.service.packets.hologram.TrackedHologram;
+import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
+import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 
 @Dependencies({
     PacketConnectionService.class,
     DisplayPacketAdapterService.class,
-    HologramTrackerService.class
+    InteractionTrackerService.class
 })
 public final class VexPacketConnectionListener implements Listener {
 
   private final PacketConnectionService connections;
   private final DisplayPacketAdapterService displays;
-  private final HologramTrackerService holograms;
+  private final InteractionTrackerService interactions;
 
   public VexPacketConnectionListener(final VexServiceRegistry services) {
     this.connections = services.require(PacketConnectionService.class);
     this.displays = services.require(DisplayPacketAdapterService.class);
-    this.holograms = services.require(HologramTrackerService.class);
+    this.interactions = services.require(InteractionTrackerService.class);
   }
 
   @EventHandler
@@ -39,31 +39,31 @@ public final class VexPacketConnectionListener implements Listener {
   @EventHandler
   public void onQuit(final PlayerQuitEvent event) {
     connections.uninject(event.getPlayer());
-    holograms.removeViewer(event.getPlayer().getUniqueId());
+    interactions.removeViewer(event.getPlayer().getUniqueId());
     displays.removeViewer(event.getPlayer().getUniqueId());
   }
 
   @EventHandler
   public void onDeath(final PlayerDeathEvent event) {
-    removeHolograms(event.getPlayer(), DisplayLifecycle.PLAYER_DEATH);
+    removeInteractions(event.getPlayer(), DisplayLifecycle.PLAYER_DEATH);
     displays.removeViewer(event.getPlayer(), DisplayLifecycle.PLAYER_DEATH);
   }
 
   @EventHandler
   public void onWorldChange(final PlayerChangedWorldEvent event) {
-    removeHolograms(event.getPlayer(), DisplayLifecycle.WORLD_CHANGE);
+    removeInteractions(event.getPlayer(), DisplayLifecycle.WORLD_CHANGE);
     displays.removeViewer(event.getPlayer(), DisplayLifecycle.WORLD_CHANGE);
   }
 
-  private void removeHolograms(
+  private void removeInteractions(
       final Player player,
       final DisplayLifecycle lifecycle
   ) {
-    for (TrackedHologram hologram : holograms.removeViewer(player.getUniqueId(), lifecycle)) {
+    for (TrackedInteraction interaction
+        : interactions.removeViewer(player.getUniqueId(), lifecycle)) {
       displays.remove(
           player,
-          hologram.getHandle().getTextDisplayEntityId(),
-          hologram.getHandle().getInteractionEntityId()
+          interaction.getHandle().getEntityId()
       );
     }
   }

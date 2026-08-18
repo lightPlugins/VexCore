@@ -2,7 +2,7 @@ package dev.vexsoft.core.paper.service.packets.v26_2;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.packets.hologram.HologramInteractionType;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteractionType;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import java.util.Optional;
@@ -23,7 +23,7 @@ public final class VexHologramInteractionAdapterService
     if (packet instanceof ServerboundAttackPacket attackPacket) {
       return Optional.of(new PacketInteractionInput(
           attackPacket.entityId(),
-          HologramInteractionType.LEFT_CLICK,
+          FakeInteractionType.LEFT_CLICK,
           EquipmentSlot.HAND
       ));
     }
@@ -33,7 +33,7 @@ public final class VexHologramInteractionAdapterService
           : EquipmentSlot.HAND;
       return Optional.of(new PacketInteractionInput(
           interactPacket.entityId(),
-          HologramInteractionType.RIGHT_CLICK,
+          FakeInteractionType.RIGHT_CLICK,
           hand
       ));
     }

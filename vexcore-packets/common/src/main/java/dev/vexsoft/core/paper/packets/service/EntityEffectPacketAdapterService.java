@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 
 /**
  * Encodes viewer-specific entity effect packets
@@ -21,4 +22,13 @@ public interface EntityEffectPacketAdapterService extends VexService {
 
   /** Shows a client-side lightning strike at an entity */
   void strikeLightning(Player viewer, LivingEntity target);
+
+  /**
+   * Shows one hand-swing animation for a player to the selected viewer.
+   *
+   * @param viewer player receiving the packet
+   * @param target player whose hand should appear to swing
+   * @param hand main- or off-hand equipment slot
+   */
+  void swingHand(Player viewer, Player target, EquipmentSlot hand);
 }

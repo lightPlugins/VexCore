@@ -1,37 +1,45 @@
 package dev.vexsoft.core.paper.service.packets;
 
-import java.util.Optional;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
-import dev.vexsoft.core.paper.packets.display.FakeDisplayKind;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
+import dev.vexsoft.core.paper.packets.hologram.HologramInteraction;
+import dev.vexsoft.core.paper.packets.hologram.HologramInteractionType;
 import dev.vexsoft.core.paper.packets.hologram.InteractableHologramHandle;
 import dev.vexsoft.core.paper.packets.hologram.InteractableHologramRequest;
-import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteraction;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteractionHandle;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteractionRequest;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteractionType;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
-import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
-import dev.vexsoft.core.paper.service.packets.hologram.TrackedHologram;
-import java.util.UUID;
-import org.bukkit.Bukkit;
+import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
+import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-@Dependencies({DisplayPacketAdapterService.class, HologramTrackerService.class})
+/** Backward-compatible text-hologram facade composed from generic virtual display services. */
+@Dependencies({TextDisplayPacketService.class, InteractionPacketService.class})
 public final class VexInteractableHologramService
     implements InteractableHologramService, AutoCloseable {
 
   private final ServiceOwner owner;
-  private final DisplayPacketAdapterService adapter;
-  private final HologramTrackerService tracker;
+  private final TextDisplayPacketService textDisplays;
+  private final InteractionPacketService interactions;
+  private final Map<InteractableHologramHandle, HologramState> holograms =
+      new ConcurrentHashMap<>();
 
+  /** Creates the hologram facade through VexCore's service registry. */
   public VexInteractableHologramService(final VexServiceRegistry services) {
-    this.owner = services.getOwner();
-    this.adapter = services.require(DisplayPacketAdapterService.class);
-    this.tracker = services.require(HologramTrackerService.class);
+    owner = services.getOwner();
+    textDisplays = services.require(TextDisplayPacketService.class);
+    interactions = services.require(InteractionPacketService.class);
   }
 
   @Override
@@ -40,25 +48,27 @@ public final class VexInteractableHologramService
       final InteractableHologramRequest request
   ) {
     FakeTextDisplayRequest text = request.getTextDisplayRequest();
-    int textId = adapter.allocateEntityId();
-    int interactionId = adapter.allocateEntityId();
-    UUID textUuid = UUID.randomUUID();
-    UUID interactionUuid = UUID.randomUUID();
-    FakeDisplayHandle textHandle = new FakeDisplayHandle(
-        owner, viewer.getUniqueId(), textId, textUuid, FakeDisplayKind.TEXT
+    FakeDisplayHandle textHandle = textDisplays.spawn(viewer, text);
+    FakeInteractionHandle interactionHandle = interactions.spawn(
+        viewer,
+        FakeInteractionRequest.builder(interactionLocation(
+            text.getLocation(),
+            request.getHitboxOffset()
+        ))
+            .width(request.getHitboxWidth())
+            .height(request.getHitboxHeight())
+            .lifecycle(text.getLifecycle())
+            .interactHandler(interaction -> request.getInteractHandler().handle(
+                toHologramInteraction(textHandle, interaction)
+            ))
+            .build()
     );
-    InteractableHologramHandle handle = new InteractableHologramHandle(
-        owner, viewer.getUniqueId(), textId, textUuid, interactionId, interactionUuid
-    );
-    adapter.spawnText(viewer, textHandle, text);
-    adapter.spawnInteraction(
-        viewer, interactionId, interactionUuid,
-        interactionLocation(text.getLocation(), request.getHitboxOffset()),
-        request.getHitboxWidth(), request.getHitboxHeight()
-    );
-    tracker.track(new TrackedHologram(
-        handle, textHandle, request.getInteractHandler(), text.getLocation(), request.getHitboxOffset(),
-        text.getLifecycle()
+    InteractableHologramHandle handle = toHologramHandle(textHandle, interactionHandle);
+    holograms.put(handle, new HologramState(
+        textHandle,
+        interactionHandle,
+        text.getLocation(),
+        request.getHitboxOffset()
     ));
     return handle;
   }
@@ -68,12 +78,7 @@ public final class VexInteractableHologramService
       final InteractableHologramHandle handle,
       final FakeTextDisplayUpdate update
   ) {
-    tracked(handle).ifPresent(hologram -> {
-      Player viewer = Bukkit.getPlayer(handle.getViewerId());
-      if (viewer != null) {
-        adapter.updateText(viewer, hologram.getTextDisplayHandle(), update);
-      }
-    });
+    state(handle).ifPresent(state -> textDisplays.update(state.textHandle(), update));
   }
 
   @Override
@@ -82,15 +87,9 @@ public final class VexInteractableHologramService
       final float width,
       final float height
   ) {
-    if (width <= 0.0F || height <= 0.0F) {
-      throw new IllegalArgumentException("Hitbox dimensions must be positive");
-    }
-    tracked(handle).ifPresent(hologram -> {
-      Player viewer = Bukkit.getPlayer(handle.getViewerId());
-      if (viewer != null) {
-        adapter.updateInteraction(viewer, handle.getInteractionEntityId(), width, height);
-      }
-    });
+    state(handle).ifPresent(state ->
+        interactions.updateHitbox(state.interactionHandle(), width, height)
+    );
   }
 
   @Override
@@ -98,77 +97,56 @@ public final class VexInteractableHologramService
       final InteractableHologramHandle handle,
       final Vector offset
   ) {
-    tracked(handle).ifPresent(hologram -> {
-      hologram.setHitboxOffset(offset.clone());
-      Player viewer = Bukkit.getPlayer(handle.getViewerId());
-      if (viewer != null) {
-        adapter.teleport(
-            viewer,
-            handle.getInteractionEntityId(),
-            interactionLocation(hologram.getLocation(), offset)
-        );
-      }
+    state(handle).ifPresent(state -> {
+      state.hitboxOffset(offset);
+      interactions.teleport(
+          state.interactionHandle(),
+          interactionLocation(state.location(), offset)
+      );
     });
   }
 
   @Override
   public void teleport(final InteractableHologramHandle handle, final Location location) {
-    tracked(handle).ifPresent(hologram -> {
-      hologram.setLocation(location.clone());
-      Player viewer = Bukkit.getPlayer(handle.getViewerId());
-      if (viewer != null) {
-        adapter.teleport(viewer, hologram.getTextDisplayHandle(), location);
-        adapter.teleport(
-            viewer,
-            handle.getInteractionEntityId(),
-            interactionLocation(location, hologram.getHitboxOffset())
-        );
-      }
+    state(handle).ifPresent(state -> {
+      state.location(location);
+      textDisplays.teleport(state.textHandle(), location);
+      interactions.teleport(
+          state.interactionHandle(),
+          interactionLocation(location, state.hitboxOffset())
+      );
     });
   }
 
   @Override
   public void remove(final InteractableHologramHandle handle) {
     requireOwner(handle);
-    tracker.remove(handle).ifPresent(hologram -> {
-      Player viewer = Bukkit.getPlayer(handle.getViewerId());
-      if (viewer != null) {
-        adapter.remove(
-            viewer,
-            handle.getTextDisplayEntityId(),
-            handle.getInteractionEntityId()
-        );
-      }
-    });
+    HologramState state = holograms.remove(handle);
+    if (state == null) {
+      return;
+    }
+    interactions.remove(state.interactionHandle());
+    textDisplays.remove(state.textHandle());
   }
 
   @Override
   public void removeAll(final Player viewer) {
-    tracker.findOwned(owner, viewer.getUniqueId()).stream()
-        .map(TrackedHologram::getHandle)
+    holograms.keySet().stream()
+        .filter(handle -> handle.getViewerId().equals(viewer.getUniqueId()))
         .toList()
         .forEach(this::remove);
   }
 
   @Override
   public void close() {
-    tracker.removeOwned(owner).forEach(hologram -> {
-      Player viewer = Bukkit.getPlayer(hologram.getHandle().getViewerId());
-      if (viewer != null) {
-        adapter.remove(
-            viewer,
-            hologram.getHandle().getTextDisplayEntityId(),
-            hologram.getHandle().getInteractionEntityId()
-        );
-      }
-    });
+    holograms.keySet().stream().toList().forEach(this::remove);
   }
 
-  private Optional<TrackedHologram> tracked(
+  private Optional<HologramState> state(
       final InteractableHologramHandle handle
   ) {
     requireOwner(handle);
-    return tracker.find(handle.getViewerId(), handle.getInteractionEntityId());
+    return Optional.ofNullable(holograms.get(handle));
   }
 
   private void requireOwner(final InteractableHologramHandle handle) {
@@ -177,7 +155,78 @@ public final class VexInteractableHologramService
     }
   }
 
+  private static HologramInteraction toHologramInteraction(
+      final FakeDisplayHandle textHandle,
+      final FakeInteraction interaction
+  ) {
+    return new HologramInteraction(
+        interaction.getPlayer(),
+        toHologramHandle(textHandle, interaction.getHandle()),
+        interaction.getInteractionType() == FakeInteractionType.LEFT_CLICK
+            ? HologramInteractionType.LEFT_CLICK
+            : HologramInteractionType.RIGHT_CLICK,
+        interaction.getHand()
+    );
+  }
+
+  private static InteractableHologramHandle toHologramHandle(
+      final FakeDisplayHandle textHandle,
+      final FakeInteractionHandle interactionHandle
+  ) {
+    return new InteractableHologramHandle(
+        textHandle.getOwner(),
+        textHandle.getViewerId(),
+        textHandle.getEntityId(),
+        textHandle.getEntityUuid(),
+        interactionHandle.getEntityId(),
+        interactionHandle.getEntityUuid()
+    );
+  }
+
   private static Location interactionLocation(final Location location, final Vector offset) {
     return location.clone().add(offset);
+  }
+
+  private static final class HologramState {
+    private final FakeDisplayHandle textHandle;
+    private final FakeInteractionHandle interactionHandle;
+    private Location location;
+    private Vector hitboxOffset;
+
+    private HologramState(
+        final FakeDisplayHandle textHandle,
+        final FakeInteractionHandle interactionHandle,
+        final Location location,
+        final Vector hitboxOffset
+    ) {
+      this.textHandle = textHandle;
+      this.interactionHandle = interactionHandle;
+      this.location = location.clone();
+      this.hitboxOffset = hitboxOffset.clone();
+    }
+
+    private FakeDisplayHandle textHandle() {
+      return textHandle;
+    }
+
+    private FakeInteractionHandle interactionHandle() {
+      return interactionHandle;
+    }
+
+    private Location location() {
+      return location.clone();
+    }
+
+    private void location(final Location value) {
+      location = value.clone();
+    }
+
+    private Vector hitboxOffset() {
+      return hitboxOffset.clone();
+    }
+
+    private void hitboxOffset(final Vector value) {
+      hitboxOffset = value.clone();
+    }
   }
 }

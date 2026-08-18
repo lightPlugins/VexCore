@@ -3,14 +3,14 @@ package dev.vexsoft.core.paper.service.packets.connection;
 import java.util.Optional;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.packets.hologram.HologramInteraction;
+import dev.vexsoft.core.paper.packets.interaction.FakeInteraction;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
 import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
-import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
-import dev.vexsoft.core.paper.service.packets.hologram.TrackedHologram;
+import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
+import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.UUID;
@@ -21,7 +21,7 @@ import org.bukkit.entity.Player;
     PacketConnectionAdapterService.class,
     HologramInteractionAdapterService.class,
     ItemMetaPacketAdapterService.class,
-    HologramTrackerService.class,
+    InteractionTrackerService.class,
     FakeItemMetaStoreService.class,
     ScheduleService.class
 })
@@ -31,7 +31,7 @@ public final class VexPacketConnectionService
   private final PacketConnectionAdapterService connection;
   private final HologramInteractionAdapterService interactions;
   private final ItemMetaPacketAdapterService itemMeta;
-  private final HologramTrackerService holograms;
+  private final InteractionTrackerService interactionsTracker;
   private final FakeItemMetaStoreService itemMetaStore;
   private final ScheduleService scheduler;
 
@@ -39,7 +39,7 @@ public final class VexPacketConnectionService
     this.connection = services.require(PacketConnectionAdapterService.class);
     this.interactions = services.require(HologramInteractionAdapterService.class);
     this.itemMeta = services.require(ItemMetaPacketAdapterService.class);
-    this.holograms = services.require(HologramTrackerService.class);
+    this.interactionsTracker = services.require(InteractionTrackerService.class);
     this.itemMetaStore = services.require(FakeItemMetaStoreService.class);
     this.scheduler = services.require(ScheduleService.class);
   }
@@ -67,7 +67,7 @@ public final class VexPacketConnectionService
       return sanitized;
     }
     PacketInteractionInput interaction = input.get();
-    Optional<TrackedHologram> tracked = holograms.find(
+    Optional<TrackedInteraction> tracked = interactionsTracker.find(
         viewerId,
         interaction.getEntityId()
     );
@@ -87,10 +87,10 @@ public final class VexPacketConnectionService
   }
 
   private void dispatch(final Player player, final PacketInteractionInput input) {
-    holograms.find(player.getUniqueId(), input.getEntityId()).ifPresent(hologram ->
-        hologram.getInteractHandler().handle(new HologramInteraction(
+    interactionsTracker.find(player.getUniqueId(), input.getEntityId()).ifPresent(interaction ->
+        interaction.getInteractHandler().handle(new FakeInteraction(
             player,
-            hologram.getHandle(),
+            interaction.getHandle(),
             input.getInteractionType(),
             input.getHand()
         ))

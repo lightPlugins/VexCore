@@ -13,6 +13,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
+import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayRequest;
+import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
 import dev.vexsoft.core.paper.packets.v26_2.effect.V26_2GlowPackets;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayUpdate;
@@ -33,6 +35,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Interaction;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 
@@ -125,6 +128,39 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
   }
 
   @Override
+  public void spawnBlock(
+      final Player viewer,
+      final FakeDisplayHandle handle,
+      final FakeBlockDisplayRequest request
+  ) {
+    requireViewer(viewer, handle, request.getLocation());
+    Display.BlockDisplay display = new Display.BlockDisplay(
+        EntityTypes.BLOCK_DISPLAY,
+        ((CraftWorld) request.getLocation().getWorld()).getHandle()
+    );
+    prepare(display, handle, request.getLocation());
+    display.setBlockState(((CraftBlockData) request.getBlockData()).getState());
+    display.setGlowingTag(request.isGlowing());
+    V26_2DisplayPackets.applyBase(
+        display, request.getTransformation(), request.getBillboard(), request.getBrightness(),
+        request.getViewRange(), request.getShadowRadius(), request.getShadowStrength(),
+        request.getDisplayWidth(), request.getDisplayHeight(), request.getInterpolationDelay(),
+        request.getInterpolationDuration(), request.getTeleportDuration()
+    );
+    displays.put(handle, display);
+    lifecycles.put(handle, request.getLifecycle());
+    List<Object> packets = V26_2DisplayPackets.spawn(display);
+    if (request.isGlowing()) {
+      glowTeams.add(handle);
+      if (request.getGlowColor() != null) {
+        glowColors.put(handle, request.getGlowColor());
+      }
+      packets.add(V26_2GlowPackets.addTeam(display, request.getGlowColor()));
+    }
+    transport.sendBundle(viewer, packets);
+  }
+
+  @Override
   public void updateText(
       final Player viewer,
       final FakeDisplayHandle handle,
@@ -165,6 +201,39 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
       packets.add(V26_2GlowPackets.updateTeam(itemDisplay, update.getGlowColor()));
     } else if (wasGlowing && !itemDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
       packets.add(V26_2GlowPackets.removeTeam(itemDisplay));
+    }
+    if (!packets.isEmpty()) {
+      transport.sendBundle(viewer, packets);
+    }
+  }
+
+  @Override
+  public void updateBlock(
+      final Player viewer,
+      final FakeDisplayHandle handle,
+      final FakeBlockDisplayUpdate update
+  ) {
+    Display display = displays.get(handle);
+    if (!(display instanceof Display.BlockDisplay blockDisplay)) {
+      return;
+    }
+    boolean wasGlowing = blockDisplay.hasGlowingTag();
+    V26_2DisplayUpdates.applyBlock(blockDisplay, update);
+    if (update.getGlowColor() != null) {
+      glowColors.put(handle, update.getGlowColor());
+    }
+    List<Object> packets = new ArrayList<>();
+    Object metadata = V26_2DisplayPackets.metadata(blockDisplay);
+    if (metadata != null) {
+      packets.add(metadata);
+    }
+    if (blockDisplay.hasGlowingTag() && !glowTeams.contains(handle)) {
+      glowTeams.add(handle);
+      packets.add(V26_2GlowPackets.addTeam(blockDisplay, glowColors.get(handle)));
+    } else if (blockDisplay.hasGlowingTag() && update.getGlowColor() != null) {
+      packets.add(V26_2GlowPackets.updateTeam(blockDisplay, update.getGlowColor()));
+    } else if (wasGlowing && !blockDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
+      packets.add(V26_2GlowPackets.removeTeam(blockDisplay));
     }
     if (!packets.isEmpty()) {
       transport.sendBundle(viewer, packets);
@@ -217,6 +286,10 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
       final float width,
       final float height
   ) {
+    requireViewerLocation(viewer, location);
+    if (!Float.isFinite(width) || !Float.isFinite(height) || width <= 0.0F || height <= 0.0F) {
+      throw new IllegalArgumentException("interaction dimensions must be finite and positive");
+    }
     Interaction interaction = new Interaction(
         EntityTypes.INTERACTION,
         ((CraftWorld) location.getWorld()).getHandle()
@@ -242,6 +315,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     if (interaction == null) {
       return;
     }
+    requireInteractionViewer(viewer, entityId);
     interaction.setWidth(width);
     interaction.setHeight(height);
     sendMetadata(viewer, interaction);
@@ -250,9 +324,12 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
   @Override
   public void teleport(final Player viewer, final int entityId, final Location location) {
     Entity entity = interactions.get(entityId);
-    if (entity != null) {
-      position(entity, location);
+    if (entity == null) {
+      return;
     }
+    requireInteractionViewer(viewer, entityId);
+    requireViewerLocation(viewer, location);
+    position(entity, location);
     transport.send(viewer, V26_2DisplayPackets.teleport(entityId, location));
   }
 
@@ -375,6 +452,16 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     if (!viewer.getUniqueId().equals(handle.getViewerId())) {
       throw new IllegalArgumentException("Display handle belongs to another viewer");
     }
+    requireViewerLocation(viewer, location);
+  }
+
+  private void requireInteractionViewer(final Player viewer, final int entityId) {
+    if (!viewer.getUniqueId().equals(interactionViewers.get(entityId))) {
+      throw new IllegalArgumentException("Interaction entity belongs to another viewer");
+    }
+  }
+
+  private static void requireViewerLocation(final Player viewer, final Location location) {
     if (location.getWorld() == null || !viewer.getWorld().equals(location.getWorld())) {
       throw new IllegalArgumentException("Fake displays must be in the viewer's current world");
     }

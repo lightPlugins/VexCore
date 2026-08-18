@@ -344,7 +344,10 @@ with English bundled as the default. State lore must contain dedicated `%rewards
 - Version-specific packet adapters
 - Compatible adapters can be reused across multiple Minecraft versions
 - Individual behavior can be replaced when only a small part breaks
-- Text displays, item displays, passengers, and interactive holograms
+- Viewer-specific text, item, and block displays without server-side entities
+- Standalone virtual interaction hitboxes with owner-scoped left- and right-click callbacks
+- Display passengers and backward-compatible interactive text holograms
+- Viewer-specific player hand-swing animations
 - Packet effects for hits, glowing entities, and lightning
 - Packet-based item names and lore
 - Initial support starts with Minecraft 26.2

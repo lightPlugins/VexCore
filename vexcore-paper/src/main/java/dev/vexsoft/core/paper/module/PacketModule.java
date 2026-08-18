@@ -16,8 +16,8 @@ import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
 import dev.vexsoft.core.paper.service.packets.connection.PacketConnectionService;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionListener;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionService;
-import dev.vexsoft.core.paper.service.packets.hologram.HologramTrackerService;
-import dev.vexsoft.core.paper.service.packets.hologram.VexHologramTrackerService;
+import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
+import dev.vexsoft.core.paper.service.packets.interaction.VexInteractionTrackerService;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.packets.item.VexFakeItemMetaStoreService;
 import org.bukkit.Bukkit;
@@ -51,7 +51,7 @@ public final class PacketModule implements VexModule {
         definition.getHologramInteractionAdapter()
     );
     services.register(PacketVersionService.class, VexPacketVersionService.class);
-    services.register(HologramTrackerService.class, VexHologramTrackerService.class);
+    services.register(InteractionTrackerService.class, VexInteractionTrackerService.class);
     services.register(FakeItemMetaStoreService.class, VexFakeItemMetaStoreService.class);
     services.register(PacketConnectionService.class, VexPacketConnectionService.class);
     services.registerQueuedServices();

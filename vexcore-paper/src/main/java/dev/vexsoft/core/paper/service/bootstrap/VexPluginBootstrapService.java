@@ -47,13 +47,16 @@ import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
 import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
+import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
+import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.ItemDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.LightningPacketService;
 import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
+import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
 import dev.vexsoft.core.paper.service.signals.VexSignalService;
 import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
@@ -64,13 +67,16 @@ import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.listeners.VexListenerService;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import dev.vexsoft.core.paper.service.messages.VexSendMessageService;
+import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexDisplayPassengerPacketService;
 import dev.vexsoft.core.paper.service.packets.VexFakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.VexInteractableHologramService;
+import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
 import dev.vexsoft.core.paper.service.packets.VexItemDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexLightningPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobGlowPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobHitPacketService;
+import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.packets.VexTextDisplayPacketService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
@@ -132,6 +138,8 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     );
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
+    checkedServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+    checkedServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
     checkedServices.register(
         DisplayPassengerPacketService.class,
         VexDisplayPassengerPacketService.class
@@ -141,6 +149,10 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         VexInteractableHologramService.class
     );
     checkedServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
+    checkedServices.register(
+        PlayerAnimationPacketService.class,
+        VexPlayerAnimationPacketService.class
+    );
     checkedServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
     checkedServices.register(LightningPacketService.class, VexLightningPacketService.class);
     checkedServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);

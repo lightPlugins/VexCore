@@ -105,21 +105,27 @@ import dev.vexsoft.core.paper.service.performance.VexServerPerformanceService;
 import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
 import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
+import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.ItemDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.LightningPacketService;
 import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
+import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
+import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexDisplayPassengerPacketService;
 import dev.vexsoft.core.paper.service.packets.VexFakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.VexInteractableHologramService;
+import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
 import dev.vexsoft.core.paper.service.packets.VexItemDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexLightningPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobGlowPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobHitPacketService;
+import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.packets.VexTextDisplayPacketService;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -223,12 +229,18 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
+    coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+    coreServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
     coreServices.register(
         DisplayPassengerPacketService.class,
         VexDisplayPassengerPacketService.class
     );
     coreServices.register(InteractableHologramService.class, VexInteractableHologramService.class);
     coreServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
+    coreServices.register(
+        PlayerAnimationPacketService.class,
+        VexPlayerAnimationPacketService.class
+    );
     coreServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
     coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
     coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);

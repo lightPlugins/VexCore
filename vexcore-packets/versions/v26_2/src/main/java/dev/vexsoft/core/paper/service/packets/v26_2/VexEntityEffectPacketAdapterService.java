@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundAnimatePacket;
 import net.minecraft.network.protocol.game.ClientboundEntityEventPacket;
 import net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket;
 import net.minecraft.world.entity.EntityTypes;
@@ -21,6 +22,7 @@ import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.entity.CraftLivingEntity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 
 @Dependencies(PacketTransportAdapterService.class)
 @SuppressWarnings("fullyQualifiedTypeName") // Bukkit and NMS expose the same simple type name.
@@ -86,6 +88,21 @@ public final class VexEntityEffectPacketAdapterService
         lightning.getXRot(), lightning.getYRot(), lightning.getType(), 0,
         lightning.getDeltaMovement(), lightning.getYHeadRot()
     ));
+  }
+
+  @Override
+  public void swingHand(
+      final Player viewer,
+      final Player target,
+      final EquipmentSlot hand
+  ) {
+    net.minecraft.world.entity.LivingEntity entity = requireTarget(viewer, target);
+    int animation = switch (hand) {
+      case HAND -> 0;
+      case OFF_HAND -> 3;
+      default -> throw new IllegalArgumentException("Hand must be HAND or OFF_HAND");
+    };
+    transport.send(viewer, new ClientboundAnimatePacket(entity, animation));
   }
 
   private static net.minecraft.world.entity.LivingEntity requireTarget(
