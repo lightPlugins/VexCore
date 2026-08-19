@@ -48,6 +48,7 @@ import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
 import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
 import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
+import dev.vexsoft.core.paper.packets.service.BlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
@@ -68,6 +69,7 @@ import dev.vexsoft.core.paper.service.listeners.VexListenerService;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import dev.vexsoft.core.paper.service.messages.VexSendMessageService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
+import dev.vexsoft.core.paper.service.packets.VexBlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexDisplayPassengerPacketService;
 import dev.vexsoft.core.paper.service.packets.VexFakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.VexInteractableHologramService;
@@ -139,6 +141,10 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     checkedServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+    checkedServices.register(
+        BlockDamageOverlayPacketService.class,
+        VexBlockDamageOverlayPacketService.class
+    );
     checkedServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
     checkedServices.register(
         DisplayPassengerPacketService.class,
