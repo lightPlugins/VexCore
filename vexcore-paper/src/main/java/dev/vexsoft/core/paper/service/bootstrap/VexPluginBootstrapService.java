@@ -2,6 +2,8 @@ package dev.vexsoft.core.paper.service.bootstrap;
 
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
+import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
+import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.level.LevelClaimService;
 import dev.vexsoft.core.api.service.level.LevelService;
@@ -12,6 +14,8 @@ import dev.vexsoft.core.api.service.reward.RewardService;
 import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.common.service.expression.VexExpressionService;
 import dev.vexsoft.core.common.service.level.VexLevelClaimService;
 import dev.vexsoft.core.common.service.level.VexLevelService;
@@ -125,6 +129,11 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         VexPlaceholderApiBridgeService.class
     );
     checkedServices.register(StatRegistry.class, VexStatRegistry.class);
+    checkedServices.register(CurrencyRegistry.class, VexCurrencyRegistry.class);
+    checkedServices.register(
+        CurrencyLocalizationService.class,
+        VexCurrencyLocalizationService.class
+    );
     checkedServices.register(ExpressionService.class, VexExpressionService.class);
     checkedServices.register(RewardRegistry.class, VexRewardRegistry.class);
     checkedServices.register(RewardService.class, VexRewardService.class);

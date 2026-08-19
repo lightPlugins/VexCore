@@ -3,11 +3,13 @@ package dev.vexsoft.core.paper.service.bootstrap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
+import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.ServiceReference;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
@@ -37,6 +39,7 @@ public final class VexPluginBootstrapServiceTest {
         VexConfigurationService.class,
         services.definitions.get(ConfigurationService.class)
     );
+    assertEquals(VexCurrencyRegistry.class, services.definitions.get(CurrencyRegistry.class));
     assertEquals(VexInventoryListener.class, services.listenerType);
     assertEquals(
         VexBlockDisplayPacketService.class,

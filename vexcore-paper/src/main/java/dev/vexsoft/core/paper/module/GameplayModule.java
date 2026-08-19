@@ -2,6 +2,8 @@ package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
+import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
+import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.level.LevelClaimService;
 import dev.vexsoft.core.api.service.level.LevelService;
@@ -16,9 +18,16 @@ import dev.vexsoft.core.api.service.stats.StatLocalizationService;
 import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.requirement.stat.StatRequirement;
+import dev.vexsoft.core.common.reward.currency.CurrencyReward;
 import dev.vexsoft.core.common.reward.stat.StatReward;
 import dev.vexsoft.core.common.service.cost.VexCostRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostService;
+import dev.vexsoft.core.common.service.currency.CurrencyPlayerData;
+import dev.vexsoft.core.common.service.currency.CurrencyRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyContainer;
+import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.data.VexDataService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
@@ -45,6 +54,7 @@ import dev.vexsoft.core.paper.requirement.permission.PermissionRequirement;
 import dev.vexsoft.core.paper.reward.coin.VaultCoinReward;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import dev.vexsoft.core.paper.service.economy.VexVaultEconomyService;
+import dev.vexsoft.core.currency.CurrencyContainer;
 import dev.vexsoft.core.stats.StatContainer;
 import org.bukkit.Bukkit;
 
@@ -60,6 +70,10 @@ public final class GameplayModule implements VexModule {
     services.register(PlayerContainerService.class, VexPlayerContainerService.class);
     services.register(StatRegistryCoordinatorService.class, VexStatRegistryCoordinatorService.class);
     services.register(
+        CurrencyRegistryCoordinatorService.class,
+        VexCurrencyRegistryCoordinatorService.class
+    );
+    services.register(
         ExecutionComponentCoordinatorService.class,
         VexExecutionComponentCoordinatorService.class
     );
@@ -69,6 +83,11 @@ public final class GameplayModule implements VexModule {
     );
     services.register(StatRegistry.class, VexStatRegistry.class);
     services.register(StatLocalizationService.class, VexStatLocalizationService.class);
+    services.register(CurrencyRegistry.class, VexCurrencyRegistry.class);
+    services.register(
+        CurrencyLocalizationService.class,
+        VexCurrencyLocalizationService.class
+    );
     services.register(ExpressionService.class, VexExpressionService.class);
     services.register(RewardRegistry.class, VexRewardRegistry.class);
     services.register(RewardService.class, VexRewardService.class);
@@ -85,12 +104,17 @@ public final class GameplayModule implements VexModule {
     services.registerQueuedServices();
 
     services.require(DataService.class).register(GameplayPlayerData.class);
+    services.require(DataService.class).register(CurrencyPlayerData.class);
     StatRegistryCoordinatorService coordinator = services.require(
         StatRegistryCoordinatorService.class
     );
     services.require(PlayerContainerService.class).register(
         StatContainer.class,
         player -> new VexStatContainer(player, coordinator)
+    );
+    services.require(PlayerContainerService.class).register(
+        CurrencyContainer.class,
+        VexCurrencyContainer::new
     );
     registerBuiltInTypes();
   }
@@ -109,6 +133,7 @@ public final class GameplayModule implements VexModule {
 
   private void registerBuiltInTypes() {
     services.require(RewardRegistry.class).register("stats", StatReward.class);
+    services.require(RewardRegistry.class).register("currencies", CurrencyReward.class);
     RequirementRegistry requirements = services.require(RequirementRegistry.class);
     requirements.register("stats", StatRequirement.class);
     requirements.register("permission", PermissionRequirement.class);
