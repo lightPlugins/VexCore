@@ -117,7 +117,8 @@ public final class CurrencyReward implements Reward {
             Map.of(
                 "amount", Component.text(amount),
                 "formatted_amount", Component.text(localizations.formatCompact(amount)),
-                "currency", name
+                "currency", name,
+                "currency_key", Component.text(currency.getKey().toString())
             ),
             formatted
         ));

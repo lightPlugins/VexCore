@@ -66,6 +66,11 @@ public class VexComponentData<T> {
       VexComponentTarget.ITEM,
       VexCustomModelData.class
   );
+  public static final VexComponentData<VexPlayerHeadProfile> PLAYER_HEAD_PROFILE = value(
+      VexComponentKey.PLAYER_HEAD_PROFILE,
+      VexComponentTarget.ITEM,
+      VexPlayerHeadProfile.class
+  );
   public static final VexComponentData<ItemRarity> RARITY = value(
       VexComponentKey.RARITY,
       VexComponentTarget.ITEM,

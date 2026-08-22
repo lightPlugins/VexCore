@@ -26,6 +26,10 @@ import dev.vexsoft.core.paper.module.DialogModule;
 import dev.vexsoft.core.paper.module.ItemModule;
 import dev.vexsoft.core.paper.service.bootstrap.PluginBootstrapService;
 import dev.vexsoft.core.paper.service.bootstrap.VexPluginBootstrapService;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarCoordinatorService;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarCoordinatorService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.listeners.VexListenerService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
@@ -158,6 +162,11 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     modules = new ModuleManager(coreServices);
     modules.enable(new PlatformModule());
     coreServices.register(ScheduleService.class, VexScheduleService.class);
+    coreServices.register(
+        ActionBarCoordinatorService.class,
+        VexActionBarCoordinatorService.class
+    );
+    coreServices.register(ActionBarService.class, VexActionBarService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.register(

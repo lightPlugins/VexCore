@@ -48,4 +48,13 @@ public final class VexComponentDataTest {
     assertEquals(VexComponentTarget.ITEM, VexComponentData.ITEM_MODEL.getTarget());
     assertEquals(VexComponentTarget.ITEM, VexComponentData.TOOLTIP_STYLE.getTarget());
   }
+
+  @Test
+  public void validatesPlayerHeadTexturesBeforeVersionAdaptation() {
+    VexPlayerHeadProfile profile = new VexPlayerHeadProfile("e30=");
+
+    assertEquals(profile, VexComponentData.PLAYER_HEAD_PROFILE.normalize(profile));
+    assertEquals(VexComponentTarget.ITEM, VexComponentData.PLAYER_HEAD_PROFILE.getTarget());
+    assertThrows(IllegalArgumentException.class, () -> new VexPlayerHeadProfile("not base64"));
+  }
 }

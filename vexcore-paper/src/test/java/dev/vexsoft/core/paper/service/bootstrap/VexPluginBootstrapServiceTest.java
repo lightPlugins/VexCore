@@ -17,6 +17,8 @@ import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
 import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import java.util.LinkedHashMap;
@@ -40,6 +42,7 @@ public final class VexPluginBootstrapServiceTest {
         services.definitions.get(ConfigurationService.class)
     );
     assertEquals(VexCurrencyRegistry.class, services.definitions.get(CurrencyRegistry.class));
+    assertEquals(VexActionBarService.class, services.definitions.get(ActionBarService.class));
     assertEquals(VexInventoryListener.class, services.listenerType);
     assertEquals(
         VexBlockDisplayPacketService.class,

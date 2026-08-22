@@ -1,11 +1,13 @@
 package dev.vexsoft.core.paper.service.items.v26_2;
 
+import com.destroystokyo.paper.profile.ProfileProperty;
 import dev.vexsoft.core.paper.items.VexComponentTarget;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.VexComponentKey;
 import dev.vexsoft.core.paper.items.VexCustomModelData;
 import dev.vexsoft.core.paper.items.VexEnchantments;
+import dev.vexsoft.core.paper.items.VexPlayerHeadProfile;
 import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperation;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperationType;
@@ -14,6 +16,7 @@ import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.CustomModelData;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.key.Key;
@@ -91,6 +94,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
       );
       case ENCHANTMENTS -> applyEnchantments(itemStack, operation);
       case CUSTOM_MODEL_DATA -> applyCustomModelData(itemStack, operation);
+      case PLAYER_HEAD_PROFILE -> applyPlayerHeadProfile(itemStack, operation);
       case UNBREAKABLE -> applyFlag(itemStack, DataComponentTypes.UNBREAKABLE, operation);
       case DISPLAY_NAME, LORE -> throw new IllegalArgumentException(
           key + " must be handled by the packet presentation layer"
@@ -155,6 +159,24 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
         .addStrings(value.getStringValues())
         .addColors(value.getColorValues());
     itemStack.setData(DataComponentTypes.CUSTOM_MODEL_DATA, builder.build());
+  }
+
+  private void applyPlayerHeadProfile(
+      final ItemStack itemStack,
+      final VexComponentOperation operation
+  ) {
+    if (operation.getType() != VexComponentOperationType.SET) {
+      applyWithoutValue(itemStack, DataComponentTypes.PROFILE, operation);
+      return;
+    }
+    VexPlayerHeadProfile value = (VexPlayerHeadProfile) operation.getValue();
+    ProfileProperty property = value.signature() == null
+        ? new ProfileProperty("textures", value.texture())
+        : new ProfileProperty("textures", value.texture(), value.signature());
+    ResolvableProfile profile = ResolvableProfile.resolvableProfile()
+        .addProperty(property)
+        .build();
+    itemStack.setData(DataComponentTypes.PROFILE, profile);
   }
 
   private void applyWithoutValue(
