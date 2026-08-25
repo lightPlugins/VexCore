@@ -6,8 +6,10 @@ import dev.vexsoft.core.paper.inventory.InventoryView;
 import java.util.Map;
 import java.util.Objects;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 final class VexInventoryRenderer {
 
@@ -15,7 +17,8 @@ final class VexInventoryRenderer {
       final InventoryContext context,
       final InventoryView view,
       final VexInventoryHolder holder,
-      final Map<Integer, InventoryElement> elements
+      final Map<Integer, InventoryElement> elements,
+      final NamespacedKey defaultTooltipStyle
   ) {
     Inventory inventory = Bukkit.createInventory(
         Objects.requireNonNull(holder, "holder"),
@@ -24,14 +27,15 @@ final class VexInventoryRenderer {
     );
     holder.attach(inventory);
     holder.setInventoryKey(view.getKey());
-    renderInto(context, inventory, elements);
+    renderInto(context, inventory, elements, defaultTooltipStyle);
     return inventory;
   }
 
   void renderInto(
       final InventoryContext context,
       final Inventory inventory,
-      final Map<Integer, InventoryElement> elements
+      final Map<Integer, InventoryElement> elements,
+      final NamespacedKey defaultTooltipStyle
   ) {
     Objects.requireNonNull(context, "context");
     Objects.requireNonNull(inventory, "inventory");
@@ -43,8 +47,38 @@ final class VexInventoryRenderer {
       if (slot < 0 || slot >= inventory.getSize() || element == null) {
         continue;
       }
-      ItemStack item = element.render(context);
-      inventory.setItem(slot, item == null ? null : item.clone());
+      ItemStack rendered = element.render(context);
+      ItemStack item = rendered == null ? null : rendered.clone();
+      applyDefaultTooltipStyle(item, defaultTooltipStyle);
+      inventory.setItem(slot, item);
     }
+  }
+
+  static void applyDefaultTooltipStyle(
+      final ItemStack item,
+      final NamespacedKey defaultTooltipStyle
+  ) {
+    if (item == null || defaultTooltipStyle == null) {
+      return;
+    }
+    ItemMeta meta = item.getItemMeta();
+    NamespacedKey tooltipStyle = tooltipStyle(
+        meta.getTooltipStyle(),
+        defaultTooltipStyle,
+        meta.isHideTooltip()
+    );
+    if (Objects.equals(meta.getTooltipStyle(), tooltipStyle)) {
+      return;
+    }
+    meta.setTooltipStyle(tooltipStyle);
+    item.setItemMeta(meta);
+  }
+
+  static NamespacedKey tooltipStyle(
+      final NamespacedKey configured,
+      final NamespacedKey fallback,
+      final boolean hidden
+  ) {
+    return configured == null && !hidden ? fallback : configured;
   }
 }

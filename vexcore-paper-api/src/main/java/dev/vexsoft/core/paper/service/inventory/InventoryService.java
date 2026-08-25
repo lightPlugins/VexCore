@@ -8,12 +8,22 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 
 /**
  * Registers inventory definitions and manages viewer inventory sessions
  */
 public interface InventoryService extends VexService {
+
+  /** Sets the fallback tooltip style for rendered items that do not define one. */
+  void setDefaultTooltipStyle(NamespacedKey tooltipStyle);
+
+  /** Removes this plugin's optional fallback tooltip style. */
+  void clearDefaultTooltipStyle();
+
+  /** Returns this plugin's optional fallback tooltip style. */
+  Optional<NamespacedKey> getDefaultTooltipStyle();
 
   /** Creates and registers an annotated inventory definition class */
   void register(Class<? extends InventoryDefinition> definitionType);

@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -31,6 +32,7 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
   private final VexInventoryRenderer renderer = new VexInventoryRenderer();
   private final Map<InventoryKey, InventoryDefinition> definitions = new LinkedHashMap<>();
   private final Map<UUID, VexInventorySession> sessions = new ConcurrentHashMap<>();
+  private volatile NamespacedKey defaultTooltipStyle;
   private boolean closed;
 
   public VexInventoryService(final VexServiceRegistry services) {
@@ -39,6 +41,23 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     if (!(services.getOwner() instanceof Plugin)) {
       throw new IllegalArgumentException("InventoryService owner must be a Bukkit plugin");
     }
+  }
+
+  @Override
+  public void setDefaultTooltipStyle(final NamespacedKey tooltipStyle) {
+    ensureOpen();
+    defaultTooltipStyle = Objects.requireNonNull(tooltipStyle, "tooltipStyle");
+  }
+
+  @Override
+  public void clearDefaultTooltipStyle() {
+    ensureOpen();
+    defaultTooltipStyle = null;
+  }
+
+  @Override
+  public Optional<NamespacedKey> getDefaultTooltipStyle() {
+    return Optional.ofNullable(defaultTooltipStyle);
   }
 
   @Override
@@ -243,7 +262,13 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     InventoryHolder openHolder = player.getOpenInventory().getTopInventory().getHolder();
     session.setSuppressNextClose(openHolder == session.getHolder());
     Map<Integer, InventoryElement> elements = snapshotElements(view, context);
-    Inventory inventory = renderer.render(context, view, session.getHolder(), elements);
+    Inventory inventory = renderer.render(
+        context,
+        view,
+        session.getHolder(),
+        elements,
+        defaultTooltipStyle
+    );
     session.setInventory(inventory);
     session.updateRenderedElements(elements);
     session.setCurrentView(view);
@@ -268,13 +293,19 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
         view.getTitle(context)
     );
     if (sameTitle) {
-      renderer.renderInto(context, openInventory, elements);
+      renderer.renderInto(context, openInventory, elements, defaultTooltipStyle);
       session.updateRenderedElements(elements);
       return;
     }
 
     session.setSuppressNextClose(sameInventory);
-    Inventory inventory = renderer.render(context, view, session.getHolder(), elements);
+    Inventory inventory = renderer.render(
+        context,
+        view,
+        session.getHolder(),
+        elements,
+        defaultTooltipStyle
+    );
     session.setInventory(inventory);
     session.updateRenderedElements(elements);
     player.openInventory(inventory);
