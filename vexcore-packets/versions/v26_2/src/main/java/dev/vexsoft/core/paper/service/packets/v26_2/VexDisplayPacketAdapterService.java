@@ -33,8 +33,13 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Interaction;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.block.data.CraftBlockData;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
@@ -253,6 +258,51 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     requireViewer(viewer, handle, location);
     position(display, location);
     transport.send(viewer, V26_2DisplayPackets.teleport(handle.getEntityId(), location));
+  }
+
+  @Override
+  public void attachCamera(
+      final Player viewer,
+      final FakeDisplayHandle handle,
+      final boolean hideSurvivalHud
+  ) {
+    Display display = displays.get(handle);
+    if (display == null) {
+      throw new IllegalArgumentException("Unknown fake display camera target");
+    }
+    requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
+    List<Object> packets = new ArrayList<>();
+    if (hideSurvivalHud) {
+      packets.add(new ClientboundGameEventPacket(
+          ClientboundGameEventPacket.CHANGE_GAME_MODE,
+          GameType.SPECTATOR.getId()
+      ));
+    }
+    packets.add(new ClientboundSetCameraPacket(display));
+    transport.sendBundle(viewer, packets);
+  }
+
+  @Override
+  public void resetCamera(final Player viewer, final boolean restoreSurvivalHud) {
+    ServerPlayer player = ((CraftPlayer) viewer).getHandle();
+    List<Object> packets = new ArrayList<>();
+    packets.add(new ClientboundSetCameraPacket(player));
+    if (restoreSurvivalHud) {
+      packets.add(new ClientboundGameEventPacket(
+          ClientboundGameEventPacket.CHANGE_GAME_MODE,
+          gameType(viewer).getId()
+      ));
+    }
+    transport.sendBundle(viewer, packets);
+  }
+
+  private static GameType gameType(final Player viewer) {
+    return switch (viewer.getGameMode()) {
+      case SURVIVAL -> GameType.SURVIVAL;
+      case CREATIVE -> GameType.CREATIVE;
+      case ADVENTURE -> GameType.ADVENTURE;
+      case SPECTATOR -> GameType.SPECTATOR;
+    };
   }
 
   @Override

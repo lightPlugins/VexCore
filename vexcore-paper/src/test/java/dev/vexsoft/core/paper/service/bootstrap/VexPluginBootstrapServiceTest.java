@@ -11,9 +11,11 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
 import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
+import dev.vexsoft.core.paper.packets.service.CameraPacketService;
 import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
+import dev.vexsoft.core.paper.service.packets.VexCameraPacketService;
 import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
 import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
@@ -47,6 +49,10 @@ public final class VexPluginBootstrapServiceTest {
     assertEquals(
         VexBlockDisplayPacketService.class,
         services.definitions.get(BlockDisplayPacketService.class)
+    );
+    assertEquals(
+        VexCameraPacketService.class,
+        services.definitions.get(CameraPacketService.class)
     );
     assertEquals(
         VexInteractionPacketService.class,

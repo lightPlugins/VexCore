@@ -44,6 +44,12 @@ public interface DisplayPacketAdapterService extends VexService {
   /** Teleports a virtual display entity */
   void teleport(Player viewer, FakeDisplayHandle handle, Location location);
 
+  /** Attaches the viewer camera to a virtual display and optionally spoofs spectator HUD state */
+  void attachCamera(Player viewer, FakeDisplayHandle handle, boolean hideSurvivalHud);
+
+  /** Returns the viewer camera and client HUD state to the real player */
+  void resetCamera(Player viewer, boolean restoreSurvivalHud);
+
   /** Removes one or more virtual entity ids */
   void remove(Player viewer, int... entityIds);
 

@@ -110,6 +110,7 @@ import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
 import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
+import dev.vexsoft.core.paper.packets.service.CameraPacketService;
 import dev.vexsoft.core.paper.packets.service.BlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
@@ -122,6 +123,7 @@ import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
 import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
+import dev.vexsoft.core.paper.service.packets.VexCameraPacketService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexDisplayPassengerPacketService;
 import dev.vexsoft.core.paper.service.packets.VexFakeItemMetaService;
@@ -241,6 +243,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+    coreServices.register(CameraPacketService.class, VexCameraPacketService.class);
     coreServices.register(
         BlockDamageOverlayPacketService.class,
         VexBlockDamageOverlayPacketService.class
