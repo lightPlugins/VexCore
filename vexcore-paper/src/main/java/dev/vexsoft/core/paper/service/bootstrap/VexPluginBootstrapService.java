@@ -37,6 +37,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
 import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
+import dev.vexsoft.core.paper.service.sidebar.SidebarService;
+import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.paper.service.commands.CommandService;
@@ -112,6 +114,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
     checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
     checkedServices.register(ScheduleService.class, VexScheduleService.class);
     checkedServices.register(ActionBarService.class, VexActionBarService.class);
+    checkedServices.register(SidebarService.class, VexSidebarService.class);
     checkedServices.register(InventoryService.class, VexInventoryService.class);
     checkedServices.register(CommandService.class, VexCommandService.class);
     checkedServices.register(CacheService.class, VexCacheService.class);

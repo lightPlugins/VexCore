@@ -30,6 +30,10 @@ import dev.vexsoft.core.paper.service.actionbar.ActionBarCoordinatorService;
 import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
 import dev.vexsoft.core.paper.service.actionbar.VexActionBarCoordinatorService;
 import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
+import dev.vexsoft.core.paper.service.sidebar.SidebarCoordinatorService;
+import dev.vexsoft.core.paper.service.sidebar.SidebarService;
+import dev.vexsoft.core.paper.service.sidebar.VexSidebarCoordinatorService;
+import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.listeners.VexListenerService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
@@ -169,6 +173,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         VexActionBarCoordinatorService.class
     );
     coreServices.register(ActionBarService.class, VexActionBarService.class);
+    coreServices.register(SidebarCoordinatorService.class, VexSidebarCoordinatorService.class);
+    coreServices.register(SidebarService.class, VexSidebarService.class);
     coreServices.register(ListenerService.class, VexListenerService.class);
     coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.register(
