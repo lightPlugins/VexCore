@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":vexcore-common"))
     implementation(project(":vexcore-services"))
     implementation(project(":vexcore-items:versions:v26_2"))
+    implementation(project(":vexcore-nms:versions:v26_2"))
     implementation(project(":vexcore-packets:versions:v26_2"))
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")

@@ -46,8 +46,12 @@
     <Or>
       <Class name="dev.vexsoft.core.common.configuration.ConfigurateConfigurationSection"/>
       <Class name="dev.vexsoft.core.paper.module.PacketModule"/>
+      <Class name="dev.vexsoft.core.paper.module.NmsModule"/>
       <Class name="dev.vexsoft.core.paper.localization.VexPlayerLanguageChangeEvent"/>
       <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
+      <!-- Native goals must retain their server-owned carrier for their short runtime lifetime. -->
+      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal"/>
     </Or>
   </Match>
 

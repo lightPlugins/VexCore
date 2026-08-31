@@ -22,6 +22,8 @@ import dev.vexsoft.core.paper.module.PlayerModule;
 import dev.vexsoft.core.paper.module.GameplayModule;
 import dev.vexsoft.core.paper.module.LocalizationModule;
 import dev.vexsoft.core.paper.module.PacketModule;
+import dev.vexsoft.core.paper.module.NmsModule;
+import dev.vexsoft.core.paper.module.MobModule;
 import dev.vexsoft.core.paper.module.DialogModule;
 import dev.vexsoft.core.paper.module.ItemModule;
 import dev.vexsoft.core.paper.service.bootstrap.PluginBootstrapService;
@@ -209,6 +211,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     modules.enable(new LocalizationModule());
     modules.enable(new GameplayModule());
     modules.enable(new PacketModule(this));
+    modules.enable(new NmsModule(this));
     modules.enable(new DialogModule());
     modules.enable(new ItemModule(this));
     coreServices.register(LocalizationService.class, VexLocalizationService.class);
@@ -269,6 +272,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
     coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
     coreServices.registerQueuedServices();
+    modules.enable(new MobModule());
     coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
     coreServices.require(MessagingService.class).register(VexTeleportArrivalHandler.class);
     coreServices.require(MessagingService.class).register(VexTeleportCompletionHandler.class);

@@ -33,7 +33,10 @@ public final class VexDisplayPassengerPacketService implements DisplayPassengerP
       final Entity vehicle,
       final List<FakePassengerMount> passengers
   ) {
-    setFakePassengersWithOffset(viewer, vehicle.getEntityId(), passengers);
+    List<FakePassengerMount> checked = List.copyOf(passengers);
+    checked.forEach(passenger -> applyOffset(viewer, passenger));
+    mounts.put(key(viewer, vehicle.getEntityId()), checked);
+    sendMounts(viewer, vehicle, checked);
   }
 
   @Override
@@ -54,7 +57,11 @@ public final class VexDisplayPassengerPacketService implements DisplayPassengerP
       final Entity vehicle,
       final FakePassengerMount passenger
   ) {
-    addFakePassenger(viewer, vehicle.getEntityId(), passenger);
+    String key = key(viewer, vehicle.getEntityId());
+    List<FakePassengerMount> updated = new ArrayList<>(mounts.getOrDefault(key, List.of()));
+    updated.removeIf(existing -> existing.getHandle().equals(passenger.getHandle()));
+    updated.add(passenger);
+    setFakePassengersWithOffset(viewer, vehicle, updated);
   }
 
   @Override
@@ -76,7 +83,10 @@ public final class VexDisplayPassengerPacketService implements DisplayPassengerP
       final Entity vehicle,
       final FakeDisplayHandle passenger
   ) {
-    removeFakePassenger(viewer, vehicle.getEntityId(), passenger);
+    String key = key(viewer, vehicle.getEntityId());
+    List<FakePassengerMount> updated = new ArrayList<>(mounts.getOrDefault(key, List.of()));
+    updated.removeIf(existing -> existing.getHandle().equals(passenger));
+    setFakePassengersWithOffset(viewer, vehicle, updated);
   }
 
   @Override
@@ -93,7 +103,12 @@ public final class VexDisplayPassengerPacketService implements DisplayPassengerP
 
   @Override
   public void clearFakePassengers(final Player viewer, final Entity vehicle) {
-    clearFakePassengers(viewer, vehicle.getEntityId());
+    mounts.remove(key(viewer, vehicle.getEntityId()));
+    adapter.setPassengers(
+        viewer,
+        vehicle.getEntityId(),
+        vehicle.getPassengers().stream().map(Entity::getEntityId).toList()
+    );
   }
 
   @Override
@@ -114,6 +129,18 @@ public final class VexDisplayPassengerPacketService implements DisplayPassengerP
             .map(FakeDisplayHandle::getEntityId)
             .toList()
     );
+  }
+
+  private void sendMounts(
+      final Player viewer,
+      final Entity vehicle,
+      final List<FakePassengerMount> passengers
+  ) {
+    List<Integer> passengerIds = new ArrayList<>();
+    vehicle.getPassengers().stream().map(Entity::getEntityId).forEach(passengerIds::add);
+    passengers.stream().map(FakePassengerMount::getHandle)
+        .map(FakeDisplayHandle::getEntityId).forEach(passengerIds::add);
+    adapter.setPassengers(viewer, vehicle.getEntityId(), passengerIds);
   }
 
   private void applyOffset(final Player viewer, final FakePassengerMount passenger) {

@@ -97,6 +97,12 @@ import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
 import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
 import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
+import dev.vexsoft.core.paper.service.mob.MobRegistry;
+import dev.vexsoft.core.paper.service.mob.MobService;
+import dev.vexsoft.core.paper.service.mob.MobSpawnerRegistry;
+import dev.vexsoft.core.paper.service.mob.VexMobRegistry;
+import dev.vexsoft.core.paper.service.mob.VexMobService;
+import dev.vexsoft.core.paper.service.mob.VexMobSpawnerRegistry;
 import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
 import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
 import java.util.Objects;
@@ -155,6 +161,9 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         StatContributionRegistry.class,
         VexStatContributionRegistry.class
     );
+    checkedServices.register(MobRegistry.class, VexMobRegistry.class);
+    checkedServices.register(MobService.class, VexMobService.class);
+    checkedServices.register(MobSpawnerRegistry.class, VexMobSpawnerRegistry.class);
     checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     checkedServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
