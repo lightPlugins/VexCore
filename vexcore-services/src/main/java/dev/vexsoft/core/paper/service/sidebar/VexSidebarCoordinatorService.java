@@ -17,8 +17,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
 
 /** Cross-plugin, player-local sidebar channel coordinator. */
 @Dependencies(ScheduleService.class)
@@ -27,8 +27,9 @@ public final class VexSidebarCoordinatorService
 
   private static final long NANOS_PER_TICK = 50_000_000L;
   private static final String[] ENTRIES = {
-      "§0", "§1", "§2", "§3", "§4", "§5", "§6", "§7",
-      "§8", "§9", "§a", "§b", "§c", "§d", "§e"
+      "vex_line_0", "vex_line_1", "vex_line_2", "vex_line_3", "vex_line_4",
+      "vex_line_5", "vex_line_6", "vex_line_7", "vex_line_8", "vex_line_9",
+      "vex_line_10", "vex_line_11", "vex_line_12", "vex_line_13", "vex_line_14"
   };
 
   private final ScheduleService schedules;
@@ -174,7 +175,6 @@ public final class VexSidebarCoordinatorService
     private Scoreboard previous;
     private Scoreboard scoreboard;
     private Objective objective;
-    private Team[] teams;
     private SidebarFrame lastFrame;
 
     private ManagedState(final Player player) {
@@ -193,12 +193,12 @@ public final class VexSidebarCoordinatorService
       for (int index = 0; index < ENTRIES.length; index++) {
         String entry = ENTRIES[index];
         if (index < lines.size()) {
-          teams[index].prefix(lines.get(index));
-          objective.getScore(entry).setScore(SidebarFrame.MAXIMUM_LINES - index);
-          objective.getScore(entry).numberFormat(NumberFormat.blank());
+          Score score = objective.getScore(entry);
+          score.customName(lines.get(index));
+          score.setScore(SidebarFrame.MAXIMUM_LINES - index);
+          score.numberFormat(NumberFormat.blank());
         } else {
           scoreboard.resetScores(entry);
-          teams[index].prefix(Component.empty());
         }
       }
       lastFrame = frame;
@@ -213,12 +213,6 @@ public final class VexSidebarCoordinatorService
           .getNewScoreboard();
       objective = scoreboard.registerNewObjective("vex_sidebar", Criteria.DUMMY, Component.empty());
       objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-      teams = new Team[ENTRIES.length];
-      for (int index = 0; index < ENTRIES.length; index++) {
-        Team team = scoreboard.registerNewTeam("vex_line_" + index);
-        team.addEntry(ENTRIES[index]);
-        teams[index] = team;
-      }
       player.setScoreboard(scoreboard);
     }
 
@@ -231,7 +225,6 @@ public final class VexSidebarCoordinatorService
       }
       scoreboard = null;
       objective = null;
-      teams = null;
       lastFrame = null;
     }
   }
