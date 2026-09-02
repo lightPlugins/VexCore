@@ -13,10 +13,12 @@ import dev.vexsoft.core.currency.CurrencyKey;
 import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
+import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,8 +33,6 @@ import net.kyori.adventure.text.Component;
     CurrencyLocalizationService.class
 })
 public final class CurrencyReward implements Reward {
-
-  private static final double MAXIMUM_SAFE_EXPRESSION_INTEGER = 9_007_199_254_740_991D;
 
   private final ExpressionService expressions;
   private final CurrencyRegistry currencies;
@@ -107,7 +107,7 @@ public final class CurrencyReward implements Reward {
 
     @Override
     public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
-      Map<Currency, Long> evaluated = evaluate(context);
+      Map<Currency, WholeAmount> evaluated = evaluate(context);
       List<ExecutionDescription> result = new ArrayList<>();
       evaluated.forEach((currency, amount) -> {
         Component name = localizations.getName(context.player(), currency.getKey());
@@ -115,7 +115,7 @@ public final class CurrencyReward implements Reward {
         result.add(new ExecutionDescription(
             "",
             Map.of(
-                "amount", Component.text(amount),
+                "amount", Component.text(amount.toString()),
                 "formatted_amount", Component.text(localizations.formatCompact(amount)),
                 "currency", name,
                 "currency_key", Component.text(currency.getKey().toString())
@@ -126,18 +126,25 @@ public final class CurrencyReward implements Reward {
       return List.copyOf(result);
     }
 
-    private Map<Currency, Long> evaluate(final PlayerExecutionContext context) {
-      Map<Currency, Long> result = new LinkedHashMap<>();
+    private Map<Currency, WholeAmount> evaluate(final PlayerExecutionContext context) {
+      Map<Currency, WholeAmount> result = new LinkedHashMap<>();
       amounts.forEach((currency, expression) -> {
-        double value = expression.evaluateNumber(context);
-        if (!Double.isFinite(value) || value <= 0D || value != Math.rint(value)
-            || value > MAXIMUM_SAFE_EXPRESSION_INTEGER) {
+        BigDecimal value = expression.evaluateDecimal(context);
+        if (value.signum() <= 0) {
           throw new IllegalStateException(
               "Currency reward amount for " + currency.getKey()
                   + " must evaluate to a positive whole number"
           );
         }
-        result.put(currency, (long) value);
+        try {
+          result.put(currency, WholeAmount.of(value.toBigIntegerExact()));
+        } catch (ArithmeticException exception) {
+          throw new IllegalStateException(
+              "Currency reward amount for " + currency.getKey()
+                  + " must evaluate to a positive whole number",
+              exception
+          );
+        }
       });
       return Map.copyOf(result);
     }

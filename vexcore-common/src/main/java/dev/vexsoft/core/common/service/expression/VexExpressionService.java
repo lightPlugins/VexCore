@@ -12,6 +12,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.expression.EvaluationContext;
 import dev.vexsoft.core.expression.PlayerEvaluationContext;
+import dev.vexsoft.core.number.WholeAmount;
+import dev.vexsoft.core.number.WholeAmountFormatter;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,9 @@ public final class VexExpressionService implements ExpressionService {
       "%([a-z][a-z0-9]*(?:[-_][a-z0-9]+)*)%"
   );
   private static final Pattern NUMBER = Pattern.compile("[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)");
+  private static final Pattern COMPACT_NUMBER = Pattern.compile(
+      "(?<![a-zA-Z0-9_.])(\\d+(?:\\.\\d+)?(?:[kKmMbBtT]|[a-zA-Z]{2,}))(?![a-zA-Z0-9_])"
+  );
   private final ExpressionConfiguration configuration;
   private final PlaceholderService placeholders;
 
@@ -38,7 +43,7 @@ public final class VexExpressionService implements ExpressionService {
 
   @Override
   public CompiledExpression compile(final String expression) {
-    String source = Objects.requireNonNull(expression, "expression").trim();
+    String source = expandCompactNumbers(Objects.requireNonNull(expression, "expression").trim());
     if (source.isEmpty()) {
       throw new IllegalArgumentException("Expression must not be empty");
     }
@@ -53,6 +58,17 @@ public final class VexExpressionService implements ExpressionService {
       throw new IllegalArgumentException("Invalid expression '" + source + '\'', exception);
     }
     return new EvalExExpression(source, prototype, parsed.placeholders(), placeholders);
+  }
+
+  private static String expandCompactNumbers(final String source) {
+    Matcher matcher = COMPACT_NUMBER.matcher(source);
+    StringBuilder expanded = new StringBuilder(source.length());
+    while (matcher.find()) {
+      WholeAmount amount = WholeAmountFormatter.parse(matcher.group(1));
+      matcher.appendReplacement(expanded, amount.toString());
+    }
+    matcher.appendTail(expanded);
+    return expanded.toString();
   }
 
   private static ParsedSource parsePlaceholders(final String source) {
@@ -95,8 +111,8 @@ public final class VexExpressionService implements ExpressionService {
     }
 
     @Override
-    public double evaluateNumber(final EvaluationContext context) {
-      return evaluate(context).getNumberValue().doubleValue();
+    public BigDecimal evaluateDecimal(final EvaluationContext context) {
+      return evaluate(context).getNumberValue();
     }
 
     @Override
@@ -127,7 +143,8 @@ public final class VexExpressionService implements ExpressionService {
                   + variable.contextName() + "%"
           );
         }
-        expression.with(variable.variable(), value);
+        expression.with(variable.variable(), value instanceof WholeAmount amount
+            ? new BigDecimal(amount.toBigInteger()) : value);
       }
       try {
         return expression.evaluate();
@@ -148,9 +165,9 @@ public final class VexExpressionService implements ExpressionService {
   private record ConstantExpression(BigDecimal value) implements CompiledExpression {
 
     @Override
-    public double evaluateNumber(final EvaluationContext context) {
+    public BigDecimal evaluateDecimal(final EvaluationContext context) {
       Objects.requireNonNull(context, "context");
-      return value.doubleValue();
+      return value;
     }
 
     @Override

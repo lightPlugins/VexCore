@@ -1,21 +1,23 @@
 package dev.vexsoft.core.currency;
 
 import java.util.Objects;
+import java.util.Optional;
+import dev.vexsoft.core.number.WholeAmount;
 
 /** Immutable balance and localization rules for one virtual currency. */
 public final class CurrencyDefinition {
 
   private final CurrencyKey key;
-  private final long defaultBalance;
-  private final long maximumBalance;
+  private final WholeAmount defaultBalance;
+  private final WholeAmount maximumBalance;
   private final String nameKey;
   private final String formatKey;
 
   private CurrencyDefinition(final Builder builder) {
     key = builder.key;
-    defaultBalance = requireNonNegative(builder.defaultBalance, "defaultBalance");
-    maximumBalance = requireNonNegative(builder.maximumBalance, "maximumBalance");
-    if (defaultBalance > maximumBalance) {
+    defaultBalance = Objects.requireNonNull(builder.defaultBalance, "defaultBalance");
+    maximumBalance = builder.maximumBalance;
+    if (maximumBalance != null && defaultBalance.compareTo(maximumBalance) > 0) {
       throw new IllegalArgumentException("Currency default balance must not exceed its maximum");
     }
     nameKey = requireLocalizationKey(builder.nameKey, "nameKey");
@@ -31,12 +33,12 @@ public final class CurrencyDefinition {
     return key;
   }
 
-  public long getDefaultBalance() {
+  public WholeAmount getDefaultBalance() {
     return defaultBalance;
   }
 
-  public long getMaximumBalance() {
-    return maximumBalance;
+  public Optional<WholeAmount> getMaximumBalance() {
+    return Optional.ofNullable(maximumBalance);
   }
 
   public String getNameKey() {
@@ -45,13 +47,6 @@ public final class CurrencyDefinition {
 
   public String getFormatKey() {
     return formatKey;
-  }
-
-  private static long requireNonNegative(final long value, final String name) {
-    if (value < 0L) {
-      throw new IllegalArgumentException(name + " must not be negative");
-    }
-    return value;
   }
 
   private static String requireLocalizationKey(final String value, final String name) {
@@ -66,8 +61,8 @@ public final class CurrencyDefinition {
   public static final class Builder {
 
     private final CurrencyKey key;
-    private long defaultBalance;
-    private long maximumBalance = Long.MAX_VALUE;
+    private WholeAmount defaultBalance = WholeAmount.ZERO;
+    private WholeAmount maximumBalance;
     private String nameKey;
     private String formatKey;
 
@@ -78,14 +73,14 @@ public final class CurrencyDefinition {
     }
 
     /** Sets the balance used when a player has no persisted entry yet. */
-    public Builder defaultBalance(final long value) {
-      defaultBalance = value;
+    public Builder defaultBalance(final WholeAmount value) {
+      defaultBalance = Objects.requireNonNull(value, "value");
       return this;
     }
 
     /** Sets the inclusive maximum persistent balance. */
-    public Builder maximumBalance(final long value) {
-      maximumBalance = value;
+    public Builder maximumBalance(final WholeAmount value) {
+      maximumBalance = Objects.requireNonNull(value, "value");
       return this;
     }
 

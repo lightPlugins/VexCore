@@ -1,18 +1,21 @@
 package dev.vexsoft.core.currency;
 
 import java.util.Objects;
+import dev.vexsoft.core.number.WholeAmount;
 
 /** Result of one atomic virtual-currency mutation. */
 public record CurrencyTransaction(
     Status status,
-    long previousBalance,
-    long balance,
+    WholeAmount previousBalance,
+    WholeAmount balance,
     String message
 ) {
 
   /** Normalizes the optional diagnostic message. */
   public CurrencyTransaction {
     status = Objects.requireNonNull(status, "status");
+    previousBalance = Objects.requireNonNull(previousBalance, "previousBalance");
+    balance = Objects.requireNonNull(balance, "balance");
     message = message == null ? "" : message;
   }
 

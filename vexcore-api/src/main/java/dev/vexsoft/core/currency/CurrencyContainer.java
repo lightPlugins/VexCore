@@ -2,22 +2,23 @@ package dev.vexsoft.core.currency;
 
 import dev.vexsoft.core.api.player.PlayerContainer;
 import java.util.Map;
+import dev.vexsoft.core.number.WholeAmount;
 
 /** Persistent virtual-currency balances attached to one loaded Vex player. */
 public interface CurrencyContainer extends PlayerContainer {
 
   /** Returns the current persistent balance or the definition's default balance. */
-  long getBalance(Currency currency);
+  WholeAmount getBalance(Currency currency);
 
   /** Atomically adds a positive amount to one currency. */
-  CurrencyTransaction deposit(Currency currency, long amount);
+  CurrencyTransaction deposit(Currency currency, WholeAmount amount);
 
   /** Atomically deposits every positive amount or applies none of them. */
-  CurrencyBatchTransaction depositAll(Map<Currency, Long> amounts);
+  CurrencyBatchTransaction depositAll(Map<Currency, WholeAmount> amounts);
 
   /** Atomically removes a positive amount when sufficient balance is available. */
-  CurrencyTransaction withdraw(Currency currency, long amount);
+  CurrencyTransaction withdraw(Currency currency, WholeAmount amount);
 
   /** Atomically replaces one balance with a non-negative value inside its configured maximum. */
-  CurrencyTransaction setBalance(Currency currency, long balance);
+  CurrencyTransaction setBalance(Currency currency, WholeAmount balance);
 }

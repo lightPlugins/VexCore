@@ -3,6 +3,7 @@ package dev.vexsoft.core.currency;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.vexsoft.core.number.WholeAmount;
 import org.junit.jupiter.api.Test;
 
 final class CurrencyDefinitionTest {
@@ -20,17 +21,20 @@ final class CurrencyDefinitionTest {
   void validatesBalancesAndBuildsLocalizationKeys() {
     CurrencyKey key = CurrencyKey.of("arcane", "dust");
     CurrencyDefinition definition = CurrencyDefinition.builder(key)
-        .defaultBalance(5L)
-        .maximumBalance(100L)
+        .defaultBalance(WholeAmount.of(5L))
+        .maximumBalance(WholeAmount.of(100L))
         .build();
 
-    assertEquals(5L, definition.getDefaultBalance());
-    assertEquals(100L, definition.getMaximumBalance());
+    assertEquals(WholeAmount.of(5L), definition.getDefaultBalance());
+    assertEquals(WholeAmount.of(100L), definition.getMaximumBalance().orElseThrow());
     assertEquals("currencies.dust.name", definition.getNameKey());
     assertEquals("currencies.dust.format", definition.getFormatKey());
     assertThrows(
         IllegalArgumentException.class,
-        () -> CurrencyDefinition.builder(key).defaultBalance(2L).maximumBalance(1L).build()
+        () -> CurrencyDefinition.builder(key)
+            .defaultBalance(WholeAmount.of(2L))
+            .maximumBalance(WholeAmount.ONE)
+            .build()
     );
   }
 }
