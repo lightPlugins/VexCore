@@ -38,6 +38,9 @@ public interface InteractableHologramService extends VexService {
   /** Teleports the display and interaction hitbox together */
   void teleport(InteractableHologramHandle handle, Location location);
 
+  /** Teleports only the visible text display while leaving its interaction hitbox in place */
+  void teleportDisplay(InteractableHologramHandle handle, Location location);
+
   /** Removes a tracked hologram from its viewer */
   void remove(InteractableHologramHandle handle);
 

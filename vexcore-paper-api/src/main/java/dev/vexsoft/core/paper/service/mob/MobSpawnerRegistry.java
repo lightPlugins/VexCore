@@ -5,6 +5,7 @@ import dev.vexsoft.core.paper.mob.spawner.MobSpawnerDefinition;
 import dev.vexsoft.core.paper.mob.spawner.MobSpawnerKey;
 import java.util.Collection;
 import java.util.Optional;
+import org.bukkit.entity.Player;
 
 /** Owner-scoped registry of custom mob spawner points. */
 public interface MobSpawnerRegistry extends VexService {
@@ -23,4 +24,7 @@ public interface MobSpawnerRegistry extends VexService {
 
   /** Returns every registered spawner definition. */
   Collection<MobSpawnerDefinition> getDefinitions();
+
+  /** Requests an immediate range and population refresh for one fully available player. */
+  void refresh(Player player);
 }

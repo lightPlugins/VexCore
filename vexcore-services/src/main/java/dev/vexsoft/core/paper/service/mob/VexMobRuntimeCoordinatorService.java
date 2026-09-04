@@ -18,9 +18,9 @@ import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
-import dev.vexsoft.core.paper.packets.display.DisplayBillboard;
 import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
+import dev.vexsoft.core.paper.packets.display.DisplayTransformation;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.display.FakePassengerMount;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
@@ -119,7 +119,13 @@ public final class VexMobRuntimeCoordinatorService
           "Custom mob carrier must implement Bukkit Mob: " + definition.entityType()
       );
     }
-    configureCarrier(mob, definition);
+    try {
+      configureCarrier(mob, definition);
+      definition.initializer().ifPresent(initializer -> initializer.initialize(mob));
+    } catch (RuntimeException exception) {
+      mob.remove();
+      throw exception;
+    }
     MobHandle handle = new MobHandle(UUID.randomUUID(), definition.key());
     RuntimeMob runtime = new RuntimeMob(
         VexMobRegistryCoordinatorService.ownerName(owner), handle, definition,
@@ -516,9 +522,18 @@ public final class VexMobRuntimeCoordinatorService
       existing = null;
     }
     if (existing == null) {
-      FakeTextDisplayRequest request = FakeTextDisplayRequest.builder(
+      var requestBuilder = FakeTextDisplayRequest.builder(
           runtime.entity.getLocation(), hologram.get().renderer().render(viewer, snapshot(runtime))
-      ).billboard(DisplayBillboard.CENTER).lifecycle(Set.<DisplayLifecycle>of()).build();
+      ).billboard(hologram.get().billboard())
+          .backgroundColor(hologram.get().backgroundColor())
+          .defaultBackground(hologram.get().defaultBackground())
+          .shadowed(hologram.get().shadowed())
+          .seeThrough(hologram.get().seeThrough())
+          .lineWidth(hologram.get().lineWidth())
+          .transformation(DisplayTransformation.scale(hologram.get().scale()))
+          .lifecycle(Set.<DisplayLifecycle>of());
+      hologram.get().brightness().ifPresent(requestBuilder::brightness);
+      FakeTextDisplayRequest request = requestBuilder.build();
       FakeDisplayHandle created = textDisplays.spawn(viewer, request);
       runtime.holograms.put(viewer.getUniqueId(), new HologramSession(created, epoch));
       passengers.addFakePassenger(

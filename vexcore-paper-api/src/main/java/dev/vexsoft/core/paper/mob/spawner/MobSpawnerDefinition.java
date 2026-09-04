@@ -16,6 +16,7 @@ public final class MobSpawnerDefinition {
   private final int maximumAlive;
   private final int spawnBatchSize;
   private final long spawnIntervalTicks;
+  private final boolean exactSpawnPosition;
   private final MobSpawnPositionRules positionRules;
 
   private MobSpawnerDefinition(final Builder builder) {
@@ -35,6 +36,7 @@ public final class MobSpawnerDefinition {
     maximumAlive = builder.maximumAlive;
     spawnBatchSize = builder.spawnBatchSize;
     spawnIntervalTicks = builder.spawnIntervalTicks;
+    exactSpawnPosition = builder.exactSpawnPosition;
     positionRules = builder.positionRules;
   }
 
@@ -92,6 +94,11 @@ public final class MobSpawnerDefinition {
     return spawnIntervalTicks;
   }
 
+  /** Returns whether mobs spawn at the exact anchor without ground-position selection. */
+  public boolean exactSpawnPosition() {
+    return exactSpawnPosition;
+  }
+
   /** Returns the cave-safe position-selection rules. */
   public MobSpawnPositionRules positionRules() {
     return positionRules;
@@ -111,6 +118,7 @@ public final class MobSpawnerDefinition {
         && maximumAlive == definition.maximumAlive
         && spawnBatchSize == definition.spawnBatchSize
         && spawnIntervalTicks == definition.spawnIntervalTicks
+        && exactSpawnPosition == definition.exactSpawnPosition
         && positionRules.equals(definition.positionRules);
   }
 
@@ -118,7 +126,7 @@ public final class MobSpawnerDefinition {
   public int hashCode() {
     return Objects.hash(
         key, mobKey, anchor, scope, activationRadius, deactivationRadius,
-        maximumAlive, spawnBatchSize, spawnIntervalTicks, positionRules
+        maximumAlive, spawnBatchSize, spawnIntervalTicks, exactSpawnPosition, positionRules
     );
   }
 
@@ -141,6 +149,7 @@ public final class MobSpawnerDefinition {
     private int maximumAlive = 4;
     private int spawnBatchSize = 1;
     private long spawnIntervalTicks = 200L;
+    private boolean exactSpawnPosition;
     private MobSpawnPositionRules positionRules = MobSpawnPositionRules.defaults(6.0D);
 
     private Builder(
@@ -179,6 +188,12 @@ public final class MobSpawnerDefinition {
     /** Sets the interval between due spawn pulses in server ticks. */
     public Builder spawnIntervalTicks(final long value) {
       spawnIntervalTicks = value;
+      return this;
+    }
+
+    /** Sets whether mobs spawn at the exact anchor without ground-position selection. */
+    public Builder exactSpawnPosition(final boolean value) {
+      exactSpawnPosition = value;
       return this;
     }
 

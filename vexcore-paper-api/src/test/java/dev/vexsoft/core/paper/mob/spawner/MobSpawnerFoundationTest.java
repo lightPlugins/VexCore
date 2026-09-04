@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.mob.spawner;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.paper.mob.MobKey;
 import dev.vexsoft.core.paper.mob.MobScope;
@@ -53,6 +54,19 @@ class MobSpawnerFoundationTest {
     assertEquals(32.0D, definition.activationRadius());
     assertEquals(40.0D, definition.deactivationRadius());
     assertEquals(3, definition.positionRules().clearanceBlocks());
+  }
+
+  @Test
+  void supportsAnExactAnchorPositionForPlacedNpcs() {
+    Location anchor = new Location(world(), 1.25D, 64.75D, -3.125D, 137.0F, -12.0F);
+    MobSpawnerDefinition definition = MobSpawnerDefinition.builder(
+        MobSpawnerKey.of("arcane_monolith", "blacksmith"),
+        MobKey.of("arcane_monolith", "blacksmith"),
+        anchor
+    ).exactSpawnPosition(true).build();
+
+    assertTrue(definition.exactSpawnPosition());
+    assertEquals(anchor, definition.anchor());
   }
 
   private static World world() {

@@ -158,6 +158,13 @@ public final class VexMobSpawnerRuntimeCoordinatorService
   }
 
   @Override
+  public void refresh(final Player player) {
+    Player checked = Objects.requireNonNull(player, "player");
+    startPlayer(checked);
+    requestPlayerPulse(checked);
+  }
+
+  @Override
   public void close() {
     shutdown();
   }
@@ -426,6 +433,11 @@ public final class VexMobSpawnerRuntimeCoordinatorService
   private Location findSpawnLocation(final MobSpawnerDefinition definition) {
     Location anchor = definition.anchor();
     World world = anchor.getWorld();
+    if (definition.exactSpawnPosition()) {
+      return world.isChunkLoaded(anchor.getBlockX() >> 4, anchor.getBlockZ() >> 4)
+          ? anchor
+          : null;
+    }
     MobSpawnPositionRules rules = definition.positionRules();
     for (int attempt = 0; attempt < rules.attempts(); attempt++) {
       double angle = ThreadLocalRandom.current().nextDouble(Math.PI * 2.0D);
@@ -465,12 +477,12 @@ public final class VexMobSpawnerRuntimeCoordinatorService
       int upper = anchor.getBlockY() + offset;
       if (upper >= minimumY && upper <= maximumY
           && validPosition(world, x, upper, z, rules)) {
-        return centered(world, x, upper, z);
+        return centered(world, x, upper, z, anchor);
       }
       int lower = anchor.getBlockY() - offset;
       if (offset > 0 && lower >= minimumY && lower <= maximumY
           && validPosition(world, x, lower, z, rules)) {
-        return centered(world, x, lower, z);
+        return centered(world, x, lower, z, anchor);
       }
     }
     return null;
@@ -535,9 +547,13 @@ public final class VexMobSpawnerRuntimeCoordinatorService
       final World world,
       final double x,
       final int y,
-      final double z
+      final double z,
+      final Location anchor
   ) {
-    return new Location(world, Math.floor(x) + 0.5D, y, Math.floor(z) + 0.5D);
+    return new Location(
+        world, Math.floor(x) + 0.5D, y, Math.floor(z) + 0.5D,
+        anchor.getYaw(), anchor.getPitch()
+    );
   }
 
   private static final class SpawnerRuntime {

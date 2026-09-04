@@ -24,6 +24,7 @@ public final class MobDefinition {
   private final boolean collidable;
   private final DisplayGlowColor glow;
   private final MobHologramDefinition hologram;
+  private final MobInitializer initializer;
   private final List<MobGoalDefinition> goals;
 
   private MobDefinition(final Builder builder) {
@@ -47,6 +48,7 @@ public final class MobDefinition {
     collidable = builder.collidable;
     glow = builder.glow;
     hologram = builder.hologram;
+    initializer = builder.initializer;
     goals = List.copyOf(builder.goals);
   }
 
@@ -120,6 +122,11 @@ public final class MobDefinition {
     return Optional.ofNullable(hologram);
   }
 
+  /** Returns the optional entity-specific carrier initializer. */
+  public Optional<MobInitializer> initializer() {
+    return Optional.ofNullable(initializer);
+  }
+
   /** Returns every opt-in goal in registration order. */
   public List<MobGoalDefinition> goals() {
     return goals;
@@ -155,6 +162,7 @@ public final class MobDefinition {
     private boolean collidable;
     private DisplayGlowColor glow;
     private MobHologramDefinition hologram;
+    private MobInitializer initializer;
     private final List<MobGoalDefinition> goals = new ArrayList<>();
 
     private Builder(final MobKey key, final EntityType entityType) {
@@ -225,6 +233,12 @@ public final class MobDefinition {
     /** Sets viewer-specific passenger hologram settings. */
     public Builder hologram(final MobHologramDefinition value) {
       hologram = value;
+      return this;
+    }
+
+    /** Sets entity-specific state applied to every freshly spawned carrier. */
+    public Builder initializer(final MobInitializer value) {
+      initializer = Objects.requireNonNull(value, "value");
       return this;
     }
 

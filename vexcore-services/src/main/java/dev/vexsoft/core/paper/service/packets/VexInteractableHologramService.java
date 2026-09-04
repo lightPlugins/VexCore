@@ -119,6 +119,14 @@ public final class VexInteractableHologramService
   }
 
   @Override
+  public void teleportDisplay(
+      final InteractableHologramHandle handle,
+      final Location location
+  ) {
+    state(handle).ifPresent(state -> textDisplays.teleport(state.textHandle(), location));
+  }
+
+  @Override
   public void remove(final InteractableHologramHandle handle) {
     requireOwner(handle);
     HologramState state = holograms.remove(handle);

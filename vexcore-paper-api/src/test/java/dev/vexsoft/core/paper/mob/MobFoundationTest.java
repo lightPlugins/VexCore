@@ -7,7 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.paper.mob.goal.LookAtPlayerGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
+import dev.vexsoft.core.paper.packets.display.DisplayBillboard;
+import dev.vexsoft.core.paper.packets.display.DisplayBrightness;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.EntityType;
 import org.junit.jupiter.api.Test;
 
@@ -52,5 +55,40 @@ class MobFoundationTest {
     ).movementSpeed(0.25D).goal(movement).goal(looking).build();
 
     assertEquals(java.util.List.of(movement, looking), definition.goals());
+  }
+
+  @Test
+  void definitionsExposeOptionalEntitySpecificInitializers() {
+    MobInitializer initializer = mob -> { };
+    MobDefinition definition = MobDefinition.builder(
+        MobKey.of("arcane_monolith", "villager"), EntityType.VILLAGER
+    ).initializer(initializer).build();
+
+    assertEquals(initializer, definition.initializer().orElseThrow());
+  }
+
+  @Test
+  void mobHologramsExposeCompleteTextDisplayStyling() {
+    DisplayBrightness brightness = new DisplayBrightness(15, 15);
+    MobHologramDefinition hologram = MobHologramDefinition.builder(
+        0.35F, true, (viewer, mob) -> Component.empty()
+    ).billboard(DisplayBillboard.VERTICAL)
+        .scale(1.25F)
+        .backgroundColor(0x40000000)
+        .defaultBackground(true)
+        .shadowed(true)
+        .seeThrough(true)
+        .brightness(brightness)
+        .lineWidth(240)
+        .build();
+
+    assertEquals(DisplayBillboard.VERTICAL, hologram.billboard());
+    assertEquals(1.25F, hologram.scale());
+    assertEquals(0x40000000, hologram.backgroundColor());
+    assertTrue(hologram.defaultBackground());
+    assertTrue(hologram.shadowed());
+    assertTrue(hologram.seeThrough());
+    assertEquals(brightness, hologram.brightness().orElseThrow());
+    assertEquals(240, hologram.lineWidth());
   }
 }

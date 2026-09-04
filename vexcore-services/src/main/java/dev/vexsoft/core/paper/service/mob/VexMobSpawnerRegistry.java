@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.mob.spawner.MobSpawnerKey;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
+import org.bukkit.entity.Player;
 
 /** Default owner-scoped mob spawner registry facade. */
 @Dependencies(MobSpawnerRegistryCoordinatorService.class)
@@ -47,6 +48,11 @@ public final class VexMobSpawnerRegistry implements MobSpawnerRegistry, AutoClos
   @Override
   public Collection<MobSpawnerDefinition> getDefinitions() {
     return coordinator.getDefinitions();
+  }
+
+  @Override
+  public void refresh(final Player player) {
+    coordinator.refresh(Objects.requireNonNull(player, "player"));
   }
 
   @Override

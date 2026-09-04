@@ -6,6 +6,7 @@ import dev.vexsoft.core.paper.mob.spawner.MobSpawnerDefinition;
 import dev.vexsoft.core.paper.mob.spawner.MobSpawnerKey;
 import java.util.Collection;
 import java.util.Optional;
+import org.bukkit.entity.Player;
 
 /** Coordinates spawner definitions across owner-scoped registry facades. */
 public interface MobSpawnerRegistryCoordinatorService extends VexService {
@@ -24,4 +25,6 @@ public interface MobSpawnerRegistryCoordinatorService extends VexService {
   void unregisterOwner(ServiceOwner owner);
 
   Collection<MobSpawnerDefinition> getDefinitions();
+
+  void refresh(Player player);
 }

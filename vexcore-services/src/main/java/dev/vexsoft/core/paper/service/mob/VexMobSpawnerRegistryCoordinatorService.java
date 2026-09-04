@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import org.bukkit.entity.Player;
 
 /** Default global coordinator for custom mob spawner definitions. */
 @Dependencies(MobSpawnerRuntimeCoordinatorService.class)
@@ -106,6 +107,11 @@ public final class VexMobSpawnerRegistryCoordinatorService
   @Override
   public synchronized Collection<MobSpawnerDefinition> getDefinitions() {
     return definitions.values().stream().map(registration -> registration.definition).toList();
+  }
+
+  @Override
+  public void refresh(final Player player) {
+    runtime.refresh(Objects.requireNonNull(player, "player"));
   }
 
   private static MobSpawnerDefinition requireOwned(
