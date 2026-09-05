@@ -20,6 +20,13 @@ public interface RewardService extends VexService {
   /** Executes only action rewards and leaves reconstructable contributions untouched. */
   RewardExecutionReport grantActions(CompiledRewards rewards, PlayerExecutionContext context);
 
+  /** Executes an economic operation with rollback of the player's persistent data on false/throw. */
+  default boolean executeAtomically(
+      final PlayerExecutionContext context, final java.util.function.BooleanSupplier operation
+  ) {
+    throw new UnsupportedOperationException("Atomic player rewards are unavailable");
+  }
+
   /** Aggregates contribution rewards from multiple progression rule invocations. */
   RewardContributions calculateContributions(Collection<RewardInvocation> invocations);
 

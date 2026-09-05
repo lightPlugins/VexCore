@@ -34,6 +34,8 @@ public final class VexPacketConnectionService
   private final InteractionTrackerService interactionsTracker;
   private final FakeItemMetaStoreService itemMetaStore;
   private final ScheduleService scheduler;
+  private final java.util.concurrent.ConcurrentHashMap<UUID, PendingInput> pending =
+      new java.util.concurrent.ConcurrentHashMap<>();
 
   public VexPacketConnectionService(final VexServiceRegistry services) {
     this.connection = services.require(PacketConnectionAdapterService.class);
@@ -51,6 +53,7 @@ public final class VexPacketConnectionService
 
   @Override
   public void uninject(final Player player) {
+    pending.remove(player.getUniqueId());
     connection.uninject(player);
   }
 
@@ -74,15 +77,43 @@ public final class VexPacketConnectionService
     if (tracked.isEmpty()) {
       return sanitized;
     }
+    if (interactionsTracker.isInputBlocked(viewerId)) {
+      return null;
+    }
     Player player = Bukkit.getPlayer(viewerId);
     if (player != null) {
-      scheduler.runFor(player, () -> dispatch(player, interaction));
+      boolean[] schedule = {false};
+      PendingInput batch = pending.compute(viewerId, (ignored, current) -> {
+        if (current == null) {
+          current = new PendingInput();
+          schedule[0] = true;
+        }
+        synchronized (current) {
+          if (current.inputs.size() < 8) current.inputs.addLast(interaction);
+        }
+        return current;
+      });
+      if (schedule[0]) {
+        try {
+          if (scheduler.runFor(player, () -> {
+            if (!pending.remove(viewerId, batch) || !player.isOnline()
+                || interactionsTracker.isInputBlocked(viewerId)) return;
+            java.util.List<PacketInteractionInput> inputs;
+            synchronized (batch) { inputs = java.util.List.copyOf(batch.inputs); }
+            inputs.forEach(next -> dispatch(player, next));
+          }, () -> pending.remove(viewerId, batch)).isEmpty()) pending.remove(viewerId, batch);
+        } catch (RuntimeException failure) {
+          pending.remove(viewerId, batch);
+          throw failure;
+        }
+      }
     }
     return null;
   }
 
   @Override
   public void close() {
+    pending.clear();
     Bukkit.getOnlinePlayers().forEach(this::uninject);
   }
 
@@ -95,5 +126,9 @@ public final class VexPacketConnectionService
             input.getHand()
         ))
     );
+  }
+
+  public static final class PendingInput {
+    private final java.util.Deque<PacketInteractionInput> inputs = new java.util.ArrayDeque<>();
   }
 }

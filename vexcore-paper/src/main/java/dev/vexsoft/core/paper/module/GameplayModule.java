@@ -19,6 +19,7 @@ import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.requirement.stat.StatRequirement;
 import dev.vexsoft.core.common.reward.currency.CurrencyReward;
+import dev.vexsoft.core.common.cost.currency.CurrencyCost;
 import dev.vexsoft.core.common.reward.stat.StatReward;
 import dev.vexsoft.core.common.service.cost.VexCostRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostService;
@@ -134,6 +135,7 @@ public final class GameplayModule implements VexModule {
   private void registerBuiltInTypes() {
     services.require(RewardRegistry.class).register("stats", StatReward.class);
     services.require(RewardRegistry.class).register("currencies", CurrencyReward.class);
+    services.require(CostRegistry.class).register("currencies", CurrencyCost.class);
     RequirementRegistry requirements = services.require(RequirementRegistry.class);
     requirements.register("stats", StatRequirement.class);
     requirements.register("permission", PermissionRequirement.class);

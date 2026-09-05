@@ -145,6 +145,8 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.io.InputStream;
@@ -347,9 +349,18 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     if (services != null) {
       services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
         try {
-          players.saveAll().join();
+          players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
         } catch (RuntimeException exception) {
           getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
+          Path recovery = getDataFolder().toPath().resolve("player-recovery")
+              .resolve(Instant.now().toString().replace(':', '-'));
+          try {
+            players.exportRecovery(recovery);
+            getLogger().severe("Dirty player recovery snapshots written to " + recovery
+                + ". Review these files before allowing affected players to reconnect.");
+          } catch (RuntimeException recoveryFailure) {
+            getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
+          }
         }
       });
     }

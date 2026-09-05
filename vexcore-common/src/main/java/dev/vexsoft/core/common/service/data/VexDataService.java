@@ -19,6 +19,11 @@ public final class VexDataService implements DataService {
   }
 
   @Override
+  public void prepareUnload() {
+    coordinator.prepareUnload(services.getOwner());
+  }
+
+  @Override
   public void register(final Class<? extends PlayerDataDefinition> definitionType) {
     PlayerDataDefinition definition = VexClassFactory.create(
         definitionType,

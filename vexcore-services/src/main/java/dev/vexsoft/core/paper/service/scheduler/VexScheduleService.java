@@ -167,7 +167,7 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
     AtomicReference<ScheduledTask> reference = new AtomicReference<>();
     ScheduledTask scheduled = Objects.requireNonNull(entity, "entity").getScheduler().runAtFixedRate(
         owner,
-        callback(task),
+        callback(task, retiredCallback(retired, reference)),
         retiredCallback(retired, reference),
         initialDelayTicks,
         periodTicks
@@ -230,11 +230,18 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
   }
 
   private Consumer<ScheduledTask> callback(final Runnable task) {
+    return callback(task, null);
+  }
+
+  private Consumer<ScheduledTask> callback(final Runnable task, final Runnable failedCleanup) {
     Runnable checkedTask = Objects.requireNonNull(task, "task");
     return scheduled -> {
       try {
         checkedTask.run();
       } catch (Throwable throwable) {
+        scheduled.cancel();
+        tasks.remove(scheduled);
+        if (failedCleanup != null) failedCleanup.run();
         owner.getLogger().log(Level.SEVERE, "Scheduled task failed", throwable);
       } finally {
         if (!scheduled.isRepeatingTask()) {

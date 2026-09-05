@@ -32,10 +32,85 @@ import java.time.Duration;
 import lombok.Value;
 
 @Dependencies({PlayerDataStoreService.class, CacheService.class})
-public final class VexPlayerDataCoordinatorService implements PlayerDataCoordinatorService {
+public final class VexPlayerDataCoordinatorService implements PlayerDataCoordinatorService, AutoCloseable {
 
   private final Map<UUID, VexPlayer> players = new ConcurrentHashMap<>();
+  private final Map<VexPlayer, Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<com.fasterxml.jackson.databind.JsonNode>>>
+      unloadedSnapshots = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+  @Override
+  public void prepareUnload(final ServiceOwner owner) {
+    Collection<DataContainerKey<?>> keys = getKeys(owner);
+    for (VexPlayer player : List.copyOf(players.values())) {
+      synchronized (player) {
+        var frozen = unloadedSnapshots.computeIfAbsent(player, ignored -> new LinkedHashMap<>());
+        for (DataContainerKey<?> key : keys) {
+          frozen.put(key, player.snapshot(key, objectMapper::valueToTree));
+        }
+      }
+    }
+  }
+
+  /** Called under the player lock, including recovery, so frozen data cannot race a save. */
+  private VexPlayer.ContainerSnapshot<com.fasterxml.jackson.databind.JsonNode> snapshotData(
+      final VexPlayer player, final DataContainerKey<?> key
+  ) {
+    var frozen = unloadedSnapshots.get(player);
+    var snapshot = frozen == null ? null : frozen.get(key);
+    if (snapshot == null) return player.snapshot(key, objectMapper::valueToTree);
+    if (player.snapshot(key, ignored -> null).getRevision() != snapshot.getRevision()) {
+      throw new IllegalStateException("Player data changed after owner unload: " + key.getName());
+    }
+    return snapshot;
+  }
   private final Map<UUID, CompletableFuture<Void>> saveChains = new ConcurrentHashMap<>();
+  private final Map<UUID, CompletableFuture<Void>> pendingSaves = new java.util.HashMap<>();
+  private final java.util.Set<UUID> removalRequested = new java.util.HashSet<>();
+  private final java.util.concurrent.ExecutorService saveExecutor = new java.util.concurrent.ThreadPoolExecutor(
+      2, 2, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+      new java.util.concurrent.ArrayBlockingQueue<>(1024),
+      Thread.ofPlatform().name("vex-player-snapshot-", 0).daemon().factory(),
+      new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+
+  @Override public void close() { saveExecutor.shutdown(); }
+
+  @Override
+  public void exportRecovery(final java.nio.file.Path directory) {
+    java.nio.file.Path target = Objects.requireNonNull(directory, "directory").toAbsolutePath().normalize();
+    Map<String, OwnerContainers> owners;
+    synchronized (this) { owners = new LinkedHashMap<>(containersByOwner); }
+    try {
+      java.nio.file.Files.createDirectories(target);
+      for (VexPlayer player : List.copyOf(players.values())) {
+        var document = objectMapper.createObjectNode();
+        synchronized (player) {
+          var dirty = player.getDirtyKeys();
+          if (dirty.isEmpty()) continue;
+          document.put("playerId", player.getUniqueId().toString());
+          document.put("name", player.getName());
+          document.put("capturedAt", java.time.Instant.now().toString());
+          var data = document.putObject("owners");
+          owners.forEach((ownerName, owner) -> {
+            var ownerData = data.putObject(ownerName);
+            for (DataContainerKey<?> key : owner.keys.values()) {
+              ownerData.set(key.getName(), snapshotData(player, key).getValue());
+            }
+          });
+        }
+        java.nio.file.Path file = target.resolve(player.getUniqueId() + ".json");
+        java.nio.file.Path temporary = target.resolve(player.getUniqueId() + ".json.tmp");
+        java.nio.file.Files.writeString(temporary, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(document));
+        try {
+          java.nio.file.Files.move(temporary, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+              java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+          java.nio.file.Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+      }
+    } catch (java.io.IOException failure) {
+      throw new IllegalStateException("Unable to export player recovery data to " + target, failure);
+    }
+  }
   private final Map<String, OwnerContainers> containersByOwner = new LinkedHashMap<>();
   private final Map<Class<? extends PlayerContainer>, RegisteredContainer<?>> featureContainers =
       new LinkedHashMap<>();
@@ -201,16 +276,25 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
   public CompletableFuture<VexPlayer> load(final UUID uniqueId, final String name) {
     Objects.requireNonNull(uniqueId, "uniqueId");
     Objects.requireNonNull(name, "name");
-    VexPlayer existing = players.get(uniqueId);
-    if (existing != null) {
-      existing.setName(name);
-      return CompletableFuture.completedFuture(existing);
+    synchronized (saveLock) {
+      CompletableFuture<Void> retirement = retirements.get(uniqueId);
+      if (retirement != null) return retirement.thenCompose(ignored -> load(uniqueId, name));
+      VexPlayer existing = players.get(uniqueId);
+      if (existing != null) {
+        removalRequested.remove(uniqueId);
+        existing.setName(name);
+        return CompletableFuture.completedFuture(existing);
+      }
+      if (players.size() >= 1024) {
+        return CompletableFuture.failedFuture(new IllegalStateException(
+            "Player data capacity reached; waiting for pending saves to recover"));
+      }
     }
     CompletableFuture<Void> previousSave;
     synchronized (saveLock) {
       previousSave = saveChains.get(uniqueId);
     }
-    if (previousSave != null) {
+    if (previousSave != null && !previousSave.isDone()) {
       return previousSave.thenCompose(ignored -> load(uniqueId, name));
     }
     PlayerLoadRequest request = new PlayerLoadRequest(uniqueId, name);
@@ -283,18 +367,37 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
   @Override
   public CompletableFuture<Void> saveAndRemove(final UUID uniqueId) {
-    VexPlayer player = players.get(Objects.requireNonNull(uniqueId, "uniqueId"));
-    if (player == null) {
-      return CompletableFuture.completedFuture(null);
+    synchronized (saveLock) {
+      CompletableFuture<Void> existing = retirements.get(uniqueId);
+      if (existing != null) return existing;
+      VexPlayer player = players.get(Objects.requireNonNull(uniqueId, "uniqueId"));
+      if (player == null) return CompletableFuture.completedFuture(null);
+      CompletableFuture<Void> retirement = new CompletableFuture<>();
+      removalRequested.add(uniqueId);
+      retirements.put(uniqueId, retirement);
+      queueSave(player).whenComplete((ignored, throwable) -> {
+        synchronized (saveLock) {
+          try {
+            // Failed saves retain their dirty session for retry instead of losing the only copy.
+            if (throwable == null) {
+              removalRequested.remove(uniqueId);
+              if (players.remove(uniqueId, player)) player.closeContainers();
+            }
+          } catch (RuntimeException failure) {
+            retirements.remove(uniqueId, retirement);
+            retirement.completeExceptionally(failure);
+            return;
+          }
+          retirements.remove(uniqueId, retirement);
+          if (throwable == null) retirement.complete(null);
+          else retirement.completeExceptionally(throwable);
+        }
+      });
+      return retirement;
     }
-    CompletableFuture<Void> save = queueSave(player);
-    save.whenComplete((ignored, throwable) -> {
-      if (players.remove(uniqueId, player)) {
-        player.closeContainers();
-      }
-    });
-    return save;
   }
+
+  private final Map<UUID, CompletableFuture<Void>> retirements = new java.util.HashMap<>();
 
   @Override
   public CompletableFuture<Void> save(final UUID uniqueId) {
@@ -498,61 +601,77 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
   }
 
-  private CompletableFuture<Void> saveOwner(
-      final VexPlayer player,
-      final String ownerName,
-      final OwnerContainers owner
+  private SerializedOwner serializeOwner(
+      final OwnerContainers owner,
+      final Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<com.fasterxml.jackson.databind.JsonNode>> snapshots
   ) {
     Map<String, String> values = new LinkedHashMap<>();
     Map<DataContainerKey<?>, Long> revisions = new LinkedHashMap<>();
-    Collection<DataContainerKey<?>> dirtyKeys = player.getDirtyKeys();
     for (DataContainerKey<?> key : owner.keys.values()) {
-      if (!dirtyKeys.contains(key)) {
+      var snapshot = snapshots.get(key);
+      if (snapshot == null) {
         continue;
       }
-      VexPlayer.ContainerSnapshot<String> snapshot = player.snapshot(key, value -> {
-        try {
-          return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException exception) {
-          throw new IllegalStateException("Unable to write player container " + key.getName(), exception);
-        }
-      });
-      values.put(key.getName(), snapshot.getValue());
+      try {
+        values.put(key.getName(), objectMapper.writeValueAsString(snapshot.getValue()));
+      } catch (JsonProcessingException exception) {
+        throw new IllegalStateException("Unable to write player container " + key.getName(), exception);
+      }
       revisions.put(key, snapshot.getRevision());
     }
-    return store.save(ownerName, player.getUniqueId(), player.getName(), values).thenRun(() -> {
-      for (Map.Entry<DataContainerKey<?>, Long> revision : revisions.entrySet()) {
-        player.markClean(revision.getKey(), revision.getValue());
-      }
-    });
+    return new SerializedOwner(Map.copyOf(values), Map.copyOf(revisions));
   }
+
+  public record SerializedOwner(Map<String, String> values, Map<DataContainerKey<?>, Long> revisions) { }
 
   private CompletableFuture<Void> saveNow(final VexPlayer player) {
     Map<String, OwnerContainers> owners;
     synchronized (this) {
       owners = new LinkedHashMap<>(containersByOwner);
     }
-    CompletableFuture<?>[] saves = owners.entrySet().stream()
-        .map(entry -> saveOwner(player, entry.getKey(), entry.getValue()))
-        .toArray(CompletableFuture[]::new);
-    return CompletableFuture.allOf(saves);
+    Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<com.fasterxml.jackson.databind.JsonNode>> snapshots =
+        new LinkedHashMap<>();
+    synchronized (player) {
+      for (DataContainerKey<?> key : player.getDirtyKeys()) {
+        snapshots.put(key, snapshotData(player, key));
+      }
+    }
+    Map<String, Map<String, String>> values = new LinkedHashMap<>();
+    Map<DataContainerKey<?>, Long> revisions = new LinkedHashMap<>();
+    owners.forEach((name, owner) -> {
+      SerializedOwner serialized = serializeOwner(owner, snapshots);
+      if (!serialized.values().isEmpty()) values.put(name, serialized.values());
+      revisions.putAll(serialized.revisions());
+    });
+    return store.saveAllOwners(player.getUniqueId(), player.getName(), values).thenRun(() ->
+        revisions.forEach(player::markClean));
   }
 
   private CompletableFuture<Void> queueSave(final VexPlayer player) {
     UUID uniqueId = player.getUniqueId();
     CompletableFuture<Void> next;
     synchronized (saveLock) {
+      CompletableFuture<Void> pending = pendingSaves.get(uniqueId);
+      if (pending != null) return pending;
       CompletableFuture<Void> previous = saveChains.get(uniqueId);
       CompletableFuture<Void> ready = previous == null
           ? CompletableFuture.completedFuture(null)
           : previous.handle((ignored, throwable) -> null);
-      next = ready.thenCompose(ignored -> saveNow(player));
+      next = ready.thenComposeAsync(ignored -> {
+        synchronized (saveLock) { pendingSaves.remove(uniqueId); }
+        return saveNow(player);
+      }, saveExecutor);
       saveChains.put(uniqueId, next);
+      pendingSaves.put(uniqueId, next);
     }
     CompletableFuture<Void> queued = next;
     queued.whenComplete((ignored, throwable) -> {
       synchronized (saveLock) {
         saveChains.remove(uniqueId, queued);
+        pendingSaves.remove(uniqueId, queued);
+        if (throwable == null && !retirements.containsKey(uniqueId) && removalRequested.remove(uniqueId)) {
+          if (players.remove(uniqueId, player)) player.closeContainers();
+        }
       }
     });
     return queued;

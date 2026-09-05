@@ -34,6 +34,29 @@ class SqlitePlayerDataStoreTest {
   private Path temporaryDirectory;
 
   @Test
+  void rollsBackEarlierOwnerWhenALaterOwnerWriteFails() {
+    UUID player = UUID.randomUUID();
+    try (SqlitePlayerDataStore store = store()) {
+      store.reconcile("first", List.of(LANGUAGE)).join();
+      store.reconcile("second", List.of(STATS)).join();
+      store.saveAllOwners(player, "Alex", Map.of(
+          "first", Map.of("language", "\"old\""),
+          "second", Map.of("stats", "1"))).join();
+      Map<String, Map<String, String>> failing = new java.util.LinkedHashMap<>();
+      failing.put("first", Map.of("language", "\"new\""));
+      failing.put("second", Map.of("missing_column", "2"));
+      org.junit.jupiter.api.Assertions.assertThrows(java.util.concurrent.CompletionException.class,
+          () -> store.saveAllOwners(player, "Alex", failing).join());
+      assertEquals("\"old\"", store.load("first", player, List.of(LANGUAGE)).join().get("language"));
+      assertEquals("1", store.load("second", player, List.of(STATS)).join().get("stats"));
+      store.saveAllOwners(player, "Alex", Map.of(
+          "first", Map.of("language", "\"new\""), "second", Map.of("stats", "2"))).join();
+      assertEquals("\"new\"", store.load("first", player, List.of(LANGUAGE)).join().get("language"));
+      assertEquals("2", store.load("second", player, List.of(STATS)).join().get("stats"));
+    }
+  }
+
+  @Test
   void persistsPlayerDataAndExtendsTheSchemaAcrossRestarts() {
     Path file = temporaryDirectory.resolve("vexcore.db");
     UUID uniqueId = UUID.randomUUID();

@@ -1,5 +1,9 @@
 package dev.vexsoft.core.common.service.reward;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -29,6 +33,18 @@ import net.kyori.adventure.text.Component;
 public final class VexRewardService implements RewardService {
 
   private final ExecutionComponentCoordinatorService components;
+  private final ObjectMapper transactionMapper =
+      new ObjectMapper()
+          .registerModule(new JavaTimeModule())
+          .setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
+          .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+  @Override
+  public boolean executeAtomically(
+      final PlayerExecutionContext context, final java.util.function.BooleanSupplier operation
+  ) {
+    return context.player().atomic(value -> transactionMapper.convertValue(value, value.getClass()), operation);
+  }
 
   /** Captures the shared component registry. */
   public VexRewardService(final VexServiceRegistry services) {
@@ -61,7 +77,9 @@ public final class VexRewardService implements RewardService {
     Map<String, RewardResult> results = new LinkedHashMap<>();
     for (CompiledRewards.Entry entry : Objects.requireNonNull(rewards, "rewards").entries()) {
       if (entry.reward().getBehavior() == RewardBehavior.ACTION) {
-        results.put(uniqueResultKey(results, entry.key()), entry.reward().grant(context));
+        RewardResult result = entry.reward().grant(context);
+        results.put(uniqueResultKey(results, entry.key()), result);
+        if (result.status() != RewardResult.Status.SUCCESS) break;
       }
     }
     return new RewardExecutionReport(results);

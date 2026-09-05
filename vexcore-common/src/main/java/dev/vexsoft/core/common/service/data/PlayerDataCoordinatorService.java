@@ -17,6 +17,14 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface PlayerDataCoordinatorService extends VexService {
 
+  /** Captures owner data as classloader-independent JSON before plugin unload. */
+  void prepareUnload(ServiceOwner owner);
+
+  /** Writes operator-reviewable recovery files for still-dirty loaded players after a failed save. */
+  default void exportRecovery(final java.nio.file.Path directory) {
+    throw new UnsupportedOperationException("Player recovery export is unavailable");
+  }
+
   /** Registers every container declared by a plugin data definition */
   void register(ServiceOwner owner, PlayerDataDefinition definition);
 

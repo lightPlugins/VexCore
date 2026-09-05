@@ -18,6 +18,12 @@ public interface InteractionPacketService extends VexService {
    */
   FakeInteractionHandle spawn(Player viewer, FakeInteractionRequest request);
 
+  /** Blocks callbacks from every virtual interaction entity for this viewer and service owner. */
+  void blockInput(Player viewer);
+
+  /** Releases this service owner's virtual-interaction input block for the viewer. */
+  void unblockInput(Player viewer);
+
   /**
    * Changes the dimensions of a tracked interaction hitbox.
    *

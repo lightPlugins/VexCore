@@ -33,6 +33,53 @@ public final class VexPlayer {
   private final PlayerContainerLookup containerLookup;
   private volatile PlayerContainer[] featureContainers = EMPTY_FEATURE_CONTAINERS;
   private volatile Object platformPlayer;
+  private java.util.List<Runnable> committedEffects;
+
+  /** Runs a bounded economic operation with rollback of persistent container values on failure. */
+  public boolean atomic(
+      final Function<Object, Object> copier, final java.util.function.BooleanSupplier operation
+  ) {
+    boolean success = false;
+    java.util.List<Runnable> effects;
+    synchronized (this) {
+      if (committedEffects != null) throw new IllegalStateException("Nested player transaction");
+      Map<DataContainerKey<?>, ContainerSnapshot<Object>> before = new java.util.LinkedHashMap<>();
+      containers.forEach((key, state) -> before.put(key, state.snapshot(copier)));
+      committedEffects = new java.util.ArrayList<>();
+      try {
+        success = operation.getAsBoolean();
+      } finally {
+        effects = committedEffects;
+        committedEffects = null;
+        if (!success) before.forEach((key, snapshot) -> {
+          if (stateUnchecked(key).snapshot(ignored -> null).getRevision() != snapshot.getRevision()) {
+            restoreValue(key, snapshot.getValue());
+          }
+        });
+      }
+    }
+    if (success) effects.forEach(effect -> {
+      try { effect.run(); }
+      catch (RuntimeException failure) {
+        System.getLogger(VexPlayer.class.getName()).log(System.Logger.Level.ERROR,
+            "Post-commit player notification failed for " + uniqueId, failure);
+      }
+    });
+    return success;
+  }
+
+  /** Defers observer notifications until an enclosing player transaction has committed. */
+  public void afterCommit(final Runnable effect) {
+    Objects.requireNonNull(effect, "effect");
+    synchronized (this) {
+      if (committedEffects != null) { committedEffects.add(effect); return; }
+    }
+    effect.run();
+  }
+
+  private <T> void restoreValue(final DataContainerKey<T> key, final Object value) {
+    state(key).reset(key.getType().cast(value));
+  }
 
   /** Creates an initially empty player instance for the data coordinator. */
   @ApiStatus.Internal
@@ -184,12 +231,12 @@ public final class VexPlayer {
   }
 
   /** Reads a value from a container while its state remains stable */
-  public <T, R> R read(final DataContainerKey<T> key, final Function<T, R> reader) {
+  public synchronized <T, R> R read(final DataContainerKey<T> key, final Function<T, R> reader) {
     return state(key).read(Objects.requireNonNull(reader, "reader"));
   }
 
   /** Updates a container atomically and marks it for persistence */
-  public <T> void update(final DataContainerKey<T> key, final Consumer<T> update) {
+  public synchronized <T> void update(final DataContainerKey<T> key, final Consumer<T> update) {
     Objects.requireNonNull(update, "update");
     state(key).update(value -> {
       update.accept(value);
@@ -198,8 +245,15 @@ public final class VexPlayer {
   }
 
   /** Updates a container atomically and returns a value from the same operation */
-  public <T, R> R update(final DataContainerKey<T> key, final Function<T, R> update) {
+  public synchronized <T, R> R update(final DataContainerKey<T> key, final Function<T, R> update) {
     return state(key).update(Objects.requireNonNull(update, "update"));
+  }
+
+  /** Mutates a container, marking it dirty only when the callback reports a change. */
+  public synchronized <T> boolean updateIfChanged(
+      final DataContainerKey<T> key, final java.util.function.Predicate<T> update
+  ) {
+    return state(key).updateIfChanged(Objects.requireNonNull(update, "update"));
   }
 
   /** Checks whether the requested container is available on this player */
@@ -244,7 +298,7 @@ public final class VexPlayer {
 
   /** Creates a serialized snapshot paired with the container revision it represents. */
   @ApiStatus.Internal
-  public <R> ContainerSnapshot<R> snapshot(
+  public synchronized <R> ContainerSnapshot<R> snapshot(
       final DataContainerKey<?> key,
       final Function<Object, R> snapshotter
   ) {
@@ -315,14 +369,27 @@ public final class VexPlayer {
     }
 
     private synchronized <R> R update(final Function<T, R> update) {
-      R result = update.apply(value);
-      dirty = true;
-      revision++;
-      return result;
+      try {
+        return update.apply(value);
+      } finally {
+        // A callback may mutate before throwing; never mark that revision clean accidentally.
+        dirty = true;
+        revision++;
+      }
     }
 
     private synchronized boolean isDirty() {
       return dirty;
+    }
+
+    private synchronized boolean updateIfChanged(final java.util.function.Predicate<T> update) {
+      boolean changed = true;
+      try {
+        changed = update.test(value);
+        return changed;
+      } finally {
+        if (changed) { dirty = true; revision++; }
+      }
     }
 
     private synchronized <R> ContainerSnapshot<R> snapshot(final Function<Object, R> snapshotter) {

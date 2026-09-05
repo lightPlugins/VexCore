@@ -209,7 +209,12 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
   private void cleanupInfrastructure() {
     if (services != null) {
-      services.unregisterOwnedServices();
+      var data = services.find(DataService.class);
+      try {
+        services.unregisterOwnedServices();
+      } finally {
+        data.ifPresent(DataService::prepareUnload);
+      }
     }
   }
 }

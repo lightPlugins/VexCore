@@ -59,6 +59,16 @@ public final class VexInteractionPacketService
   }
 
   @Override
+  public void blockInput(final Player viewer) {
+    tracker.setInputBlocked(owner, viewer.getUniqueId(), true);
+  }
+
+  @Override
+  public void unblockInput(final Player viewer) {
+    tracker.setInputBlocked(owner, viewer.getUniqueId(), false);
+  }
+
+  @Override
   public void updateHitbox(
       final FakeInteractionHandle handle,
       final float width,
@@ -106,6 +116,7 @@ public final class VexInteractionPacketService
 
   @Override
   public void close() {
+    tracker.clearInputBlocks(owner);
     tracker.removeOwned(owner).forEach(interaction -> {
       Player viewer = Bukkit.getPlayer(interaction.getHandle().getViewerId());
       if (viewer != null) {

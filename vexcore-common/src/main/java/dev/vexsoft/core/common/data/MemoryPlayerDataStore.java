@@ -44,7 +44,7 @@ public final class MemoryPlayerDataStore implements
   }
 
   @Override
-  public CompletableFuture<Map<String, String>> load(
+  public synchronized CompletableFuture<Map<String, String>> load(
       final String owner,
       final UUID uniqueId,
       final Collection<DataContainerKey<?>> keys
@@ -56,7 +56,7 @@ public final class MemoryPlayerDataStore implements
   }
 
   @Override
-  public CompletableFuture<Void> save(
+  public synchronized CompletableFuture<Void> save(
       final String owner,
       final UUID uniqueId,
       final String playerName,
@@ -66,6 +66,16 @@ public final class MemoryPlayerDataStore implements
         .computeIfAbsent(uniqueId, ignored -> new ConcurrentHashMap<>())
         .putAll(updatedValues);
     names.computeIfAbsent(owner, ignored -> new ConcurrentHashMap<>()).put(uniqueId, playerName);
+    return CompletableFuture.completedFuture(null);
+  }
+
+  @Override
+  public synchronized CompletableFuture<Void> saveAllOwners(
+      final UUID uniqueId, final String playerName, final Map<String, Map<String, String>> owners
+  ) {
+    Map<String, Map<String, String>> checked = new java.util.LinkedHashMap<>();
+    owners.forEach((owner, values) -> checked.put(Objects.requireNonNull(owner), Map.copyOf(values)));
+    checked.forEach((owner, values) -> save(owner, uniqueId, playerName, values).join());
     return CompletableFuture.completedFuture(null);
   }
 

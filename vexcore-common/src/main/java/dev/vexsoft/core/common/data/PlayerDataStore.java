@@ -30,6 +30,17 @@ public interface PlayerDataStore extends AutoCloseable {
       Map<String, String> values
   );
 
+  /** Saves all owners of one player atomically; multi-owner backends must override this method. */
+  default CompletableFuture<Void> saveAllOwners(
+      final UUID uniqueId, final String playerName, final Map<String, Map<String, String>> owners
+  ) {
+    if (owners.isEmpty()) return CompletableFuture.completedFuture(null);
+    if (owners.size() != 1) return CompletableFuture.failedFuture(
+        new UnsupportedOperationException("Atomic multi-owner saves are not supported"));
+    var entry = owners.entrySet().iterator().next();
+    return save(entry.getKey(), uniqueId, playerName, entry.getValue());
+  }
+
   /** Resets selected containers for one player while preserving the player row. */
   default CompletableFuture<Integer> reset(
       String owner,

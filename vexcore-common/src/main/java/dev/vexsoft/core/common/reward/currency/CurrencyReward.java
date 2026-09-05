@@ -82,6 +82,8 @@ public final class CurrencyReward implements Reward {
       return RewardBehavior.ACTION;
     }
 
+    @Override public boolean supportsPlayerRollback() { return true; }
+
     @Override
     public RewardResult grant(final PlayerExecutionContext context) {
       CurrencyBatchTransaction result = context.player()

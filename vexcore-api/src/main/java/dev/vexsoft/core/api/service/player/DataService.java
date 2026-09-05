@@ -12,6 +12,9 @@ import dev.vexsoft.core.api.service.registry.VexService;
  */
 public interface DataService extends VexService {
 
+  /** Freezes this owner's loaded data after feature cleanup, before its classloader closes. */
+  void prepareUnload();
+
   /**
    * Creates and registers a player-data definition owned by this plugin.
    *

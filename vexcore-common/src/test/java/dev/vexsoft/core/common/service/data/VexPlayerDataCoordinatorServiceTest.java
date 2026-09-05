@@ -26,6 +26,43 @@ import org.junit.jupiter.api.Test;
 
 public final class VexPlayerDataCoordinatorServiceTest {
 
+  @Test
+  public void unloadedOwnerCanStillBeSavedAndRecovered(
+      @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory
+  ) throws Exception {
+    MemoryPlayerDataStore store = new MemoryPlayerDataStore();
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    DataContainerKey<UnloadSensitiveData> key = DataContainerKey.of(
+        "unload_sensitive", UnloadSensitiveData.class, UnloadSensitiveData::new);
+    coordinator.register(services.getOwner(), registry -> registry.register(key));
+    VexPlayer player = coordinator.create(UUID.randomUUID(), "Alex");
+    coordinator.prepareUnload(services.getOwner());
+    player.require(key).unavailable = true;
+    try {
+      coordinator.exportRecovery(directory);
+      var recovered = new com.fasterxml.jackson.databind.ObjectMapper()
+          .readTree(directory.resolve(player.getUniqueId() + ".json").toFile());
+      assertTrue(recovered.toString().contains("\"value\":42"));
+      coordinator.saveAll().join();
+      assertTrue(player.getDirtyKeys().isEmpty());
+      var saved = store.load(services.getOwner().getServiceOwnerName().toLowerCase(java.util.Locale.ROOT)
+          .replace('-', '_'), player.getUniqueId(), List.of(key)).join();
+      assertEquals("{\"value\":42}", saved.get(key.getName()));
+    } finally {
+      coordinator.close();
+    }
+  }
+
+  public static final class UnloadSensitiveData {
+    private boolean unavailable;
+
+    public int getValue() {
+      if (unavailable) throw new IllegalStateException("Plugin classloader is closed");
+      return 42;
+    }
+  }
+
   private static final DataContainerKey<String> PROFILE = DataContainerKey.of(
       "profile",
       String.class,
@@ -51,6 +88,65 @@ public final class VexPlayerDataCoordinatorServiceTest {
 
     assertSame(firstPlayer, secondPlayer);
     assertEquals("loaded", firstPlayer.require(PROFILE));
+  }
+
+  @Test
+  public void reconnectWaitsUntilRetiringSessionIsRemoved() {
+    DelayedPlayerDataStore store = new DelayedPlayerDataStore();
+    store.loaded.complete(Map.of());
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.register(services.getOwner(), registry -> registry.register(PROFILE));
+    UUID id = UUID.randomUUID();
+    VexPlayer original = coordinator.load(id, "Alex").join();
+    store.saved = new CompletableFuture<>();
+    CompletableFuture<Void> quit = coordinator.saveAndRemove(id);
+    CompletableFuture<VexPlayer> reconnect = coordinator.load(id, "Alex");
+    org.junit.jupiter.api.Assertions.assertFalse(reconnect.isDone());
+    store.saved.complete(null);
+    quit.join();
+    org.junit.jupiter.api.Assertions.assertNotSame(original, reconnect.join());
+    assertSame(reconnect.join(), coordinator.find(id).orElseThrow());
+  }
+
+  @Test
+  public void failedQuitSaveRetainsDirtyDataForRetry() {
+    DelayedPlayerDataStore store = new DelayedPlayerDataStore();
+    store.loaded.complete(Map.of());
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.register(services.getOwner(), registry -> registry.register(PROFILE));
+    UUID id = UUID.randomUUID();
+    VexPlayer original = coordinator.load(id, "Alex").join();
+    store.saved = CompletableFuture.failedFuture(new IllegalStateException("Database unavailable"));
+    org.junit.jupiter.api.Assertions.assertThrows(java.util.concurrent.CompletionException.class,
+        () -> coordinator.saveAndRemove(id).join());
+    assertSame(original, coordinator.find(id).orElseThrow());
+    assertTrue(original.getDirtyKeys().contains(PROFILE));
+    store.saved = CompletableFuture.completedFuture(null);
+    coordinator.saveAndRemove(id).join();
+    assertTrue(coordinator.find(id).isEmpty());
+  }
+
+  @Test
+  public void failedSaveCanBeExportedBeforeShutdown(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory)
+      throws Exception {
+    DelayedPlayerDataStore store = new DelayedPlayerDataStore();
+    store.loaded.complete(Map.of());
+    TestServices services = new TestServices(store);
+    VexPlayerDataCoordinatorService coordinator = new VexPlayerDataCoordinatorService(services);
+    coordinator.register(services.getOwner(), registry -> registry.register(PROFILE));
+    UUID id = UUID.randomUUID();
+    coordinator.load(id, "Alex").join();
+    store.saved = CompletableFuture.failedFuture(new IllegalStateException("Database unavailable"));
+    org.junit.jupiter.api.Assertions.assertThrows(java.util.concurrent.CompletionException.class,
+        () -> coordinator.saveAndRemove(id).join());
+    coordinator.exportRecovery(directory);
+    var document = new com.fasterxml.jackson.databind.ObjectMapper()
+        .readTree(directory.resolve(id + ".json").toFile());
+    assertEquals("Alex", document.get("name").asText());
+    assertEquals("default", document.at("/owners/vexcoretest/profile").asText());
+    coordinator.close();
   }
 
   @Test
@@ -134,6 +230,7 @@ public final class VexPlayerDataCoordinatorServiceTest {
 
     private final AtomicInteger loads = new AtomicInteger();
     private final CompletableFuture<Map<String, String>> loaded = new CompletableFuture<>();
+    private CompletableFuture<Void> saved = CompletableFuture.completedFuture(null);
 
     @Override
     public CompletableFuture<Void> reconcile(
@@ -160,7 +257,7 @@ public final class VexPlayerDataCoordinatorServiceTest {
         final String playerName,
         final Map<String, String> values
     ) {
-      return CompletableFuture.completedFuture(null);
+      return saved;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.service.packets.interaction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
@@ -66,6 +67,23 @@ final class VexInteractionTrackerServiceTest {
     assertTrue(tracker.find(viewer, 1).isEmpty());
     assertTrue(tracker.find(viewer, 3).isEmpty());
     assertEquals(worldChange, tracker.find(viewer, 2).orElseThrow());
+  }
+
+  @Test
+  void keepsViewerInputBlockedUntilEveryOwnerReleasesIt() {
+    TestOwner firstOwner = new TestOwner("first");
+    TestOwner secondOwner = new TestOwner("second");
+    VexInteractionTrackerService tracker = tracker(firstOwner);
+    UUID viewer = UUID.randomUUID();
+
+    assertTrue(tracker.setInputBlocked(firstOwner, viewer, true));
+    assertTrue(tracker.setInputBlocked(secondOwner, viewer, true));
+    assertTrue(tracker.setInputBlocked(firstOwner, viewer, false));
+    assertTrue(tracker.isInputBlocked(viewer));
+
+    tracker.clearInputBlocks(secondOwner);
+
+    assertFalse(tracker.isInputBlocked(viewer));
   }
 
   private static VexInteractionTrackerService tracker(final ServiceOwner owner) {

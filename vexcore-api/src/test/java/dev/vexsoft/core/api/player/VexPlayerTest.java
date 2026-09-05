@@ -12,6 +12,47 @@ import org.junit.jupiter.api.Test;
 
 class VexPlayerTest {
 
+  @Test
+  void failedTransactionRestoresDataAndDiscardsSignals() {
+    VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
+    player.install(SKILLS, new SkillData());
+    java.util.concurrent.atomic.AtomicInteger signals = new java.util.concurrent.atomic.AtomicInteger();
+    assertFalse(player.atomic(value -> {
+      SkillData copy = new SkillData();
+      copy.experience = ((SkillData) value).experience;
+      return copy;
+    }, () -> {
+      player.update(SKILLS, data -> { data.experience = 100; });
+      player.afterCommit(signals::incrementAndGet);
+      return false;
+    }));
+    assertEquals(0, player.read(SKILLS, SkillData::getExperience));
+    assertEquals(0, signals.get());
+    assertThrows(IllegalStateException.class, () -> player.atomic(value -> {
+      SkillData copy = new SkillData();
+      copy.experience = ((SkillData) value).experience;
+      return copy;
+    }, () -> {
+      player.update(SKILLS, data -> { data.experience = 200; });
+      throw new IllegalStateException("Second reward failed");
+    }));
+    assertEquals(0, player.read(SKILLS, SkillData::getExperience));
+  }
+
+  @Test
+  void successfulTransactionPublishesSignalsAfterCommit() {
+    VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
+    player.install(SKILLS, new SkillData());
+    java.util.concurrent.atomic.AtomicInteger observed = new java.util.concurrent.atomic.AtomicInteger();
+    assertTrue(player.atomic(value -> new SkillData(), () -> {
+      player.afterCommit(() -> observed.set(player.read(SKILLS, SkillData::getExperience)));
+      player.update(SKILLS, data -> { data.experience = 42; });
+      assertEquals(0, observed.get());
+      return true;
+    }));
+    assertEquals(42, observed.get());
+  }
+
   private static final DataContainerKey<SkillData> SKILLS = DataContainerKey.of(
       "skills",
       SkillData.class,

@@ -31,6 +31,7 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
     handle.getNavigation().stop();
     selector(craftMob, GOAL_SELECTOR).removeAllGoals(goal -> true);
     selector(craftMob, TARGET_SELECTOR).removeAllGoals(goal -> true);
+    clearVanillaBrain(craftMob);
     handle.setTarget(null);
     handle.setNoAi(true);
     mob.setAware(false);
@@ -63,6 +64,9 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
 
   @Override
   public void activateGoals(final Mob mob) {
+    // Initializers may rebuild a mob's brain. Clear it after initialization as well,
+    // before enabling the native tick needed by our explicitly installed goals.
+    clearVanillaBrain(handle(mob));
     handle(mob).getHandle().setNoAi(false);
     mob.setAware(true);
   }
@@ -77,6 +81,23 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
       throw new IllegalArgumentException("Unsupported mob implementation: " + mob.getClass());
     }
     return craftMob;
+  }
+
+  @SuppressWarnings("unchecked") // The brain belongs to this exact entity; Bukkit erases its subtype.
+  private static void clearVanillaBrain(final CraftMob mob) {
+    var entity = mob.getHandle();
+    var brain = (net.minecraft.world.entity.ai.Brain<net.minecraft.world.entity.LivingEntity>)
+        entity.getBrain();
+    if (entity.level() instanceof net.minecraft.server.level.ServerLevel level) {
+      brain.stopAll(level, entity);
+    }
+    brain.removeAllBehaviors();
+    brain.clearMemories();
+    entity.getNavigation().stop();
+    if (entity instanceof net.minecraft.world.entity.npc.villager.Villager villager) {
+      // 26.2 tracks appearance finalization separately from profession/type setters.
+      villager.setVillagerDataFinalized(true);
+    }
   }
 
   private static GoalSelector selector(final CraftMob mob, final Field field) {

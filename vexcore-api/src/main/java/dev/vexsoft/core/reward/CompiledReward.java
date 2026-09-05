@@ -12,6 +12,9 @@ public interface CompiledReward {
   /** Returns whether this reward is an action or a reconstructable contribution. */
   RewardBehavior getBehavior();
 
+  /** True only for actions confined to player data/inventory with deferred external notifications. */
+  default boolean supportsPlayerRollback() { return false; }
+
   /** Executes an action reward. */
   default RewardResult grant(final PlayerExecutionContext context) {
     return RewardResult.skipped("Reward is a runtime contribution");

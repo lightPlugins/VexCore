@@ -212,44 +212,60 @@ public final class PostgresPlayerDataStore implements
 
   @Override
   public CompletableFuture<Void> save(
-      final String owner,
-      final UUID uniqueId,
-      final String playerName,
-      final Map<String, String> values
+      final String owner, final UUID uniqueId, final String playerName, final Map<String, String> values
   ) {
-    if (values.isEmpty()) {
-      return CompletableFuture.completedFuture(null);
-    }
-    String columns = values.keySet().stream()
-        .map(PostgresPlayerDataStore::column)
-        .reduce((left, right) -> left + ", " + right)
-        .orElseThrow();
-    String placeholders = values.keySet().stream()
-        .map(ignored -> "?::jsonb")
-        .reduce((left, right) -> left + ", " + right)
-        .orElseThrow();
-    String updates = values.keySet().stream()
-        .map(key -> column(key) + " = EXCLUDED." + column(key))
-        .reduce((left, right) -> left + ", " + right)
-        .orElseThrow();
-    String sql = "INSERT INTO " + table(owner) + " (player_id, player_name, " + columns + ") VALUES (?, ?, "
-        + placeholders + ") ON CONFLICT (player_id) DO UPDATE SET player_name = EXCLUDED.player_name, " + updates;
+    return saveAllOwners(uniqueId, playerName, Map.of(owner, values));
+  }
+
+  @Override
+  public CompletableFuture<Void> saveAllOwners(
+      final UUID uniqueId, final String playerName, final Map<String, Map<String, String>> owners
+  ) {
+    Map<String, Map<String, String>> checked = new LinkedHashMap<>();
+    owners.forEach((owner, values) -> {
+      if (!values.isEmpty()) checked.put(owner, Map.copyOf(values));
+    });
+    if (checked.isEmpty()) return CompletableFuture.completedFuture(null);
     return CompletableFuture.runAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setObject(1, uniqueId);
-        statement.setString(2, playerName);
-        int index = 3;
-        for (String json : values.values()) {
-          statement.setString(index++, json);
+      try (Connection connection = dataSource.getConnection()) {
+        connection.setAutoCommit(false);
+        try {
+          for (var owner : checked.entrySet()) {
+            writeOwner(connection, owner.getKey(), uniqueId, playerName, owner.getValue());
+          }
+          connection.commit();
+        } catch (SQLException | RuntimeException failure) {
+          try { connection.rollback(); }
+          catch (SQLException rollbackFailure) { failure.addSuppressed(rollbackFailure); }
+          throw failure;
         }
-        statement.executeUpdate();
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to save player data for " + uniqueId, exception);
+      } catch (SQLException failure) {
+        throw new IllegalStateException("Unable to save player data transaction for " + uniqueId, failure);
       }
     }, executor);
   }
 
+  private void writeOwner(
+      final Connection connection, final String owner, final UUID uniqueId,
+      final String playerName, final Map<String, String> values
+  ) throws SQLException {
+    String columns = values.keySet().stream().map(PostgresPlayerDataStore::column)
+        .reduce((left, right) -> left + ", " + right).orElseThrow();
+    String placeholders = values.keySet().stream().map(ignored -> "?::jsonb")
+        .reduce((left, right) -> left + ", " + right).orElseThrow();
+    String updates = values.keySet().stream().map(key -> column(key) + " = excluded." + column(key))
+        .reduce((left, right) -> left + ", " + right).orElseThrow();
+    String sql = "INSERT INTO " + table(owner) + " (player_id, player_name, " + columns
+        + ") VALUES (?, ?, " + placeholders + ") ON CONFLICT(player_id) DO UPDATE SET "
+        + "player_name = excluded.player_name, " + updates;
+    try (PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setObject(1, uniqueId);
+      statement.setString(2, playerName);
+      int index = 3;
+      for (String value : values.values()) statement.setString(index++, value);
+      statement.executeUpdate();
+    }
+  }
   @Override
   public CompletableFuture<Integer> reset(
       final String owner,

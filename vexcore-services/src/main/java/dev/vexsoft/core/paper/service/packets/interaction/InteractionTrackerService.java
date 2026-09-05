@@ -17,6 +17,12 @@ public interface InteractionTrackerService extends VexService {
   /** Finds an interaction by its viewer and virtual entity ID. */
   Optional<TrackedInteraction> find(UUID viewerId, int entityId);
 
+  /** Changes one owner's input block and returns whether any owner still blocks the viewer. */
+  boolean setInputBlocked(ServiceOwner owner, UUID viewerId, boolean blocked);
+
+  /** Returns whether virtual-interaction callbacks are currently blocked for the viewer. */
+  boolean isInputBlocked(UUID viewerId);
+
   /** Removes and returns an interaction by its public handle. */
   Optional<TrackedInteraction> remove(FakeInteractionHandle handle);
 
@@ -25,6 +31,9 @@ public interface InteractionTrackerService extends VexService {
 
   /** Removes all interactions owned by one plugin. */
   Collection<TrackedInteraction> removeOwned(ServiceOwner owner);
+
+  /** Removes every input block owned by one plugin. */
+  void clearInputBlocks(ServiceOwner owner);
 
   /** Removes every interaction associated with one viewer. */
   Collection<TrackedInteraction> removeViewer(UUID viewerId);
