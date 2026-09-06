@@ -1,5 +1,14 @@
 package dev.vexsoft.core.paper;
 
+import dev.vexsoft.core.paper.service.screenui.ScreenUiCoordinatorService;
+import dev.vexsoft.core.paper.screenui.ScreenUiVersions;
+import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiCoordinatorService;
+import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiListener;
+import dev.vexsoft.core.paper.commands.VexCoreUiCommand;
+
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
@@ -242,6 +251,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         VexPerformanceBossBarService.class
     );
     coreServices.register(CommandService.class, VexCommandService.class);
+    coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
+    coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
+    coreServices.register(ScreenUiService.class, VexScreenUiService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(InventoryService.class, VexInventoryService.class);
     coreServices.register(
@@ -288,6 +300,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
     coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
     coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
+    coreServices.require(CommandService.class).register(VexCoreUiCommand.class);
     coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
     coreServices.require(CommandService.class).register(VexCoreLocalizationCommand.class);
     initialized = true;
@@ -308,6 +321,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(PlayerDirectoryService.class).getOnlinePlayers();
     coreServices.require(ServerPerformanceService.class).start();
     coreServices.require(PerformanceBossBarService.class).start();
+    coreServices.require(ListenerService.class).register(
+        VexScreenUiListener.class, coreServices);
     getLogger().info(
         "Network server ID initialized as "
             + coreServices.require(ServerIdentityService.class).getServerId().value()

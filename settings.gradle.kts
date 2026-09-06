@@ -11,6 +11,8 @@ include(
     "vexcore-packets:versions:v26_2",
     "vexcore-paper-api",
     "vexcore-services",
+    "vexcore-screen-ui:common",
+    "vexcore-screen-ui:versions:v26_2",
     "vexcore-paper",
     "vexcore-velocity-api",
     "vexcore-velocity",

@@ -192,6 +192,9 @@ public final class VexMobSpawnerRuntimeCoordinatorService
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   private void onTeleport(final PlayerTeleportEvent event) {
+    if (!MobViewerTeleport.changesPosition(event)) {
+      return;
+    }
     deactivatePlayerInterests(event.getPlayer().getUniqueId(), MobRemovalReason.PLAYER_TELEPORT);
     schedules.runForLater(event.getPlayer(), 1L, () -> pulsePlayer(event.getPlayer()), null);
   }

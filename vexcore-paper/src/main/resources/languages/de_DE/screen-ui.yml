@@ -1,0 +1,40 @@
+enabled: '<tailwind:zinc:4>UI-Test aktiviert. Lade das passende <tailwind:sky>VexCore-Resourcepack<tailwind:zinc:4>. Derselbe Befehl blendet den Test aus.'
+disabled: '<tailwind:zinc:4>UI-Test deaktiviert.'
+dialogue-demo:
+  hint: '<tailwind:yellow>Shift: Weiter'
+  speaker: '<tailwind:sky>Höhlenforscher'
+  body:
+    - '<tailwind:zinc:4>Die alten Monolithen bewahren ihre Geheimnisse tief im blauen Stein und warten darauf, dass du ihre Zeichen entschlüsselst und ihre Kraft erweckst.'
+demo:
+  left:
+    - '<tailwind:sky>LINKS / x=-112 y=4'
+    - '<tailwind:zinc:4>Zwei einzelne Components.'
+  center:
+    - '<tailwind:lime>MITTE / x=0 y=50'
+    - '<tailwind:zinc:4>Jede Zeile ist zentriert.'
+  right:
+    - '<tailwind:amber>RECHTS / x=112 y=96'
+    - '<tailwind:zinc:4>Eine gemeinsame rechte Kante.'
+  panel:
+    - '<tailwind:sky>TEXTUR + TEXT'
+    - '<tailwind:zinc:4>Eine gemeinsame Bossbar.'
+    - '<tailwind:zinc:4>Noch keine Dialoganbindung.'
+anchors:
+  top_left:
+    - '<tailwind:lime>TOP_LEFT'
+  top_center:
+    - '<tailwind:lime>TOP_CENTER'
+  top_right:
+    - '<tailwind:lime>TOP_RIGHT'
+  center_left:
+    - '<tailwind:lime>CENTER_LEFT'
+  center:
+    - '<tailwind:lime>CENTER'
+  center_right:
+    - '<tailwind:lime>CENTER_RIGHT'
+  bottom_left:
+    - '<tailwind:lime>BOTTOM_LEFT'
+  bottom_center:
+    - '<tailwind:lime>BOTTOM_CENTER'
+  bottom_right:
+    - '<tailwind:lime>BOTTOM_RIGHT'

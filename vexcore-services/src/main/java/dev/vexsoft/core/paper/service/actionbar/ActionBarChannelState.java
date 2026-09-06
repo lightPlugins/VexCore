@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 import net.kyori.adventure.text.Component;
 
 /** Thread-safe selection state for one player's action-bar channels. */
@@ -13,6 +15,16 @@ final class ActionBarChannelState {
   private final Map<ChannelKey, Entry> persistent = new HashMap<>();
   private final Map<ChannelKey, Entry> temporary = new HashMap<>();
   private long revision;
+  private final Set<ChannelKey> suppressions = new HashSet<>();
+
+  synchronized boolean setSuppressed(final ServiceOwner owner, final String channel, final boolean suppressed) {
+    ChannelKey key = key(owner, channel);
+    boolean changed = suppressed ? suppressions.add(key) : suppressions.remove(key);
+    if (changed) {
+      revision++;
+    }
+    return changed;
+  }
 
   synchronized void setPersistent(
       final ServiceOwner owner,
@@ -59,6 +71,7 @@ final class ActionBarChannelState {
   synchronized boolean clear(final ServiceOwner owner) {
     boolean removed = persistent.keySet().removeIf(key -> key.owner() == owner);
     removed |= temporary.keySet().removeIf(key -> key.owner() == owner);
+    removed |= suppressions.removeIf(key -> key.owner() == owner);
     if (removed) {
       revision++;
     }
@@ -70,6 +83,9 @@ final class ActionBarChannelState {
       revision++;
     }
     Map<ChannelKey, Entry> layer = temporary.isEmpty() ? persistent : temporary;
+    if (!suppressions.isEmpty()) {
+      return new Selection(Component.empty(), revision);
+    }
     Entry selected = null;
     for (Entry entry : layer.values()) {
       if (selected == null || entry.priority() > selected.priority()

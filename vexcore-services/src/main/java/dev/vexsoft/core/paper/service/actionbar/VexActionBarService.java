@@ -22,6 +22,11 @@ public final class VexActionBarService implements ActionBarService, AutoCloseabl
   }
 
   @Override
+  public void setSuppressed(final Player player, final String channel, final boolean suppressed) {
+    coordinator.setSuppressed(owner, player, channel, suppressed);
+  }
+
+  @Override
   public void setPersistent(
       final Player player,
       final String channel,

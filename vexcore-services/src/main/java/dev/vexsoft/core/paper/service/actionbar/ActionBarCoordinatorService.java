@@ -8,6 +8,8 @@ import org.bukkit.entity.Player;
 /** Coordinates action-bar channels across all owner-scoped Vex plugins. */
 public interface ActionBarCoordinatorService extends VexService {
 
+  void setSuppressed(ServiceOwner owner, Player player, String channel, boolean suppressed);
+
   /** Sets or replaces one persistent owner channel. */
   void setPersistent(
       ServiceOwner owner,

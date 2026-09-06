@@ -24,6 +24,10 @@
             <option value="$PROJECT_DIR$/vexcore-packets/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-paper" />
             <option value="$PROJECT_DIR$/vexcore-paper-api" />
+            <option value="$PROJECT_DIR$/vexcore-screen-ui" />
+            <option value="$PROJECT_DIR$/vexcore-screen-ui/common" />
+            <option value="$PROJECT_DIR$/vexcore-screen-ui/versions" />
+            <option value="$PROJECT_DIR$/vexcore-screen-ui/versions/v26_2" />
             <option value="$PROJECT_DIR$/vexcore-services" />
             <option value="$PROJECT_DIR$/vexcore-velocity" />
             <option value="$PROJECT_DIR$/vexcore-velocity-api" />

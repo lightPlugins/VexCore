@@ -386,6 +386,9 @@ public final class VexMobRuntimeCoordinatorService
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   private void onTeleport(final PlayerTeleportEvent event) {
+    if (!MobViewerTeleport.changesPosition(event)) {
+      return;
+    }
     transitionViewer(event.getPlayer());
   }
 

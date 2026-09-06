@@ -33,6 +33,14 @@ public final class VexActionBarCoordinatorService implements
   }
 
   @Override
+  public void setSuppressed(final ServiceOwner owner, final Player player, final String channel, final boolean suppressed) {
+    ManagedState state = suppressed ? state(player) : states.get(requirePlayer(player).getUniqueId());
+    if (state != null && state.channels().setSuppressed(owner, channel, suppressed)) {
+      refreshSoon(player, state);
+    }
+  }
+
+  @Override
   public void setPersistent(
       final ServiceOwner owner,
       final Player player,

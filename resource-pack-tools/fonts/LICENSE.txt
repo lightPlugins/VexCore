@@ -1,0 +1,10 @@
+m5x7 by Daniel Linssen
+Author and original download: https://managore.itch.io/m5x7
+License: Creative Commons Zero v1.0 Universal (CC0)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The author describes the font as free to use; attribution is appreciated.
+Bundled TTF obtained from the public mirror:
+https://github.com/eevee/fox-flux/blob/master/assets/fonts/m5x7.ttf
+
+VexCore rasterizes this font at size 16 without antialiasing into its UI bitmap atlas.

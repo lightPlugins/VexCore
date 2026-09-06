@@ -7,6 +7,7 @@ dependencies {
     api(project(":vexcore-paper-api"))
     implementation(project(":vexcore-common"))
     implementation(project(":vexcore-services"))
+    implementation(project(":vexcore-screen-ui:versions:v26_2"))
     implementation(project(":vexcore-items:versions:v26_2"))
     implementation(project(":vexcore-nms:versions:v26_2"))
     implementation(project(":vexcore-packets:versions:v26_2"))
@@ -36,3 +37,38 @@ tasks.shadowJar {
 }
 
 tasks.assemble { dependsOn(tasks.shadowJar) }
+
+val screenUiPackDirectory = layout.buildDirectory.dir("generated/screen-ui-pack")
+val screenUiPackGenerator = rootProject.layout.projectDirectory.file("resource-pack-tools/GenerateScreenUiPack.java")
+val screenUiFontDirectory = rootProject.layout.projectDirectory.dir("resource-pack-tools/fonts")
+val screenUiMetricsDirectory = layout.buildDirectory.dir("generated/screen-ui-metrics")
+val screenUiVersionPack = rootProject.layout.projectDirectory.dir("vexcore-screen-ui/versions/v26_2/pack")
+val generateScreenUiPack = tasks.register<Exec>("generateScreenUiPack") {
+    group = "build"
+    description = "Generates the standalone VexCore bossbar UI resource pack."
+    inputs.file(screenUiPackGenerator)
+    inputs.dir(screenUiFontDirectory)
+    inputs.dir(screenUiVersionPack)
+    outputs.dir(screenUiPackDirectory)
+    outputs.dir(screenUiMetricsDirectory)
+    val launcher = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }
+    doFirst {
+        // Only these fixed generated-output directories are replaced; removed registrations must not survive.
+        project.delete(screenUiPackDirectory.get().asFile, screenUiMetricsDirectory.get().asFile)
+        commandLine(launcher.get().executablePath.asFile.absolutePath, "-Djava.awt.headless=true",
+            screenUiPackGenerator.asFile.absolutePath, screenUiPackDirectory.get().asFile.absolutePath,
+            screenUiFontDirectory.asFile.absolutePath, screenUiMetricsDirectory.get().asFile.absolutePath,
+            screenUiVersionPack.asFile.absolutePath)
+    }
+}
+val screenUiResourcePack = tasks.register<Zip>("screenUiResourcePack") {
+    group = "build"
+    dependsOn(generateScreenUiPack)
+    from(screenUiPackDirectory)
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    archiveBaseName.set("VexCore-ResourcePack")
+    archiveVersion.set(project.version.toString())
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+tasks.assemble { dependsOn(screenUiResourcePack) }

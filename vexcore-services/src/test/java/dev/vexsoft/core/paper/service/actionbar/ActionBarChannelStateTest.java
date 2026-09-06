@@ -12,6 +12,27 @@ final class ActionBarChannelStateTest {
   private static final long NOW = 1_000L;
 
   @Test
+  void suppressionHidesAllLayersAndRestoresCurrentStateAfterOwnerCleanup() {
+    ActionBarChannelState state = new ActionBarChannelState();
+    ServiceOwner hud = owner("hud");
+    ServiceOwner dialogue = owner("dialogue");
+    ServiceOwner menu = owner("menu");
+    state.setPersistent(hud, "status", Component.text("old"), 0, 1);
+    state.setSuppressed(dialogue, "quest", true);
+    state.showTemporary(hud, "reward", Component.text("reward"), Integer.MAX_VALUE, 2, NOW + 10);
+    state.setPersistent(hud, "status", Component.text("updated"), 0, 3);
+    assertEquals(Component.empty(), state.select(NOW).selected().orElseThrow());
+    state.setSuppressed(menu, "screen", true);
+    state.setSuppressed(dialogue, "quest", false);
+    assertEquals(Component.empty(), state.select(NOW + 20).selected().orElseThrow());
+    state.clear(menu);
+    assertEquals(Component.text("updated"), state.select(NOW + 20).selected().orElseThrow());
+    state.setSuppressed(dialogue, "quest", true);
+    state.clear(dialogue);
+    assertEquals(Component.text("updated"), state.select(NOW + 20).selected().orElseThrow());
+  }
+
+  @Test
   void temporaryLineOverridesAndFallsBackToPersistentLine() {
     ActionBarChannelState state = new ActionBarChannelState();
     ServiceOwner owner = owner("monolith");

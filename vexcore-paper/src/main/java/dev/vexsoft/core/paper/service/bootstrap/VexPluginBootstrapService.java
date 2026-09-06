@@ -1,5 +1,8 @@
 package dev.vexsoft.core.paper.service.bootstrap;
 
+import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
+
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
 import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
@@ -118,6 +121,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
   public void initialize(final VexServiceRegistry services) {
     VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
     checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
+    checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
     checkedServices.register(ScheduleService.class, VexScheduleService.class);
     checkedServices.register(ActionBarService.class, VexActionBarService.class);
     checkedServices.register(SidebarService.class, VexSidebarService.class);
