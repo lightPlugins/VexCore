@@ -1,49 +1,54 @@
 package dev.vexsoft.core.paper.service.screenui;
 
-import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.Dependencies;
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.scheduler.VexTask;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
-import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.TextBlockLayout;
-import dev.vexsoft.core.paper.screenui.UiTexture;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
+import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
-import dev.vexsoft.core.paper.scheduler.VexTask;
-import java.util.Map;
-import java.util.List;
-import java.util.UUID;
-import java.util.Optional;
-import java.util.Objects;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import org.bukkit.entity.Player;
+
 /** One shared bossbar and at most one queued render per player; no periodic idle tasks. */
 @Dependencies({ScheduleService.class, ScreenUiVersionDefinition.class})
-public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorService, AutoCloseable {
+public final class VexScreenUiCoordinatorService
+    implements ScreenUiCoordinatorService, AutoCloseable {
   private final ScheduleService schedules;
   private final ScreenUiVersionDefinition version;
   private final Map<UUID, Session> sessions = new HashMap<>();
   private boolean closed;
+
   public VexScreenUiCoordinatorService(VexServiceRegistry services) {
     schedules = services.require(ScheduleService.class);
     version = services.require(ScreenUiVersionDefinition.class);
   }
 
-  @Override public synchronized ScreenUi open(ServiceOwner owner, Player player, String id) {
+  @Override
+  public synchronized ScreenUi open(ServiceOwner owner, Player player, String id) {
     validId(id);
     Objects.requireNonNull(owner, "owner");
     if (closed || !player.isOnline()) {
       throw new IllegalStateException("UI is unavailable");
     }
 
-    Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session(player));
+    Session session =
+        sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session(player));
     ScreenKey key = new ScreenKey(owner, id);
     Handle existing = session.screens.get(key);
     if (existing != null) {
@@ -59,38 +64,42 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     return handle;
   }
 
-  @Override public void validateDialogueLayout(DialoguePanelLayout layout) {
+  @Override
+  public void validateDialogueLayout(DialoguePanelLayout layout) {
     ScreenUiDialogueLayout.validate(layout, version);
   }
 
-  @Override public PreparedDialogue prepareDialogue(Component speaker, List<Component> paragraphs, DialoguePanelLayout layout) {
+  @Override
+  public PreparedDialogue prepareDialogue(
+      Component speaker, List<Component> paragraphs, DialoguePanelLayout layout) {
     return ScreenUiDialogueLayout.prepare(speaker, paragraphs, layout, version);
   }
 
-  @Override public synchronized Optional<ScreenUi> find(ServiceOwner owner, Player player, String id) {
+  @Override
+  public synchronized Optional<ScreenUi> find(ServiceOwner owner, Player player, String id) {
     Session session = sessions.get(player.getUniqueId());
-    return session == null ? Optional.empty() : Optional.ofNullable(session.screens.get(new ScreenKey(owner, id)));
+    return session == null
+        ? Optional.empty()
+        : Optional.ofNullable(session.screens.get(new ScreenKey(owner, id)));
   }
 
-  @Override public synchronized void closeOwner(ServiceOwner owner) {
+  @Override
+  public synchronized void closeOwner(ServiceOwner owner) {
     for (Session session : List.copyOf(sessions.values())) {
       for (Handle handle : List.copyOf(session.screens.values())) {
         if (handle.key.owner() == owner) {
           handle.close();
         }
-
       }
-
     }
-
   }
 
-  @Override public synchronized void discard(Player player) {
+  @Override
+  public synchronized void discard(Player player) {
     Session session = sessions.get(player.getUniqueId());
     if (session != null && session.player == player) {
       retire(session);
     }
-
   }
 
   private void retire(Session session) {
@@ -103,7 +112,14 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     }
 
     session.task = null;
-    session.screens.values().forEach(handle -> { handle.closed = true; handle.elements.clear(); });
+    session
+        .screens
+        .values()
+        .forEach(
+            handle -> {
+              handle.closed = true;
+              handle.elements.clear();
+            });
     session.screens.clear();
     if (session.shown) {
       session.player.hideBossBar(session.bar);
@@ -112,12 +128,12 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     session.shown = false;
   }
 
-  @Override public synchronized void close() {
+  @Override
+  public synchronized void close() {
     closed = true;
     for (Session session : List.copyOf(sessions.values())) {
       retire(session);
     }
-
   }
 
   private void request(Session session) {
@@ -127,27 +143,26 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
 
     session.pending = true;
     try {
-      var task = schedules.runForLater(session.player, 2, () -> render(session), () -> {
-        synchronized (this) {
-          retire(session); }
-      }
-
-      );
+      var task =
+          schedules.runForLater(
+              session.player,
+              2,
+              () -> render(session),
+              () -> {
+                synchronized (this) {
+                  retire(session);
+                }
+              });
       if (task.isEmpty()) {
         retire(session);
-      }
-
-      else {
+      } else {
         session.task = task.get();
       }
 
-    }
-
-    catch (RuntimeException failure) {
+    } catch (RuntimeException failure) {
       retire(session);
       throw failure;
     }
-
   }
 
   private synchronized void render(Session session) {
@@ -163,9 +178,11 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     }
 
     try {
-      List<Element> elements = session.screens.values().stream()
-      .flatMap(handle -> handle.elements.values().stream())
-      .sorted(Comparator.comparingInt(Element::layer)).toList();
+      List<Element> elements =
+          session.screens.values().stream()
+              .flatMap(handle -> handle.elements.values().stream())
+              .sorted(Comparator.comparingInt(Element::layer))
+              .toList();
       if (elements.isEmpty()) {
         if (session.shown) {
           session.player.hideBossBar(session.bar);
@@ -187,20 +204,16 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         session.shown = true;
       }
 
-    }
-
-    catch (RuntimeException failure) {
+    } catch (RuntimeException failure) {
       retire(session);
       throw failure;
     }
-
   }
 
   private static void validId(String id) {
     if (id == null || !id.matches("[a-zA-Z0-9_.:/-]{1,80}")) {
       throw new IllegalArgumentException("Invalid UI id");
     }
-
   }
 
   private static int cost(Component component) {
@@ -212,23 +225,22 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     return result;
   }
 
-  public record ScreenKey(ServiceOwner owner, String id) {
-  }
+  public record ScreenKey(ServiceOwner owner, String id) {}
 
-  public record Element(int layer, Component rendered, TextBlockLayout textLayout) {
-  }
+  public record Element(int layer, Component rendered, TextBlockLayout textLayout) {}
 
   public static final class Session {
     private final Player player;
     private final Map<ScreenKey, Handle> screens = new LinkedHashMap<>();
-    private final BossBar bar = BossBar.bossBar(Component.empty(), 0, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
+    private final BossBar bar =
+        BossBar.bossBar(Component.empty(), 0, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
     private boolean pending;
     private VexTask task;
     private boolean shown;
+
     private Session(Player player) {
       this.player = player;
     }
-
   }
 
   public final class Handle implements ScreenUi {
@@ -236,6 +248,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     private final ScreenKey key;
     private final Map<String, Element> elements = new LinkedHashMap<>();
     private volatile boolean closed;
+
     private Handle(Session session, ScreenKey key) {
       this.session = session;
       this.key = key;
@@ -259,7 +272,6 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
             count++;
             size += cost(entry.getValue().rendered());
           }
-
         }
 
         if (count >= 128 || size > 16384) {
@@ -269,22 +281,30 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         if (!value.equals(elements.put(id, value))) {
           request(session);
         }
-
       }
-
     }
 
-    @Override public void textBlock(String id, List<Component> lines, TextBlockLayout layout) {
-      put(id, new Element(layout.layer(), ScreenUiRenderer.text(List.copyOf(lines), layout, version), layout));
+    @Override
+    public void textBlock(String id, List<Component> lines, TextBlockLayout layout) {
+      put(
+          id,
+          new Element(
+              layout.layer(), ScreenUiRenderer.text(List.copyOf(lines), layout, version), layout));
     }
 
-    @Override public void textureBlock(String id, UiTexture texture, TextureLayout layout) {
-      put(id, new Element(layout.layer(), ScreenUiRenderer.texture(texture, layout, version), null));
+    @Override
+    public void textureBlock(String id, UiTexture texture, TextureLayout layout) {
+      put(
+          id,
+          new Element(layout.layer(), ScreenUiRenderer.texture(texture, layout, version), null));
     }
 
-    @Override public void setLines(String id, List<Component> lines) {
+    @Override
+    public void setLines(String id, List<Component> lines) {
       synchronized (VexScreenUiCoordinatorService.this) {
-        if (closed) throw new IllegalStateException("UI handle is closed");
+        if (closed) {
+          throw new IllegalStateException("UI handle is closed");
+        }
         Element element = elements.get(id);
         if (element == null || element.textLayout() == null) {
           throw new IllegalArgumentException("No text block " + id);
@@ -292,24 +312,24 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
 
         textBlock(id, lines, element.textLayout());
       }
-
     }
 
-    @Override public void remove(String id) {
+    @Override
+    public void remove(String id) {
       synchronized (VexScreenUiCoordinatorService.this) {
         if (!closed && elements.remove(id) != null) {
           request(session);
         }
-
       }
-
     }
 
-    @Override public boolean isClosed() {
+    @Override
+    public boolean isClosed() {
       return closed;
     }
 
-    @Override public void close() {
+    @Override
+    public void close() {
       synchronized (VexScreenUiCoordinatorService.this) {
         if (closed) {
           return;
@@ -320,16 +340,10 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         session.screens.remove(key, this);
         if (session.screens.isEmpty()) {
           retire(session);
-        }
-
-        else {
+        } else {
           request(session);
         }
-
       }
-
     }
-
   }
-
 }

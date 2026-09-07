@@ -5,7 +5,9 @@ import java.util.Objects;
 import net.kyori.adventure.text.Component;
 
 /** Immutable prepared content; contains no player, task or UI handle. */
-public record PreparedDialogue(Component speaker, List<DialoguePage> pages, DialoguePanelLayout layout) {
+public record PreparedDialogue(
+    Component speaker, List<DialoguePage> pages, DialoguePanelLayout layout) {
+  /** Validates the speaker and layout and copies the prepared pages. */
   public PreparedDialogue {
     Objects.requireNonNull(speaker, "speaker");
     Objects.requireNonNull(layout, "layout");

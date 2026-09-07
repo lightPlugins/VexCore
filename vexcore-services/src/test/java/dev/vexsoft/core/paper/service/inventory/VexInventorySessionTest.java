@@ -41,7 +41,9 @@ class VexInventorySessionTest {
     UUID viewerId = UUID.randomUUID();
     return new VexInventorySession(
         viewerId,
-        new VexInventoryHolder(viewerId, InventoryKey.of("test:current"))
+        new VexInventoryHolder((InventoryService) java.lang.reflect.Proxy.newProxyInstance(
+            InventoryService.class.getClassLoader(), new Class<?>[]{InventoryService.class},
+            (proxy, method, args) -> null), viewerId, InventoryKey.of("test:current"))
     );
   }
 

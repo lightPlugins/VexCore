@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import net.kyori.adventure.text.Component;
 
 /** Default registry-backed reward compiler and executor. */
@@ -41,15 +42,17 @@ public final class VexRewardService implements RewardService {
 
   @Override
   public boolean executeAtomically(
-      final PlayerExecutionContext context, final java.util.function.BooleanSupplier operation
-  ) {
-    return context.player().atomic(value -> transactionMapper.convertValue(value, value.getClass()), operation);
+      final PlayerExecutionContext context, final BooleanSupplier operation) {
+    return context
+        .player()
+        .atomic(value -> transactionMapper.convertValue(value, value.getClass()), operation);
   }
 
   /** Captures the shared component registry. */
   public VexRewardService(final VexServiceRegistry services) {
-    components = Objects.requireNonNull(services, "services")
-        .require(ExecutionComponentCoordinatorService.class);
+    components =
+        Objects.requireNonNull(services, "services")
+            .require(ExecutionComponentCoordinatorService.class);
   }
 
   @Override
@@ -57,9 +60,11 @@ public final class VexRewardService implements RewardService {
     ConfigurationSection checked = Objects.requireNonNull(section, "section");
     List<CompiledRewards.Entry> entries = new ArrayList<>();
     for (String key : checked.getKeys(false)) {
-      Reward reward = components.find(ExecutionComponentKind.REWARD, key)
-          .map(Reward.class::cast)
-          .orElseThrow(() -> new IllegalArgumentException("Unknown reward key: " + key));
+      Reward reward =
+          components
+              .find(ExecutionComponentKind.REWARD, key)
+              .map(Reward.class::cast)
+              .orElseThrow(() -> new IllegalArgumentException("Unknown reward key: " + key));
       try {
         entries.add(new CompiledRewards.Entry(key, reward.compile(checked.get(key))));
       } catch (RuntimeException exception) {
@@ -71,24 +76,21 @@ public final class VexRewardService implements RewardService {
 
   @Override
   public RewardExecutionReport grantActions(
-      final CompiledRewards rewards,
-      final PlayerExecutionContext context
-  ) {
+      final CompiledRewards rewards, final PlayerExecutionContext context) {
     Map<String, RewardResult> results = new LinkedHashMap<>();
     for (CompiledRewards.Entry entry : Objects.requireNonNull(rewards, "rewards").entries()) {
       if (entry.reward().getBehavior() == RewardBehavior.ACTION) {
         RewardResult result = entry.reward().grant(context);
         results.put(uniqueResultKey(results, entry.key()), result);
-        if (result.status() != RewardResult.Status.SUCCESS) break;
+        if (result.status() != RewardResult.Status.SUCCESS) {
+          break;
+        }
       }
     }
     return new RewardExecutionReport(results);
   }
 
-  private static String uniqueResultKey(
-      final Map<String, RewardResult> results,
-      final String key
-  ) {
+  private static String uniqueResultKey(final Map<String, RewardResult> results, final String key) {
     if (!results.containsKey(key)) {
       return key;
     }
@@ -101,8 +103,7 @@ public final class VexRewardService implements RewardService {
 
   @Override
   public RewardContributions calculateContributions(
-      final Collection<RewardInvocation> invocations
-  ) {
+      final Collection<RewardInvocation> invocations) {
     Map<String, RewardContribution> result = new LinkedHashMap<>();
     for (RewardInvocation invocation : Objects.requireNonNull(invocations, "invocations")) {
       for (CompiledRewards.Entry entry : invocation.rewards().entries()) {
@@ -119,20 +120,18 @@ public final class VexRewardService implements RewardService {
 
   @Override
   public List<Component> describe(
-      final CompiledRewards rewards,
-      final PlayerExecutionContext context
-  ) {
+      final CompiledRewards rewards, final PlayerExecutionContext context) {
     return rewards.entries().stream().map(entry -> entry.reward().describe(context)).toList();
   }
 
   @Override
   public List<TypedExecutionDescription> present(
-      final CompiledRewards rewards,
-      final PlayerExecutionContext context
-  ) {
+      final CompiledRewards rewards, final PlayerExecutionContext context) {
     return rewards.entries().stream()
-        .flatMap(entry -> entry.reward().describeEntries(context).stream()
-            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
+        .flatMap(
+            entry ->
+                entry.reward().describeEntries(context).stream()
+                    .map(description -> TypedExecutionDescription.of(entry.key(), description)))
         .toList();
   }
 }

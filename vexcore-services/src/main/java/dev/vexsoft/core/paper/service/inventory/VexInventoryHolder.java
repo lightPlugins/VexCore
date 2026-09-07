@@ -11,6 +11,8 @@ import org.jetbrains.annotations.NotNull;
 
 final class VexInventoryHolder implements InventoryHolder {
 
+  private final InventoryService owner;
+
   @Getter
   private final UUID viewerId;
   @Getter
@@ -18,9 +20,14 @@ final class VexInventoryHolder implements InventoryHolder {
   private InventoryKey inventoryKey;
   private Inventory inventory;
 
-  VexInventoryHolder(final UUID viewerId, final InventoryKey inventoryKey) {
+  VexInventoryHolder(final InventoryService owner, final UUID viewerId, final InventoryKey inventoryKey) {
+    this.owner = Objects.requireNonNull(owner, "owner");
     this.viewerId = Objects.requireNonNull(viewerId, "viewerId");
     this.inventoryKey = Objects.requireNonNull(inventoryKey, "inventoryKey");
+  }
+
+  boolean isOwnedBy(final InventoryService service) {
+    return owner == service;
   }
 
   void attach(final Inventory inventory) {

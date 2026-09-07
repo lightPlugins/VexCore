@@ -7,9 +7,13 @@ import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
-import java.util.Objects;
 import java.lang.reflect.Field;
+import java.util.Objects;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.npc.villager.Villager;
 import org.bukkit.craftbukkit.entity.CraftMob;
 import org.bukkit.entity.Mob;
 
@@ -39,27 +43,21 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
   }
 
   @Override
-  public void addRandomMovement(
-      final Mob mob,
-      final NmsRandomMovementSpec spec
-  ) {
+  public void addRandomMovement(final Mob mob, final NmsRandomMovementSpec spec) {
     CraftMob craftMob = handle(mob);
-    selector(craftMob, GOAL_SELECTOR).addGoal(
-        Objects.requireNonNull(spec, "spec").priority(),
-        new V26_2RandomMovementGoal(craftMob.getHandle(), mob, mob.getPathfinder(), spec)
-    );
+    selector(craftMob, GOAL_SELECTOR)
+        .addGoal(
+            Objects.requireNonNull(spec, "spec").priority(),
+            new V26_2RandomMovementGoal(craftMob.getHandle(), mob, mob.getPathfinder(), spec));
   }
 
   @Override
-  public void addLookAtPlayer(
-      final Mob mob,
-      final NmsLookAtPlayerSpec spec
-  ) {
+  public void addLookAtPlayer(final Mob mob, final NmsLookAtPlayerSpec spec) {
     CraftMob craftMob = handle(mob);
-    selector(craftMob, GOAL_SELECTOR).addGoal(
-        Objects.requireNonNull(spec, "spec").priority(),
-        new V26_2LookAtPlayerGoal(craftMob.getHandle(), mob, mob.getPathfinder(), spec)
-    );
+    selector(craftMob, GOAL_SELECTOR)
+        .addGoal(
+            Objects.requireNonNull(spec, "spec").priority(),
+            new V26_2LookAtPlayerGoal(craftMob.getHandle(), mob, mob.getPathfinder(), spec));
   }
 
   @Override
@@ -83,18 +81,18 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
     return craftMob;
   }
 
-  @SuppressWarnings("unchecked") // The brain belongs to this exact entity; Bukkit erases its subtype.
+  @SuppressWarnings(
+      "unchecked") // The brain belongs to this exact entity; Bukkit erases its subtype.
   private static void clearVanillaBrain(final CraftMob mob) {
     var entity = mob.getHandle();
-    var brain = (net.minecraft.world.entity.ai.Brain<net.minecraft.world.entity.LivingEntity>)
-        entity.getBrain();
-    if (entity.level() instanceof net.minecraft.server.level.ServerLevel level) {
+    var brain = (Brain<LivingEntity>) entity.getBrain();
+    if (entity.level() instanceof ServerLevel level) {
       brain.stopAll(level, entity);
     }
     brain.removeAllBehaviors();
     brain.clearMemories();
     entity.getNavigation().stop();
-    if (entity instanceof net.minecraft.world.entity.npc.villager.Villager villager) {
+    if (entity instanceof Villager villager) {
       // 26.2 tracks appearance finalization separately from profession/type setters.
       villager.setVillagerDataFinalized(true);
     }

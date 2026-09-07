@@ -5,5 +5,6 @@ public enum FakeDisplayKind {
   BLOCK,
   ITEM,
   TEXT,
+  DUMMY,
   INTERACTION
 }

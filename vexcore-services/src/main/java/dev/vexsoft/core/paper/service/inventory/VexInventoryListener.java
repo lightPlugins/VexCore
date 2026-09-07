@@ -6,6 +6,8 @@ import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryView;
 import dev.vexsoft.core.paper.inventory.MutableInventoryView;
+import dev.vexsoft.core.paper.inventory.SlotInventoryView;
+import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Map;
 import java.util.Objects;
 import org.bukkit.entity.Player;
@@ -18,18 +20,20 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-@Dependencies({InventoryService.class})
+@Dependencies({InventoryService.class, ScheduleService.class})
 public final class VexInventoryListener implements Listener {
 
   private final VexInventoryService inventories;
+  private final VexSlotInventoryInteractions slots;
 
   public VexInventoryListener(final VexServiceRegistry services) {
-    InventoryService service = Objects.requireNonNull(services, "services")
-        .require(InventoryService.class);
+    InventoryService service =
+        Objects.requireNonNull(services, "services").require(InventoryService.class);
     if (!(service instanceof VexInventoryService inventoryService)) {
       throw new IllegalStateException("Unsupported InventoryService implementation");
     }
     this.inventories = inventoryService;
+    this.slots = new VexSlotInventoryInteractions(services.require(ScheduleService.class));
   }
 
   @EventHandler(priority = EventPriority.HIGHEST)
@@ -40,18 +44,26 @@ public final class VexInventoryListener implements Listener {
     if (!(event.getView().getTopInventory().getHolder() instanceof VexInventoryHolder holder)) {
       return;
     }
+    // Each plugin has an owner-scoped listener. Foreign menus must be left untouched.
+    if (!holder.isOwnedBy(inventories)) {
+      return;
+    }
     if (!holder.getViewerId().equals(player.getUniqueId())) {
       event.setCancelled(true);
       return;
     }
 
     VexInventorySession session = inventories.getSession(holder.getViewerId());
-    if (session == null || session.getCurrentView() == null) {
+    if (session == null || session.getHolder() != holder || session.getCurrentView() == null) {
       event.setCancelled(true);
       return;
     }
     InventoryView view = session.getCurrentView();
     InventoryContext context = inventories.createContext(player);
+    if (view instanceof SlotInventoryView slotView) {
+      slots.click(context, slotView, session.getRenderedElements(), event);
+      return;
+    }
     if (view instanceof MutableInventoryView mutableView) {
       mutableView.onInventoryClick(context, event);
       return;
@@ -77,13 +89,21 @@ public final class VexInventoryListener implements Listener {
     if (!(event.getView().getTopInventory().getHolder() instanceof VexInventoryHolder holder)) {
       return;
     }
-    if (!(event.getWhoClicked() instanceof Player player)) {
+    if (!holder.isOwnedBy(inventories)) {
+      return;
+    }
+    if (!(event.getWhoClicked() instanceof Player player)
+        || !holder.getViewerId().equals(player.getUniqueId())) {
       event.setCancelled(true);
       return;
     }
     VexInventorySession session = inventories.getSession(holder.getViewerId());
-    if (session == null || session.getCurrentView() == null) {
+    if (session == null || session.getHolder() != holder || session.getCurrentView() == null) {
       event.setCancelled(true);
+      return;
+    }
+    if (session.getCurrentView() instanceof SlotInventoryView slotView) {
+      slots.drag(inventories.createContext(player), slotView, session.getRenderedElements(), event);
       return;
     }
     if (session.getCurrentView() instanceof MutableInventoryView mutableView) {
@@ -99,12 +119,16 @@ public final class VexInventoryListener implements Listener {
       return;
     }
     if (event.getView().getTopInventory().getHolder() instanceof VexInventoryHolder holder) {
+      if (holder.isOwnedBy(inventories)) {
+        slots.cancel(player.getUniqueId());
+      }
       inventories.handleClose(player, holder);
     }
   }
 
   @EventHandler
   public void onQuit(final PlayerQuitEvent event) {
+    slots.cancel(event.getPlayer().getUniqueId());
     inventories.handleQuit(event.getPlayer());
   }
 }

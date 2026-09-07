@@ -3,17 +3,17 @@ package dev.vexsoft.core.common.data;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.vexsoft.core.api.player.DataContainerKey;
+import dev.vexsoft.core.api.player.identity.PlayerIdentity;
 import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
-import dev.vexsoft.core.api.player.identity.PlayerIdentity;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
-import java.time.Instant;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,19 +21,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.postgresql.PGConnection;
 import org.postgresql.PGNotification;
 import org.postgresql.ds.PGSimpleDataSource;
 
-public final class PostgresPlayerDataStore implements
-    PlayerDataStore,
-    GlobalDataStore,
-    PlayerIdentityStore {
+public final class PostgresPlayerDataStore
+    implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore {
 
   private static final String GLOBAL_DATA_TABLE = "\"vex_global_data\"";
   private static final String GLOBAL_DATA_CHANNEL = "vex_global_data";
@@ -53,8 +51,7 @@ public final class PostgresPlayerDataStore implements
       final String password,
       final int maximumPoolSize,
       final boolean autoCreateDatabase,
-      final String maintenanceDatabase
-  ) {
+      final String maintenanceDatabase) {
     PGSimpleDataSource postgres = new PGSimpleDataSource();
     postgres.setURL(Objects.requireNonNull(jdbcUrl, "jdbcUrl"));
     postgres.setUser(Objects.requireNonNull(username, "username"));
@@ -65,8 +62,7 @@ public final class PostgresPlayerDataStore implements
           jdbcUrl,
           username,
           password,
-          Objects.requireNonNull(maintenanceDatabase, "maintenanceDatabase")
-      );
+          Objects.requireNonNull(maintenanceDatabase, "maintenanceDatabase"));
     }
 
     HikariConfig config = new HikariConfig();
@@ -84,8 +80,7 @@ public final class PostgresPlayerDataStore implements
       final String jdbcUrl,
       final String username,
       final String password,
-      final String maintenanceDatabase
-  ) {
+      final String maintenanceDatabase) {
     String database = target.getDatabaseName();
     if (database == null || database.isBlank()) {
       throw new IllegalArgumentException("PostgreSQL JDBC URL does not contain a database name");
@@ -110,17 +105,17 @@ public final class PostgresPlayerDataStore implements
       }
     } catch (SQLException exception) {
       throw new IllegalStateException(
-          "Unable to create PostgreSQL database '" + database
+          "Unable to create PostgreSQL database '"
+              + database
               + "'. Grant CREATE DATABASE or disable postgresql.auto-create-database",
-          exception
-      );
+          exception);
     }
   }
 
-  private boolean databaseExists(final Connection connection, final String database) throws SQLException {
-    try (PreparedStatement statement = connection.prepareStatement(
-        "SELECT 1 FROM pg_database WHERE datname = ?"
-    )) {
+  private boolean databaseExists(final Connection connection, final String database)
+      throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement("SELECT 1 FROM pg_database WHERE datname = ?")) {
       statement.setString(1, database);
       try (ResultSet result = statement.executeQuery()) {
         return result.next();
@@ -152,273 +147,310 @@ public final class PostgresPlayerDataStore implements
 
   @Override
   public CompletableFuture<Void> reconcile(
-      final String owner,
-      final Collection<DataContainerKey<?>> keys
-  ) {
+      final String owner, final Collection<DataContainerKey<?>> keys) {
     String table = table(owner);
-    return CompletableFuture.runAsync(() -> {
-      try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-        statement.executeUpdate(
-            "CREATE TABLE IF NOT EXISTS " + table
-                + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL)"
-        );
-        for (DataContainerKey<?> key : keys) {
-          // Nullable columns let existing rows receive the Java default on their next load
-          statement.executeUpdate(
-              "ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS " + column(key.getName()) + " JSONB"
-          );
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to reconcile player data table " + table, exception);
-      }
-    }, executor);
+    return CompletableFuture.runAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS "
+                    + table
+                    + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL)");
+            for (DataContainerKey<?> key : keys) {
+              // Nullable columns let existing rows receive the Java default on their next load
+              statement.executeUpdate(
+                  "ALTER TABLE "
+                      + table
+                      + " ADD COLUMN IF NOT EXISTS "
+                      + column(key.getName())
+                      + " JSONB");
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to reconcile player data table " + table, exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Map<String, String>> load(
-      final String owner,
-      final UUID uniqueId,
-      final Collection<DataContainerKey<?>> keys
-  ) {
+      final String owner, final UUID uniqueId, final Collection<DataContainerKey<?>> keys) {
     if (keys.isEmpty()) {
       return CompletableFuture.completedFuture(Map.of());
     }
-    String selectedColumns = keys.stream()
-        .map(key -> column(key.getName()))
-        .reduce((left, right) -> left + ", " + right)
-        .orElseThrow();
+    String selectedColumns =
+        keys.stream()
+            .map(key -> column(key.getName()))
+            .reduce((left, right) -> left + ", " + right)
+            .orElseThrow();
     String sql = "SELECT " + selectedColumns + " FROM " + table(owner) + " WHERE player_id = ?";
-    return CompletableFuture.supplyAsync(() -> {
-      Map<String, String> values = new LinkedHashMap<>();
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setObject(1, uniqueId);
-        try (ResultSet result = statement.executeQuery()) {
-          if (result.next()) {
-            for (DataContainerKey<?> key : keys) {
-              String json = result.getString(key.getName());
-              if (json != null) {
-                values.put(key.getName(), json);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          Map<String, String> values = new LinkedHashMap<>();
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, uniqueId);
+            try (ResultSet result = statement.executeQuery()) {
+              if (result.next()) {
+                for (DataContainerKey<?> key : keys) {
+                  String json = result.getString(key.getName());
+                  if (json != null) {
+                    values.put(key.getName(), json);
+                  }
+                }
               }
             }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to load player data for " + uniqueId, exception);
           }
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to load player data for " + uniqueId, exception);
-      }
-      return Map.copyOf(values);
-    }, executor);
+          return Map.copyOf(values);
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Void> save(
-      final String owner, final UUID uniqueId, final String playerName, final Map<String, String> values
-  ) {
+      final String owner,
+      final UUID uniqueId,
+      final String playerName,
+      final Map<String, String> values) {
     return saveAllOwners(uniqueId, playerName, Map.of(owner, values));
   }
 
   @Override
   public CompletableFuture<Void> saveAllOwners(
-      final UUID uniqueId, final String playerName, final Map<String, Map<String, String>> owners
-  ) {
+      final UUID uniqueId, final String playerName, final Map<String, Map<String, String>> owners) {
     Map<String, Map<String, String>> checked = new LinkedHashMap<>();
-    owners.forEach((owner, values) -> {
-      if (!values.isEmpty()) checked.put(owner, Map.copyOf(values));
-    });
-    if (checked.isEmpty()) return CompletableFuture.completedFuture(null);
-    return CompletableFuture.runAsync(() -> {
-      try (Connection connection = dataSource.getConnection()) {
-        connection.setAutoCommit(false);
-        try {
-          for (var owner : checked.entrySet()) {
-            writeOwner(connection, owner.getKey(), uniqueId, playerName, owner.getValue());
+    owners.forEach(
+        (owner, values) -> {
+          if (!values.isEmpty()) {
+            checked.put(owner, Map.copyOf(values));
           }
-          connection.commit();
-        } catch (SQLException | RuntimeException failure) {
-          try { connection.rollback(); }
-          catch (SQLException rollbackFailure) { failure.addSuppressed(rollbackFailure); }
-          throw failure;
-        }
-      } catch (SQLException failure) {
-        throw new IllegalStateException("Unable to save player data transaction for " + uniqueId, failure);
-      }
-    }, executor);
+        });
+    if (checked.isEmpty()) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return CompletableFuture.runAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+              for (var owner : checked.entrySet()) {
+                writeOwner(connection, owner.getKey(), uniqueId, playerName, owner.getValue());
+              }
+              connection.commit();
+            } catch (SQLException | RuntimeException failure) {
+              try {
+                connection.rollback();
+              } catch (SQLException rollbackFailure) {
+                failure.addSuppressed(rollbackFailure);
+              }
+              throw failure;
+            }
+          } catch (SQLException failure) {
+            throw new IllegalStateException(
+                "Unable to save player data transaction for " + uniqueId, failure);
+          }
+        },
+        executor);
   }
 
   private void writeOwner(
-      final Connection connection, final String owner, final UUID uniqueId,
-      final String playerName, final Map<String, String> values
-  ) throws SQLException {
-    String columns = values.keySet().stream().map(PostgresPlayerDataStore::column)
-        .reduce((left, right) -> left + ", " + right).orElseThrow();
-    String placeholders = values.keySet().stream().map(ignored -> "?::jsonb")
-        .reduce((left, right) -> left + ", " + right).orElseThrow();
-    String updates = values.keySet().stream().map(key -> column(key) + " = excluded." + column(key))
-        .reduce((left, right) -> left + ", " + right).orElseThrow();
-    String sql = "INSERT INTO " + table(owner) + " (player_id, player_name, " + columns
-        + ") VALUES (?, ?, " + placeholders + ") ON CONFLICT(player_id) DO UPDATE SET "
-        + "player_name = excluded.player_name, " + updates;
+      final Connection connection,
+      final String owner,
+      final UUID uniqueId,
+      final String playerName,
+      final Map<String, String> values)
+      throws SQLException {
+    String columns =
+        values.keySet().stream()
+            .map(PostgresPlayerDataStore::column)
+            .reduce((left, right) -> left + ", " + right)
+            .orElseThrow();
+    String placeholders =
+        values.keySet().stream()
+            .map(ignored -> "?::jsonb")
+            .reduce((left, right) -> left + ", " + right)
+            .orElseThrow();
+    String updates =
+        values.keySet().stream()
+            .map(key -> column(key) + " = excluded." + column(key))
+            .reduce((left, right) -> left + ", " + right)
+            .orElseThrow();
+    String sql =
+        "INSERT INTO "
+            + table(owner)
+            + " (player_id, player_name, "
+            + columns
+            + ") VALUES (?, ?, "
+            + placeholders
+            + ") ON CONFLICT(player_id) DO UPDATE SET "
+            + "player_name = excluded.player_name, "
+            + updates;
     try (PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setObject(1, uniqueId);
       statement.setString(2, playerName);
       int index = 3;
-      for (String value : values.values()) statement.setString(index++, value);
+      for (String value : values.values()) {
+        statement.setString(index++, value);
+      }
       statement.executeUpdate();
     }
   }
+
   @Override
   public CompletableFuture<Integer> reset(
-      final String owner,
-      final UUID uniqueId,
-      final Collection<String> containers
-  ) {
+      final String owner, final UUID uniqueId, final Collection<String> containers) {
     Objects.requireNonNull(uniqueId, "uniqueId");
     if (containers.isEmpty()) {
       return CompletableFuture.completedFuture(0);
     }
-    String sql = "UPDATE " + table(owner) + " SET " + resetAssignments(containers)
-        + " WHERE player_id = ?";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setObject(1, uniqueId);
-        return statement.executeUpdate();
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to reset player data for " + uniqueId, exception);
-      }
-    }, executor);
+    String sql =
+        "UPDATE " + table(owner) + " SET " + resetAssignments(containers) + " WHERE player_id = ?";
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, uniqueId);
+            return statement.executeUpdate();
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to reset player data for " + uniqueId, exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Integer> resetAll(
-      final String owner,
-      final Collection<String> containers
-  ) {
+      final String owner, final Collection<String> containers) {
     if (containers.isEmpty()) {
       return CompletableFuture.completedFuture(0);
     }
     String sql = "UPDATE " + table(owner) + " SET " + resetAssignments(containers);
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        return statement.executeUpdate();
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to reset player data table " + table(owner), exception);
-      }
-    }, executor);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            return statement.executeUpdate();
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to reset player data table " + table(owner), exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Optional<UUID>> findUniqueId(
-      final String owner,
-      final String playerName
-  ) {
-    String sql = "SELECT player_id FROM " + table(owner)
-        + " WHERE LOWER(player_name) = LOWER(?) LIMIT 1";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setString(1, playerName);
-        try (ResultSet result = statement.executeQuery()) {
-          return result.next()
-              ? Optional.of(result.getObject("player_id", UUID.class))
-              : Optional.empty();
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to resolve stored player " + playerName, exception);
-      }
-    }, executor);
+      final String owner, final String playerName) {
+    String sql =
+        "SELECT player_id FROM " + table(owner) + " WHERE LOWER(player_name) = LOWER(?) LIMIT 1";
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, playerName);
+            try (ResultSet result = statement.executeQuery()) {
+              return result.next()
+                  ? Optional.of(result.getObject("player_id", UUID.class))
+                  : Optional.empty();
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to resolve stored player " + playerName, exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Void> reconcileGlobalData() {
-    return CompletableFuture.runAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           Statement statement = connection.createStatement()) {
-        statement.executeUpdate(
-            "CREATE TABLE IF NOT EXISTS " + GLOBAL_DATA_TABLE
-                + " (owner VARCHAR(63) NOT NULL, data_key VARCHAR(63) NOT NULL,"
-                + " value JSONB NOT NULL, revision BIGINT NOT NULL,"
-                + " updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                + " PRIMARY KEY (owner, data_key))"
-        );
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to reconcile global data storage", exception);
-      }
-    }, executor);
+    return CompletableFuture.runAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS "
+                    + GLOBAL_DATA_TABLE
+                    + " (owner VARCHAR(63) NOT NULL, data_key VARCHAR(63) NOT NULL,"
+                    + " value JSONB NOT NULL, revision BIGINT NOT NULL,"
+                    + " updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                    + " PRIMARY KEY (owner, data_key))");
+          } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to reconcile global data storage", exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Optional<StoredGlobalData>> loadGlobalData(
-      final String owner,
-      final String key
-  ) {
-    String sql = "SELECT value, revision FROM " + GLOBAL_DATA_TABLE
-        + " WHERE owner = ? AND data_key = ?";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setString(1, owner);
-        statement.setString(2, key);
-        try (ResultSet result = statement.executeQuery()) {
-          if (!result.next()) {
-            return Optional.empty();
+      final String owner, final String key) {
+    String sql =
+        "SELECT value, revision FROM " + GLOBAL_DATA_TABLE + " WHERE owner = ? AND data_key = ?";
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, owner);
+            statement.setString(2, key);
+            try (ResultSet result = statement.executeQuery()) {
+              if (!result.next()) {
+                return Optional.empty();
+              }
+              return Optional.of(
+                  new StoredGlobalData(result.getString("value"), result.getLong("revision")));
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to load global data " + owner + ':' + key, exception);
           }
-          return Optional.of(new StoredGlobalData(
-              result.getString("value"),
-              result.getLong("revision")
-          ));
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException(
-            "Unable to load global data " + owner + ':' + key,
-            exception
-        );
-      }
-    }, executor);
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<StoredGlobalData> setGlobalData(
-      final String owner,
-      final String key,
-      final String value
-  ) {
-    String sql = "INSERT INTO " + GLOBAL_DATA_TABLE
-        + " (owner, data_key, value, revision) VALUES (?, ?, ?::jsonb, 1)"
-        + " ON CONFLICT (owner, data_key) DO UPDATE SET value = EXCLUDED.value,"
-        + " revision = " + GLOBAL_DATA_TABLE + ".revision + 1,"
-        + " updated_at = CURRENT_TIMESTAMP RETURNING revision";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setString(1, owner);
-        statement.setString(2, key);
-        statement.setString(3, value);
-        try (ResultSet result = statement.executeQuery()) {
-          if (!result.next()) {
-            throw new IllegalStateException("PostgreSQL did not return a global data revision");
+      final String owner, final String key, final String value) {
+    String sql =
+        "INSERT INTO "
+            + GLOBAL_DATA_TABLE
+            + " (owner, data_key, value, revision) VALUES (?, ?, ?::jsonb, 1)"
+            + " ON CONFLICT (owner, data_key) DO UPDATE SET value = EXCLUDED.value,"
+            + " revision = "
+            + GLOBAL_DATA_TABLE
+            + ".revision + 1,"
+            + " updated_at = CURRENT_TIMESTAMP RETURNING revision";
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, owner);
+            statement.setString(2, key);
+            statement.setString(3, value);
+            try (ResultSet result = statement.executeQuery()) {
+              if (!result.next()) {
+                throw new IllegalStateException("PostgreSQL did not return a global data revision");
+              }
+              StoredGlobalData stored = new StoredGlobalData(value, result.getLong(1));
+              publishGlobalChange(connection, owner, key);
+              return stored;
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to store global data " + owner + ':' + key, exception);
           }
-          StoredGlobalData stored = new StoredGlobalData(value, result.getLong(1));
-          publishGlobalChange(connection, owner, key);
-          return stored;
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException(
-            "Unable to store global data " + owner + ':' + key,
-            exception
-        );
-      }
-    }, executor);
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<Optional<StoredGlobalData>> compareAndSetGlobalData(
-      final String owner,
-      final String key,
-      final long expectedRevision,
-      final String value
-  ) {
+      final String owner, final String key, final long expectedRevision, final String value) {
     return expectedRevision == 0
         ? insertInitialGlobalData(owner, key, value)
         : updateExistingGlobalData(owner, key, expectedRevision, value);
@@ -427,29 +459,27 @@ public final class PostgresPlayerDataStore implements
   @Override
   public CompletableFuture<Boolean> resetGlobalData(final String owner, final String key) {
     String sql = "DELETE FROM " + GLOBAL_DATA_TABLE + " WHERE owner = ? AND data_key = ?";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setString(1, owner);
-        statement.setString(2, key);
-        boolean removed = statement.executeUpdate() > 0;
-        if (removed) {
-          publishGlobalChange(connection, owner, key);
-        }
-        return removed;
-      } catch (SQLException exception) {
-        throw new IllegalStateException(
-            "Unable to reset global data " + owner + ':' + key,
-            exception
-        );
-      }
-    }, executor);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, owner);
+            statement.setString(2, key);
+            boolean removed = statement.executeUpdate() > 0;
+            if (removed) {
+              publishGlobalChange(connection, owner, key);
+            }
+            return removed;
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to reset global data " + owner + ':' + key, exception);
+          }
+        },
+        executor);
   }
 
   @Override
-  public AutoCloseable subscribeGlobalDataChanges(
-      final Consumer<GlobalDataReference> listener
-  ) {
+  public AutoCloseable subscribeGlobalDataChanges(final Consumer<GlobalDataReference> listener) {
     Consumer<GlobalDataReference> checkedListener = Objects.requireNonNull(listener, "listener");
     globalListeners.add(checkedListener);
     startGlobalDataListener();
@@ -458,69 +488,73 @@ public final class PostgresPlayerDataStore implements
 
   @Override
   public CompletableFuture<Void> reconcilePlayerIdentities() {
-    return CompletableFuture.runAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           Statement statement = connection.createStatement()) {
-        statement.executeUpdate(
-            "CREATE TABLE IF NOT EXISTS " + PLAYER_IDENTITIES_TABLE
-                + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL,"
-                + " updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-        );
-        statement.executeUpdate(
-            "CREATE INDEX IF NOT EXISTS \"vex_player_identities_name_idx\" ON "
-                + PLAYER_IDENTITIES_TABLE + " (LOWER(player_name))"
-        );
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to reconcile player identity storage", exception);
-      }
-    }, executor);
+    return CompletableFuture.runAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS "
+                    + PLAYER_IDENTITIES_TABLE
+                    + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL,"
+                    + " updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+            statement.executeUpdate(
+                "CREATE INDEX IF NOT EXISTS \"vex_player_identities_name_idx\" ON "
+                    + PLAYER_IDENTITIES_TABLE
+                    + " (LOWER(player_name))");
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to reconcile player identity storage", exception);
+          }
+        },
+        executor);
   }
 
   @Override
   public CompletableFuture<PlayerIdentity> recordPlayerIdentity(
-      final UUID uniqueId,
-      final String name
-  ) {
-    String sql = "INSERT INTO " + PLAYER_IDENTITIES_TABLE
-        + " (player_id, player_name) VALUES (?, ?)"
-        + " ON CONFLICT (player_id) DO UPDATE SET player_name = EXCLUDED.player_name,"
-        + " updated_at = CURRENT_TIMESTAMP RETURNING updated_at";
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        statement.setObject(1, uniqueId);
-        statement.setString(2, name);
-        try (ResultSet result = statement.executeQuery()) {
-          if (!result.next()) {
-            throw new IllegalStateException("PostgreSQL did not return the identity timestamp");
+      final UUID uniqueId, final String name) {
+    String sql =
+        "INSERT INTO "
+            + PLAYER_IDENTITIES_TABLE
+            + " (player_id, player_name) VALUES (?, ?)"
+            + " ON CONFLICT (player_id) DO UPDATE SET player_name = EXCLUDED.player_name,"
+            + " updated_at = CURRENT_TIMESTAMP RETURNING updated_at";
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setObject(1, uniqueId);
+            statement.setString(2, name);
+            try (ResultSet result = statement.executeQuery()) {
+              if (!result.next()) {
+                throw new IllegalStateException("PostgreSQL did not return the identity timestamp");
+              }
+              Instant updatedAt = result.getTimestamp(1).toInstant();
+              return new PlayerIdentity(uniqueId, name, updatedAt);
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to record player identity " + uniqueId, exception);
           }
-          Instant updatedAt = result.getTimestamp(1).toInstant();
-          return new PlayerIdentity(uniqueId, name, updatedAt);
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to record player identity " + uniqueId, exception);
-      }
-    }, executor);
+        },
+        executor);
   }
 
   @Override
-  public CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(
-      final UUID uniqueId
-  ) {
+  public CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(final UUID uniqueId) {
     return findPlayerIdentity(
-        "SELECT player_id, player_name, updated_at FROM " + PLAYER_IDENTITIES_TABLE
+        "SELECT player_id, player_name, updated_at FROM "
+            + PLAYER_IDENTITIES_TABLE
             + " WHERE player_id = ?",
-        statement -> statement.setObject(1, uniqueId)
-    );
+        statement -> statement.setObject(1, uniqueId));
   }
 
   @Override
   public CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(final String name) {
     return findPlayerIdentity(
-        "SELECT player_id, player_name, updated_at FROM " + PLAYER_IDENTITIES_TABLE
+        "SELECT player_id, player_name, updated_at FROM "
+            + PLAYER_IDENTITIES_TABLE
             + " WHERE LOWER(player_name) = LOWER(?) ORDER BY updated_at DESC LIMIT 1",
-        statement -> statement.setString(1, name)
-    );
+        statement -> statement.setString(1, name));
   }
 
   @Override
@@ -536,25 +570,22 @@ public final class PostgresPlayerDataStore implements
   }
 
   private CompletableFuture<Optional<StoredGlobalData>> insertInitialGlobalData(
-      final String owner,
-      final String key,
-      final String value
-  ) {
-    String sql = "INSERT INTO " + GLOBAL_DATA_TABLE
-        + " (owner, data_key, value, revision) VALUES (?, ?, ?::jsonb, 1)"
-        + " ON CONFLICT (owner, data_key) DO NOTHING RETURNING revision";
+      final String owner, final String key, final String value) {
+    String sql =
+        "INSERT INTO "
+            + GLOBAL_DATA_TABLE
+            + " (owner, data_key, value, revision) VALUES (?, ?, ?::jsonb, 1)"
+            + " ON CONFLICT (owner, data_key) DO NOTHING RETURNING revision";
     return writeComparedGlobalData(sql, owner, key, 0, value);
   }
 
   private CompletableFuture<Optional<StoredGlobalData>> updateExistingGlobalData(
-      final String owner,
-      final String key,
-      final long expectedRevision,
-      final String value
-  ) {
-    String sql = "UPDATE " + GLOBAL_DATA_TABLE
-        + " SET value = ?::jsonb, revision = revision + 1, updated_at = CURRENT_TIMESTAMP"
-        + " WHERE owner = ? AND data_key = ? AND revision = ? RETURNING revision";
+      final String owner, final String key, final long expectedRevision, final String value) {
+    String sql =
+        "UPDATE "
+            + GLOBAL_DATA_TABLE
+            + " SET value = ?::jsonb, revision = revision + 1, updated_at = CURRENT_TIMESTAMP"
+            + " WHERE owner = ? AND data_key = ? AND revision = ? RETURNING revision";
     return writeComparedGlobalData(sql, owner, key, expectedRevision, value);
   }
 
@@ -563,43 +594,39 @@ public final class PostgresPlayerDataStore implements
       final String owner,
       final String key,
       final long expectedRevision,
-      final String value
-  ) {
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        if (expectedRevision == 0) {
-          statement.setString(1, owner);
-          statement.setString(2, key);
-          statement.setString(3, value);
-        } else {
-          statement.setString(1, value);
-          statement.setString(2, owner);
-          statement.setString(3, key);
-          statement.setLong(4, expectedRevision);
-        }
-        try (ResultSet result = statement.executeQuery()) {
-          if (!result.next()) {
-            return Optional.empty();
+      final String value) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (expectedRevision == 0) {
+              statement.setString(1, owner);
+              statement.setString(2, key);
+              statement.setString(3, value);
+            } else {
+              statement.setString(1, value);
+              statement.setString(2, owner);
+              statement.setString(3, key);
+              statement.setLong(4, expectedRevision);
+            }
+            try (ResultSet result = statement.executeQuery()) {
+              if (!result.next()) {
+                return Optional.empty();
+              }
+              StoredGlobalData stored = new StoredGlobalData(value, result.getLong(1));
+              publishGlobalChange(connection, owner, key);
+              return Optional.of(stored);
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Unable to update global data " + owner + ':' + key, exception);
           }
-          StoredGlobalData stored = new StoredGlobalData(value, result.getLong(1));
-          publishGlobalChange(connection, owner, key);
-          return Optional.of(stored);
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException(
-            "Unable to update global data " + owner + ':' + key,
-            exception
-        );
-      }
-    }, executor);
+        },
+        executor);
   }
 
   private void publishGlobalChange(
-      final Connection connection,
-      final String owner,
-      final String key
-  ) throws SQLException {
+      final Connection connection, final String owner, final String key) throws SQLException {
     try (PreparedStatement notification = connection.prepareStatement("SELECT pg_notify(?, ?)")) {
       notification.setString(1, GLOBAL_DATA_CHANNEL);
       notification.setString(2, owner + '\n' + key);
@@ -611,15 +638,16 @@ public final class PostgresPlayerDataStore implements
     if (!globalListenerStarted.compareAndSet(false, true)) {
       return;
     }
-    globalListenerThread = Thread.ofVirtual()
-        .name("VexCore-GlobalData-Listener")
-        .start(this::listenForGlobalDataChanges);
+    globalListenerThread =
+        Thread.ofVirtual()
+            .name("VexCore-GlobalData-Listener")
+            .start(this::listenForGlobalDataChanges);
   }
 
   private void listenForGlobalDataChanges() {
     while (!closed.get()) {
       try (Connection connection = dataSource.getConnection();
-           Statement statement = connection.createStatement()) {
+          Statement statement = connection.createStatement()) {
         statement.execute("LISTEN " + GLOBAL_DATA_CHANNEL);
         PGConnection postgres = connection.unwrap(PGConnection.class);
         while (!closed.get()) {
@@ -644,10 +672,8 @@ public final class PostgresPlayerDataStore implements
     if (separator <= 0 || separator == payload.length() - 1) {
       return;
     }
-    GlobalDataReference reference = new GlobalDataReference(
-        payload.substring(0, separator),
-        payload.substring(separator + 1)
-    );
+    GlobalDataReference reference =
+        new GlobalDataReference(payload.substring(0, separator), payload.substring(separator + 1));
     globalListeners.forEach(listener -> listener.accept(reference));
   }
 
@@ -660,27 +686,27 @@ public final class PostgresPlayerDataStore implements
   }
 
   private CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(
-      final String sql,
-      final SqlStatementBinder binder
-  ) {
-    return CompletableFuture.supplyAsync(() -> {
-      try (Connection connection = dataSource.getConnection();
-           PreparedStatement statement = connection.prepareStatement(sql)) {
-        binder.bind(statement);
-        try (ResultSet result = statement.executeQuery()) {
-          if (!result.next()) {
-            return Optional.empty();
+      final String sql, final SqlStatementBinder binder) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try (Connection connection = dataSource.getConnection();
+              PreparedStatement statement = connection.prepareStatement(sql)) {
+            binder.bind(statement);
+            try (ResultSet result = statement.executeQuery()) {
+              if (!result.next()) {
+                return Optional.empty();
+              }
+              return Optional.of(
+                  new PlayerIdentity(
+                      result.getObject("player_id", UUID.class),
+                      result.getString("player_name"),
+                      result.getTimestamp("updated_at").toInstant()));
+            }
+          } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to find a stored player identity", exception);
           }
-          return Optional.of(new PlayerIdentity(
-              result.getObject("player_id", UUID.class),
-              result.getString("player_name"),
-              result.getTimestamp("updated_at").toInstant()
-          ));
-        }
-      } catch (SQLException exception) {
-        throw new IllegalStateException("Unable to find a stored player identity", exception);
-      }
-    }, executor);
+        },
+        executor);
   }
 
   @FunctionalInterface

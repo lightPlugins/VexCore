@@ -45,15 +45,33 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
       final int size,
       final PageBounds bounds,
       final PageSource<T> source,
-      final PageItemRenderer<T> itemRenderer
-  ) {
+      final PageItemRenderer<T> itemRenderer) {
     super(services, key, size);
     this.bounds = Objects.requireNonNull(bounds, "bounds");
     this.source = Objects.requireNonNull(source, "source");
-    this.itemRenderer = Objects.requireNonNull(itemRenderer, "itemRenderer");
+    this.itemRenderer = itemRenderer;
     if (bounds.getSlots().stream().anyMatch(slot -> slot >= size)) {
       throw new IllegalArgumentException("page bounds contain a slot outside the inventory");
     }
+  }
+
+  /** Creates a page whose subclass renders entries through renderPageItem. */
+  protected PagedInventoryView(
+      final VexServiceRegistry services,
+      final InventoryKey key,
+      final int size,
+      final PageBounds bounds,
+      final PageSource<T> source) {
+    this(services, key, size, bounds, source, null);
+  }
+
+  /** Renders one entry. Override when using the constructor without a renderer. */
+  protected InventoryElement renderPageItem(
+      final InventoryContext context, final T item, final int absoluteIndex) {
+    if (itemRenderer == null) {
+      throw new IllegalStateException("Override renderPageItem or supply a page renderer");
+    }
+    return itemRenderer.render(context, item, absoluteIndex);
   }
 
   /** Returns the current zero-based page index. */
@@ -99,10 +117,9 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
     for (int localIndex = 0; localIndex < bounds.getCapacity(); localIndex++) {
       int absoluteIndex = page * bounds.getCapacity() + localIndex;
       if (absoluteIndex < items.size()) {
-        InventoryElement element = Objects.requireNonNull(
-            itemRenderer.render(context, items.get(absoluteIndex), absoluteIndex),
-            "page element"
-        );
+        InventoryElement element =
+            Objects.requireNonNull(
+                renderPageItem(context, items.get(absoluteIndex), absoluteIndex), "page element");
         elements.put(bounds.getSlot(localIndex), element);
       }
     }
@@ -112,28 +129,20 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
           previousSlot,
           previousElement == null
               ? new PreviousPageInventoryElement(this::previousPage)
-              : previousElement
-      );
+              : previousElement);
     }
     if (nextSlot != null) {
       elements.put(
           nextSlot,
-          nextElement == null
-              ? new NextPageInventoryElement(this::nextPage)
-              : nextElement
-      );
+          nextElement == null ? new NextPageInventoryElement(this::nextPage) : nextElement);
     }
     if (refreshSlot != null) {
-      elements.put(
-          refreshSlot,
-          refreshElement == null ? createRefreshElement() : refreshElement
-      );
+      elements.put(refreshSlot, refreshElement == null ? createRefreshElement() : refreshElement);
     }
     if (indicatorSlot != null) {
       elements.put(
           indicatorSlot,
-          indicatorElement == null ? createIndicatorElement(items) : indicatorElement
-      );
+          indicatorElement == null ? createIndicatorElement(items) : indicatorElement);
     }
     return elements;
   }
@@ -153,9 +162,7 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
   }
 
   protected final void setPreviousButton(
-      final int slot,
-      final Function<InventoryContext, ItemStack> itemProvider
-  ) {
+      final int slot, final Function<InventoryContext, ItemStack> itemProvider) {
     previousSlot = slot;
     previousElement = new PreviousPageInventoryElement(itemProvider, this::previousPage);
   }
@@ -176,9 +183,7 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
   }
 
   protected final void setNextButton(
-      final int slot,
-      final Function<InventoryContext, ItemStack> itemProvider
-  ) {
+      final int slot, final Function<InventoryContext, ItemStack> itemProvider) {
     nextSlot = slot;
     nextElement = new NextPageInventoryElement(itemProvider, this::nextPage);
   }
@@ -198,9 +203,7 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
   }
 
   protected final void setRefreshButton(
-      final int slot,
-      final Function<InventoryContext, ItemStack> itemProvider
-  ) {
+      final int slot, final Function<InventoryContext, ItemStack> itemProvider) {
     refreshSlot = slot;
     refreshElement = createRefreshElement(itemProvider);
   }
@@ -227,14 +230,12 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
   }
 
   protected final void setPageIndicator(
-      final int slot,
-      final Function<InventoryContext, ItemStack> itemProvider
-  ) {
+      final int slot, final Function<InventoryContext, ItemStack> itemProvider) {
     indicatorSlot = slot;
-    indicatorElement = new RefreshableInventoryElement(
-        itemProvider,
-        (context, event) -> context.getInventoryService().refresh(context.getViewer())
-    );
+    indicatorElement =
+        new RefreshableInventoryElement(
+            itemProvider,
+            (context, event) -> context.getInventoryService().refresh(context.getViewer()));
   }
 
   protected final void setPageIndicatorElement(final int slot, final InventoryElement element) {
@@ -255,28 +256,27 @@ public abstract class PagedInventoryView<T> extends AbstractInventoryView {
   }
 
   private InventoryElement createRefreshElement(
-      final Function<InventoryContext, ItemStack> itemProvider
-  ) {
-    return new RefreshableInventoryElement(itemProvider, (context, event) -> {
-      UUID viewerId = context.getViewer().getUniqueId();
-      long now = System.currentTimeMillis();
-      long previous = lastRefreshByViewer.getOrDefault(viewerId, 0L);
-      if (now - previous >= refreshCooldownMillis) {
-        lastRefreshByViewer.put(viewerId, now);
-        context.getInventoryService().refresh(context.getViewer());
-      }
-    });
+      final Function<InventoryContext, ItemStack> itemProvider) {
+    return new RefreshableInventoryElement(
+        itemProvider,
+        (context, event) -> {
+          UUID viewerId = context.getViewer().getUniqueId();
+          long now = System.currentTimeMillis();
+          long previous = lastRefreshByViewer.getOrDefault(viewerId, 0L);
+          if (now - previous >= refreshCooldownMillis) {
+            lastRefreshByViewer.put(viewerId, now);
+            context.getInventoryService().refresh(context.getViewer());
+          }
+        });
   }
 
   private InventoryElement createIndicatorElement(final List<T> items) {
-    ItemStack item = namedItem(
-        Material.PAPER,
-        Component.text("Page " + (page + 1) + "/" + (getMaximumPage(items) + 1))
-    );
+    ItemStack item =
+        namedItem(
+            Material.PAPER,
+            Component.text("Page " + (page + 1) + "/" + (getMaximumPage(items) + 1)));
     return new StaticInventoryElement(
-        item,
-        (context, event) -> context.getInventoryService().refresh(context.getViewer())
-    );
+        item, (context, event) -> context.getInventoryService().refresh(context.getViewer()));
   }
 
   private ItemStack namedItem(final Material material, final Component name) {

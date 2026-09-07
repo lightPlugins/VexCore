@@ -63,11 +63,8 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
   @Override
   public synchronized void register(final Class<? extends InventoryDefinition> definitionType) {
     ensureOpen();
-    InventoryDefinition definition = VexClassFactory.create(
-        definitionType,
-        services,
-        "Inventory definition"
-    );
+    InventoryDefinition definition =
+        VexClassFactory.create(definitionType, services, "Inventory definition");
     InventoryKey key = Objects.requireNonNull(definition.getKey(), "inventory key");
     if (definitions.putIfAbsent(key, definition) != null) {
       throw new IllegalStateException("Inventory definition is already registered: " + key);
@@ -106,14 +103,16 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
 
   @Override
   public void back(final Player player) {
-    execute(player, () -> {
-      VexInventorySession session = sessions.get(player.getUniqueId());
-      if (session == null || session.getHistory().isEmpty()) {
-        closeNow(player);
-        return;
-      }
-      openNow(player, session.pop(1), false, false);
-    });
+    execute(
+        player,
+        () -> {
+          VexInventorySession session = sessions.get(player.getUniqueId());
+          if (session == null || session.getHistory().isEmpty()) {
+            closeNow(player);
+            return;
+          }
+          openNow(player, session.pop(1), false, false);
+        });
   }
 
   @Override
@@ -121,22 +120,30 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     if (steps < 1) {
       throw new IllegalArgumentException("steps must be at least one");
     }
-    execute(player, () -> {
-      VexInventorySession session = requireSession(player);
-      openNow(player, session.pop(steps), false, false);
-    });
+    execute(
+        player,
+        () -> {
+          VexInventorySession session = requireSession(player);
+          openNow(player, session.pop(steps), false, false);
+        });
   }
 
   @Override
   public void backTo(final Player player, final InventoryKey key) {
     Objects.requireNonNull(key, "key");
-    execute(player, () -> {
-      VexInventorySession session = requireSession(player);
-      InventoryView target = session.popTo(key).orElseThrow(() -> new IllegalStateException(
-          "Inventory is not present in the viewer history: " + key
-      ));
-      openNow(player, target, false, false);
-    });
+    execute(
+        player,
+        () -> {
+          VexInventorySession session = requireSession(player);
+          InventoryView target =
+              session
+                  .popTo(key)
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "Inventory is not present in the viewer history: " + key));
+          openNow(player, target, false, false);
+        });
   }
 
   @Override
@@ -183,8 +190,11 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
   }
 
   void handleClose(final Player player, final VexInventoryHolder holder) {
+    if (!holder.isOwnedBy(this)) {
+      return;
+    }
     VexInventorySession session = sessions.get(holder.getViewerId());
-    if (session == null) {
+    if (session == null || session.getHolder() != holder) {
       return;
     }
     if (session.isSuppressNextClose()) {
@@ -212,11 +222,7 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
       action.run();
       return;
     }
-    schedules.runFor(
-        checkedPlayer,
-        action,
-        () -> sessions.remove(checkedPlayer.getUniqueId())
-    );
+    schedules.runFor(checkedPlayer, action, () -> sessions.remove(checkedPlayer.getUniqueId()));
   }
 
   private InventoryView createView(final Player player, final InventoryKey key) {
@@ -227,24 +233,23 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     if (definition == null) {
       throw new IllegalArgumentException("Unknown inventory key: " + key);
     }
-    return Objects.requireNonNull(
-        definition.create(createContext(player)),
-        "inventory view"
-    );
+    return Objects.requireNonNull(definition.create(createContext(player)), "inventory view");
   }
 
   private void openNow(
       final Player player,
       final InventoryView view,
       final boolean pushHistory,
-      final boolean clearHistory
-  ) {
+      final boolean clearHistory) {
     Objects.requireNonNull(view, "view");
     UUID viewerId = player.getUniqueId();
-    VexInventorySession session = sessions.computeIfAbsent(viewerId, ignored -> {
-      VexInventoryHolder holder = new VexInventoryHolder(viewerId, view.getKey());
-      return new VexInventorySession(viewerId, holder);
-    });
+    VexInventorySession session =
+        sessions.computeIfAbsent(
+            viewerId,
+            ignored -> {
+              VexInventoryHolder holder = new VexInventoryHolder(this, viewerId, view.getKey());
+              return new VexInventorySession(viewerId, holder);
+            });
     if (clearHistory) {
       session.getHistory().clear();
     }
@@ -262,13 +267,8 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     InventoryHolder openHolder = player.getOpenInventory().getTopInventory().getHolder();
     session.setSuppressNextClose(openHolder == session.getHolder());
     Map<Integer, InventoryElement> elements = snapshotElements(view, context);
-    Inventory inventory = renderer.render(
-        context,
-        view,
-        session.getHolder(),
-        elements,
-        defaultTooltipStyle
-    );
+    Inventory inventory =
+        renderer.render(context, view, session.getHolder(), elements, defaultTooltipStyle);
     session.setInventory(inventory);
     session.updateRenderedElements(elements);
     session.setCurrentView(view);
@@ -285,13 +285,11 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     InventoryContext context = createContext(player);
     Map<Integer, InventoryElement> elements = snapshotElements(view, context);
     Inventory openInventory = player.getOpenInventory().getTopInventory();
-    boolean sameInventory = openInventory == session.getInventory()
-        && openInventory.getHolder() == session.getHolder();
+    boolean sameInventory =
+        openInventory == session.getInventory() && openInventory.getHolder() == session.getHolder();
     boolean sameShape = sameInventory && openInventory.getSize() == view.getSize();
-    boolean sameTitle = sameShape && Objects.equals(
-        player.getOpenInventory().title(),
-        view.getTitle(context)
-    );
+    boolean sameTitle =
+        sameShape && Objects.equals(player.getOpenInventory().title(), view.getTitle(context));
     if (sameTitle) {
       renderer.renderInto(context, openInventory, elements, defaultTooltipStyle);
       session.updateRenderedElements(elements);
@@ -299,22 +297,15 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     }
 
     session.setSuppressNextClose(sameInventory);
-    Inventory inventory = renderer.render(
-        context,
-        view,
-        session.getHolder(),
-        elements,
-        defaultTooltipStyle
-    );
+    Inventory inventory =
+        renderer.render(context, view, session.getHolder(), elements, defaultTooltipStyle);
     session.setInventory(inventory);
     session.updateRenderedElements(elements);
     player.openInventory(inventory);
   }
 
   private Map<Integer, InventoryElement> snapshotElements(
-      final InventoryView view,
-      final InventoryContext context
-  ) {
+      final InventoryView view, final InventoryContext context) {
     return Map.copyOf(Objects.requireNonNull(view.getElements(context), "inventory elements"));
   }
 
@@ -339,5 +330,4 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
       throw new IllegalStateException("InventoryService is already closed");
     }
   }
-
 }

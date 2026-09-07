@@ -1,9 +1,9 @@
 package dev.vexsoft.core.paper.service.items;
 
-
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.ItemStackBuilder;
+import dev.vexsoft.core.paper.items.VexArmorTrim;
 import dev.vexsoft.core.paper.items.VexItemKeys;
 import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.service.ItemService;
@@ -29,10 +29,7 @@ public final class VexItemService implements ItemService {
 
   @Override
   public ItemStackBuilder builder(
-      final NamespacedKey itemId,
-      final Material material,
-      final int amount
-  ) {
+      final NamespacedKey itemId, final Material material, final int amount) {
     Material checkedMaterial = Objects.requireNonNull(material, "material");
     if (checkedMaterial.isAir()) {
       throw new IllegalArgumentException("material must not be air");
@@ -57,15 +54,20 @@ public final class VexItemService implements ItemService {
     if (itemStack == null || itemStack.getType().isAir()) {
       return Optional.empty();
     }
-    String value = itemStack.getPersistentDataContainer().get(
-        VexItemKeys.ITEM_ID,
-        PersistentDataType.STRING
-    );
+    String value =
+        itemStack.getPersistentDataContainer().get(VexItemKeys.ITEM_ID, PersistentDataType.STRING);
     return value == null ? Optional.empty() : Optional.ofNullable(NamespacedKey.fromString(value));
   }
 
   @Override
   public boolean isItem(final ItemStack itemStack, final NamespacedKey itemId) {
-    return getItemId(itemStack).filter(Objects.requireNonNull(itemId, "itemId")::equals).isPresent();
+    return getItemId(itemStack)
+        .filter(Objects.requireNonNull(itemId, "itemId")::equals)
+        .isPresent();
+  }
+
+  @Override
+  public VexArmorTrim armorTrim(NamespacedKey pattern, NamespacedKey material) {
+    return components.armorTrim(pattern, material);
   }
 }

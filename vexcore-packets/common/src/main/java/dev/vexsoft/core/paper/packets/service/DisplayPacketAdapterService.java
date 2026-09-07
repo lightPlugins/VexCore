@@ -1,23 +1,23 @@
 package dev.vexsoft.core.paper.packets.service;
 
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
+import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
-import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
+import dev.vexsoft.core.paper.packets.dummy.SkinTexture;
 import java.util.List;
 import java.util.UUID;
-import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
-/**
- * Encodes version-specific display, interaction and passenger packets
- */
+/** Encodes version-specific display, interaction and passenger packets */
 public interface DisplayPacketAdapterService extends VexService {
 
   /** Allocates an entity id that cannot collide with native server entities */
@@ -55,13 +55,7 @@ public interface DisplayPacketAdapterService extends VexService {
 
   /** Spawns a virtual interaction hitbox */
   void spawnInteraction(
-      Player viewer,
-      int entityId,
-      UUID entityUuid,
-      Location location,
-      float width,
-      float height
-  );
+      Player viewer, int entityId, UUID entityUuid, Location location, float width, float height);
 
   /** Updates a virtual interaction hitbox */
   void updateInteraction(Player viewer, int entityId, float width, float height);
@@ -74,12 +68,7 @@ public interface DisplayPacketAdapterService extends VexService {
 
   /** Applies a local passenger translation to a virtual display */
   void setTranslation(
-      Player viewer,
-      FakeDisplayHandle handle,
-      float offsetX,
-      float offsetY,
-      float offsetZ
-  );
+      Player viewer, FakeDisplayHandle handle, float offsetX, float offsetY, float offsetZ);
 
   /** Removes native display state owned by one plugin */
   void removeOwned(ServiceOwner owner);
@@ -89,4 +78,19 @@ public interface DisplayPacketAdapterService extends VexService {
 
   /** Removes displays configured for a viewer lifecycle event */
   void removeViewer(Player viewer, DisplayLifecycle lifecycle);
+
+  /** Creates a viewer-only dummy centered at the supplied location. */
+  void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center);
+
+  /** Applies the resolved texture property to an existing dummy. */
+  void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin);
+
+  /** Updates boots, leggings, chestplate and helmet while keeping both hands empty. */
+  void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor);
+
+  /** Moves the body center and updates the head and body rotation. */
+  void moveDummy(Player viewer, FakeDisplayHandle handle, Location center);
+
+  /** Releases dummy state and removes client entities when the viewer is available. */
+  void removeDummy(Player viewer, FakeDisplayHandle handle);
 }

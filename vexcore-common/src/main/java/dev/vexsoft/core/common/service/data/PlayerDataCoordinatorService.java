@@ -1,27 +1,28 @@
 package dev.vexsoft.core.common.service.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
-import dev.vexsoft.core.api.player.PlayerDataDefinition;
 import dev.vexsoft.core.api.player.PlayerContainer;
 import dev.vexsoft.core.api.player.PlayerContainerFactory;
+import dev.vexsoft.core.api.player.PlayerDataDefinition;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Coordinates registered containers, cached players and persistence operations
- */
+/** Coordinates registered containers, cached players and persistence operations */
 public interface PlayerDataCoordinatorService extends VexService {
 
   /** Captures owner data as classloader-independent JSON before plugin unload. */
   void prepareUnload(ServiceOwner owner);
 
-  /** Writes operator-reviewable recovery files for still-dirty loaded players after a failed save. */
-  default void exportRecovery(final java.nio.file.Path directory) {
+  /**
+   * Writes operator-reviewable recovery files for still-dirty loaded players after a failed save.
+   */
+  default void exportRecovery(final Path directory) {
     throw new UnsupportedOperationException("Player recovery export is unavailable");
   }
 
@@ -30,10 +31,7 @@ public interface PlayerDataCoordinatorService extends VexService {
 
   /** Registers a player feature container owned by a plugin. */
   <T extends PlayerContainer> void registerContainer(
-      ServiceOwner owner,
-      Class<T> type,
-      PlayerContainerFactory<? extends T> factory
-  );
+      ServiceOwner owner, Class<T> type, PlayerContainerFactory<? extends T> factory);
 
   /** Removes and closes every player feature container registered by an owner. */
   void unregisterContainers(ServiceOwner owner);

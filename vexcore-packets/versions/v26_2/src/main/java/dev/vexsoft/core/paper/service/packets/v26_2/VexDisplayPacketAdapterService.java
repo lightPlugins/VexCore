@@ -1,53 +1,56 @@
 package dev.vexsoft.core.paper.service.packets.v26_2;
 
-import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayMapper;
-import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayPackets;
-import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayUpdates;
-import dev.vexsoft.core.paper.packets.v26_2.display.V26_2PassengerPackets;
-
-import java.util.ArrayList;
-import org.joml.Vector3f;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
-import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
+import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
-import dev.vexsoft.core.paper.packets.v26_2.effect.V26_2GlowPackets;
+import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeItemDisplayUpdate;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
+import dev.vexsoft.core.paper.packets.dummy.SkinTexture;
 import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayMapper;
+import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayPackets;
+import dev.vexsoft.core.paper.packets.v26_2.display.V26_2DisplayUpdates;
+import dev.vexsoft.core.paper.packets.v26_2.display.V26_2PassengerPackets;
+import dev.vexsoft.core.paper.packets.v26_2.display.V26_2PlayerDummies;
+import dev.vexsoft.core.paper.packets.v26_2.effect.V26_2GlowPackets;
 import io.papermc.paper.adventure.PaperAdventure;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
+import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Interaction;
-import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
-import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
-import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.block.data.CraftBlockData;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.joml.Vector3f;
 
 @Dependencies(PacketTransportAdapterService.class)
 public final class VexDisplayPacketAdapterService implements DisplayPacketAdapterService {
 
   private final PacketTransportAdapterService transport;
+  private final V26_2PlayerDummies dummies;
   private final AtomicInteger entityIds = new AtomicInteger(Integer.MAX_VALUE);
   private final Map<FakeDisplayHandle, Display> displays = new ConcurrentHashMap<>();
   private final Map<FakeDisplayHandle, Set<DisplayLifecycle>> lifecycles =
@@ -59,6 +62,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   public VexDisplayPacketAdapterService(final VexServiceRegistry services) {
     this.transport = services.require(PacketTransportAdapterService.class);
+    this.dummies = new V26_2PlayerDummies(transport);
   }
 
   @Override
@@ -68,31 +72,34 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void spawnText(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeTextDisplayRequest request
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayRequest request) {
     requireViewer(viewer, handle, request.getLocation());
-    Display.TextDisplay display = new Display.TextDisplay(
-        EntityTypes.TEXT_DISPLAY,
-        ((CraftWorld) request.getLocation().getWorld()).getHandle()
-    );
+    Display.TextDisplay display =
+        new Display.TextDisplay(
+            EntityTypes.TEXT_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
     prepare(display, handle, request.getLocation());
     display.setText(PaperAdventure.asVanilla(request.getText()));
-    display.getEntityData().set(Display.TextDisplay.DATA_LINE_WIDTH_ID, request.getLineWidth(), true);
-    display.getEntityData().set(
-        Display.TextDisplay.DATA_BACKGROUND_COLOR_ID,
-        request.getBackgroundColor(),
-        true
-    );
+    display
+        .getEntityData()
+        .set(Display.TextDisplay.DATA_LINE_WIDTH_ID, request.getLineWidth(), true);
+    display
+        .getEntityData()
+        .set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, request.getBackgroundColor(), true);
     display.setTextOpacity(request.getTextOpacity());
     display.setFlags(V26_2DisplayUpdates.textFlags(request));
     V26_2DisplayPackets.applyBase(
-        display, request.getTransformation(), request.getBillboard(), request.getBrightness(),
-        request.getViewRange(), request.getShadowRadius(), request.getShadowStrength(),
-        request.getDisplayWidth(), request.getDisplayHeight(), request.getInterpolationDelay(),
-        request.getInterpolationDuration(), request.getTeleportDuration()
-    );
+        display,
+        request.getTransformation(),
+        request.getBillboard(),
+        request.getBrightness(),
+        request.getViewRange(),
+        request.getShadowRadius(),
+        request.getShadowStrength(),
+        request.getDisplayWidth(),
+        request.getDisplayHeight(),
+        request.getInterpolationDelay(),
+        request.getInterpolationDuration(),
+        request.getTeleportDuration());
     displays.put(handle, display);
     lifecycles.put(handle, request.getLifecycle());
     transport.sendBundle(viewer, V26_2DisplayPackets.spawn(display));
@@ -100,25 +107,28 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void spawnItem(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeItemDisplayRequest request
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayRequest request) {
     requireViewer(viewer, handle, request.getLocation());
-    Display.ItemDisplay display = new Display.ItemDisplay(
-        EntityTypes.ITEM_DISPLAY,
-        ((CraftWorld) request.getLocation().getWorld()).getHandle()
-    );
+    Display.ItemDisplay display =
+        new Display.ItemDisplay(
+            EntityTypes.ITEM_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
     prepare(display, handle, request.getLocation());
     display.setItemStack(CraftItemStack.asNMSCopy(request.getItemStack()));
     display.setItemTransform(V26_2DisplayMapper.toNms(request.getItemTransform()));
     display.setGlowingTag(request.isGlowing());
     V26_2DisplayPackets.applyBase(
-        display, request.getTransformation(), request.getBillboard(), request.getBrightness(),
-        request.getViewRange(), request.getShadowRadius(), request.getShadowStrength(),
-        request.getDisplayWidth(), request.getDisplayHeight(), request.getInterpolationDelay(),
-        request.getInterpolationDuration(), request.getTeleportDuration()
-    );
+        display,
+        request.getTransformation(),
+        request.getBillboard(),
+        request.getBrightness(),
+        request.getViewRange(),
+        request.getShadowRadius(),
+        request.getShadowStrength(),
+        request.getDisplayWidth(),
+        request.getDisplayHeight(),
+        request.getInterpolationDelay(),
+        request.getInterpolationDuration(),
+        request.getTeleportDuration());
     displays.put(handle, display);
     lifecycles.put(handle, request.getLifecycle());
     List<Object> packets = V26_2DisplayPackets.spawn(display);
@@ -134,24 +144,27 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void spawnBlock(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeBlockDisplayRequest request
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayRequest request) {
     requireViewer(viewer, handle, request.getLocation());
-    Display.BlockDisplay display = new Display.BlockDisplay(
-        EntityTypes.BLOCK_DISPLAY,
-        ((CraftWorld) request.getLocation().getWorld()).getHandle()
-    );
+    Display.BlockDisplay display =
+        new Display.BlockDisplay(
+            EntityTypes.BLOCK_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
     prepare(display, handle, request.getLocation());
     display.setBlockState(((CraftBlockData) request.getBlockData()).getState());
     display.setGlowingTag(request.isGlowing());
     V26_2DisplayPackets.applyBase(
-        display, request.getTransformation(), request.getBillboard(), request.getBrightness(),
-        request.getViewRange(), request.getShadowRadius(), request.getShadowStrength(),
-        request.getDisplayWidth(), request.getDisplayHeight(), request.getInterpolationDelay(),
-        request.getInterpolationDuration(), request.getTeleportDuration()
-    );
+        display,
+        request.getTransformation(),
+        request.getBillboard(),
+        request.getBrightness(),
+        request.getViewRange(),
+        request.getShadowRadius(),
+        request.getShadowStrength(),
+        request.getDisplayWidth(),
+        request.getDisplayHeight(),
+        request.getInterpolationDelay(),
+        request.getInterpolationDuration(),
+        request.getTeleportDuration());
     displays.put(handle, display);
     lifecycles.put(handle, request.getLifecycle());
     List<Object> packets = V26_2DisplayPackets.spawn(display);
@@ -167,10 +180,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void updateText(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeTextDisplayUpdate update
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayUpdate update) {
     Display display = displays.get(handle);
     if (!(display instanceof Display.TextDisplay textDisplay)) {
       return;
@@ -181,10 +191,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void updateItem(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeItemDisplayUpdate update
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayUpdate update) {
     Display display = displays.get(handle);
     if (!(display instanceof Display.ItemDisplay itemDisplay)) {
       return;
@@ -214,10 +221,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void updateBlock(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final FakeBlockDisplayUpdate update
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayUpdate update) {
     Display display = displays.get(handle);
     if (!(display instanceof Display.BlockDisplay blockDisplay)) {
       return;
@@ -247,10 +251,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void teleport(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final Location location
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final Location location) {
     Display display = displays.get(handle);
     if (display == null) {
       return;
@@ -262,10 +263,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void attachCamera(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final boolean hideSurvivalHud
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final boolean hideSurvivalHud) {
     Display display = displays.get(handle);
     if (display == null) {
       throw new IllegalArgumentException("Unknown fake display camera target");
@@ -273,10 +271,9 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
     List<Object> packets = new ArrayList<>();
     if (hideSurvivalHud) {
-      packets.add(new ClientboundGameEventPacket(
-          ClientboundGameEventPacket.CHANGE_GAME_MODE,
-          GameType.SPECTATOR.getId()
-      ));
+      packets.add(
+          new ClientboundGameEventPacket(
+              ClientboundGameEventPacket.CHANGE_GAME_MODE, GameType.SPECTATOR.getId()));
     }
     packets.add(new ClientboundSetCameraPacket(display));
     transport.sendBundle(viewer, packets);
@@ -288,10 +285,9 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     List<Object> packets = new ArrayList<>();
     packets.add(new ClientboundSetCameraPacket(player));
     if (restoreSurvivalHud) {
-      packets.add(new ClientboundGameEventPacket(
-          ClientboundGameEventPacket.CHANGE_GAME_MODE,
-          gameType(viewer).getId()
-      ));
+      packets.add(
+          new ClientboundGameEventPacket(
+              ClientboundGameEventPacket.CHANGE_GAME_MODE, gameType(viewer).getId()));
     }
     transport.sendBundle(viewer, packets);
   }
@@ -312,12 +308,13 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
       displays.entrySet().stream()
           .filter(entry -> entry.getKey().getEntityId() == entityId)
           .findFirst()
-          .ifPresent(entry -> {
-            if (glowTeams.remove(entry.getKey())) {
-              packets.add(V26_2GlowPackets.removeTeam(entry.getValue()));
-            }
-            glowColors.remove(entry.getKey());
-          });
+          .ifPresent(
+              entry -> {
+                if (glowTeams.remove(entry.getKey())) {
+                  packets.add(V26_2GlowPackets.removeTeam(entry.getValue()));
+                }
+                glowColors.remove(entry.getKey());
+              });
       displays.keySet().removeIf(handle -> handle.getEntityId() == entityId);
       lifecycles.keySet().removeIf(handle -> handle.getEntityId() == entityId);
       interactions.remove(entityId);
@@ -334,16 +331,13 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
       final UUID entityUuid,
       final Location location,
       final float width,
-      final float height
-  ) {
+      final float height) {
     requireViewerLocation(viewer, location);
     if (!Float.isFinite(width) || !Float.isFinite(height) || width <= 0.0F || height <= 0.0F) {
       throw new IllegalArgumentException("interaction dimensions must be finite and positive");
     }
-    Interaction interaction = new Interaction(
-        EntityTypes.INTERACTION,
-        ((CraftWorld) location.getWorld()).getHandle()
-    );
+    Interaction interaction =
+        new Interaction(EntityTypes.INTERACTION, ((CraftWorld) location.getWorld()).getHandle());
     interaction.setId(entityId);
     interaction.setUUID(entityUuid);
     position(interaction, location);
@@ -356,11 +350,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void updateInteraction(
-      final Player viewer,
-      final int entityId,
-      final float width,
-      final float height
-  ) {
+      final Player viewer, final int entityId, final float width, final float height) {
     Interaction interaction = interactions.get(entityId);
     if (interaction == null) {
       return;
@@ -385,23 +375,19 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
   @Override
   public void setPassengers(
-      final Player viewer,
-      final int vehicleEntityId,
-      final List<Integer> passengerEntityIds
-  ) {
+      final Player viewer, final int vehicleEntityId, final List<Integer> passengerEntityIds) {
     Entity vehicle = findEntity(vehicleEntityId);
     if (vehicle == null) {
       // The constructor only reads entity state before we replace the actual vehicle id
-      vehicle = new Interaction(
-          EntityTypes.INTERACTION,
-          ((CraftWorld) viewer.getWorld()).getHandle()
-      );
+      vehicle =
+          new Interaction(EntityTypes.INTERACTION, ((CraftWorld) viewer.getWorld()).getHandle());
     }
-    transport.send(viewer, V26_2PassengerPackets.create(
-        vehicle,
-        vehicleEntityId,
-        passengerEntityIds.stream().mapToInt(Integer::intValue).toArray()
-    ));
+    transport.send(
+        viewer,
+        V26_2PassengerPackets.create(
+            vehicle,
+            vehicleEntityId,
+            passengerEntityIds.stream().mapToInt(Integer::intValue).toArray()));
   }
 
   @Override
@@ -410,16 +396,12 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
       final FakeDisplayHandle handle,
       final float offsetX,
       final float offsetY,
-      final float offsetZ
-  ) {
+      final float offsetZ) {
     Display display = displays.get(handle);
     if (display == null) {
       return;
     }
-    V26_2DisplayPackets.setTranslation(
-        display,
-        new Vector3f(offsetX, offsetY, offsetZ)
-    );
+    V26_2DisplayPackets.setTranslation(display, new Vector3f(offsetX, offsetY, offsetZ));
     sendMetadata(viewer, display);
   }
 
@@ -437,23 +419,27 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     lifecycles.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
     glowColors.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
     glowTeams.removeIf(handle -> handle.getViewerId().equals(viewerId));
-    interactionViewers.entrySet().removeIf(entry -> {
-      if (!entry.getValue().equals(viewerId)) {
-        return false;
-      }
-      interactions.remove(entry.getKey());
-      return true;
-    });
+    interactionViewers
+        .entrySet()
+        .removeIf(
+            entry -> {
+              if (!entry.getValue().equals(viewerId)) {
+                return false;
+              }
+              interactions.remove(entry.getKey());
+              return true;
+            });
   }
 
   @Override
   public void removeViewer(final Player viewer, final DisplayLifecycle lifecycle) {
-    int[] entityIds = lifecycles.entrySet().stream()
-        .filter(entry -> entry.getKey().getViewerId().equals(viewer.getUniqueId()))
-        .filter(entry -> entry.getValue().contains(lifecycle))
-        .map(Map.Entry::getKey)
-        .mapToInt(FakeDisplayHandle::getEntityId)
-        .toArray();
+    int[] entityIds =
+        lifecycles.entrySet().stream()
+            .filter(entry -> entry.getKey().getViewerId().equals(viewer.getUniqueId()))
+            .filter(entry -> entry.getValue().contains(lifecycle))
+            .map(Map.Entry::getKey)
+            .mapToInt(FakeDisplayHandle::getEntityId)
+            .toArray();
     if (entityIds.length > 0) {
       remove(viewer, entityIds);
     }
@@ -479,10 +465,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
   }
 
   private static void prepare(
-      final Entity entity,
-      final FakeDisplayHandle handle,
-      final Location location
-  ) {
+      final Entity entity, final FakeDisplayHandle handle, final Location location) {
     entity.setId(handle.getEntityId());
     entity.setUUID(handle.getEntityUuid());
     position(entity, location);
@@ -495,10 +478,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
   }
 
   private static void requireViewer(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final Location location
-  ) {
+      final Player viewer, final FakeDisplayHandle handle, final Location location) {
     if (!viewer.getUniqueId().equals(handle.getViewerId())) {
       throw new IllegalArgumentException("Display handle belongs to another viewer");
     }
@@ -515,5 +495,30 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     if (location.getWorld() == null || !viewer.getWorld().equals(location.getWorld())) {
       throw new IllegalArgumentException("Fake displays must be in the viewer's current world");
     }
+  }
+
+  @Override
+  public void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center) {
+    dummies.spawn(viewer, handle, center);
+  }
+
+  @Override
+  public void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin) {
+    dummies.skin(viewer, handle, skin);
+  }
+
+  @Override
+  public void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor) {
+    dummies.armor(viewer, handle, armor);
+  }
+
+  @Override
+  public void moveDummy(Player viewer, FakeDisplayHandle handle, Location center) {
+    dummies.move(viewer, handle, center);
+  }
+
+  @Override
+  public void removeDummy(Player viewer, FakeDisplayHandle handle) {
+    dummies.remove(viewer, handle);
   }
 }

@@ -1,29 +1,33 @@
 package dev.vexsoft.core.paper.service.packets.connection;
 
-import java.util.Optional;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.interaction.FakeInteraction;
+import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
+import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
-import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
-import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
 import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 @Dependencies({
-    PacketConnectionAdapterService.class,
-    HologramInteractionAdapterService.class,
-    ItemMetaPacketAdapterService.class,
-    InteractionTrackerService.class,
-    FakeItemMetaStoreService.class,
-    ScheduleService.class
+  PacketConnectionAdapterService.class,
+  HologramInteractionAdapterService.class,
+  ItemMetaPacketAdapterService.class,
+  InteractionTrackerService.class,
+  FakeItemMetaStoreService.class,
+  ScheduleService.class
 })
 public final class VexPacketConnectionService
     implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
@@ -34,8 +38,7 @@ public final class VexPacketConnectionService
   private final InteractionTrackerService interactionsTracker;
   private final FakeItemMetaStoreService itemMetaStore;
   private final ScheduleService scheduler;
-  private final java.util.concurrent.ConcurrentHashMap<UUID, PendingInput> pending =
-      new java.util.concurrent.ConcurrentHashMap<>();
+  private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
 
   public VexPacketConnectionService(final VexServiceRegistry services) {
     this.connection = services.require(PacketConnectionAdapterService.class);
@@ -70,10 +73,8 @@ public final class VexPacketConnectionService
       return sanitized;
     }
     PacketInteractionInput interaction = input.get();
-    Optional<TrackedInteraction> tracked = interactionsTracker.find(
-        viewerId,
-        interaction.getEntityId()
-    );
+    Optional<TrackedInteraction> tracked =
+        interactionsTracker.find(viewerId, interaction.getEntityId());
     if (tracked.isEmpty()) {
       return sanitized;
     }
@@ -83,25 +84,42 @@ public final class VexPacketConnectionService
     Player player = Bukkit.getPlayer(viewerId);
     if (player != null) {
       boolean[] schedule = {false};
-      PendingInput batch = pending.compute(viewerId, (ignored, current) -> {
-        if (current == null) {
-          current = new PendingInput();
-          schedule[0] = true;
-        }
-        synchronized (current) {
-          if (current.inputs.size() < 8) current.inputs.addLast(interaction);
-        }
-        return current;
-      });
+      PendingInput batch =
+          pending.compute(
+              viewerId,
+              (ignored, current) -> {
+                if (current == null) {
+                  current = new PendingInput();
+                  schedule[0] = true;
+                }
+                synchronized (current) {
+                  if (current.inputs.size() < 8) {
+                    current.inputs.addLast(interaction);
+                  }
+                }
+                return current;
+              });
       if (schedule[0]) {
         try {
-          if (scheduler.runFor(player, () -> {
-            if (!pending.remove(viewerId, batch) || !player.isOnline()
-                || interactionsTracker.isInputBlocked(viewerId)) return;
-            java.util.List<PacketInteractionInput> inputs;
-            synchronized (batch) { inputs = java.util.List.copyOf(batch.inputs); }
-            inputs.forEach(next -> dispatch(player, next));
-          }, () -> pending.remove(viewerId, batch)).isEmpty()) pending.remove(viewerId, batch);
+          if (scheduler
+              .runFor(
+                  player,
+                  () -> {
+                    if (!pending.remove(viewerId, batch)
+                        || !player.isOnline()
+                        || interactionsTracker.isInputBlocked(viewerId)) {
+                      return;
+                    }
+                    List<PacketInteractionInput> inputs;
+                    synchronized (batch) {
+                      inputs = List.copyOf(batch.inputs);
+                    }
+                    inputs.forEach(next -> dispatch(player, next));
+                  },
+                  () -> pending.remove(viewerId, batch))
+              .isEmpty()) {
+            pending.remove(viewerId, batch);
+          }
         } catch (RuntimeException failure) {
           pending.remove(viewerId, batch);
           throw failure;
@@ -118,17 +136,21 @@ public final class VexPacketConnectionService
   }
 
   private void dispatch(final Player player, final PacketInteractionInput input) {
-    interactionsTracker.find(player.getUniqueId(), input.getEntityId()).ifPresent(interaction ->
-        interaction.getInteractHandler().handle(new FakeInteraction(
-            player,
-            interaction.getHandle(),
-            input.getInteractionType(),
-            input.getHand()
-        ))
-    );
+    interactionsTracker
+        .find(player.getUniqueId(), input.getEntityId())
+        .ifPresent(
+            interaction ->
+                interaction
+                    .getInteractHandler()
+                    .handle(
+                        new FakeInteraction(
+                            player,
+                            interaction.getHandle(),
+                            input.getInteractionType(),
+                            input.getHand())));
   }
 
   public static final class PendingInput {
-    private final java.util.Deque<PacketInteractionInput> inputs = new java.util.ArrayDeque<>();
+    private final Deque<PacketInteractionInput> inputs = new ArrayDeque<>();
   }
 }

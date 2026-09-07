@@ -1,14 +1,19 @@
 package dev.vexsoft.core.api.player;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
@@ -18,53 +23,62 @@ import org.jetbrains.annotations.ApiStatus;
  * Holds the shared identity and registered data containers of an online Vex player.
  *
  * <p>Container access is synchronized per container. Callers should use {@link #read} for stable
- * reads and {@link #update(DataContainerKey, Consumer)} for mutations that must be persisted.</p>
+ * reads and {@link #update(DataContainerKey, Consumer)} for mutations that must be persisted.
  */
 public final class VexPlayer {
 
   private static final PlayerContainer[] EMPTY_FEATURE_CONTAINERS = new PlayerContainer[0];
   private static final PlayerContainerLookup EMPTY_CONTAINER_LOOKUP = ignored -> -1;
 
-  @Getter
-  private final UUID uniqueId;
-  @Getter
-  private volatile String name;
+  @Getter private final UUID uniqueId;
+  @Getter private volatile String name;
   private final Map<DataContainerKey<?>, ContainerState<?>> containers = new ConcurrentHashMap<>();
   private final PlayerContainerLookup containerLookup;
   private volatile PlayerContainer[] featureContainers = EMPTY_FEATURE_CONTAINERS;
   private volatile Object platformPlayer;
-  private java.util.List<Runnable> committedEffects;
+  private List<Runnable> committedEffects;
 
   /** Runs a bounded economic operation with rollback of persistent container values on failure. */
-  public boolean atomic(
-      final Function<Object, Object> copier, final java.util.function.BooleanSupplier operation
-  ) {
+  public boolean atomic(final Function<Object, Object> copier, final BooleanSupplier operation) {
     boolean success = false;
-    java.util.List<Runnable> effects;
+    List<Runnable> effects;
     synchronized (this) {
-      if (committedEffects != null) throw new IllegalStateException("Nested player transaction");
-      Map<DataContainerKey<?>, ContainerSnapshot<Object>> before = new java.util.LinkedHashMap<>();
+      if (committedEffects != null) {
+        throw new IllegalStateException("Nested player transaction");
+      }
+      Map<DataContainerKey<?>, ContainerSnapshot<Object>> before = new LinkedHashMap<>();
       containers.forEach((key, state) -> before.put(key, state.snapshot(copier)));
-      committedEffects = new java.util.ArrayList<>();
+      committedEffects = new ArrayList<>();
       try {
         success = operation.getAsBoolean();
       } finally {
         effects = committedEffects;
         committedEffects = null;
-        if (!success) before.forEach((key, snapshot) -> {
-          if (stateUnchecked(key).snapshot(ignored -> null).getRevision() != snapshot.getRevision()) {
-            restoreValue(key, snapshot.getValue());
-          }
-        });
+        if (!success) {
+          before.forEach(
+              (key, snapshot) -> {
+                if (stateUnchecked(key).snapshot(ignored -> null).getRevision()
+                    != snapshot.getRevision()) {
+                  restoreValue(key, snapshot.getValue());
+                }
+              });
+        }
       }
     }
-    if (success) effects.forEach(effect -> {
-      try { effect.run(); }
-      catch (RuntimeException failure) {
-        System.getLogger(VexPlayer.class.getName()).log(System.Logger.Level.ERROR,
-            "Post-commit player notification failed for " + uniqueId, failure);
-      }
-    });
+    if (success) {
+      effects.forEach(
+          effect -> {
+            try {
+              effect.run();
+            } catch (RuntimeException failure) {
+              System.getLogger(VexPlayer.class.getName())
+                  .log(
+                      System.Logger.Level.ERROR,
+                      "Post-commit player notification failed for " + uniqueId,
+                      failure);
+            }
+          });
+    }
     return success;
   }
 
@@ -72,7 +86,10 @@ public final class VexPlayer {
   public void afterCommit(final Runnable effect) {
     Objects.requireNonNull(effect, "effect");
     synchronized (this) {
-      if (committedEffects != null) { committedEffects.add(effect); return; }
+      if (committedEffects != null) {
+        committedEffects.add(effect);
+        return;
+      }
     }
     effect.run();
   }
@@ -90,10 +107,7 @@ public final class VexPlayer {
   /** Creates a player backed by the supplied feature-container registry. */
   @ApiStatus.Internal
   public VexPlayer(
-      final UUID uniqueId,
-      final String name,
-      final PlayerContainerLookup containerLookup
-  ) {
+      final UUID uniqueId, final String name, final PlayerContainerLookup containerLookup) {
     this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
     this.name = Objects.requireNonNull(name, "name");
     this.containerLookup = Objects.requireNonNull(containerLookup, "containerLookup");
@@ -106,8 +120,7 @@ public final class VexPlayer {
     PlayerContainer[] current = featureContainers;
     if (slot < 0 || slot >= current.length || current[slot] == null) {
       throw new IllegalStateException(
-          "Player container is not available: " + checkedType.getName()
-      );
+          "Player container is not available: " + checkedType.getName());
     }
     return checkedType.cast(current[slot]);
   }
@@ -128,8 +141,7 @@ public final class VexPlayer {
     Object current = platformPlayer;
     if (!checkedType.isInstance(current)) {
       throw new IllegalStateException(
-          "Platform player is not available as " + checkedType.getName()
-      );
+          "Platform player is not available as " + checkedType.getName());
     }
     return checkedType.cast(current);
   }
@@ -146,10 +158,7 @@ public final class VexPlayer {
   /** Installs a registered feature container in its dense runtime slot. */
   @ApiStatus.Internal
   public synchronized <T extends PlayerContainer> void installContainer(
-      final int slot,
-      final Class<T> type,
-      final T container
-  ) {
+      final int slot, final Class<T> type, final T container) {
     if (slot < 0) {
       throw new IllegalArgumentException("Container slot must not be negative");
     }
@@ -238,10 +247,12 @@ public final class VexPlayer {
   /** Updates a container atomically and marks it for persistence */
   public synchronized <T> void update(final DataContainerKey<T> key, final Consumer<T> update) {
     Objects.requireNonNull(update, "update");
-    state(key).update(value -> {
-      update.accept(value);
-      return null;
-    });
+    state(key)
+        .update(
+            value -> {
+              update.accept(value);
+              return null;
+            });
   }
 
   /** Updates a container atomically and returns a value from the same operation */
@@ -251,8 +262,7 @@ public final class VexPlayer {
 
   /** Mutates a container, marking it dirty only when the callback reports a change. */
   public synchronized <T> boolean updateIfChanged(
-      final DataContainerKey<T> key, final java.util.function.Predicate<T> update
-  ) {
+      final DataContainerKey<T> key, final Predicate<T> update) {
     return state(key).updateIfChanged(Objects.requireNonNull(update, "update"));
   }
 
@@ -299,9 +309,7 @@ public final class VexPlayer {
   /** Creates a serialized snapshot paired with the container revision it represents. */
   @ApiStatus.Internal
   public synchronized <R> ContainerSnapshot<R> snapshot(
-      final DataContainerKey<?> key,
-      final Function<Object, R> snapshotter
-  ) {
+      final DataContainerKey<?> key, final Function<Object, R> snapshotter) {
     return stateUnchecked(key).snapshot(Objects.requireNonNull(snapshotter, "snapshotter"));
   }
 
@@ -342,9 +350,7 @@ public final class VexPlayer {
 
   @SuppressWarnings("unchecked")
   private <T> ContainerState<T> castState(
-      final DataContainerKey<T> key,
-      final ContainerState<?> state
-  ) {
+      final DataContainerKey<T> key, final ContainerState<?> state) {
     key.getType().cast(state.read());
     return (ContainerState<T>) state;
   }
@@ -382,13 +388,16 @@ public final class VexPlayer {
       return dirty;
     }
 
-    private synchronized boolean updateIfChanged(final java.util.function.Predicate<T> update) {
+    private synchronized boolean updateIfChanged(final Predicate<T> update) {
       boolean changed = true;
       try {
         changed = update.test(value);
         return changed;
       } finally {
-        if (changed) { dirty = true; revision++; }
+        if (changed) {
+          dirty = true;
+          revision++;
+        }
       }
     }
 

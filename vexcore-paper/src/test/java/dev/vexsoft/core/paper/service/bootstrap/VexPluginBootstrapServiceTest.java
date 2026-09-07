@@ -48,7 +48,10 @@ public final class VexPluginBootstrapServiceTest {
     assertEquals(VexCurrencyRegistry.class, services.definitions.get(CurrencyRegistry.class));
     assertEquals(VexActionBarService.class, services.definitions.get(ActionBarService.class));
     assertEquals(VexSidebarService.class, services.definitions.get(SidebarService.class));
-    assertEquals(VexInventoryListener.class, services.listenerType);
+    org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(VexInventoryListener.class));
+    org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(dev.vexsoft.core.paper.service.packets.VexPlayerDummyListener.class));
+    assertEquals(dev.vexsoft.core.paper.service.packets.VexPlayerDummyService.class, services.definitions.get(dev.vexsoft.core.paper.packets.service.PlayerDummyService.class));
+    assertEquals(dev.vexsoft.core.paper.service.packets.VexSkinService.class, services.definitions.get(dev.vexsoft.core.paper.packets.service.SkinService.class));
     assertEquals(
         VexBlockDisplayPacketService.class,
         services.definitions.get(BlockDisplayPacketService.class)
@@ -77,7 +80,7 @@ public final class VexPluginBootstrapServiceTest {
           final Class<T> listenerType,
           final VexServiceRegistry services
       ) {
-        TestServices.this.listenerType = listenerType;
+        TestServices.this.listenerTypes.add(listenerType);
         return null;
       }
 
@@ -85,7 +88,7 @@ public final class VexPluginBootstrapServiceTest {
       public void unregisterAll() { }
     };
     private final PlaceholderApiBridgeService placeholders = () -> { };
-    private Class<? extends Listener> listenerType;
+    private final java.util.Set<Class<? extends Listener>> listenerTypes = new java.util.HashSet<>();
 
     @Override
     public ServiceOwner getOwner() {

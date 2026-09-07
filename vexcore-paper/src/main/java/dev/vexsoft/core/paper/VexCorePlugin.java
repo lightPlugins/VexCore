@@ -1,132 +1,63 @@
 package dev.vexsoft.core.paper;
 
-import dev.vexsoft.core.paper.service.screenui.ScreenUiCoordinatorService;
-import dev.vexsoft.core.paper.screenui.ScreenUiVersions;
-import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
-import dev.vexsoft.core.paper.service.screenui.VexScreenUiCoordinatorService;
-import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
-import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
-import dev.vexsoft.core.paper.service.screenui.VexScreenUiListener;
-import dev.vexsoft.core.paper.commands.VexCoreUiCommand;
-
-import dev.vexsoft.core.api.service.registry.ServiceRegistry;
-import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
-import dev.vexsoft.core.api.service.configuration.ConfigurationService;
-import dev.vexsoft.core.api.service.localization.ThemeColorService;
-import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.service.cache.CacheService;
+import dev.vexsoft.core.api.service.configuration.ConfigurationService;
+import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
+import dev.vexsoft.core.api.service.localization.ThemeColorService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
-import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
+import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
 import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.player.PlayerIdentityService;
-import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
-import dev.vexsoft.core.paper.module.ModuleManager;
-import dev.vexsoft.core.paper.module.PlatformModule;
-import dev.vexsoft.core.paper.module.PlayerModule;
-import dev.vexsoft.core.paper.module.GameplayModule;
-import dev.vexsoft.core.paper.module.LocalizationModule;
-import dev.vexsoft.core.paper.module.PacketModule;
-import dev.vexsoft.core.paper.module.NmsModule;
-import dev.vexsoft.core.paper.module.MobModule;
-import dev.vexsoft.core.paper.module.DialogModule;
-import dev.vexsoft.core.paper.module.ItemModule;
-import dev.vexsoft.core.paper.service.bootstrap.PluginBootstrapService;
-import dev.vexsoft.core.paper.service.bootstrap.VexPluginBootstrapService;
-import dev.vexsoft.core.paper.service.actionbar.ActionBarCoordinatorService;
-import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
-import dev.vexsoft.core.paper.service.actionbar.VexActionBarCoordinatorService;
-import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
-import dev.vexsoft.core.paper.service.sidebar.SidebarCoordinatorService;
-import dev.vexsoft.core.paper.service.sidebar.SidebarService;
-import dev.vexsoft.core.paper.service.sidebar.VexSidebarCoordinatorService;
-import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
-import dev.vexsoft.core.paper.service.listeners.ListenerService;
-import dev.vexsoft.core.paper.service.listeners.VexListenerService;
-import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
-import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
-import dev.vexsoft.core.paper.service.dialogs.DialogService;
-import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
-import dev.vexsoft.core.paper.service.inventory.InventoryService;
-import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
-import dev.vexsoft.core.paper.service.inventory.VexInventoryService;
-import dev.vexsoft.core.paper.service.localization.editor.LocalizationEditorUiService;
-import dev.vexsoft.core.paper.service.localization.editor.VexLocalizationEditorUiService;
-import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
-import dev.vexsoft.core.paper.items.service.ItemService;
-import dev.vexsoft.core.paper.service.items.VexItemService;
-import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
-import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
-import dev.vexsoft.core.paper.service.platform.PlatformService;
-import dev.vexsoft.core.paper.plugin.VexLogger;
-import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
-import dev.vexsoft.core.paper.service.commands.CommandService;
-import dev.vexsoft.core.paper.service.commands.VexCommandService;
-import dev.vexsoft.core.api.service.cache.CacheService;
+import dev.vexsoft.core.api.service.registry.ServiceRegistry;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.VexDataService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
+import dev.vexsoft.core.common.service.globaldata.GlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataCoordinatorService;
+import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
 import dev.vexsoft.core.common.service.identity.VexPlayerIdentityService;
 import dev.vexsoft.core.common.service.localization.VexCorePlayerData;
 import dev.vexsoft.core.common.service.localization.VexLocalizationService;
 import dev.vexsoft.core.common.service.localization.VexLocalizedMessageService;
 import dev.vexsoft.core.common.service.localization.VexThemeColorService;
-import dev.vexsoft.core.paper.service.signals.SignalRegistryService;
-import dev.vexsoft.core.paper.service.signals.VexSignalRegistryService;
-import dev.vexsoft.core.paper.service.signals.VexSignalService;
 import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
 import dev.vexsoft.core.common.service.messaging.VexMessageCodecService;
 import dev.vexsoft.core.common.service.messaging.VexMessagingService;
-import dev.vexsoft.core.common.service.globaldata.GlobalDataCoordinatorService;
-import dev.vexsoft.core.common.service.globaldata.VexGlobalDataCoordinatorService;
-import dev.vexsoft.core.common.service.globaldata.VexGlobalDataService;
 import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
+import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import dev.vexsoft.core.paper.commands.VexCoreCommand;
 import dev.vexsoft.core.paper.commands.VexCoreDebugCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLanguageCommand;
+import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
 import dev.vexsoft.core.paper.commands.VexCoreResetCommand;
+import dev.vexsoft.core.paper.commands.VexCoreUiCommand;
+import dev.vexsoft.core.paper.items.service.ItemService;
+import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
-import dev.vexsoft.core.paper.service.messages.SendMessageService;
-import dev.vexsoft.core.paper.service.messages.VexSendMessageService;
-import dev.vexsoft.core.paper.service.messaging.VexPaperMessageTransportService;
-import dev.vexsoft.core.paper.service.messaging.ProxyPingService;
-import dev.vexsoft.core.paper.service.messaging.VexProxyPingResponseHandler;
-import dev.vexsoft.core.paper.service.messaging.VexProxyPingService;
-import dev.vexsoft.core.paper.service.players.PaperPlayerService;
-import dev.vexsoft.core.paper.service.players.VexPaperPlayerService;
-import dev.vexsoft.core.paper.service.network.ServerIdentityService;
-import dev.vexsoft.core.paper.service.network.VexServerIdentityService;
-import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
-import dev.vexsoft.core.paper.service.teleport.TeleportCoordinatorService;
-import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
-import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
-import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportArrivalHandler;
-import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportCompletionHandler;
-import dev.vexsoft.core.paper.service.world.VexWorldService;
-import dev.vexsoft.core.paper.service.world.WorldService;
-import dev.vexsoft.core.paper.service.directory.PlayerDirectoryCoordinatorService;
-import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryCoordinatorService;
-import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
-import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
-import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryListResponseHandler;
-import dev.vexsoft.core.paper.service.performance.PerformanceBossBarService;
-import dev.vexsoft.core.paper.service.performance.ServerPerformanceService;
-import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarListener;
-import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarService;
-import dev.vexsoft.core.paper.service.performance.VexServerPerformanceService;
-import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
-import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
-import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.module.DialogModule;
+import dev.vexsoft.core.paper.module.GameplayModule;
+import dev.vexsoft.core.paper.module.ItemModule;
+import dev.vexsoft.core.paper.module.LocalizationModule;
+import dev.vexsoft.core.paper.module.MobModule;
+import dev.vexsoft.core.paper.module.ModuleManager;
+import dev.vexsoft.core.paper.module.NmsModule;
+import dev.vexsoft.core.paper.module.PacketModule;
+import dev.vexsoft.core.paper.module.PlatformModule;
+import dev.vexsoft.core.paper.module.PlayerModule;
+import dev.vexsoft.core.paper.packets.service.BlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.CameraPacketService;
-import dev.vexsoft.core.paper.packets.service.BlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
@@ -136,10 +67,46 @@ import dev.vexsoft.core.paper.packets.service.LightningPacketService;
 import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
 import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
+import dev.vexsoft.core.paper.packets.service.PlayerDummyService;
+import dev.vexsoft.core.paper.packets.service.SkinService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
+import dev.vexsoft.core.paper.plugin.VexLogger;
+import dev.vexsoft.core.paper.screenui.ScreenUiVersions;
+import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarCoordinatorService;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarCoordinatorService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
+import dev.vexsoft.core.paper.service.bootstrap.PluginBootstrapService;
+import dev.vexsoft.core.paper.service.bootstrap.VexPluginBootstrapService;
+import dev.vexsoft.core.paper.service.commands.CommandService;
+import dev.vexsoft.core.paper.service.commands.VexCommandService;
+import dev.vexsoft.core.paper.service.dialogs.DialogService;
+import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
+import dev.vexsoft.core.paper.service.directory.PlayerDirectoryCoordinatorService;
+import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryCoordinatorService;
+import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryListResponseHandler;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
+import dev.vexsoft.core.paper.service.inventory.InventoryService;
+import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
+import dev.vexsoft.core.paper.service.inventory.VexInventoryService;
+import dev.vexsoft.core.paper.service.items.VexItemService;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
+import dev.vexsoft.core.paper.service.listeners.VexListenerService;
+import dev.vexsoft.core.paper.service.localization.editor.LocalizationEditorUiService;
+import dev.vexsoft.core.paper.service.localization.editor.VexLocalizationEditorUiService;
+import dev.vexsoft.core.paper.service.messages.SendMessageService;
+import dev.vexsoft.core.paper.service.messages.VexSendMessageService;
+import dev.vexsoft.core.paper.service.messaging.ProxyPingService;
+import dev.vexsoft.core.paper.service.messaging.VexPaperMessageTransportService;
+import dev.vexsoft.core.paper.service.messaging.VexProxyPingResponseHandler;
+import dev.vexsoft.core.paper.service.messaging.VexProxyPingService;
+import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.network.VexServerIdentityService;
+import dev.vexsoft.core.paper.service.packets.VexBlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexCameraPacketService;
-import dev.vexsoft.core.paper.service.packets.VexBlockDamageOverlayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexDisplayPassengerPacketService;
 import dev.vexsoft.core.paper.service.packets.VexFakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.VexInteractableHologramService;
@@ -149,21 +116,58 @@ import dev.vexsoft.core.paper.service.packets.VexLightningPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobGlowPacketService;
 import dev.vexsoft.core.paper.service.packets.VexMobHitPacketService;
 import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
+import dev.vexsoft.core.paper.service.packets.VexPlayerDummyListener;
+import dev.vexsoft.core.paper.service.packets.VexPlayerDummyService;
+import dev.vexsoft.core.paper.service.packets.VexSkinService;
 import dev.vexsoft.core.paper.service.packets.VexTextDisplayPacketService;
+import dev.vexsoft.core.paper.service.performance.PerformanceBossBarService;
+import dev.vexsoft.core.paper.service.performance.ServerPerformanceService;
+import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarListener;
+import dev.vexsoft.core.paper.service.performance.VexPerformanceBossBarService;
+import dev.vexsoft.core.paper.service.performance.VexServerPerformanceService;
+import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
+import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.platform.PlatformService;
+import dev.vexsoft.core.paper.service.players.PaperPlayerService;
+import dev.vexsoft.core.paper.service.players.VexPaperPlayerService;
+import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
+import dev.vexsoft.core.paper.service.screenui.ScreenUiCoordinatorService;
+import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiCoordinatorService;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiListener;
+import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
+import dev.vexsoft.core.paper.service.sidebar.SidebarCoordinatorService;
+import dev.vexsoft.core.paper.service.sidebar.SidebarService;
+import dev.vexsoft.core.paper.service.sidebar.VexSidebarCoordinatorService;
+import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
+import dev.vexsoft.core.paper.service.signals.SignalRegistryService;
+import dev.vexsoft.core.paper.service.signals.SignalService;
+import dev.vexsoft.core.paper.service.signals.VexSignalRegistryService;
+import dev.vexsoft.core.paper.service.signals.VexSignalService;
+import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
+import dev.vexsoft.core.paper.service.teleport.TeleportCoordinatorService;
+import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
+import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportArrivalHandler;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportCompletionHandler;
+import dev.vexsoft.core.paper.service.world.VexWorldService;
+import dev.vexsoft.core.paper.service.world.WorldService;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import java.io.InputStream;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
-import java.time.Instant;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.io.InputStream;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Optional;
-
-public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
+public final class VexCorePlugin extends JavaPlugin
+    implements ConfigurationOwner, LocalizationOwner {
   private DefaultServiceRegistry services;
   private VexServiceRegistry coreServices;
   private ModuleManager modules;
@@ -176,15 +180,14 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
   public void onLoad() {
     long loadStartedAt = System.nanoTime();
     services = new DefaultServiceRegistry();
-    getServer().getServicesManager().register(ServiceRegistry.class, services, this, ServicePriority.Normal);
+    getServer()
+        .getServicesManager()
+        .register(ServiceRegistry.class, services, this, ServicePriority.Normal);
     coreServices = services.scoped(this);
     modules = new ModuleManager(coreServices);
     modules.enable(new PlatformModule());
     coreServices.register(ScheduleService.class, VexScheduleService.class);
-    coreServices.register(
-        ActionBarCoordinatorService.class,
-        VexActionBarCoordinatorService.class
-    );
+    coreServices.register(ActionBarCoordinatorService.class, VexActionBarCoordinatorService.class);
     coreServices.register(ActionBarService.class, VexActionBarService.class);
     coreServices.register(SidebarCoordinatorService.class, VexSidebarCoordinatorService.class);
     coreServices.register(SidebarService.class, VexSidebarService.class);
@@ -192,30 +195,21 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(CacheService.class, VexCacheService.class);
     coreServices.register(
         PlaceholderRegistryCoordinatorService.class,
-        VexPlaceholderRegistryCoordinatorService.class
-    );
+        VexPlaceholderRegistryCoordinatorService.class);
     coreServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
     coreServices.register(SignalRegistryService.class, VexSignalRegistryService.class);
     coreServices.register(SignalService.class, VexSignalService.class);
     coreServices.register(ConfigurationService.class, VexConfigurationService.class);
     coreServices.register(ThemeColorService.class, VexThemeColorService.class);
     coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
-    coreServices.register(
-        MessageTransportService.class,
-        VexPaperMessageTransportService.class
-    );
+    coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
     coreServices.registerQueuedServices();
     modules.enable(new PlayerModule(this));
     coreServices.register(
-        GlobalDataCoordinatorService.class,
-        VexGlobalDataCoordinatorService.class
-    );
+        GlobalDataCoordinatorService.class, VexGlobalDataCoordinatorService.class);
     coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
     coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
-    coreServices.register(
-        PlaceholderApiBridgeService.class,
-        VexPlaceholderApiBridgeService.class
-    );
+    coreServices.register(PlaceholderApiBridgeService.class, VexPlaceholderApiBridgeService.class);
     coreServices.register(DataService.class, VexDataService.class);
     coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
     coreServices.registerQueuedServices();
@@ -230,58 +224,40 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.register(SendMessageService.class, VexSendMessageService.class);
     coreServices.register(MessagingService.class, VexMessagingService.class);
     coreServices.register(
-        PlayerDirectoryCoordinatorService.class,
-        VexPlayerDirectoryCoordinatorService.class
-    );
+        PlayerDirectoryCoordinatorService.class, VexPlayerDirectoryCoordinatorService.class);
     coreServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
     coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
     coreServices.register(WorldService.class, VexWorldService.class);
-    coreServices.register(
-        TeleportCoordinatorService.class,
-        VexTeleportCoordinatorService.class
-    );
+    coreServices.register(TeleportCoordinatorService.class, VexTeleportCoordinatorService.class);
     coreServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
     coreServices.register(ProxyPingService.class, VexProxyPingService.class);
-    coreServices.register(
-        ServerPerformanceService.class,
-        VexServerPerformanceService.class
-    );
-    coreServices.register(
-        PerformanceBossBarService.class,
-        VexPerformanceBossBarService.class
-    );
+    coreServices.register(ServerPerformanceService.class, VexServerPerformanceService.class);
+    coreServices.register(PerformanceBossBarService.class, VexPerformanceBossBarService.class);
     coreServices.register(CommandService.class, VexCommandService.class);
     coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
     coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
     coreServices.register(ScreenUiService.class, VexScreenUiService.class);
     coreServices.register(DialogService.class, VexDialogService.class);
     coreServices.register(InventoryService.class, VexInventoryService.class);
-    coreServices.register(
-        LocalizationEditorUiService.class,
-        VexLocalizationEditorUiService.class
-    );
+    coreServices.register(LocalizationEditorUiService.class, VexLocalizationEditorUiService.class);
     coreServices.register(ItemService.class, VexItemService.class);
     coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
     coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
     coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
     coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
     coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+    coreServices.register(SkinService.class, VexSkinService.class);
+    coreServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
     coreServices.register(CameraPacketService.class, VexCameraPacketService.class);
     coreServices.register(
-        BlockDamageOverlayPacketService.class,
-        VexBlockDamageOverlayPacketService.class
-    );
+        BlockDamageOverlayPacketService.class, VexBlockDamageOverlayPacketService.class);
     coreServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
     coreServices.register(
-        DisplayPassengerPacketService.class,
-        VexDisplayPassengerPacketService.class
-    );
+        DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
     coreServices.register(InteractableHologramService.class, VexInteractableHologramService.class);
     coreServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
     coreServices.register(
-        PlayerAnimationPacketService.class,
-        VexPlayerAnimationPacketService.class
-    );
+        PlayerAnimationPacketService.class, VexPlayerAnimationPacketService.class);
     coreServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
     coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
     coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
@@ -290,12 +266,10 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
     coreServices.require(MessagingService.class).register(VexTeleportArrivalHandler.class);
     coreServices.require(MessagingService.class).register(VexTeleportCompletionHandler.class);
-    coreServices.require(MessagingService.class).register(
-        VexPlayerDirectoryResponseHandler.class
-    );
-    coreServices.require(MessagingService.class).register(
-        VexPlayerDirectoryListResponseHandler.class
-    );
+    coreServices.require(MessagingService.class).register(VexPlayerDirectoryResponseHandler.class);
+    coreServices
+        .require(MessagingService.class)
+        .register(VexPlayerDirectoryListResponseHandler.class);
     coreServices.require(DataService.class).register(VexCorePlayerData.class);
     coreServices.require(CommandService.class).register(VexCoreCommand.class);
     coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
@@ -321,39 +295,49 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     coreServices.require(PlayerDirectoryService.class).getOnlinePlayers();
     coreServices.require(ServerPerformanceService.class).start();
     coreServices.require(PerformanceBossBarService.class).start();
-    coreServices.require(ListenerService.class).register(
-        VexScreenUiListener.class, coreServices);
-    getLogger().info(
-        "Network server ID initialized as "
-            + coreServices.require(ServerIdentityService.class).getServerId().value()
-    );
-    coreServices.require(ListenerService.class).register(
-        VexPerformanceBossBarListener.class,
-        coreServices
-    );
+    coreServices.require(ListenerService.class).register(VexScreenUiListener.class, coreServices);
+    getLogger()
+        .info(
+            "Network server ID initialized as "
+                + coreServices.require(ServerIdentityService.class).getServerId().value());
+    coreServices
+        .require(ListenerService.class)
+        .register(VexPerformanceBossBarListener.class, coreServices);
     PlatformService platform = services.require(PlatformService.class);
     PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
-    coreServices.require(ListenerService.class).register(
-        VexPlayerLifecycleListener.class,
-        coreServices
-    );
+    coreServices
+        .require(ListenerService.class)
+        .register(VexPlayerLifecycleListener.class, coreServices);
     coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
-    playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
-        this,
-        task -> players.saveAll().exceptionally(throwable -> {
-          getLogger().log(Level.SEVERE, "Unable to autosave Vex players", throwable);
-          return null;
-        }),
-        5,
-        5,
-        TimeUnit.MINUTES
-    );
-    long startupMillis = TimeUnit.NANOSECONDS.toMillis(
-        startupNanos + System.nanoTime() - enableStartedAt
-    );
-    getLogger().info(
-        "VexCore successfully enabled on " + platform.getPlatform() + " in " + startupMillis + " ms"
-    );
+    coreServices
+        .require(ListenerService.class)
+        .register(VexPlayerDummyListener.class, coreServices);
+    playerAutosaveTask =
+        getServer()
+            .getAsyncScheduler()
+            .runAtFixedRate(
+                this,
+                task ->
+                    players
+                        .saveAll()
+                        .exceptionally(
+                            throwable -> {
+                              getLogger()
+                                  .log(Level.SEVERE, "Unable to autosave Vex players", throwable);
+                              return null;
+                            }),
+                5,
+                5,
+                TimeUnit.MINUTES);
+    long startupMillis =
+        TimeUnit.NANOSECONDS.toMillis(startupNanos + System.nanoTime() - enableStartedAt);
+    getLogger()
+        .info(
+            "VexCore successfully enabled on "
+                + platform.getPlatform()
+                + " in "
+                + startupMillis
+                + " ms");
   }
 
   @Override
@@ -362,22 +346,40 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
       playerAutosaveTask.cancel();
     }
     if (services != null) {
-      services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
-        try {
-          players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
-        } catch (RuntimeException exception) {
-          getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
-          Path recovery = getDataFolder().toPath().resolve("player-recovery")
-              .resolve(Instant.now().toString().replace(':', '-'));
-          try {
-            players.exportRecovery(recovery);
-            getLogger().severe("Dirty player recovery snapshots written to " + recovery
-                + ". Review these files before allowing affected players to reconnect.");
-          } catch (RuntimeException recoveryFailure) {
-            getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
-          }
-        }
-      });
+      services
+          .find(PlayerDataCoordinatorService.class)
+          .ifPresent(
+              players -> {
+                try {
+                  players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
+                } catch (RuntimeException exception) {
+                  getLogger()
+                      .log(
+                          Level.SEVERE,
+                          "Unable to save every VexPlayer during shutdown",
+                          exception);
+                  Path recovery =
+                      getDataFolder()
+                          .toPath()
+                          .resolve("player-recovery")
+                          .resolve(Instant.now().toString().replace(':', '-'));
+                  try {
+                    players.exportRecovery(recovery);
+                    getLogger()
+                        .severe(
+                            "Dirty player recovery snapshots written to "
+                                + recovery
+                                + ". Review these files before allowing affected players to"
+                                + " reconnect.");
+                  } catch (RuntimeException recoveryFailure) {
+                    getLogger()
+                        .log(
+                            Level.SEVERE,
+                            "Unable to write player recovery snapshots",
+                            recoveryFailure);
+                  }
+                }
+              });
     }
     if (modules != null) {
       if (coreServices != null) {
@@ -391,10 +393,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
   @Override
   public @NonNull VexLogger getLogger() {
     if (logger == null) {
-      logger = new VexLogger(
-          getName(),
-          "<dark_gray>[<gradient:#8A2BE2:#00BFFF>VexCore</gradient>]</dark_gray> "
-      );
+      logger =
+          new VexLogger(
+              getName(), "<dark_gray>[<gradient:#8A2BE2:#00BFFF>VexCore</gradient>]</dark_gray> ");
     }
     return logger;
   }

@@ -76,6 +76,11 @@ public class VexComponentData<T> {
       VexComponentTarget.ITEM,
       ItemRarity.class
   );
+  public static final VexComponentData<Integer> DYED_COLOR = integer(VexComponentKey.DYED_COLOR, 0, 0xFFFFFF);
+  public static final VexComponentData<VexArmorTrim> TRIM = value(VexComponentKey.TRIM, VexComponentTarget.ITEM, VexArmorTrim.class);
+  public static final VexComponentData<VexItemAttributes> ATTRIBUTE_MODIFIERS = value(VexComponentKey.ATTRIBUTE_MODIFIERS, VexComponentTarget.ITEM, VexItemAttributes.class);
+  public static final VexComponentData<VexTooltipDisplay> TOOLTIP_DISPLAY = value(VexComponentKey.TOOLTIP_DISPLAY, VexComponentTarget.ITEM, VexTooltipDisplay.class);
+
   public static final VexFlagComponentData UNBREAKABLE = new VexFlagComponentData(
       VexComponentKey.UNBREAKABLE,
       VexComponentTarget.ITEM

@@ -5,5 +5,8 @@ import net.kyori.adventure.text.Component;
 
 /** A prewrapped visual page. Its line positions stay fixed while text is revealed. */
 public record DialoguePage(List<Component> lines, int codePoints, String plainText) {
-  public DialoguePage { lines = List.copyOf(lines); }
+  /** Copies the prepared lines to preserve the page contents. */
+  public DialoguePage {
+    lines = List.copyOf(lines);
+  }
 }

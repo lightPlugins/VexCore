@@ -328,6 +328,16 @@ with English bundled as the default. State lore must contain dedicated `%rewards
 - Fully replaceable default buttons
 - Managed inventory sessions
 
+For editable menus, existing `MutableInventoryView` callbacks expose raw Bukkit click and drag events.
+Use `SlotInventoryView` with `CursorInventoryElement` for rendered slots backed by plugin storage:
+the transfer callback validates the item and exchanges the stored item with the real cursor, then the
+framework refreshes the view. Rendered placeholders are never transferred as items. Normal player
+inventory clicks and drags remain available; shift-click moves between backpack and hotbar, and
+double-click collects only from player storage. A drag into one cursor slot is deferred until Bukkit
+restores the cursor; mixed drags across menu slots are rejected as a whole. Menu controls accept
+left-click by default. Existing `PagedInventoryView` provides page bounds and previous/next buttons;
+subclasses can override `renderPageItem` to render entries using their own state.
+
 ### Dialog System
 
 - A central abstraction for Paper's experimental Dialog API
@@ -525,3 +535,26 @@ VexCore only contains systems that are useful to multiple plugins. Concrete cont
 - VexEssentials provides general server features
 
 These plugins can register their own services and data containers, then communicate through VexCore. VexCore remains the technical foundation and does not take ownership of domain-specific gameplay logic.
+
+### Armor item components
+
+The existing ItemService builder supports DYED_COLOR (24-bit RGB), TRIM (resolved with
+ItemService.armorTrim(patternKey, materialKey)), ATTRIBUTE_MODIFIERS (VexItemAttributes), and
+TOOLTIP_DISPLAY (VexTooltipDisplay). VexItemAttributes.empty() explicitly replaces prototype
+modifiers; resetData restores defaults and unsetData removes a component. VexTooltipDisplay
+hides selected details while retaining custom name and lore. Resolution and component application
+live in the version adapter; gameplay rules such as zero armor or unbreakability belong to consumers.
+
+### Personal player previews
+
+PlayerDummyService creates viewer-only mannequin packets through the versioned display adapter.
+No entity is added to the server world or ticked. A private client team disables collision and name tags.
+The dummy is immovable, has no gravity, and receives no hand equipment. SkinService first copies signed
+textures from the online profile. Missing textures use asynchronous profile updates (5-second timeout),
+VexCore bounded caches (2048 entries, 1-hour successful skin retention, 30-second request/failure retention),
+and shared pending requests. Closed or removed previews ignore late results.
+
+Call spawn(viewer, center, BobRotation), armor(handle, bootsToHelmet), and animate(handle) on the
+viewer thread from the feature's existing visual loop. The position is the body's center; the adapter
+converts to feet. Equipment packets are sent only on changes. Call remove on range exit; owner shutdown,
+quit, respawn, and world changes also retire handles. isActive lets feature runtimes detect retirement.
