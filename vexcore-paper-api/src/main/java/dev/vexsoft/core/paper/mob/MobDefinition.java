@@ -62,6 +62,25 @@ public final class MobDefinition {
     return key;
   }
 
+  /** Copies a catalog definition under a distinct instance/spawner definition key. */
+  public MobDefinition withKey(final MobKey key) {
+    Builder copy = builder(key, entityType)
+        .maxHealth(maxHealth)
+        .scale(scale)
+        .movementSpeed(movementSpeed)
+        .rotationSpeed(rotationSpeed)
+        .knockbackResistance(knockbackResistance)
+        .baby(baby)
+        .silent(silent)
+        .gravity(gravity)
+        .collidable(collidable);
+    glow().ifPresent(copy::glow);
+    hologram().ifPresent(copy::hologram);
+    initializer().ifPresent(copy::initializer);
+    goals.forEach(copy::goal);
+    return copy.build();
+  }
+
   /** Returns the vanilla carrier entity type. */
   public EntityType entityType() {
     return entityType;

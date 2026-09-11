@@ -15,6 +15,7 @@ import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.reward.CompiledReward;
+import dev.vexsoft.core.reward.QuantifiedReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
@@ -75,7 +76,17 @@ public final class CurrencyReward implements Reward {
   private record Compiled(
       Map<Currency, CompiledExpression> amounts,
       CurrencyLocalizationService localizations
-  ) implements CompiledReward {
+  ) implements QuantifiedReward {
+
+    @Override
+    public Map<String, WholeAmount> quantities(final PlayerExecutionContext context) {
+      Map<String, WholeAmount> result = new LinkedHashMap<>();
+      evaluate(context).forEach((currency, amount) -> result.put(
+          currency.getKey().toString(),
+          amount
+      ));
+      return Map.copyOf(result);
+    }
 
     @Override
     public RewardBehavior getBehavior() {

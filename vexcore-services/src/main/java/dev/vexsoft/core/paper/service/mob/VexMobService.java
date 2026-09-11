@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 import org.bukkit.entity.Entity;
+import org.bukkit.util.Vector;
 
 /** Default owner-scoped custom mob lifecycle facade. */
 @Dependencies({MobRegistryCoordinatorService.class, MobRuntimeCoordinatorService.class})
@@ -70,6 +71,11 @@ public final class VexMobService implements MobService, AutoCloseable {
   @Override
   public MobSnapshot setScale(final MobHandle handle, final double scale) {
     return runtime.setScale(owner, handle, scale);
+  }
+
+  @Override
+  public MobSnapshot setVelocity(final MobHandle handle, final Vector velocity) {
+    return runtime.setVelocity(owner, handle, velocity);
   }
 
   @Override

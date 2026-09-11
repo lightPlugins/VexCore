@@ -12,7 +12,11 @@ import dev.vexsoft.core.paper.mob.MobRemovalReason;
 import dev.vexsoft.core.paper.mob.MobScope;
 import dev.vexsoft.core.paper.mob.MobSnapshot;
 import dev.vexsoft.core.paper.mob.MobSpawnRequest;
+import dev.vexsoft.core.paper.mob.event.MobDamageEvent;
+import dev.vexsoft.core.paper.mob.event.MobRemovedEvent;
 import dev.vexsoft.core.paper.mob.goal.LookAtPlayerGoalDefinition;
+import dev.vexsoft.core.paper.mob.goal.OwnerMeleeGoalDefinition;
+import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.mob.goal.MobGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
@@ -27,6 +31,7 @@ import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
+import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import io.papermc.paper.event.player.PlayerTrackEntityEvent;
@@ -64,6 +69,9 @@ import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.projectiles.ProjectileSource;
+import org.bukkit.util.Vector;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 /** Default custom mob runtime with opt-in native goals and viewer-specific presentation. */
 @Dependencies({
@@ -71,6 +79,7 @@ import org.bukkit.projectiles.ProjectileSource;
     TextDisplayPacketService.class,
     DisplayPassengerPacketService.class,
     MobGlowPacketService.class,
+    MobHitPacketService.class,
     ScheduleService.class
 })
 public final class VexMobRuntimeCoordinatorService
@@ -81,6 +90,7 @@ public final class VexMobRuntimeCoordinatorService
   private final TextDisplayPacketService textDisplays;
   private final DisplayPassengerPacketService passengers;
   private final MobGlowPacketService glows;
+  private final MobHitPacketService hits;
   private final ScheduleService schedules;
   private final Map<UUID, RuntimeMob> mobs = new ConcurrentHashMap<>();
   private final Map<UUID, UUID> byEntity = new ConcurrentHashMap<>();
@@ -98,6 +108,7 @@ public final class VexMobRuntimeCoordinatorService
     textDisplays = services.require(TextDisplayPacketService.class);
     passengers = services.require(DisplayPassengerPacketService.class);
     glows = services.require(MobGlowPacketService.class);
+    hits = services.require(MobHitPacketService.class);
     schedules = services.require(ScheduleService.class);
   }
 
@@ -171,7 +182,25 @@ public final class VexMobRuntimeCoordinatorService
       throw new IllegalArgumentException("amount must be finite and greater than zero");
     }
     RuntimeMob runtime = requireOwned(owner, handle);
-    return damage(runtime, amount);
+    return damage(runtime, amount, null);
+  }
+
+  @Override
+  public MobSnapshot setVelocity(
+      final ServiceOwner owner,
+      final MobHandle handle,
+      final Vector velocity
+  ) {
+    Vector checkedVelocity = Objects.requireNonNull(velocity, "velocity").clone();
+    checkedVelocity.checkFinite();
+    RuntimeMob runtime = requireOwned(owner, handle);
+    // Goal-less carriers are neutralized with NoAI during spawn. Re-enable their native tick
+    // before applying an explicit launch so Paper actually advances the requested velocity.
+    if (runtime.definition.goals().isEmpty()) {
+      nms.activateGoals(runtime.entity);
+    }
+    runtime.entity.setVelocity(checkedVelocity);
+    return snapshot(runtime);
   }
 
   @Override
@@ -272,7 +301,7 @@ public final class VexMobRuntimeCoordinatorService
   @Override
   public int removeAll(final ServiceOwner owner, final MobRemovalReason reason) {
     String ownerName = VexMobRegistryCoordinatorService.ownerName(owner);
-    var ownedMobs = mobs.values().stream()
+    Collection<RuntimeMob> ownedMobs = mobs.values().stream()
         .filter(runtime -> runtime.ownerName.equals(ownerName)).toList();
     ownedMobs.forEach(runtime -> removeRuntime(runtime, reason));
     return ownedMobs.size();
@@ -281,12 +310,12 @@ public final class VexMobRuntimeCoordinatorService
   @Override
   public int removeDefinition(final ServiceOwner owner, final MobKey key) {
     String ownerName = VexMobRegistryCoordinatorService.ownerName(owner);
-    var matching = mobs.values().stream()
+    Collection<RuntimeMob> matchingMobs = mobs.values().stream()
         .filter(runtime -> runtime.ownerName.equals(ownerName))
         .filter(runtime -> runtime.definition.key().equals(key))
         .toList();
-    matching.forEach(runtime -> removeRuntime(runtime, MobRemovalReason.DEFINITION_REMOVED));
-    return matching.size();
+    matchingMobs.forEach(runtime -> removeRuntime(runtime, MobRemovalReason.DEFINITION_REMOVED));
+    return matchingMobs.size();
   }
 
   @Override
@@ -332,7 +361,24 @@ public final class VexMobRuntimeCoordinatorService
     if (!mayInteract(runtime, event.getDamageSource().getCausingEntity())) {
       return;
     }
-    damage(runtime, event.getFinalDamage());
+    double charge = 1.0D;
+    AttackCharge sample = runtime.attackCharge;
+    if (sample != null && sample.tick() == Bukkit.getCurrentTick()
+        && event instanceof EntityDamageByEntityEvent attack && attack.getDamager() instanceof Player player
+        && sample.player().equals(player.getUniqueId())) {
+      charge = sample.value();
+      runtime.attackCharge = null;
+    }
+    damage(runtime, event.getFinalDamage(), event.getDamageSource().getCausingEntity(), charge);
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  private void onAttackCharge(final PrePlayerAttackEntityEvent event) {
+    RuntimeMob runtime = findRuntime(event.getAttacked());
+    if (runtime != null) {
+      runtime.attackCharge = new AttackCharge(event.getPlayer().getUniqueId(), Bukkit.getCurrentTick(),
+          Math.clamp(event.getPlayer().getAttackCooldown(), 0.0D, 1.0D));
+    }
   }
 
   @EventHandler(priority = EventPriority.MONITOR)
@@ -341,7 +387,7 @@ public final class VexMobRuntimeCoordinatorService
     if (runtime != null) {
       event.getDrops().clear();
       event.setDroppedExp(0);
-      removeRuntime(runtime, MobRemovalReason.DEATH);
+      removeRuntime(runtime, MobRemovalReason.DEATH, runtime.deathAttacker, false);
     }
   }
 
@@ -470,6 +516,10 @@ public final class VexMobRuntimeCoordinatorService
             look.yawOnly(), runtime.definition.rotationSpeed(),
             runtime.scope.playerId().orElse(null)
         ));
+      } else if (goal instanceof OwnerMeleeGoalDefinition melee) {
+        nms.addOwnerMelee(runtime.entity, new NmsOwnerMeleeSpec(melee.priority(), melee.speed(),
+            melee.radius(), melee.reach(), melee.damage(), melee.attackIntervalTicks(),
+            melee.pathIntervalTicks(), runtime.scope.playerId().orElse(null)));
       } else {
         throw new IllegalArgumentException("Unsupported mob goal: " + goal.getClass().getName());
       }
@@ -525,9 +575,10 @@ public final class VexMobRuntimeCoordinatorService
       existing = null;
     }
     if (existing == null) {
-      var requestBuilder = FakeTextDisplayRequest.builder(
+      FakeTextDisplayRequest.FakeTextDisplayRequestBuilder requestBuilder =
+          FakeTextDisplayRequest.builder(
           runtime.entity.getLocation(), hologram.get().renderer().render(viewer, snapshot(runtime))
-      ).billboard(hologram.get().billboard())
+          ).billboard(hologram.get().billboard())
           .backgroundColor(hologram.get().backgroundColor())
           .defaultBackground(hologram.get().defaultBackground())
           .shadowed(hologram.get().shadowed())
@@ -597,22 +648,50 @@ public final class VexMobRuntimeCoordinatorService
         : hologram.offsetY();
   }
 
-  private MobDamageResult damage(final RuntimeMob runtime, final double amount) {
+  private MobDamageResult damage(final RuntimeMob runtime, final double amount, final Entity attacker) {
+    return damage(runtime, amount, attacker, 1.0D);
+  }
+
+  private MobDamageResult damage(final RuntimeMob runtime, final double amount, final Entity attacker,
+      final double attackCharge) {
     double previous = runtime.health;
     if (!runtime.entity.isValid() || runtime.removing) {
       return MobDamageResult.rejected(previous);
     }
-    runtime.health = Math.max(0.0D, previous - amount);
+    MobDamageEvent event = new MobDamageEvent(snapshot(runtime), attacker, amount, attackCharge);
+    Bukkit.getPluginManager().callEvent(event);
+    if (event.isCancelled() || event.getDamage() == 0.0D || runtime.removing) {
+      return MobDamageResult.rejected(runtime.health);
+    }
+    runtime.health = Math.max(0.0D, runtime.health - event.getDamage());
     boolean killed = runtime.health == 0.0D;
     if (killed) {
-      removeRuntime(runtime, MobRemovalReason.DEATH);
+      runtime.deathAttacker = attacker;
+      runtime.entity.setHealth(0.0D);
     } else {
+      Bukkit.getOnlinePlayers().stream()
+          .filter(player -> runtime.scope.includes(player.getUniqueId()))
+          .filter(player -> player.getWorld().equals(runtime.entity.getWorld()))
+          .forEach(player -> hits.playHit(player, runtime.entity));
       refreshPresentation(runtime);
     }
     return new MobDamageResult(true, killed, previous, runtime.health);
   }
 
   private void removeRuntime(final RuntimeMob runtime, final MobRemovalReason reason) {
+    removeRuntime(runtime, reason, null);
+  }
+
+  private void removeRuntime(final RuntimeMob runtime, final MobRemovalReason reason, final Entity attacker) {
+    removeRuntime(runtime, reason, attacker, true);
+  }
+
+  private void removeRuntime(
+      final RuntimeMob runtime,
+      final MobRemovalReason reason,
+      final Entity attacker,
+      final boolean removeCarrier
+  ) {
     if (runtime.removing || mobs.remove(runtime.handle.instanceId(), runtime) == false) {
       return;
     }
@@ -621,10 +700,11 @@ public final class VexMobRuntimeCoordinatorService
     nms.deactivateGoals(runtime.entity);
     Bukkit.getOnlinePlayers().forEach(player -> clearPresentation(runtime, player));
     runtime.holograms.clear();
-    if (runtime.entity.isValid()) {
+    if (removeCarrier && runtime.entity.isValid()) {
       runtime.entity.remove();
     }
     removalListeners.forEach(listener -> listener.onRemoved(runtime.handle, reason));
+    Bukkit.getPluginManager().callEvent(new MobRemovedEvent(snapshot(runtime), reason, attacker));
   }
 
   private boolean mayInteract(final RuntimeMob runtime, final Entity source) {
@@ -682,6 +762,8 @@ public final class VexMobRuntimeCoordinatorService
   }
 
   private static final class RuntimeMob {
+    private AttackCharge attackCharge;
+    private Entity deathAttacker;
     private final String ownerName;
     private final MobHandle handle;
     private final MobDefinition definition;
@@ -715,4 +797,5 @@ public final class VexMobRuntimeCoordinatorService
   }
 
   private record HologramSession(FakeDisplayHandle handle, long epoch) { }
+  private record AttackCharge(UUID player, int tick, double value) { }
 }

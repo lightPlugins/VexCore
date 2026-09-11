@@ -10,6 +10,7 @@ import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import java.util.Collection;
 import java.util.Optional;
 import org.bukkit.entity.Entity;
+import org.bukkit.util.Vector;
 
 /** Owner-scoped lifecycle and state access for non-persistent custom mobs. */
 public interface MobService extends VexService {
@@ -34,6 +35,9 @@ public interface MobService extends VexService {
 
   /** Updates the native scale and refreshes dependent presentation. */
   MobSnapshot setScale(MobHandle handle, double scale);
+
+  /** Applies a finite launch velocity to an owned mob without exposing its native carrier. */
+  MobSnapshot setVelocity(MobHandle handle, Vector velocity);
 
   /** Sets or replaces the viewer-specific default glow. */
   MobSnapshot setGlow(MobHandle handle, DisplayGlowColor color);

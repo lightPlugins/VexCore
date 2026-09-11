@@ -52,6 +52,10 @@
       <!-- Native goals must retain their server-owned carrier for their short runtime lifetime. -->
       <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal"/>
       <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal"/>
+      <!-- Bukkit events deliberately retain the live causing entity, just like native events. -->
+      <Class name="dev.vexsoft.core.paper.mob.event.MobDamageEvent"/>
+      <Class name="dev.vexsoft.core.paper.mob.event.MobRemovedEvent"/>
     </Or>
   </Match>
 

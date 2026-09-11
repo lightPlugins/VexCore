@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.service.packets.item;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.items.VexItemKeys;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -56,6 +57,13 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
       final UUID viewerId,
       final ItemStack itemStack
   ) {
+    Byte preservePresentation = itemStack.getPersistentDataContainer().get(
+        VexItemKeys.PRESERVE_PRESENTATION,
+        PersistentDataType.BYTE
+    );
+    if (Byte.valueOf((byte) 1).equals(preservePresentation)) {
+      return Optional.empty();
+    }
     FakeItemMetaRule merged = null;
     for (Map.Entry<FakeItemRuleKey, FakeItemMetaRule> entry : rules.entrySet()) {
       FakeItemRuleKey key = entry.getKey();

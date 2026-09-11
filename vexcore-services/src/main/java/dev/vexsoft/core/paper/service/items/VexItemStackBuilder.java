@@ -75,7 +75,13 @@ public final class VexItemStackBuilder implements ItemStackBuilder {
   public ItemStack build() {
     ItemStack itemStack = source.clone();
     components.apply(itemStack, new VexComponentPatch(operations));
-    components.clearPresentation(itemStack);
+    Byte preservePresentation = itemStack.getPersistentDataContainer().get(
+        VexItemKeys.PRESERVE_PRESENTATION,
+        PersistentDataType.BYTE
+    );
+    if (!Byte.valueOf((byte) 1).equals(preservePresentation)) {
+      components.clearPresentation(itemStack);
+    }
     itemStack.editPersistentDataContainer(container -> container.set(
         VexItemKeys.ITEM_ID,
         PersistentDataType.STRING,

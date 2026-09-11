@@ -3,9 +3,11 @@ package dev.vexsoft.core.paper.nms.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
 import java.lang.reflect.Field;
 import java.util.Objects;
@@ -31,13 +33,12 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
   @Override
   public void neutralize(final Mob mob) {
     CraftMob craftMob = handle(mob);
-    var handle = craftMob.getHandle();
-    handle.getNavigation().stop();
+    craftMob.getHandle().getNavigation().stop();
     selector(craftMob, GOAL_SELECTOR).removeAllGoals(goal -> true);
     selector(craftMob, TARGET_SELECTOR).removeAllGoals(goal -> true);
     clearVanillaBrain(craftMob);
-    handle.setTarget(null);
-    handle.setNoAi(true);
+    craftMob.getHandle().setTarget(null);
+    craftMob.getHandle().setNoAi(true);
     mob.setAware(false);
     mob.setTarget(null);
   }
@@ -70,6 +71,18 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
   }
 
   @Override
+  public void addOwnerMelee(final Mob mob, final NmsOwnerMeleeSpec specification) {
+    NmsOwnerMeleeSpec checkedSpecification = Objects.requireNonNull(
+        specification,
+        "specification"
+    );
+    selector(handle(mob), GOAL_SELECTOR).addGoal(
+        checkedSpecification.priority(),
+        new V26_2OwnerMeleeGoal(mob, checkedSpecification)
+    );
+  }
+
+  @Override
   public void deactivateGoals(final Mob mob) {
     neutralize(mob);
   }
@@ -84,15 +97,14 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
   @SuppressWarnings(
       "unchecked") // The brain belongs to this exact entity; Bukkit erases its subtype.
   private static void clearVanillaBrain(final CraftMob mob) {
-    var entity = mob.getHandle();
-    var brain = (Brain<LivingEntity>) entity.getBrain();
-    if (entity.level() instanceof ServerLevel level) {
-      brain.stopAll(level, entity);
+    Brain<LivingEntity> brain = (Brain<LivingEntity>) mob.getHandle().getBrain();
+    if (mob.getHandle().level() instanceof ServerLevel level) {
+      brain.stopAll(level, mob.getHandle());
     }
     brain.removeAllBehaviors();
     brain.clearMemories();
-    entity.getNavigation().stop();
-    if (entity instanceof Villager villager) {
+    mob.getHandle().getNavigation().stop();
+    if (mob.getHandle() instanceof Villager villager) {
       // 26.2 tracks appearance finalization separately from profession/type setters.
       villager.setVillagerDataFinalized(true);
     }
