@@ -21,45 +21,49 @@ import java.util.Objects;
 
 /** Supplies authoritative network-player snapshots from Velocity. */
 @Dependencies(MessagingService.class)
-public final class VexPlayerDirectoryListRequestHandler implements
-    MessageHandler<PlayerDirectoryListRequest> {
+public final class VexPlayerDirectoryListRequestHandler implements MessageHandler<PlayerDirectoryListRequest> {
 
-  private final ProxyServer proxy;
-  private final MessagingService messages;
+    private final ProxyServer proxy;
+    private final MessagingService messages;
 
-  public VexPlayerDirectoryListRequestHandler(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    if (!(checked.getOwner() instanceof VexCoreVelocityPlugin plugin)) {
-      throw new IllegalArgumentException("Directory handler must be owned by VexCore");
+    public VexPlayerDirectoryListRequestHandler(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
+
+        if (!(checked.getOwner() instanceof VexCoreVelocityPlugin plugin)) {
+            throw new IllegalArgumentException("Directory handler must be owned by VexCore");
+        }
+
+        proxy = plugin.getProxyServer();
+        messages = checked.require(MessagingService.class);
     }
-    proxy = plugin.getProxyServer();
-    messages = checked.require(MessagingService.class);
-  }
 
-  @Override
-  public MessageType<PlayerDirectoryListRequest> getMessageType() {
-    return PlayerDirectoryMessages.LIST_REQUEST;
-  }
-
-  @Override
-  public void handle(final PlayerDirectoryListRequest request, final MessageContext context) {
-    if (context.getSourceServer().isBlank()) {
-      return;
+    @Override
+    public MessageType<PlayerDirectoryListRequest> getMessageType() {
+        return PlayerDirectoryMessages.LIST_REQUEST;
     }
-    List<NetworkPlayer> players = proxy.getAllPlayers().stream()
-        .flatMap(player -> player.getCurrentServer().stream().map(connection ->
-            new NetworkPlayer(
-                player.getUniqueId(),
-                player.getUsername(),
-                new ServerId(connection.getServerInfo().getName())
-            )
-        ))
-        .sorted(Comparator.comparing(player -> player.name().toLowerCase(Locale.ROOT)))
-        .toList();
-    messages.send(
-        MessageTarget.server(context.getSourceServer()),
-        PlayerDirectoryMessages.LIST_RESPONSE,
-        new PlayerDirectoryListResponse(request.requestId(), players)
-    );
-  }
+
+    @Override
+    public void handle(final PlayerDirectoryListRequest request, final MessageContext context) {
+        if (context.getSourceServer().isBlank()) {
+            return;
+        }
+
+        List<NetworkPlayer> players = proxy.getAllPlayers()
+            .stream()
+            .flatMap(player -> player.getCurrentServer()
+                .stream()
+                .map(connection -> new NetworkPlayer(
+                    player.getUniqueId(),
+                    player.getUsername(),
+                    new ServerId(connection.getServerInfo().getName())
+                )))
+            .sorted(Comparator.comparing(player -> player.name().toLowerCase(Locale.ROOT)))
+            .toList();
+
+        messages.send(
+            MessageTarget.server(context.getSourceServer()),
+            PlayerDirectoryMessages.LIST_RESPONSE,
+            new PlayerDirectoryListResponse(request.requestId(), players)
+        );
+    }
 }

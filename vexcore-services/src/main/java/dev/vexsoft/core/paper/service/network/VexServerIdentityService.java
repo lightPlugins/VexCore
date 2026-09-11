@@ -12,17 +12,21 @@ import java.util.Objects;
 @Dependencies(ConfigurationService.class)
 public final class VexServerIdentityService implements ServerIdentityService {
 
-  private final ServerId serverId;
+    private final ServerId serverId;
 
-  public VexServerIdentityService(final VexServiceRegistry services) {
-    VexConfiguration configuration = Objects.requireNonNull(services, "services")
-        .require(ConfigurationService.class)
-        .load(Path.of("network.yml"), "network.yml");
-    serverId = new ServerId(configuration.getString("server-id", "server"));
-  }
+    public VexServerIdentityService(final VexServiceRegistry services) {
+        VexConfiguration configuration = Objects.requireNonNull(services, "services")
+            .require(ConfigurationService.class)
+            .load(
+                Path.of("network.yml"),
+                "network.yml"
+            );
 
-  @Override
-  public ServerId getServerId() {
-    return serverId;
-  }
+        serverId = new ServerId(configuration.getString("server-id", "server"));
+    }
+
+    @Override
+    public ServerId getServerId() {
+        return serverId;
+    }
 }

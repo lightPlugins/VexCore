@@ -9,9 +9,11 @@ import org.bukkit.Bukkit;
 @UtilityClass
 public class ItemVersions {
 
-  public static ItemVersionDefinition select(final VexServiceRegistry services) {
-    VexItemVersionRegistry versions = new VexItemVersionRegistry(services);
-    versions.register(V26_2ItemVersionDefinition.class);
-    return versions.require(Bukkit.getMinecraftVersion());
-  }
+    public static ItemVersionDefinition select(final VexServiceRegistry services) {
+        VexItemVersionRegistry versions = new VexItemVersionRegistry(services);
+
+        versions.register(V26_2ItemVersionDefinition.class);
+
+        return versions.require(Bukkit.getMinecraftVersion());
+    }
 }

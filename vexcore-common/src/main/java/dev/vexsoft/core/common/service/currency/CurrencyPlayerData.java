@@ -11,19 +11,16 @@ import java.util.Objects;
 @Dependencies
 public final class CurrencyPlayerData implements PlayerDataDefinition {
 
-  static final DataContainerKey<CurrencyData> CURRENCIES = DataContainerKey.of(
-      "currencies",
-      CurrencyData.class,
-      CurrencyData::new
-  );
+    static final DataContainerKey<CurrencyData> CURRENCIES =
+        DataContainerKey.of("currencies", CurrencyData.class, CurrencyData::new);
 
-  /** Validates service-managed construction. */
-  public CurrencyPlayerData(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
-  }
+    /** Validates service-managed construction. */
+    public CurrencyPlayerData(final VexServiceRegistry services) {
+        Objects.requireNonNull(services, "services");
+    }
 
-  @Override
-  public void register(final DataContainerRegistry registry) {
-    registry.register(CURRENCIES);
-  }
+    @Override
+    public void register(final DataContainerRegistry registry) {
+        registry.register(CURRENCIES);
+    }
 }

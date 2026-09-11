@@ -9,6 +9,6 @@ import dev.vexsoft.core.paper.inventory.InventoryElement;
 @FunctionalInterface
 public interface PageItemRenderer<T> {
 
-  /** Renders one value at its absolute source index */
-  InventoryElement render(InventoryContext context, T item, int absoluteIndex);
+    /** Renders one value at its absolute source index */
+    InventoryElement render(InventoryContext context, T item, int absoluteIndex);
 }

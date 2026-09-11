@@ -8,39 +8,39 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/** Registers item adapters and selects the definition supporting the running Minecraft version. */
 public final class VexItemVersionRegistry {
 
-  private final VexServiceRegistry services;
-  private final Map<MinecraftVersion, ItemVersionDefinition> definitions = new LinkedHashMap<>();
+    private final VexServiceRegistry services;
+    private final Map<MinecraftVersion, ItemVersionDefinition> definitions = new LinkedHashMap<>();
 
-  public VexItemVersionRegistry(final VexServiceRegistry services) {
-    this.services = Objects.requireNonNull(services, "services");
-  }
-
-  public void register(final Class<? extends ItemVersionDefinition> definitionType) {
-    ItemVersionDefinition definition = VexClassFactory.create(
-        definitionType,
-        services,
-        "Item version definition"
-    );
-    for (String value : definition.getSupportedVersions()) {
-      MinecraftVersion version = MinecraftVersion.of(value);
-      ItemVersionDefinition existing = definitions.putIfAbsent(version, definition);
-      if (existing != null) {
-        throw new IllegalStateException("Item version is already registered: " + version);
-      }
+    public VexItemVersionRegistry(final VexServiceRegistry services) {
+        this.services = Objects.requireNonNull(services, "services");
     }
-  }
 
-  public ItemVersionDefinition require(final String minecraftVersion) {
-    MinecraftVersion version = MinecraftVersion.of(minecraftVersion);
-    ItemVersionDefinition definition = definitions.get(version);
-    if (definition == null) {
-      throw new IllegalStateException(
-          "VexCore does not support Minecraft " + version
-              + " data components. Supported versions: " + definitions.keySet()
-      );
+    public void register(final Class<? extends ItemVersionDefinition> definitionType) {
+        ItemVersionDefinition definition = VexClassFactory.create(definitionType, services, "Item version definition");
+
+        for (String value : definition.getSupportedVersions()) {
+            MinecraftVersion version = MinecraftVersion.of(value);
+            ItemVersionDefinition existing = definitions.putIfAbsent(version, definition);
+
+            if (existing != null) {
+                throw new IllegalStateException("Item version is already registered: " + version);
+            }
+        }
     }
-    return definition;
-  }
+
+    public ItemVersionDefinition require(final String minecraftVersion) {
+        MinecraftVersion version = MinecraftVersion.of(minecraftVersion);
+        ItemVersionDefinition definition = definitions.get(version);
+
+        if (definition == null) {
+            throw new IllegalStateException(
+                "VexCore does not support Minecraft " + version + " data components. Supported versions: "
+                    + definitions.keySet());
+        }
+
+        return definition;
+    }
 }

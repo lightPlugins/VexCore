@@ -15,59 +15,64 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
+/** Creates item builders and resolves stable item identities through the configured component adapter. */
 @Dependencies({ItemComponentAdapterService.class, FakeItemMetaService.class})
 public final class VexItemService implements ItemService {
 
-  private final ItemComponentAdapterService components;
-  private final FakeItemMetaService presentation;
+    private final ItemComponentAdapterService components;
+    private final FakeItemMetaService presentation;
 
-  public VexItemService(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    components = checkedServices.require(ItemComponentAdapterService.class);
-    presentation = checkedServices.require(FakeItemMetaService.class);
-  }
+    public VexItemService(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-  @Override
-  public ItemStackBuilder builder(
-      final NamespacedKey itemId, final Material material, final int amount) {
-    Material checkedMaterial = Objects.requireNonNull(material, "material");
-    if (checkedMaterial.isAir()) {
-      throw new IllegalArgumentException("material must not be air");
+        components = checkedServices.require(ItemComponentAdapterService.class);
+        presentation = checkedServices.require(FakeItemMetaService.class);
     }
-    if (amount < 1 || amount > 99) {
-      throw new IllegalArgumentException("amount must be between 1 and 99");
+
+    @Override
+    public ItemStackBuilder builder(final NamespacedKey itemId, final Material material, final int amount) {
+        Material checkedMaterial = Objects.requireNonNull(material, "material");
+
+        if (checkedMaterial.isAir()) {
+            throw new IllegalArgumentException("material must not be air");
+        }
+
+        if (amount < 1 || amount > 99) {
+            throw new IllegalArgumentException("amount must be between 1 and 99");
+        }
+
+        return builder(itemId, new ItemStack(checkedMaterial, amount));
     }
-    return builder(itemId, new ItemStack(checkedMaterial, amount));
-  }
 
-  @Override
-  public ItemStackBuilder builder(final NamespacedKey itemId, final ItemStack itemStack) {
-    ItemStack checkedItem = Objects.requireNonNull(itemStack, "itemStack");
-    if (checkedItem.getType().isAir()) {
-      throw new IllegalArgumentException("itemStack must not be air");
+    @Override
+    public ItemStackBuilder builder(final NamespacedKey itemId, final ItemStack itemStack) {
+        ItemStack checkedItem = Objects.requireNonNull(itemStack, "itemStack");
+
+        if (checkedItem.getType().isAir()) {
+            throw new IllegalArgumentException("itemStack must not be air");
+        }
+
+        return new VexItemStackBuilder(itemId, checkedItem, components, presentation);
     }
-    return new VexItemStackBuilder(itemId, checkedItem, components, presentation);
-  }
 
-  @Override
-  public Optional<NamespacedKey> getItemId(final ItemStack itemStack) {
-    if (itemStack == null || itemStack.getType().isAir()) {
-      return Optional.empty();
+    @Override
+    public Optional<NamespacedKey> getItemId(final ItemStack itemStack) {
+        if (itemStack == null || itemStack.getType().isAir()) {
+            return Optional.empty();
+        }
+
+        String value = itemStack.getPersistentDataContainer().get(VexItemKeys.ITEM_ID, PersistentDataType.STRING);
+
+        return value == null ? Optional.empty() : Optional.ofNullable(NamespacedKey.fromString(value));
     }
-    String value =
-        itemStack.getPersistentDataContainer().get(VexItemKeys.ITEM_ID, PersistentDataType.STRING);
-    return value == null ? Optional.empty() : Optional.ofNullable(NamespacedKey.fromString(value));
-  }
 
-  @Override
-  public boolean isItem(final ItemStack itemStack, final NamespacedKey itemId) {
-    return getItemId(itemStack)
-        .filter(Objects.requireNonNull(itemId, "itemId")::equals)
-        .isPresent();
-  }
+    @Override
+    public boolean isItem(final ItemStack itemStack, final NamespacedKey itemId) {
+        return getItemId(itemStack).filter(Objects.requireNonNull(itemId, "itemId")::equals).isPresent();
+    }
 
-  @Override
-  public VexArmorTrim armorTrim(NamespacedKey pattern, NamespacedKey material) {
-    return components.armorTrim(pattern, material);
-  }
+    @Override
+    public VexArmorTrim armorTrim(NamespacedKey pattern, NamespacedKey material) {
+        return components.armorTrim(pattern, material);
+    }
 }

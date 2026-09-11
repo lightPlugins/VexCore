@@ -12,25 +12,26 @@ import java.util.Objects;
 @Dependencies(PlayerDataCoordinatorService.class)
 public final class VexPlayerContainerService implements PlayerContainerService, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final PlayerDataCoordinatorService coordinator;
+    private final ServiceOwner owner;
+    private final PlayerDataCoordinatorService coordinator;
 
-  public VexPlayerContainerService(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    owner = checkedServices.getOwner();
-    coordinator = checkedServices.require(PlayerDataCoordinatorService.class);
-  }
+    public VexPlayerContainerService(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-  @Override
-  public <T extends PlayerContainer> void register(
-      final Class<T> type,
-      final PlayerContainerFactory<? extends T> factory
-  ) {
-    coordinator.registerContainer(owner, type, factory);
-  }
+        owner = checkedServices.getOwner();
+        coordinator = checkedServices.require(PlayerDataCoordinatorService.class);
+    }
 
-  @Override
-  public void close() {
-    coordinator.unregisterContainers(owner);
-  }
+    @Override
+    public <T extends PlayerContainer> void register(
+        final Class<T> type,
+        final PlayerContainerFactory<? extends T> factory
+    ) {
+        coordinator.registerContainer(owner, type, factory);
+    }
+
+    @Override
+    public void close() {
+        coordinator.unregisterContainers(owner);
+    }
 }

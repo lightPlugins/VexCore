@@ -4,10 +4,10 @@ package dev.vexsoft.core.paper.packets.interaction;
 @FunctionalInterface
 public interface FakeInteractHandler {
 
-  /**
-   * Handles one left- or right-click interaction on the owning player's scheduler.
-   *
-   * @param interaction decoded viewer input and interaction identity
-   */
-  void handle(FakeInteraction interaction);
+    /**
+     * Handles one left- or right-click interaction on the owning player's scheduler.
+     *
+     * @param interaction decoded viewer input and interaction identity
+     */
+    void handle(FakeInteraction interaction);
 }

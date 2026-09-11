@@ -7,20 +7,20 @@ import java.util.Set;
 /** Native entity control definition for Minecraft 26.2. */
 public final class V26_2NmsVersionDefinition implements NmsVersionDefinition {
 
-  private static final String VERSION = "26.2";
+    private static final String VERSION = "26.2";
 
-  @Override
-  public String getAdapterVersion() {
-    return VERSION;
-  }
+    @Override
+    public String getAdapterVersion() {
+        return VERSION;
+    }
 
-  @Override
-  public Set<String> getSupportedVersions() {
-    return Set.of(VERSION);
-  }
+    @Override
+    public Set<String> getSupportedVersions() {
+        return Set.of(VERSION);
+    }
 
-  @Override
-  public Class<? extends NmsMobAdapterService> getMobAdapter() {
-    return V26_2NmsMobAdapterService.class;
-  }
+    @Override
+    public Class<? extends NmsMobAdapterService> getMobAdapter() {
+        return V26_2NmsMobAdapterService.class;
+    }
 }

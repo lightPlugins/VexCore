@@ -5,10 +5,10 @@ package dev.vexsoft.core.api.service.registry;
  */
 public interface ServiceOwner {
 
-  /**
-   * Returns the human-readable name of the service owner
-   *
-   * @return the owner name
-   */
-  String getServiceOwnerName();
+    /**
+     * Returns the human-readable name of the service owner
+     *
+     * @return the owner name
+     */
+    String getServiceOwnerName();
 }

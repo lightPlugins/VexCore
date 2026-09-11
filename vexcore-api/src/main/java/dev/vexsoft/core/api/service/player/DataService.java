@@ -1,7 +1,6 @@
 package dev.vexsoft.core.api.service.player;
 
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
-
 import dev.vexsoft.core.api.service.registry.VexService;
 
 /**
@@ -12,14 +11,14 @@ import dev.vexsoft.core.api.service.registry.VexService;
  */
 public interface DataService extends VexService {
 
-  /** Freezes this owner's loaded data after feature cleanup, before its classloader closes. */
-  void prepareUnload();
+    /** Freezes this owner's loaded data after feature cleanup, before its classloader closes. */
+    void prepareUnload();
 
-  /**
-   * Creates and registers a player-data definition owned by this plugin.
-   *
-   * @param definitionType public definition class created through the scoped service registry
-   * @throws IllegalStateException if registration or schema reconciliation fails
-   */
-  void register(Class<? extends PlayerDataDefinition> definitionType);
+    /**
+     * Creates and registers a player-data definition owned by this plugin.
+     *
+     * @param definitionType public definition class created through the scoped service registry
+     * @throws IllegalStateException if registration or schema reconciliation fails
+     */
+    void register(Class<? extends PlayerDataDefinition> definitionType);
 }

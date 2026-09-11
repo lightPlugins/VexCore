@@ -15,59 +15,57 @@ import org.junit.jupiter.api.Test;
 
 class VexMessageCodecServiceTest {
 
-  private VexMessageCodecService codec;
+    private VexMessageCodecService codec;
 
-  @BeforeEach
-  void setUp() {
-    ServiceOwner owner = () -> "MessagingTest";
-    codec = new VexMessageCodecService(new DefaultServiceRegistry().scoped(owner));
-  }
+    @BeforeEach
+    void setUp() {
+        ServiceOwner owner = () -> "MessagingTest";
 
-  @Test
-  void roundTripsVersionedMessage() {
-    UUID messageId = UUID.randomUUID();
-    MessageEnvelope original = new MessageEnvelope(
-        messageId,
-        MessageKey.of("vexskills", "experience-changed"),
-        MessageTarget.server("survival-2"),
-        "VexSkills",
-        "survival-1",
-        100L,
-        30_000L,
-        new byte[] {1, 2, 3}
-    );
+        codec = new VexMessageCodecService(new DefaultServiceRegistry().scoped(owner));
+    }
 
-    MessageEnvelope decoded = codec.decode(codec.encode(original));
+    @Test
+    void roundTripsVersionedMessage() {
+        UUID messageId = UUID.randomUUID();
+        MessageEnvelope original = new MessageEnvelope(
+            messageId,
+            MessageKey.of("vexskills", "experience-changed"),
+            MessageTarget.server("survival-2"),
+            "VexSkills",
+            "survival-1",
+            100L,
+            30_000L,
+            new byte[]{1, 2, 3}
+        );
 
-    assertEquals(messageId, decoded.getMessageId());
-    assertEquals(original.getMessageKey(), decoded.getMessageKey());
-    assertEquals(original.getTarget(), decoded.getTarget());
-    assertEquals("VexSkills", decoded.getSourceOwner());
-    assertEquals("survival-1", decoded.getSourceServer());
-    assertArrayEquals(original.getPayload(), decoded.getPayload());
-  }
+        MessageEnvelope decoded = codec.decode(codec.encode(original));
 
-  @Test
-  void rejectsUnknownMessageHeader() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> codec.decode(new byte[] {0, 0, 0, 0})
-    );
-  }
+        assertEquals(messageId, decoded.getMessageId());
+        assertEquals(original.getMessageKey(), decoded.getMessageKey());
+        assertEquals(original.getTarget(), decoded.getTarget());
+        assertEquals("VexSkills", decoded.getSourceOwner());
+        assertEquals("survival-1", decoded.getSourceServer());
+        assertArrayEquals(original.getPayload(), decoded.getPayload());
+    }
 
-  @Test
-  void detectsExpiredMessages() {
-    MessageEnvelope message = new MessageEnvelope(
-        UUID.randomUUID(),
-        MessageKey.of("vexcore", "test"),
-        MessageTarget.proxy(),
-        "VexCore",
-        "",
-        100L,
-        50L,
-        new byte[0]
-    );
+    @Test
+    void rejectsUnknownMessageHeader() {
+        assertThrows(IllegalArgumentException.class, () -> codec.decode(new byte[]{0, 0, 0, 0}));
+    }
 
-    assertTrue(message.isExpired(150L));
-  }
+    @Test
+    void detectsExpiredMessages() {
+        MessageEnvelope message = new MessageEnvelope(
+            UUID.randomUUID(),
+            MessageKey.of("vexcore", "test"),
+            MessageTarget.proxy(),
+            "VexCore",
+            "",
+            100L,
+            50L,
+            new byte[0]
+        );
+
+        assertTrue(message.isExpired(150L));
+    }
 }

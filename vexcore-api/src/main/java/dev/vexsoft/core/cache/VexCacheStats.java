@@ -7,11 +7,12 @@ import lombok.Value;
  */
 @Value
 public class VexCacheStats {
-  long hitCount;
-  long missCount;
-  long loadSuccessCount;
-  long loadFailureCount;
-  long evictionCount;
-  double hitRate;
-  double averageLoadPenaltyNanos;
+
+    long hitCount;
+    long missCount;
+    long loadSuccessCount;
+    long loadFailureCount;
+    long evictionCount;
+    double hitRate;
+    double averageLoadPenaltyNanos;
 }

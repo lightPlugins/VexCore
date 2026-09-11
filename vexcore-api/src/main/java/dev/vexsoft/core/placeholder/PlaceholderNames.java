@@ -9,30 +9,29 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public final class PlaceholderNames {
 
-  private static final Pattern IDENTIFIER = Pattern.compile("[a-z0-9]+(?:_[a-z0-9]+)*");
+    private static final Pattern IDENTIFIER = Pattern.compile("[a-z0-9]+(?:_[a-z0-9]+)*");
 
-  /** Normalizes a plugin name into its PlaceholderAPI-compatible namespace. */
-  public static String namespace(final String value) {
-    return normalize(value, "plugin namespace", true);
-  }
-
-  /** Validates and normalizes one owner-local placeholder identifier. */
-  public static String identifier(final String value) {
-    return normalize(value, "placeholder id", false);
-  }
-
-  private static String normalize(
-      final String value,
-      final String role,
-      final boolean compact
-  ) {
-    String normalized = Objects.requireNonNull(value, role).trim().toLowerCase(Locale.ROOT);
-    if (compact) {
-      normalized = normalized.replace("-", "").replace(" ", "");
+    /** Normalizes a plugin name into its PlaceholderAPI-compatible namespace. */
+    public static String namespace(final String value) {
+        return normalize(value, "plugin namespace", true);
     }
-    if (!IDENTIFIER.matcher(normalized).matches()) {
-      throw new IllegalArgumentException("Invalid " + role + ": " + value);
+
+    /** Validates and normalizes one owner-local placeholder identifier. */
+    public static String identifier(final String value) {
+        return normalize(value, "placeholder id", false);
     }
-    return normalized;
-  }
+
+    private static String normalize(final String value, final String role, final boolean compact) {
+        String normalized = Objects.requireNonNull(value, role).trim().toLowerCase(Locale.ROOT);
+
+        if (compact) {
+            normalized = normalized.replace("-", "").replace(" ", "");
+        }
+
+        if (!IDENTIFIER.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Invalid " + role + ": " + value);
+        }
+
+        return normalized;
+    }
 }

@@ -12,18 +12,18 @@ import org.bukkit.entity.Player;
  */
 public interface TextDisplayPacketService extends VexService {
 
-  /** Spawns a text display visible only to the given viewer */
-  FakeDisplayHandle spawn(Player viewer, FakeTextDisplayRequest request);
+    /** Spawns a text display visible only to the given viewer */
+    FakeDisplayHandle spawn(Player viewer, FakeTextDisplayRequest request);
 
-  /** Applies the supplied properties to a tracked text display */
-  void update(FakeDisplayHandle handle, FakeTextDisplayUpdate update);
+    /** Applies the supplied properties to a tracked text display */
+    void update(FakeDisplayHandle handle, FakeTextDisplayUpdate update);
 
-  /** Teleports a tracked text display for its viewer */
-  void teleport(FakeDisplayHandle handle, Location location);
+    /** Teleports a tracked text display for its viewer */
+    void teleport(FakeDisplayHandle handle, Location location);
 
-  /** Removes a tracked text display from its viewer */
-  void remove(FakeDisplayHandle handle);
+    /** Removes a tracked text display from its viewer */
+    void remove(FakeDisplayHandle handle);
 
-  /** Removes every text display owned by this service for the viewer */
-  void removeAll(Player viewer);
+    /** Removes every text display owned by this service for the viewer */
+    void removeAll(Player viewer);
 }

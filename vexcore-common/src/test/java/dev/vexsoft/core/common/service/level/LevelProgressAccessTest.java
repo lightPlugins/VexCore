@@ -12,48 +12,52 @@ import org.junit.jupiter.api.Test;
 
 final class LevelProgressAccessTest {
 
-  @Test
-  void readsAndWritesOnlyThroughTheVexPlayerContainerApi() {
-    DataContainerKey<TestData> key = DataContainerKey.of(
-        "level_test", TestData.class, TestData::new
-    );
-    VexPlayer player = new VexPlayer(UUID.randomUUID(), "Tester");
-    player.install(key, new TestData(500.0D, 2));
-    LevelProgressAccess<TestData> access = new LevelProgressAccess<>(
-        key,
-        data -> new Snapshot(data.experience, data.claimedLevel),
-        (data, level) -> data.claimedLevel = level
-    );
+    @Test
+    void readsAndWritesOnlyThroughTheVexPlayerContainerApi() {
+        DataContainerKey<TestData> key = DataContainerKey.of("level_test", TestData.class, TestData::new);
+        VexPlayer player = new VexPlayer(UUID.randomUUID(), "Tester");
 
-    assertEquals(500.0D, access.read(player).getExperience());
-    access.updateClaimedLevel(player, 3);
+        player.install(key, new TestData(500.0D, 2));
+        LevelProgressAccess<TestData> access = new LevelProgressAccess<>(
+            key,
+            data -> new Snapshot(data.experience, data.claimedLevel),
+            (data, level) -> data.claimedLevel = level
+        );
 
-    int claimedLevel = player.read(key, data -> data.claimedLevel);
-    assertEquals(3, claimedLevel);
-    assertTrue(player.getDirtyKeys().contains(key));
-  }
+        assertEquals(500.0D, access.read(player).getExperience());
 
-  private static final class TestData {
-    private double experience;
-    private int claimedLevel;
+        access.updateClaimedLevel(player, 3);
 
-    private TestData() {}
+        int claimedLevel = player.read(key, data -> data.claimedLevel);
 
-    private TestData(final double experience, final int claimedLevel) {
-      this.experience = experience;
-      this.claimedLevel = claimedLevel;
-    }
-  }
-
-  private record Snapshot(double experience, int claimedLevel) implements LevelProgress {
-    @Override
-    public double getExperience() {
-      return experience;
+        assertEquals(3, claimedLevel);
+        assertTrue(player.getDirtyKeys().contains(key));
     }
 
-    @Override
-    public int getClaimedLevel() {
-      return claimedLevel;
+    private static final class TestData {
+
+        private double experience;
+        private int claimedLevel;
+
+        private TestData() {
+        }
+
+        private TestData(final double experience, final int claimedLevel) {
+            this.experience = experience;
+            this.claimedLevel = claimedLevel;
+        }
     }
-  }
+
+    private record Snapshot(double experience, int claimedLevel) implements LevelProgress {
+
+        @Override
+        public double getExperience() {
+            return experience;
+        }
+
+        @Override
+        public int getClaimedLevel() {
+            return claimedLevel;
+        }
+    }
 }

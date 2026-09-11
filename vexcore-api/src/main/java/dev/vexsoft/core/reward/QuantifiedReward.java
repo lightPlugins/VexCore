@@ -6,6 +6,7 @@ import java.util.Map;
 
 /** A reward whose resolved quantities can be persisted without parsing its presentation. */
 public interface QuantifiedReward extends CompiledReward {
-  /** Resolves stable resource keys and exact amounts using the supplied execution context. */
-  Map<String, WholeAmount> quantities(PlayerExecutionContext context);
+
+    /** Resolves stable resource keys and exact amounts using the supplied execution context. */
+    Map<String, WholeAmount> quantities(PlayerExecutionContext context);
 }

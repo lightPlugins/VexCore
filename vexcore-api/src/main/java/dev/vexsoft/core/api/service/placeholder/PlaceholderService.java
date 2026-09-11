@@ -9,18 +9,18 @@ import net.kyori.adventure.text.Component;
 /** Registers and resolves player-bound placeholders owned by one plugin scope. */
 public interface PlaceholderService extends VexService {
 
-  /** Creates and registers an annotated placeholder class for this service owner. */
-  <T extends VexPlaceholder> T register(Class<T> placeholderType);
+    /** Creates and registers an annotated placeholder class for this service owner. */
+    <T extends VexPlaceholder> T register(Class<T> placeholderType);
 
-  /** Resolves registered placeholders for a loaded player. */
-  String resolve(VexPlayer player, String input);
+    /** Resolves registered placeholders for a loaded player. */
+    String resolve(VexPlayer player, String input);
 
-  /** Resolves registered and request-local placeholders. */
-  String resolve(PlaceholderContext context, String input);
+    /** Resolves registered and request-local placeholders. */
+    String resolve(PlaceholderContext context, String input);
 
-  /** Resolves placeholders inside text components while preserving their styling. */
-  Component resolve(VexPlayer player, Component component);
+    /** Resolves placeholders inside text components while preserving their styling. */
+    Component resolve(VexPlayer player, Component component);
 
-  /** Removes every placeholder registered by this service owner. */
-  void clear();
+    /** Removes every placeholder registered by this service owner. */
+    void clear();
 }

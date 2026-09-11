@@ -11,37 +11,27 @@ import org.junit.jupiter.api.Test;
 
 class StatRewardContributionTest {
 
-  private static final StatKey DEFENSE = StatKey.of("vexskills", "defense");
+    private static final StatKey DEFENSE = StatKey.of("vexskills", "defense");
 
-  @Test
-  void mergesFlatSnapshotsWithoutMutatingInputs() {
-    StatRewardContribution first = new StatRewardContribution(Map.of(
-        DEFENSE,
-        StatModifier.flat(4D)
-    ));
-    StatRewardContribution second = new StatRewardContribution(Map.of(
-        DEFENSE,
-        StatModifier.flat(7D)
-    ));
+    @Test
+    void mergesFlatSnapshotsWithoutMutatingInputs() {
+        StatRewardContribution first = new StatRewardContribution(Map.of(DEFENSE, StatModifier.flat(4D)));
+        StatRewardContribution second = new StatRewardContribution(Map.of(DEFENSE, StatModifier.flat(7D)));
 
-    RewardContribution merged = first.merge(second);
+        RewardContribution merged = first.merge(second);
 
-    StatRewardContribution stats = (StatRewardContribution) merged;
-    assertEquals(11D, stats.modifiers().get(DEFENSE).amount());
-    assertEquals(4D, first.modifiers().get(DEFENSE).amount());
-  }
+        StatRewardContribution stats = (StatRewardContribution) merged;
 
-  @Test
-  void rejectsMixedOperationsForOneStat() {
-    StatRewardContribution flat = new StatRewardContribution(Map.of(
-        DEFENSE,
-        StatModifier.flat(4D)
-    ));
-    StatRewardContribution multiplier = new StatRewardContribution(Map.of(
-        DEFENSE,
-        StatModifier.additiveMultiplier(0.2D)
-    ));
+        assertEquals(11D, stats.modifiers().get(DEFENSE).amount());
+        assertEquals(4D, first.modifiers().get(DEFENSE).amount());
+    }
 
-    assertThrows(IllegalArgumentException.class, () -> flat.merge(multiplier));
-  }
+    @Test
+    void rejectsMixedOperationsForOneStat() {
+        StatRewardContribution flat = new StatRewardContribution(Map.of(DEFENSE, StatModifier.flat(4D)));
+        StatRewardContribution multiplier =
+            new StatRewardContribution(Map.of(DEFENSE, StatModifier.additiveMultiplier(0.2D)));
+
+        assertThrows(IllegalArgumentException.class, () -> flat.merge(multiplier));
+    }
 }

@@ -6,5 +6,6 @@ import org.bukkit.entity.Player;
 /** Opens the inventory-based localization editor. */
 public interface LocalizationEditorUiService extends VexService {
 
-  void open(Player player);
+    /** Opens the localization editor's owner selection for the player. */
+    void open(Player player);
 }

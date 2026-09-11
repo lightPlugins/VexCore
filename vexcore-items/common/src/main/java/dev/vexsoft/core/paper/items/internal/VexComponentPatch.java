@@ -11,11 +11,11 @@ import lombok.Getter;
 @Getter
 public final class VexComponentPatch {
 
-  private final Map<VexComponentData<?>, VexComponentOperation> operations;
+    private final Map<VexComponentData<?>, VexComponentOperation> operations;
 
-  public VexComponentPatch(
-      final Map<VexComponentData<?>, VexComponentOperation> operations
-  ) {
-    this.operations = Map.copyOf(new LinkedHashMap<>(operations));
-  }
+    public VexComponentPatch(
+        final Map<VexComponentData<?>, VexComponentOperation> operations
+    ) {
+        this.operations = Map.copyOf(new LinkedHashMap<>(operations));
+    }
 }

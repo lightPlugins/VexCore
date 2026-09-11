@@ -7,34 +7,34 @@ import org.junit.jupiter.api.Test;
 
 public final class MinecraftVersionTest {
 
-  @Test
-  public void parsesPatchVersions() {
-    MinecraftVersion version = MinecraftVersion.of("26.2.3");
+    @Test
+    public void parsesPatchVersions() {
+        MinecraftVersion version = MinecraftVersion.of("26.2.3");
 
-    assertEquals(26, version.getPart(0));
-    assertEquals(2, version.getPart(1));
-    assertEquals(3, version.getPart(2));
-    assertEquals("26.2.3", version.toString());
-  }
+        assertEquals(26, version.getPart(0));
+        assertEquals(2, version.getPart(1));
+        assertEquals(3, version.getPart(2));
+        assertEquals("26.2.3", version.toString());
+    }
 
-  @Test
-  public void normalizesTrailingZeroComponents() {
-    assertEquals(MinecraftVersion.of("26.2"), MinecraftVersion.of("26.2.0"));
-    assertEquals("26.2", MinecraftVersion.of("26.2.0.0").toString());
-  }
+    @Test
+    public void normalizesTrailingZeroComponents() {
+        assertEquals(MinecraftVersion.of("26.2"), MinecraftVersion.of("26.2.0"));
+        assertEquals("26.2", MinecraftVersion.of("26.2.0.0").toString());
+    }
 
-  @Test
-  public void comparesEveryNumericComponent() {
-    MinecraftVersion base = MinecraftVersion.of("26.2");
-    MinecraftVersion patch = MinecraftVersion.of("26.2.3");
-    MinecraftVersion nextMinor = MinecraftVersion.of("26.3");
+    @Test
+    public void comparesEveryNumericComponent() {
+        MinecraftVersion base = MinecraftVersion.of("26.2");
+        MinecraftVersion patch = MinecraftVersion.of("26.2.3");
+        MinecraftVersion nextMinor = MinecraftVersion.of("26.3");
 
-    assertEquals(-1, Integer.signum(base.compareTo(patch)));
-    assertEquals(-1, Integer.signum(patch.compareTo(nextMinor)));
-  }
+        assertEquals(-1, Integer.signum(base.compareTo(patch)));
+        assertEquals(-1, Integer.signum(patch.compareTo(nextMinor)));
+    }
 
-  @Test
-  public void rejectsNonNumericVersions() {
-    assertThrows(IllegalArgumentException.class, () -> MinecraftVersion.of("26.2-pre1"));
-  }
+    @Test
+    public void rejectsNonNumericVersions() {
+        assertThrows(IllegalArgumentException.class, () -> MinecraftVersion.of("26.2-pre1"));
+    }
 }

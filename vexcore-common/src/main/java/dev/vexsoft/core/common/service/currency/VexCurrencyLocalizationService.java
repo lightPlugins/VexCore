@@ -10,86 +10,73 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.localization.LocalizationRegistryService;
 import dev.vexsoft.core.currency.Currency;
 import dev.vexsoft.core.currency.CurrencyKey;
-import java.util.Map;
-import java.util.Objects;
 import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.number.WholeAmountFormatter;
+import java.util.Map;
+import java.util.Objects;
 import net.kyori.adventure.text.Component;
 
 /** Owner-aware currency localization backed by the shared localization registry. */
-@Dependencies({
-    CurrencyRegistryCoordinatorService.class,
-    LocalizationRegistryService.class,
-    PlaceholderService.class
-})
+@Dependencies({CurrencyRegistryCoordinatorService.class, LocalizationRegistryService.class, PlaceholderService.class})
 public final class VexCurrencyLocalizationService implements CurrencyLocalizationService {
 
-  private final CurrencyRegistryCoordinatorService currencies;
-  private final LocalizationRegistryService localizations;
-  private final PlaceholderService placeholders;
+    private final CurrencyRegistryCoordinatorService currencies;
+    private final LocalizationRegistryService localizations;
+    private final PlaceholderService placeholders;
 
-  /** Resolves the shared currency and localization services. */
-  public VexCurrencyLocalizationService(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    currencies = checked.require(CurrencyRegistryCoordinatorService.class);
-    localizations = checked.require(LocalizationRegistryService.class);
-    placeholders = checked.require(PlaceholderService.class);
-  }
+    /** Resolves the shared currency and localization services. */
+    public VexCurrencyLocalizationService(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
-  @Override
-  public Component getName(final VexPlayer player, final CurrencyKey currency) {
-    VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
-    Currency registered = require(currency);
-    return resolve(
-        checkedPlayer,
-        registered,
-        registered.getDefinition().getNameKey(),
-        Map.of()
-    );
-  }
+        currencies = checked.require(CurrencyRegistryCoordinatorService.class);
+        localizations = checked.require(LocalizationRegistryService.class);
+        placeholders = checked.require(PlaceholderService.class);
+    }
 
-  @Override
-  public Component format(
-      final VexPlayer player,
-      final CurrencyKey currency,
-      final WholeAmount amount
-  ) {
-    VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
-    Currency registered = require(currency);
-    return resolve(
-        checkedPlayer,
-        registered,
-        registered.getDefinition().getFormatKey(),
-        Map.of(
-            "amount", amount.toString(),
-            "formatted_amount", formatCompact(amount)
-        )
-    );
-  }
+    @Override
+    public Component getName(final VexPlayer player, final CurrencyKey currency) {
+        VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
+        Currency registered = require(currency);
 
-  @Override
-  public String formatCompact(final WholeAmount amount) {
-    return WholeAmountFormatter.format(amount);
-  }
+        return resolve(checkedPlayer, registered, registered.getDefinition().getNameKey(), Map.of());
+    }
 
-  private Currency require(final CurrencyKey key) {
-    return currencies.find(Objects.requireNonNull(key, "currency")).orElseThrow(
-        () -> new IllegalStateException("Currency is not registered: " + key)
-    );
-  }
+    @Override
+    public Component format(final VexPlayer player, final CurrencyKey currency, final WholeAmount amount) {
+        VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
+        Currency registered = require(currency);
 
-  private Component resolve(
-      final VexPlayer player,
-      final Currency currency,
-      final String key,
-      final Map<String, String> replacements
-  ) {
-    LocalizedMessage message = localizations.resolve(
-        currency.getKey().namespace(),
-        player.getContainer(LanguageContainer.class).getLanguage().getKey(),
-        key,
-        replacements
-    );
-    return placeholders.resolve(player, message.getLines().getFirst());
-  }
+        return resolve(
+            checkedPlayer,
+            registered,
+            registered.getDefinition().getFormatKey(),
+            Map.of("amount", amount.toString(), "formatted_amount", formatCompact(amount))
+        );
+    }
+
+    @Override
+    public String formatCompact(final WholeAmount amount) {
+        return WholeAmountFormatter.format(amount);
+    }
+
+    private Currency require(final CurrencyKey key) {
+        return currencies.find(Objects.requireNonNull(key, "currency"))
+            .orElseThrow(() -> new IllegalStateException("Currency is not registered: " + key));
+    }
+
+    private Component resolve(
+        final VexPlayer player,
+        final Currency currency,
+        final String key,
+        final Map<String, String> replacements
+    ) {
+        LocalizedMessage message = localizations.resolve(
+            currency.getKey().namespace(),
+            player.getContainer(LanguageContainer.class).getLanguage().getKey(),
+            key,
+            replacements
+        );
+
+        return placeholders.resolve(player, message.getLines().getFirst());
+    }
 }

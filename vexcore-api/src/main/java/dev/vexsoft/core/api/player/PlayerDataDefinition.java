@@ -8,10 +8,10 @@ package dev.vexsoft.core.api.player;
  */
 public interface PlayerDataDefinition {
 
-  /**
-   * Registers every player-data container provided by this definition.
-   *
-   * @param registry collector bound to the owning plugin
-   */
-  void register(DataContainerRegistry registry);
+    /**
+     * Registers every player-data container provided by this definition.
+     *
+     * @param registry collector bound to the owning plugin
+     */
+    void register(DataContainerRegistry registry);
 }

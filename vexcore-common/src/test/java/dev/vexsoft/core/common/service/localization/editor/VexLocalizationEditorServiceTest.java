@@ -23,154 +23,151 @@ import org.junit.jupiter.api.io.TempDir;
 
 class VexLocalizationEditorServiceTest {
 
-  @TempDir
-  private Path temporaryDirectory;
+    @TempDir
+    private Path temporaryDirectory;
 
-  @Test
-  void browsesDirectoriesAndRootFilesAndCreatesLanguageOverrides() throws Exception {
-    TestOwner owner = new TestOwner(temporaryDirectory);
-    TestRegistry registry = new TestRegistry(owner);
-    VexLocalizationEditorService service = new VexLocalizationEditorService(registry);
+    @Test
+    void browsesDirectoriesAndRootFilesAndCreatesLanguageOverrides() throws Exception {
+        TestOwner owner = new TestOwner(temporaryDirectory);
+        TestRegistry registry = new TestRegistry(owner);
+        VexLocalizationEditorService service = new VexLocalizationEditorService(registry);
 
-    Collection<LocalizationBrowserNode> root = service.browse(
-        "TestPlugin",
-        LanguageKey.of("de_DE"),
-        Path.of("")
-    );
-    assertTrue(root.stream().anyMatch(node -> node.directory() && node.name().equals("menus")));
-    assertTrue(root.stream().anyMatch(node -> !node.directory() && node.name().equals("general.yml")));
+        Collection<LocalizationBrowserNode> root = service.browse("TestPlugin", LanguageKey.of("de_DE"), Path.of(""));
 
-    List<LocalizationEntryView> inherited = List.copyOf(service.getEntries(
-        "TestPlugin",
-        LanguageKey.of("de_DE"),
-        Path.of("menus", "warps.yml")
-    ));
-    assertEquals("title", inherited.getFirst().key());
-    assertTrue(inherited.getFirst().inherited());
+        assertTrue(root.stream().anyMatch(node -> node.directory() && node.name().equals("menus")));
+        assertTrue(root.stream().anyMatch(node -> !node.directory() && node.name().equals("general.yml")));
 
-    service.update(
-        "TestPlugin",
-        LanguageKey.of("de_DE"),
-        Path.of("menus", "warps.yml"),
-        "title",
-        LocalizationValue.text("<red>Warps")
-    );
+        List<LocalizationEntryView> inherited =
+            List.copyOf(service.getEntries("TestPlugin", LanguageKey.of("de_DE"), Path.of("menus", "warps.yml")));
 
-    Path written = temporaryDirectory.resolve("de_DE/menus/warps.yml");
-    assertTrue(Files.exists(written));
-    assertTrue(Files.readString(written).contains("<red>Warps"));
-    assertEquals(1, registry.reloads.get());
-    LocalizationEntryView local = service.getEntries(
-        "TestPlugin",
-        LanguageKey.of("de_DE"),
-        Path.of("menus", "warps.yml")
-    ).iterator().next();
-    assertFalse(local.inherited());
-  }
+        assertEquals("title", inherited.getFirst().key());
+        assertTrue(inherited.getFirst().inherited());
 
-  private static final class TestRegistry implements LocalizationRegistryService {
+        service.update(
+            "TestPlugin",
+            LanguageKey.of("de_DE"),
+            Path.of("menus", "warps.yml"),
+            "title",
+            LocalizationValue.text("<red>Warps")
+        );
 
-    private final TestOwner owner;
-    private final AtomicInteger reloads = new AtomicInteger();
+        Path written = temporaryDirectory.resolve("de_DE/menus/warps.yml");
 
-    private TestRegistry(final TestOwner owner) {
-      this.owner = owner;
+        assertTrue(Files.exists(written));
+        assertTrue(Files.readString(written).contains("<red>Warps"));
+        assertEquals(1, registry.reloads.get());
+
+        LocalizationEntryView local =
+            service.getEntries("TestPlugin", LanguageKey.of("de_DE"), Path.of("menus", "warps.yml")).iterator().next();
+
+        assertFalse(local.inherited());
     }
 
-    @Override
-    public void register(final LocalizationOwner owner) {
+    private static final class TestRegistry implements LocalizationRegistryService {
+
+        private final TestOwner owner;
+        private final AtomicInteger reloads = new AtomicInteger();
+
+        private TestRegistry(final TestOwner owner) {
+            this.owner = owner;
+        }
+
+        @Override
+        public void register(final LocalizationOwner owner) {
+        }
+
+        @Override
+        public void unregister(final LocalizationOwner owner) {
+        }
+
+        @Override
+        public LocalizedMessage resolve(
+            final LocalizationOwner owner,
+            final LanguageKey language,
+            final String key,
+            final Map<String, String> replacements
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public LocalizedMessage resolve(
+            final String ownerName,
+            final LanguageKey language,
+            final String key,
+            final Map<String, String> replacements
+        ) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Collection<LanguageKey> getLanguages(final String ownerName) {
+            return List.of(LanguageKey.EN_EN);
+        }
+
+        @Override
+        public Collection<LocalizationOwner> getOwners() {
+            return List.of(owner);
+        }
+
+        @Override
+        public void reload(final String ownerName) {
+            reloads.incrementAndGet();
+        }
+
+        @Override
+        public void reload(final LocalizationOwner owner) {
+        }
+
+        @Override
+        public void reloadAll() {
+        }
     }
 
-    @Override
-    public void unregister(final LocalizationOwner owner) {
+    private static final class TestOwner implements LocalizationOwner {
+
+        private final Path directory;
+        private final Map<String, String> resources = Map.of(
+            "languages/en_EN/general.yml",
+            "hello: '<green>Hello'\n",
+            "languages/en_EN/menus/warps.yml",
+            "title: '<blue>Warps'\n"
+        );
+
+        private TestOwner(final Path directory) {
+            this.directory = directory;
+        }
+
+        @Override
+        public Path getLocalizationDirectory() {
+            return directory;
+        }
+
+        @Override
+        public Collection<String> getLocalizationResources() {
+            return resources.keySet();
+        }
+
+        @Override
+        public Optional<InputStream> getLocalizationResource(final String resourcePath) {
+            String value = resources.get(resourcePath);
+
+            return value == null ? Optional.empty()
+                : Optional.of(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
+        }
+
+        @Override
+        public String getMessagePrefixKey() {
+            return "general.prefix";
+        }
+
+        @Override
+        public void reportLocalizationWarning(final String message, final Throwable cause) {
+        }
+
+        @Override
+        public String getServiceOwnerName() {
+            return "TestPlugin";
+        }
     }
-
-    @Override
-    public LocalizedMessage resolve(
-        final LocalizationOwner owner,
-        final LanguageKey language,
-        final String key,
-        final Map<String, String> replacements
-    ) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LocalizedMessage resolve(
-        final String ownerName,
-        final LanguageKey language,
-        final String key,
-        final Map<String, String> replacements
-    ) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Collection<LanguageKey> getLanguages(final String ownerName) {
-      return List.of(LanguageKey.EN_EN);
-    }
-
-    @Override
-    public Collection<LocalizationOwner> getOwners() {
-      return List.of(owner);
-    }
-
-    @Override
-    public void reload(final String ownerName) {
-      reloads.incrementAndGet();
-    }
-
-    @Override
-    public void reload(final LocalizationOwner owner) {
-    }
-
-    @Override
-    public void reloadAll() {
-    }
-  }
-
-  private static final class TestOwner implements LocalizationOwner {
-
-    private final Path directory;
-    private final Map<String, String> resources = Map.of(
-        "languages/en_EN/general.yml", "hello: '<green>Hello'\n",
-        "languages/en_EN/menus/warps.yml", "title: '<blue>Warps'\n"
-    );
-
-    private TestOwner(final Path directory) {
-      this.directory = directory;
-    }
-
-    @Override
-    public Path getLocalizationDirectory() {
-      return directory;
-    }
-
-    @Override
-    public Collection<String> getLocalizationResources() {
-      return resources.keySet();
-    }
-
-    @Override
-    public Optional<InputStream> getLocalizationResource(final String resourcePath) {
-      String value = resources.get(resourcePath);
-      return value == null
-          ? Optional.empty()
-          : Optional.of(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
-    }
-
-    @Override
-    public String getMessagePrefixKey() {
-      return "general.prefix";
-    }
-
-    @Override
-    public void reportLocalizationWarning(final String message, final Throwable cause) {
-    }
-
-    @Override
-    public String getServiceOwnerName() {
-      return "TestPlugin";
-    }
-  }
 }

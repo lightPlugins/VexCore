@@ -14,17 +14,17 @@ import dev.vexsoft.core.paper.packets.service.BlockDisplayPacketService;
 import dev.vexsoft.core.paper.packets.service.CameraPacketService;
 import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.PlayerAnimationPacketService;
+import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
+import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
+import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.packets.VexBlockDisplayPacketService;
 import dev.vexsoft.core.paper.service.packets.VexCameraPacketService;
 import dev.vexsoft.core.paper.service.packets.VexInteractionPacketService;
 import dev.vexsoft.core.paper.service.packets.VexPlayerAnimationPacketService;
-import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
-import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
-import dev.vexsoft.core.paper.service.actionbar.VexActionBarService;
+import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.sidebar.SidebarService;
 import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
-import dev.vexsoft.core.paper.service.listeners.ListenerService;
-import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -33,119 +33,119 @@ import org.junit.jupiter.api.Test;
 
 public final class VexPluginBootstrapServiceTest {
 
-  @Test
-  public void queuesInfrastructureAndStartsEnabledListeners() {
-    TestServices services = new TestServices();
-    VexPluginBootstrapService bootstrap = new VexPluginBootstrapService(services);
+    @Test
+    public void queuesInfrastructureAndStartsEnabledListeners() {
+        TestServices services = new TestServices();
+        VexPluginBootstrapService bootstrap = new VexPluginBootstrapService(services);
 
-    bootstrap.initialize(services);
-    bootstrap.enable(services);
+        bootstrap.initialize(services);
+        bootstrap.enable(services);
 
-    assertEquals(
-        VexConfigurationService.class,
-        services.definitions.get(ConfigurationService.class)
-    );
-    assertEquals(VexCurrencyRegistry.class, services.definitions.get(CurrencyRegistry.class));
-    assertEquals(VexActionBarService.class, services.definitions.get(ActionBarService.class));
-    assertEquals(VexSidebarService.class, services.definitions.get(SidebarService.class));
-    org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(VexInventoryListener.class));
-    org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(dev.vexsoft.core.paper.service.packets.VexPlayerDummyListener.class));
-    assertEquals(dev.vexsoft.core.paper.service.packets.VexPlayerDummyService.class, services.definitions.get(dev.vexsoft.core.paper.packets.service.PlayerDummyService.class));
-    assertEquals(dev.vexsoft.core.paper.service.packets.VexSkinService.class, services.definitions.get(dev.vexsoft.core.paper.packets.service.SkinService.class));
-    assertEquals(
-        VexBlockDisplayPacketService.class,
-        services.definitions.get(BlockDisplayPacketService.class)
-    );
-    assertEquals(
-        VexCameraPacketService.class,
-        services.definitions.get(CameraPacketService.class)
-    );
-    assertEquals(
-        VexInteractionPacketService.class,
-        services.definitions.get(InteractionPacketService.class)
-    );
-    assertEquals(
-        VexPlayerAnimationPacketService.class,
-        services.definitions.get(PlayerAnimationPacketService.class)
-    );
-  }
+        assertEquals(VexConfigurationService.class, services.definitions.get(ConfigurationService.class));
+        assertEquals(VexCurrencyRegistry.class, services.definitions.get(CurrencyRegistry.class));
+        assertEquals(VexActionBarService.class, services.definitions.get(ActionBarService.class));
+        assertEquals(VexSidebarService.class, services.definitions.get(SidebarService.class));
 
-  private static final class TestServices implements VexServiceRegistry, ServiceOwner {
+        org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(VexInventoryListener.class));
+        org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(dev.vexsoft.core.paper.service.packets.VexPlayerDummyListener.class));
 
-    private final Map<Class<? extends VexService>, Class<? extends VexService>> definitions =
-        new LinkedHashMap<>();
-    private final ListenerService listeners = new ListenerService() {
-      @Override
-      public <T extends Listener> T register(
-          final Class<T> listenerType,
-          final VexServiceRegistry services
-      ) {
-        TestServices.this.listenerTypes.add(listenerType);
-        return null;
-      }
-
-      @Override
-      public void unregisterAll() { }
-    };
-    private final PlaceholderApiBridgeService placeholders = () -> { };
-    private final java.util.Set<Class<? extends Listener>> listenerTypes = new java.util.HashSet<>();
-
-    @Override
-    public ServiceOwner getOwner() {
-      return this;
+        assertEquals(
+            dev.vexsoft.core.paper.service.packets.VexPlayerDummyService.class,
+            services.definitions.get(dev.vexsoft.core.paper.packets.service.PlayerDummyService.class)
+        );
+        assertEquals(
+            dev.vexsoft.core.paper.service.packets.VexSkinService.class,
+            services.definitions.get(dev.vexsoft.core.paper.packets.service.SkinService.class)
+        );
+        assertEquals(VexBlockDisplayPacketService.class, services.definitions.get(BlockDisplayPacketService.class));
+        assertEquals(VexCameraPacketService.class, services.definitions.get(CameraPacketService.class));
+        assertEquals(VexInteractionPacketService.class, services.definitions.get(InteractionPacketService.class));
+        assertEquals(
+            VexPlayerAnimationPacketService.class,
+            services.definitions.get(PlayerAnimationPacketService.class)
+        );
     }
 
-    @Override
-    public VexServiceRegistry scoped(final ServiceOwner owner) {
-      return this;
+    private static final class TestServices implements VexServiceRegistry, ServiceOwner {
+
+        private final Map<Class<? extends VexService>, Class<? extends VexService>> definitions = new LinkedHashMap<>();
+        private final ListenerService listeners = new ListenerService() {
+            @Override
+            public <T extends Listener> T register(final Class<T> listenerType, final VexServiceRegistry services) {
+                TestServices.this.listenerTypes.add(listenerType);
+
+                return null;
+            }
+
+            @Override
+            public void unregisterAll() {
+            }
+        };
+        private final PlaceholderApiBridgeService placeholders = () -> {
+        };
+        private final java.util.Set<Class<? extends Listener>> listenerTypes = new java.util.HashSet<>();
+
+        @Override
+        public ServiceOwner getOwner() {
+            return this;
+        }
+
+        @Override
+        public VexServiceRegistry scoped(final ServiceOwner owner) {
+            return this;
+        }
+
+        @Override
+        public String getServiceOwnerName() {
+            return "VexPluginBootstrapTest";
+        }
+
+        @Override
+        public <T extends VexService> void register(
+            final Class<T> serviceType,
+            final Class<? extends T> implementationType
+        ) {
+            definitions.put(serviceType, implementationType);
+        }
+
+        @Override
+        public void registerQueuedServices() {
+        }
+
+        @Override
+        public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
+            if (serviceType == ListenerService.class) {
+                return Optional.of(serviceType.cast(listeners));
+            }
+
+            if (serviceType == PlaceholderApiBridgeService.class) {
+                return Optional.of(serviceType.cast(placeholders));
+            }
+
+            return Optional.empty();
+        }
+
+        @Override
+        public <T extends VexService> T require(final Class<T> serviceType) {
+            return find(serviceType).orElseThrow();
+        }
+
+        @Override
+        public <T extends VexService> ServiceReference<T> reference(final Class<T> serviceType) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean isAvailable(final Class<? extends VexService> serviceType) {
+            return find(serviceType).isPresent();
+        }
+
+        @Override
+        public void unregister(final Class<? extends VexService> serviceType) {
+        }
+
+        @Override
+        public void unregisterOwnedServices() {
+        }
     }
-
-    @Override
-    public String getServiceOwnerName() {
-      return "VexPluginBootstrapTest";
-    }
-
-    @Override
-    public <T extends VexService> void register(
-        final Class<T> serviceType,
-        final Class<? extends T> implementationType
-    ) {
-      definitions.put(serviceType, implementationType);
-    }
-
-    @Override
-    public void registerQueuedServices() { }
-
-    @Override
-    public <T extends VexService> Optional<T> find(final Class<T> serviceType) {
-      if (serviceType == ListenerService.class) {
-        return Optional.of(serviceType.cast(listeners));
-      }
-      if (serviceType == PlaceholderApiBridgeService.class) {
-        return Optional.of(serviceType.cast(placeholders));
-      }
-      return Optional.empty();
-    }
-
-    @Override
-    public <T extends VexService> T require(final Class<T> serviceType) {
-      return find(serviceType).orElseThrow();
-    }
-
-    @Override
-    public <T extends VexService> ServiceReference<T> reference(final Class<T> serviceType) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isAvailable(final Class<? extends VexService> serviceType) {
-      return find(serviceType).isPresent();
-    }
-
-    @Override
-    public void unregister(final Class<? extends VexService> serviceType) { }
-
-    @Override
-    public void unregisterOwnedServices() { }
-  }
 }

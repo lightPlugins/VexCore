@@ -7,17 +7,18 @@ import dev.vexsoft.core.paper.packets.service.LightningPacketService;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
+/** Sends viewer-only lightning effects through the active packet adapter. */
 @Dependencies(EntityEffectPacketAdapterService.class)
 public final class VexLightningPacketService implements LightningPacketService {
 
-  private final EntityEffectPacketAdapterService adapter;
+    private final EntityEffectPacketAdapterService adapter;
 
-  public VexLightningPacketService(final VexServiceRegistry services) {
-    this.adapter = services.require(EntityEffectPacketAdapterService.class);
-  }
+    public VexLightningPacketService(final VexServiceRegistry services) {
+        this.adapter = services.require(EntityEffectPacketAdapterService.class);
+    }
 
-  @Override
-  public void strike(final Player viewer, final LivingEntity target) {
-    adapter.strikeLightning(viewer, target);
-  }
+    @Override
+    public void strike(final Player viewer, final LivingEntity target) {
+        adapter.strikeLightning(viewer, target);
+    }
 }

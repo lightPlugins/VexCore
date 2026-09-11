@@ -12,25 +12,23 @@ import net.kyori.adventure.text.TextReplacementConfig;
 @UtilityClass
 public final class PlaceholderComponents {
 
-  private static final Pattern TOKEN = Pattern.compile("%[A-Za-z0-9_]+%");
+    private static final Pattern TOKEN = Pattern.compile("%[A-Za-z0-9_]+%");
 
-  /** Resolves text tokens without flattening component styling. */
-  public static Component resolve(
-      final PlaceholderService placeholders,
-      final VexPlayer player,
-      final Component component
-  ) {
-    PlaceholderService checkedPlaceholders = Objects.requireNonNull(placeholders, "placeholders");
-    VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
-    return Objects.requireNonNull(component, "component").replaceText(
-        TextReplacementConfig.builder()
-            .match(TOKEN)
-            .replacement((match, builder) -> {
-              String source = match.group();
-              String resolved = checkedPlaceholders.resolve(checkedPlayer, source);
-              return source.equals(resolved) ? builder : Component.text(resolved);
-            })
-            .build()
-    );
-  }
+    /** Resolves text tokens without flattening component styling. */
+    public static Component resolve(
+        final PlaceholderService placeholders,
+        final VexPlayer player,
+        final Component component
+    ) {
+        PlaceholderService checkedPlaceholders = Objects.requireNonNull(placeholders, "placeholders");
+        VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
+
+        return Objects.requireNonNull(component, "component")
+            .replaceText(TextReplacementConfig.builder().match(TOKEN).replacement((match, builder) -> {
+                String source = match.group();
+                String resolved = checkedPlaceholders.resolve(checkedPlayer, source);
+
+                return source.equals(resolved) ? builder : Component.text(resolved);
+            }).build());
+    }
 }

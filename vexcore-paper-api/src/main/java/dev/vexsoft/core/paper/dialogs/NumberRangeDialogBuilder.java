@@ -7,24 +7,24 @@ import net.kyori.adventure.text.Component;
  */
 public interface NumberRangeDialogBuilder extends DialogBuilder<Float, NumberRangeDialogBuilder> {
 
-  /** Sets the label displayed beside the number slider */
-  NumberRangeDialogBuilder label(Component label);
+    /** Sets the label displayed beside the number slider */
+    NumberRangeDialogBuilder label(Component label);
 
-  /** Sets the minimum and maximum slider values */
-  NumberRangeDialogBuilder range(float minimum, float maximum);
+    /** Sets the minimum and maximum slider values */
+    NumberRangeDialogBuilder range(float minimum, float maximum);
 
-  /** Sets the initial slider value */
-  NumberRangeDialogBuilder initialValue(float value);
+    /** Sets the initial slider value */
+    NumberRangeDialogBuilder initialValue(float value);
 
-  /** Sets the distance between selectable slider values */
-  NumberRangeDialogBuilder step(float step);
+    /** Sets the distance between selectable slider values */
+    NumberRangeDialogBuilder step(float step);
 
-  /** Sets the Minecraft format used for the slider label */
-  NumberRangeDialogBuilder labelFormat(String format);
+    /** Sets the Minecraft format used for the slider label */
+    NumberRangeDialogBuilder labelFormat(String format);
 
-  /** Sets the label of the submit button */
-  NumberRangeDialogBuilder submitButton(Component label);
+    /** Sets the label of the submit button */
+    NumberRangeDialogBuilder submitButton(Component label);
 
-  /** Sets the label of the cancellation button */
-  NumberRangeDialogBuilder cancelButton(Component label);
+    /** Sets the label of the cancellation button */
+    NumberRangeDialogBuilder cancelButton(Component label);
 }

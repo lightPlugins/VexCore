@@ -12,6 +12,7 @@ import org.bukkit.enchantments.Enchantment;
 @Value
 @Builder(toBuilder = true)
 public class VexEnchantments {
-  @Singular("enchantment")
-  Map<Enchantment, Integer> enchantments;
+
+    @Singular("enchantment")
+    Map<Enchantment, Integer> enchantments;
 }

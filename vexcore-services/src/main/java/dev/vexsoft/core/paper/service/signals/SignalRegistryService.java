@@ -16,23 +16,19 @@ import net.kyori.adventure.key.Key;
  */
 public interface SignalRegistryService extends VexService {
 
-  /** Registers a listener for one exact concrete signal type and service owner. */
-  <S extends VexSignal> SignalSubscription subscribe(
-      ServiceOwner owner,
-      Class<S> signalType,
-      SignalListener<? super S> listener
-  );
+    /** Registers a listener for one exact concrete signal type and service owner. */
+    <S extends VexSignal> SignalSubscription subscribe(
+        ServiceOwner owner,
+        Class<S> signalType,
+        SignalListener<? super S> listener
+    );
 
-  /** Registers a key-based listener belonging to the supplied service owner. */
-  SignalSubscription subscribe(
-      ServiceOwner owner,
-      Key signalKey,
-      SignalListener<VexSignal> listener
-  );
+    /** Registers a key-based listener belonging to the supplied service owner. */
+    SignalSubscription subscribe(ServiceOwner owner, Key signalKey, SignalListener<VexSignal> listener);
 
-  /** Validates and synchronously dispatches a signal through its cached route. */
-  SignalDispatchResult publish(VexSignal signal);
+    /** Validates and synchronously dispatches a signal through its cached route. */
+    SignalDispatchResult publish(VexSignal signal);
 
-  /** Removes every listener registered by the supplied service owner. */
-  void unsubscribeAll(ServiceOwner owner);
+    /** Removes every listener registered by the supplied service owner. */
+    void unsubscribeAll(ServiceOwner owner);
 }

@@ -9,6 +9,6 @@ import java.util.List;
 @FunctionalInterface
 public interface PageSource<T> {
 
-  /** Returns the items available to the current viewer */
-  List<T> getItems(InventoryContext context);
+    /** Returns the items available to the current viewer */
+    List<T> getItems(InventoryContext context);
 }

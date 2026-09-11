@@ -6,10 +6,10 @@ import dev.vexsoft.core.api.player.VexPlayer;
 @FunctionalInterface
 public interface VexPlaceholder {
 
-  /**
-   * Resolves the supplied argument path.
-   *
-   * @return replacement text, or {@code null} when this argument path is unsupported
-   */
-  String resolve(VexPlayer player, PlaceholderArguments arguments);
+    /**
+     * Resolves the supplied argument path.
+     *
+     * @return replacement text, or {@code null} when this argument path is unsupported
+     */
+    String resolve(VexPlayer player, PlaceholderArguments arguments);
 }

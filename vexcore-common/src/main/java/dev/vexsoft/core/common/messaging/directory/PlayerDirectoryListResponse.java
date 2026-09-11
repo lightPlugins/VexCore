@@ -8,8 +8,8 @@ import java.util.UUID;
 /** Contains an immutable snapshot of players currently connected through Velocity. */
 public record PlayerDirectoryListResponse(UUID requestId, List<NetworkPlayer> players) {
 
-  public PlayerDirectoryListResponse {
-    requestId = Objects.requireNonNull(requestId, "requestId");
-    players = List.copyOf(Objects.requireNonNull(players, "players"));
-  }
+    public PlayerDirectoryListResponse {
+        requestId = Objects.requireNonNull(requestId, "requestId");
+        players = List.copyOf(Objects.requireNonNull(players, "players"));
+    }
 }

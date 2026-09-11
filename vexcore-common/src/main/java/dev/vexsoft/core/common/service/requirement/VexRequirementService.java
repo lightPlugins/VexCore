@@ -23,64 +23,67 @@ import net.kyori.adventure.text.Component;
 @Dependencies(ExecutionComponentCoordinatorService.class)
 public final class VexRequirementService implements RequirementService {
 
-  private final ExecutionComponentCoordinatorService components;
+    private final ExecutionComponentCoordinatorService components;
 
-  /** Captures the shared component registry. */
-  public VexRequirementService(final VexServiceRegistry services) {
-    components = Objects.requireNonNull(services, "services")
-        .require(ExecutionComponentCoordinatorService.class);
-  }
-
-  @Override
-  public CompiledRequirements compile(final ConfigurationSection section) {
-    ConfigurationSection checked = Objects.requireNonNull(section, "section");
-    List<CompiledRequirements.Entry> entries = new ArrayList<>();
-    for (String key : checked.getKeys(false)) {
-      Requirement requirement = components.find(ExecutionComponentKind.REQUIREMENT, key)
-          .map(Requirement.class::cast)
-          .orElseThrow(() -> new IllegalArgumentException("Unknown requirement key: " + key));
-      try {
-        entries.add(new CompiledRequirements.Entry(key, requirement.compile(checked.get(key))));
-      } catch (RuntimeException exception) {
-        throw new IllegalArgumentException("Invalid requirement '" + key + "'", exception);
-      }
+    /** Captures the shared component registry. */
+    public VexRequirementService(final VexServiceRegistry services) {
+        components = Objects.requireNonNull(services, "services").require(ExecutionComponentCoordinatorService.class);
     }
-    return new CompiledRequirements(entries);
-  }
 
-  @Override
-  public RequirementExecutionResult test(
-      final CompiledRequirements requirements,
-      final PlayerExecutionContext context
-  ) {
-    Map<String, RequirementResult> results = new LinkedHashMap<>();
-    boolean satisfied = true;
-    for (CompiledRequirements.Entry entry : requirements.entries()) {
-      RequirementResult result = entry.requirement().test(context);
-      results.put(entry.key(), result);
-      satisfied &= result.satisfied();
+    @Override
+    public CompiledRequirements compile(final ConfigurationSection section) {
+        ConfigurationSection checked = Objects.requireNonNull(section, "section");
+        List<CompiledRequirements.Entry> entries = new ArrayList<>();
+
+        for (String key : checked.getKeys(false)) {
+            Requirement requirement = components.find(ExecutionComponentKind.REQUIREMENT, key)
+                .map(Requirement.class::cast)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown requirement key: " + key));
+
+            try {
+                entries.add(new CompiledRequirements.Entry(key, requirement.compile(checked.get(key))));
+            } catch (RuntimeException exception) {
+                throw new IllegalArgumentException("Invalid requirement '" + key + "'", exception);
+            }
+        }
+
+        return new CompiledRequirements(entries);
     }
-    return new RequirementExecutionResult(satisfied, results);
-  }
 
-  @Override
-  public List<Component> describe(
-      final CompiledRequirements requirements,
-      final PlayerExecutionContext context
-  ) {
-    return requirements.entries().stream()
-        .map(entry -> entry.requirement().describe(context))
-        .toList();
-  }
+    @Override
+    public RequirementExecutionResult test(
+        final CompiledRequirements requirements,
+        final PlayerExecutionContext context
+    ) {
+        Map<String, RequirementResult> results = new LinkedHashMap<>();
+        boolean satisfied = true;
 
-  @Override
-  public List<TypedExecutionDescription> present(
-      final CompiledRequirements requirements,
-      final PlayerExecutionContext context
-  ) {
-    return requirements.entries().stream()
-        .flatMap(entry -> entry.requirement().describeEntries(context).stream()
-            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
-        .toList();
-  }
+        for (CompiledRequirements.Entry entry : requirements.entries()) {
+            RequirementResult result = entry.requirement().test(context);
+
+            results.put(entry.key(), result);
+            satisfied &= result.satisfied();
+        }
+
+        return new RequirementExecutionResult(satisfied, results);
+    }
+
+    @Override
+    public List<Component> describe(final CompiledRequirements requirements, final PlayerExecutionContext context) {
+        return requirements.entries().stream().map(entry -> entry.requirement().describe(context)).toList();
+    }
+
+    @Override
+    public List<TypedExecutionDescription> present(
+        final CompiledRequirements requirements,
+        final PlayerExecutionContext context
+    ) {
+        return requirements.entries()
+            .stream()
+            .flatMap(entry -> entry.requirement()
+                .describeEntries(context)
+                .stream()
+                .map(description -> TypedExecutionDescription.of(entry.key(), description)))
+            .toList();
+    }
 }

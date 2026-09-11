@@ -8,26 +8,23 @@ import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
+/** Controls viewer-specific mob glow through the active packet adapter. */
 @Dependencies(EntityEffectPacketAdapterService.class)
 public final class VexMobGlowPacketService implements MobGlowPacketService {
 
-  private final EntityEffectPacketAdapterService adapter;
+    private final EntityEffectPacketAdapterService adapter;
 
-  public VexMobGlowPacketService(final VexServiceRegistry services) {
-    this.adapter = services.require(EntityEffectPacketAdapterService.class);
-  }
+    public VexMobGlowPacketService(final VexServiceRegistry services) {
+        this.adapter = services.require(EntityEffectPacketAdapterService.class);
+    }
 
-  @Override
-  public void setGlow(
-      final Player viewer,
-      final LivingEntity target,
-      final DisplayGlowColor color
-  ) {
-    adapter.setGlow(viewer, target, color);
-  }
+    @Override
+    public void setGlow(final Player viewer, final LivingEntity target, final DisplayGlowColor color) {
+        adapter.setGlow(viewer, target, color);
+    }
 
-  @Override
-  public void clearGlow(final Player viewer, final LivingEntity target) {
-    adapter.clearGlow(viewer, target);
-  }
+    @Override
+    public void clearGlow(final Player viewer, final LivingEntity target) {
+        adapter.clearGlow(viewer, target);
+    }
 }

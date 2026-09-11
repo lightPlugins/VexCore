@@ -5,10 +5,10 @@ package dev.vexsoft.core.paper.signals;
  */
 public interface SignalSubscription extends AutoCloseable {
 
-  /** Returns whether this subscription is still active. */
-  boolean isActive();
+    /** Returns whether this subscription is still active. */
+    boolean isActive();
 
-  /** Removes the listener from the signal service. */
-  @Override
-  void close();
+    /** Removes the listener from the signal service. */
+    @Override
+    void close();
 }

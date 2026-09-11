@@ -10,63 +10,56 @@ import java.util.UUID;
  */
 public interface PageControlStateStore {
 
-  /** Finds the active mode stored for the given viewer and control */
-  Optional<String> getActiveMode(
-      UUID viewerId,
-      InventoryKey inventoryKey,
-      String areaId,
-      String controlId
-  );
+    /** Finds the active mode stored for the given viewer and control */
+    Optional<String> getActiveMode(UUID viewerId, InventoryKey inventoryKey, String areaId, String controlId);
 
-  /** Stores the active mode for the given viewer and control */
-  void setActiveMode(
-      UUID viewerId,
-      InventoryKey inventoryKey,
-      String areaId,
-      String controlId,
-      String modeId
-  );
+    /** Stores the active mode for the given viewer and control */
+    void setActiveMode(UUID viewerId, InventoryKey inventoryKey, String areaId, String controlId, String modeId);
 
-  /** Removes every control state associated with the given viewer */
-  void clear(UUID viewerId);
+    /** Removes every control state associated with the given viewer */
+    void clear(UUID viewerId);
 
-  /** Selects and stores the next mode exposed by this control */
-  default String cycleNext(
-      final UUID viewerId,
-      final InventoryKey inventoryKey,
-      final String areaId,
-      final PageControl control
-  ) {
-    return cycle(viewerId, inventoryKey, areaId, control, 1);
-  }
-
-  /** Selects and stores the previous mode exposed by this control */
-  default String cyclePrevious(
-      final UUID viewerId,
-      final InventoryKey inventoryKey,
-      final String areaId,
-      final PageControl control
-  ) {
-    return cycle(viewerId, inventoryKey, areaId, control, -1);
-  }
-
-  private String cycle(
-      final UUID viewerId,
-      final InventoryKey inventoryKey,
-      final String areaId,
-      final PageControl control,
-      final int direction
-  ) {
-    control.validate();
-    List<String> modes = control.getModeIds();
-    String current = getActiveMode(viewerId, inventoryKey, areaId, control.getControlId())
-        .orElse(control.getDefaultModeId());
-    int index = modes.indexOf(current);
-    if (index < 0) {
-      index = modes.indexOf(control.getDefaultModeId());
+    /** Selects and stores the next mode exposed by this control */
+    default String cycleNext(
+        final UUID viewerId,
+        final InventoryKey inventoryKey,
+        final String areaId,
+        final PageControl control
+    ) {
+        return cycle(viewerId, inventoryKey, areaId, control, 1);
     }
-    String next = modes.get(Math.floorMod(index + direction, modes.size()));
-    setActiveMode(viewerId, inventoryKey, areaId, control.getControlId(), next);
-    return next;
-  }
+
+    /** Selects and stores the previous mode exposed by this control */
+    default String cyclePrevious(
+        final UUID viewerId,
+        final InventoryKey inventoryKey,
+        final String areaId,
+        final PageControl control
+    ) {
+        return cycle(viewerId, inventoryKey, areaId, control, -1);
+    }
+
+    private String cycle(
+        final UUID viewerId,
+        final InventoryKey inventoryKey,
+        final String areaId,
+        final PageControl control,
+        final int direction
+    ) {
+        control.validate();
+        List<String> modes = control.getModeIds();
+        String current =
+            getActiveMode(viewerId, inventoryKey, areaId, control.getControlId()).orElse(control.getDefaultModeId());
+        int index = modes.indexOf(current);
+
+        if (index < 0) {
+            index = modes.indexOf(control.getDefaultModeId());
+        }
+
+        String next = modes.get(Math.floorMod(index + direction, modes.size()));
+
+        setActiveMode(viewerId, inventoryKey, areaId, control.getControlId(), next);
+
+        return next;
+    }
 }

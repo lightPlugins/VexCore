@@ -13,42 +13,43 @@ import java.util.Optional;
 @Dependencies(MobRegistryCoordinatorService.class)
 public final class VexMobRegistry implements MobRegistry, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final MobRegistryCoordinatorService coordinator;
+    private final ServiceOwner owner;
+    private final MobRegistryCoordinatorService coordinator;
 
-  public VexMobRegistry(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    owner = checked.getOwner();
-    coordinator = checked.require(MobRegistryCoordinatorService.class);
-  }
+    public VexMobRegistry(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
-  @Override
-  public MobDefinition register(final MobDefinition definition) {
-    return coordinator.register(owner, definition);
-  }
+        owner = checked.getOwner();
+        coordinator = checked.require(MobRegistryCoordinatorService.class);
+    }
 
-  @Override
-  public Collection<MobDefinition> synchronize(final Collection<MobDefinition> definitions) {
-    return coordinator.synchronize(owner, definitions);
-  }
+    @Override
+    public MobDefinition register(final MobDefinition definition) {
+        return coordinator.register(owner, definition);
+    }
 
-  @Override
-  public Optional<MobDefinition> find(final MobKey key) {
-    return coordinator.find(key);
-  }
+    @Override
+    public Collection<MobDefinition> synchronize(final Collection<MobDefinition> definitions) {
+        return coordinator.synchronize(owner, definitions);
+    }
 
-  @Override
-  public boolean unregister(final MobKey key) {
-    return coordinator.unregister(owner, key);
-  }
+    @Override
+    public Optional<MobDefinition> find(final MobKey key) {
+        return coordinator.find(key);
+    }
 
-  @Override
-  public Collection<MobDefinition> getDefinitions() {
-    return coordinator.getDefinitions();
-  }
+    @Override
+    public boolean unregister(final MobKey key) {
+        return coordinator.unregister(owner, key);
+    }
 
-  @Override
-  public void close() {
-    coordinator.unregisterOwner(owner);
-  }
+    @Override
+    public Collection<MobDefinition> getDefinitions() {
+        return coordinator.getDefinitions();
+    }
+
+    @Override
+    public void close() {
+        coordinator.unregisterOwner(owner);
+    }
 }

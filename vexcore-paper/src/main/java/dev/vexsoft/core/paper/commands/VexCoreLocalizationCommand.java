@@ -14,21 +14,17 @@ import org.bukkit.entity.Player;
 @Dependencies(LocalizationEditorUiService.class)
 public final class VexCoreLocalizationCommand {
 
-  private final LocalizationEditorUiService editor;
+    private final LocalizationEditorUiService editor;
 
-  public VexCoreLocalizationCommand(final VexServiceRegistry services) {
-    editor = Objects.requireNonNull(services, "services")
-        .require(LocalizationEditorUiService.class);
-  }
+    public VexCoreLocalizationCommand(final VexServiceRegistry services) {
+        editor = Objects.requireNonNull(services, "services").require(LocalizationEditorUiService.class);
+    }
 
-  /** Opens the inventory-based localization editor. */
-  @Command(
-      value = "localization",
-      permission = "vexcore.command.localization",
-      playerOnly = true
-  )
-  public int open(final VexCommandSource source) {
-    editor.open((Player) source.getSender());
-    return 1;
-  }
+    /** Opens the inventory-based localization editor. */
+    @Command(value = "localization", permission = "vexcore.command.localization", playerOnly = true)
+    public int open(final VexCommandSource source) {
+        editor.open((Player) source.getSender());
+
+        return 1;
+    }
 }

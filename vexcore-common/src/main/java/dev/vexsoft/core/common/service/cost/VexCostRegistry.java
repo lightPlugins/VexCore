@@ -12,18 +12,18 @@ import dev.vexsoft.core.cost.Cost;
 @Dependencies(ExecutionComponentCoordinatorService.class)
 public final class VexCostRegistry extends AbstractExecutionRegistry implements CostRegistry {
 
-  /** Creates the registry facade for the current owner. */
-  public VexCostRegistry(final VexServiceRegistry services) {
-    super(services, ExecutionComponentKind.COST);
-  }
+    /** Creates the registry facade for the current owner. */
+    public VexCostRegistry(final VexServiceRegistry services) {
+        super(services, ExecutionComponentKind.COST);
+    }
 
-  @Override
-  public void register(final String key, final Class<? extends Cost> costType) {
-    registerComponent(key, costType);
-  }
+    @Override
+    public void register(final String key, final Class<? extends Cost> costType) {
+        registerComponent(key, costType);
+    }
 
-  @Override
-  public boolean unregister(final String key) {
-    return unregisterComponent(key);
-  }
+    @Override
+    public boolean unregister(final String key) {
+        return unregisterComponent(key);
+    }
 }

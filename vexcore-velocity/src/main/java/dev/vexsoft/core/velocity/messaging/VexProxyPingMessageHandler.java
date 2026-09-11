@@ -15,26 +15,27 @@ import java.util.Objects;
 @Dependencies({MessagingService.class})
 public final class VexProxyPingMessageHandler implements MessageHandler<ProxyPingRequest> {
 
-  private final MessagingService messages;
+    private final MessagingService messages;
 
-  public VexProxyPingMessageHandler(final VexServiceRegistry services) {
-    messages = Objects.requireNonNull(services, "services").require(MessagingService.class);
-  }
-
-  @Override
-  public MessageType<ProxyPingRequest> getMessageType() {
-    return ProxyDebugMessages.PING_REQUEST;
-  }
-
-  @Override
-  public void handle(final ProxyPingRequest message, final MessageContext context) {
-    if (context.getSourceServer().isBlank()) {
-      return;
+    public VexProxyPingMessageHandler(final VexServiceRegistry services) {
+        messages = Objects.requireNonNull(services, "services").require(MessagingService.class);
     }
-    messages.send(
-        MessageTarget.server(context.getSourceServer()),
-        ProxyDebugMessages.PING_RESPONSE,
-        new ProxyPingResponse(message.getRequestId())
-    );
-  }
+
+    @Override
+    public MessageType<ProxyPingRequest> getMessageType() {
+        return ProxyDebugMessages.PING_REQUEST;
+    }
+
+    @Override
+    public void handle(final ProxyPingRequest message, final MessageContext context) {
+        if (context.getSourceServer().isBlank()) {
+            return;
+        }
+
+        messages.send(
+            MessageTarget.server(context.getSourceServer()),
+            ProxyDebugMessages.PING_RESPONSE,
+            new ProxyPingResponse(message.getRequestId())
+        );
+    }
 }

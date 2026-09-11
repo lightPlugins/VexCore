@@ -9,6 +9,6 @@ import dev.vexsoft.core.api.service.registry.VexService;
  */
 public interface LanguageChangeDispatcherService extends VexService {
 
-  /** Publishes a completed language change to the current platform */
-  void dispatch(VexPlayer player, Language previousLanguage, Language newLanguage);
+    /** Publishes a completed language change to the current platform */
+    void dispatch(VexPlayer player, Language previousLanguage, Language newLanguage);
 }

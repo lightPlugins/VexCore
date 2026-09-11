@@ -6,7 +6,7 @@ import java.util.Optional;
 /** Cache representation that can distinguish a missing row from an unloaded value. */
 record GlobalCacheEntry(Optional<StoredGlobalData> stored) {
 
-  GlobalCacheEntry {
-    stored = Optional.ofNullable(stored).orElseGet(Optional::empty);
-  }
+    GlobalCacheEntry {
+        stored = Optional.ofNullable(stored).orElseGet(Optional::empty);
+    }
 }

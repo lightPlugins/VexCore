@@ -7,5 +7,6 @@ import dev.vexsoft.core.paper.mob.MobRemovalReason;
 @FunctionalInterface
 public interface MobRuntimeRemovalListener {
 
-  void onRemoved(MobHandle handle, MobRemovalReason reason);
+    /** Handles a runtime mob's removal and its recorded removal reason. */
+    void onRemoved(MobHandle handle, MobRemovalReason reason);
 }

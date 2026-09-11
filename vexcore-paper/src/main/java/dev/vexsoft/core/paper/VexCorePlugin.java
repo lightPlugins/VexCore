@@ -166,294 +166,261 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
 
-public final class VexCorePlugin extends JavaPlugin
-    implements ConfigurationOwner, LocalizationOwner {
-  private DefaultServiceRegistry services;
-  private VexServiceRegistry coreServices;
-  private ModuleManager modules;
-  private VexLogger logger;
-  private ScheduledTask playerAutosaveTask;
-  private boolean initialized;
-  private long startupNanos;
+public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
 
-  @Override
-  public void onLoad() {
-    long loadStartedAt = System.nanoTime();
-    services = new DefaultServiceRegistry();
-    getServer()
-        .getServicesManager()
-        .register(ServiceRegistry.class, services, this, ServicePriority.Normal);
-    coreServices = services.scoped(this);
-    modules = new ModuleManager(coreServices);
-    modules.enable(new PlatformModule());
-    coreServices.register(ScheduleService.class, VexScheduleService.class);
-    coreServices.register(ActionBarCoordinatorService.class, VexActionBarCoordinatorService.class);
-    coreServices.register(ActionBarService.class, VexActionBarService.class);
-    coreServices.register(SidebarCoordinatorService.class, VexSidebarCoordinatorService.class);
-    coreServices.register(SidebarService.class, VexSidebarService.class);
-    coreServices.register(ListenerService.class, VexListenerService.class);
-    coreServices.register(CacheService.class, VexCacheService.class);
-    coreServices.register(
-        PlaceholderRegistryCoordinatorService.class,
-        VexPlaceholderRegistryCoordinatorService.class);
-    coreServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
-    coreServices.register(SignalRegistryService.class, VexSignalRegistryService.class);
-    coreServices.register(SignalService.class, VexSignalService.class);
-    coreServices.register(ConfigurationService.class, VexConfigurationService.class);
-    coreServices.register(ThemeColorService.class, VexThemeColorService.class);
-    coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
-    coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
-    coreServices.registerQueuedServices();
-    modules.enable(new PlayerModule(this));
-    coreServices.register(
-        GlobalDataCoordinatorService.class, VexGlobalDataCoordinatorService.class);
-    coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
-    coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
-    coreServices.register(PlaceholderApiBridgeService.class, VexPlaceholderApiBridgeService.class);
-    coreServices.register(DataService.class, VexDataService.class);
-    coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
-    coreServices.registerQueuedServices();
-    modules.enable(new LocalizationModule());
-    modules.enable(new GameplayModule());
-    modules.enable(new PacketModule(this));
-    modules.enable(new NmsModule(this));
-    modules.enable(new DialogModule());
-    modules.enable(new ItemModule(this));
-    coreServices.register(LocalizationService.class, VexLocalizationService.class);
-    coreServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
-    coreServices.register(SendMessageService.class, VexSendMessageService.class);
-    coreServices.register(MessagingService.class, VexMessagingService.class);
-    coreServices.register(
-        PlayerDirectoryCoordinatorService.class, VexPlayerDirectoryCoordinatorService.class);
-    coreServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
-    coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
-    coreServices.register(WorldService.class, VexWorldService.class);
-    coreServices.register(TeleportCoordinatorService.class, VexTeleportCoordinatorService.class);
-    coreServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
-    coreServices.register(ProxyPingService.class, VexProxyPingService.class);
-    coreServices.register(ServerPerformanceService.class, VexServerPerformanceService.class);
-    coreServices.register(PerformanceBossBarService.class, VexPerformanceBossBarService.class);
-    coreServices.register(CommandService.class, VexCommandService.class);
-    coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
-    coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
-    coreServices.register(ScreenUiService.class, VexScreenUiService.class);
-    coreServices.register(DialogService.class, VexDialogService.class);
-    coreServices.register(InventoryService.class, VexInventoryService.class);
-    coreServices.register(LocalizationEditorUiService.class, VexLocalizationEditorUiService.class);
-    coreServices.register(ItemService.class, VexItemService.class);
-    coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
-    coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
-    coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
-    coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
-    coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
-    coreServices.register(SkinService.class, VexSkinService.class);
-    coreServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
-    coreServices.register(CameraPacketService.class, VexCameraPacketService.class);
-    coreServices.register(
-        BlockDamageOverlayPacketService.class, VexBlockDamageOverlayPacketService.class);
-    coreServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
-    coreServices.register(
-        DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
-    coreServices.register(InteractableHologramService.class, VexInteractableHologramService.class);
-    coreServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
-    coreServices.register(
-        PlayerAnimationPacketService.class, VexPlayerAnimationPacketService.class);
-    coreServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
-    coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
-    coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
-    coreServices.registerQueuedServices();
-    modules.enable(new MobModule());
-    coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
-    coreServices.require(MessagingService.class).register(VexTeleportArrivalHandler.class);
-    coreServices.require(MessagingService.class).register(VexTeleportCompletionHandler.class);
-    coreServices.require(MessagingService.class).register(VexPlayerDirectoryResponseHandler.class);
-    coreServices
-        .require(MessagingService.class)
-        .register(VexPlayerDirectoryListResponseHandler.class);
-    coreServices.require(DataService.class).register(VexCorePlayerData.class);
-    coreServices.require(CommandService.class).register(VexCoreCommand.class);
-    coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
-    coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
-    coreServices.require(CommandService.class).register(VexCoreUiCommand.class);
-    coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
-    coreServices.require(CommandService.class).register(VexCoreLocalizationCommand.class);
-    initialized = true;
-    startupNanos = System.nanoTime() - loadStartedAt;
-  }
+    private DefaultServiceRegistry services;
+    private VexServiceRegistry coreServices;
+    private ModuleManager modules;
+    private VexLogger logger;
+    private ScheduledTask playerAutosaveTask;
+    private boolean initialized;
+    private long startupNanos;
 
-  @Override
-  public void onEnable() {
-    long enableStartedAt = System.nanoTime();
-    if (!initialized) {
-      getLogger().severe("VexCore cannot be enabled because its loading phase failed");
-      getServer().getPluginManager().disablePlugin(this);
-      return;
+    @Override
+    public void onLoad() {
+        long loadStartedAt = System.nanoTime();
+
+        services = new DefaultServiceRegistry();
+        getServer().getServicesManager().register(ServiceRegistry.class, services, this, ServicePriority.Normal);
+        coreServices = services.scoped(this);
+        modules = new ModuleManager(coreServices);
+        modules.enable(new PlatformModule());
+        coreServices.register(ScheduleService.class, VexScheduleService.class);
+        coreServices.register(ActionBarCoordinatorService.class, VexActionBarCoordinatorService.class);
+        coreServices.register(ActionBarService.class, VexActionBarService.class);
+        coreServices.register(SidebarCoordinatorService.class, VexSidebarCoordinatorService.class);
+        coreServices.register(SidebarService.class, VexSidebarService.class);
+        coreServices.register(ListenerService.class, VexListenerService.class);
+        coreServices.register(CacheService.class, VexCacheService.class);
+        coreServices.register(
+            PlaceholderRegistryCoordinatorService.class,
+            VexPlaceholderRegistryCoordinatorService.class
+        );
+        coreServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
+        coreServices.register(SignalRegistryService.class, VexSignalRegistryService.class);
+        coreServices.register(SignalService.class, VexSignalService.class);
+        coreServices.register(ConfigurationService.class, VexConfigurationService.class);
+        coreServices.register(ThemeColorService.class, VexThemeColorService.class);
+        coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
+        coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
+        coreServices.registerQueuedServices();
+        modules.enable(new PlayerModule(this));
+        coreServices.register(GlobalDataCoordinatorService.class, VexGlobalDataCoordinatorService.class);
+        coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
+        coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
+        coreServices.register(PlaceholderApiBridgeService.class, VexPlaceholderApiBridgeService.class);
+        coreServices.register(DataService.class, VexDataService.class);
+        coreServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
+        coreServices.registerQueuedServices();
+        modules.enable(new LocalizationModule());
+        modules.enable(new GameplayModule());
+        modules.enable(new PacketModule(this));
+        modules.enable(new NmsModule(this));
+        modules.enable(new DialogModule());
+        modules.enable(new ItemModule(this));
+        coreServices.register(LocalizationService.class, VexLocalizationService.class);
+        coreServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
+        coreServices.register(SendMessageService.class, VexSendMessageService.class);
+        coreServices.register(MessagingService.class, VexMessagingService.class);
+        coreServices.register(PlayerDirectoryCoordinatorService.class, VexPlayerDirectoryCoordinatorService.class);
+        coreServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
+        coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
+        coreServices.register(WorldService.class, VexWorldService.class);
+        coreServices.register(TeleportCoordinatorService.class, VexTeleportCoordinatorService.class);
+        coreServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
+        coreServices.register(ProxyPingService.class, VexProxyPingService.class);
+        coreServices.register(ServerPerformanceService.class, VexServerPerformanceService.class);
+        coreServices.register(PerformanceBossBarService.class, VexPerformanceBossBarService.class);
+        coreServices.register(CommandService.class, VexCommandService.class);
+        coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
+        coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
+        coreServices.register(ScreenUiService.class, VexScreenUiService.class);
+        coreServices.register(DialogService.class, VexDialogService.class);
+        coreServices.register(InventoryService.class, VexInventoryService.class);
+        coreServices.register(LocalizationEditorUiService.class, VexLocalizationEditorUiService.class);
+        coreServices.register(ItemService.class, VexItemService.class);
+        coreServices.register(PluginBootstrapService.class, VexPluginBootstrapService.class);
+        coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
+        coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
+        coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
+        coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+        coreServices.register(SkinService.class, VexSkinService.class);
+        coreServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
+        coreServices.register(CameraPacketService.class, VexCameraPacketService.class);
+        coreServices.register(BlockDamageOverlayPacketService.class, VexBlockDamageOverlayPacketService.class);
+        coreServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
+        coreServices.register(DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
+        coreServices.register(InteractableHologramService.class, VexInteractableHologramService.class);
+        coreServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
+        coreServices.register(PlayerAnimationPacketService.class, VexPlayerAnimationPacketService.class);
+        coreServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
+        coreServices.register(LightningPacketService.class, VexLightningPacketService.class);
+        coreServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
+        coreServices.registerQueuedServices();
+        modules.enable(new MobModule());
+        coreServices.require(MessagingService.class).register(VexProxyPingResponseHandler.class);
+        coreServices.require(MessagingService.class).register(VexTeleportArrivalHandler.class);
+        coreServices.require(MessagingService.class).register(VexTeleportCompletionHandler.class);
+        coreServices.require(MessagingService.class).register(VexPlayerDirectoryResponseHandler.class);
+        coreServices.require(MessagingService.class).register(VexPlayerDirectoryListResponseHandler.class);
+        coreServices.require(DataService.class).register(VexCorePlayerData.class);
+        coreServices.require(CommandService.class).register(VexCoreCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreUiCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreLocalizationCommand.class);
+        initialized = true;
+        startupNanos = System.nanoTime() - loadStartedAt;
     }
-    modules.startAll();
-    coreServices.require(PlaceholderApiBridgeService.class).enable();
-    coreServices.require(MessageTransportService.class).start();
-    coreServices.require(PlayerDirectoryService.class).getOnlinePlayers();
-    coreServices.require(ServerPerformanceService.class).start();
-    coreServices.require(PerformanceBossBarService.class).start();
-    coreServices.require(ListenerService.class).register(VexScreenUiListener.class, coreServices);
-    getLogger()
-        .info(
-            "Network server ID initialized as "
-                + coreServices.require(ServerIdentityService.class).getServerId().value());
-    coreServices
-        .require(ListenerService.class)
-        .register(VexPerformanceBossBarListener.class, coreServices);
-    PlatformService platform = services.require(PlatformService.class);
-    PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
-    coreServices
-        .require(ListenerService.class)
-        .register(VexPlayerLifecycleListener.class, coreServices);
-    coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
-    coreServices
-        .require(ListenerService.class)
-        .register(VexPlayerDummyListener.class, coreServices);
-    playerAutosaveTask =
-        getServer()
-            .getAsyncScheduler()
-            .runAtFixedRate(
-                this,
-                task ->
-                    players
-                        .saveAll()
-                        .exceptionally(
-                            throwable -> {
-                              getLogger()
-                                  .log(Level.SEVERE, "Unable to autosave Vex players", throwable);
-                              return null;
-                            }),
-                5,
-                5,
-                TimeUnit.MINUTES);
-    long startupMillis =
-        TimeUnit.NANOSECONDS.toMillis(startupNanos + System.nanoTime() - enableStartedAt);
-    getLogger()
-        .info(
-            "VexCore successfully enabled on "
-                + platform.getPlatform()
-                + " in "
-                + startupMillis
-                + " ms");
-  }
 
-  @Override
-  public void onDisable() {
-    if (playerAutosaveTask != null) {
-      playerAutosaveTask.cancel();
+    @Override
+    public void onEnable() {
+        long enableStartedAt = System.nanoTime();
+
+        if (!initialized) {
+            getLogger().severe("VexCore cannot be enabled because its loading phase failed");
+            getServer().getPluginManager().disablePlugin(this);
+
+            return;
+        }
+
+        modules.startAll();
+        coreServices.require(PlaceholderApiBridgeService.class).enable();
+        coreServices.require(MessageTransportService.class).start();
+        coreServices.require(PlayerDirectoryService.class).getOnlinePlayers();
+        coreServices.require(ServerPerformanceService.class).start();
+        coreServices.require(PerformanceBossBarService.class).start();
+        coreServices.require(ListenerService.class).register(VexScreenUiListener.class, coreServices);
+        getLogger().info("Network server ID initialized as " + coreServices.require(ServerIdentityService.class)
+            .getServerId()
+            .value());
+        coreServices.require(ListenerService.class).register(VexPerformanceBossBarListener.class, coreServices);
+        PlatformService platform = services.require(PlatformService.class);
+        PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
+
+        coreServices.require(ListenerService.class).register(VexPlayerLifecycleListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(VexPlayerDummyListener.class, coreServices);
+        playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
+            this,
+            task -> players.saveAll().exceptionally(throwable -> {
+                getLogger().log(Level.SEVERE, "Unable to autosave Vex players", throwable);
+
+                return null;
+            }),
+            5,
+            5,
+            TimeUnit.MINUTES
+        );
+        long startupMillis = TimeUnit.NANOSECONDS.toMillis(startupNanos + System.nanoTime() - enableStartedAt);
+
+        getLogger().info("VexCore successfully enabled on " + platform.getPlatform() + " in " + startupMillis + " ms");
     }
-    if (services != null) {
-      services
-          .find(PlayerDataCoordinatorService.class)
-          .ifPresent(
-              players -> {
+
+    @Override
+    public void onDisable() {
+        if (playerAutosaveTask != null) {
+            playerAutosaveTask.cancel();
+        }
+
+        if (services != null) {
+            services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
                 try {
-                  players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
+                    players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
                 } catch (RuntimeException exception) {
-                  getLogger()
-                      .log(
-                          Level.SEVERE,
-                          "Unable to save every VexPlayer during shutdown",
-                          exception);
-                  Path recovery =
-                      getDataFolder()
-                          .toPath()
-                          .resolve("player-recovery")
-                          .resolve(Instant.now().toString().replace(':', '-'));
-                  try {
-                    players.exportRecovery(recovery);
-                    getLogger()
-                        .severe(
-                            "Dirty player recovery snapshots written to "
-                                + recovery
-                                + ". Review these files before allowing affected players to"
-                                + " reconnect.");
-                  } catch (RuntimeException recoveryFailure) {
-                    getLogger()
-                        .log(
-                            Level.SEVERE,
-                            "Unable to write player recovery snapshots",
-                            recoveryFailure);
-                  }
+                    getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
+                    Path recovery = getDataFolder().toPath()
+                        .resolve("player-recovery")
+                        .resolve(Instant.now().toString().replace(':', '-'));
+
+                    try {
+                        players.exportRecovery(recovery);
+                        getLogger().severe("Dirty player recovery snapshots written to " + recovery
+                            + ". Review these files before allowing affected players to" + " reconnect.");
+                    } catch (RuntimeException recoveryFailure) {
+                        getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
+                    }
                 }
-              });
+            });
+        }
+
+        if (modules != null) {
+            if (coreServices != null) {
+                coreServices.unregisterOwnedServices();
+            }
+
+            modules.disableAll();
+        }
+
+        getServer().getServicesManager().unregisterAll(this);
     }
-    if (modules != null) {
-      if (coreServices != null) {
-        coreServices.unregisterOwnedServices();
-      }
-      modules.disableAll();
+
+    @Override
+    public @NonNull VexLogger getLogger() {
+        if (logger == null) {
+            logger = new VexLogger(getName(), "<dark_gray>[<gradient:#8A2BE2:#00BFFF>VexCore</gradient>]</dark_gray> ");
+        }
+
+        return logger;
     }
-    getServer().getServicesManager().unregisterAll(this);
-  }
 
-  @Override
-  public @NonNull VexLogger getLogger() {
-    if (logger == null) {
-      logger =
-          new VexLogger(
-              getName(), "<dark_gray>[<gradient:#8A2BE2:#00BFFF>VexCore</gradient>]</dark_gray> ");
+    @Override
+    public String getServiceOwnerName() {
+        return getName();
     }
-    return logger;
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return getName();
-  }
-
-  @Override
-  public Path getLocalizationDirectory() {
-    return getConfigurationDirectory().resolve("languages");
-  }
-
-  @Override
-  public Path getConfigurationDirectory() {
-    Path pluginsDirectory = getDataFolder().toPath().toAbsolutePath().normalize().getParent();
-    if (pluginsDirectory == null) {
-      throw new IllegalStateException("Unable to resolve the plugins directory");
+    @Override
+    public Path getLocalizationDirectory() {
+        return getConfigurationDirectory().resolve("languages");
     }
-    return pluginsDirectory.resolve("VexSoft").resolve(getName()).normalize();
-  }
 
-  @Override
-  public Collection<String> getLocalizationResources() {
-    return LocalizationResourceScanner.scan(getFile().toPath());
-  }
+    @Override
+    public Path getConfigurationDirectory() {
+        Path pluginsDirectory = getDataFolder().toPath().toAbsolutePath().normalize().getParent();
 
-  @Override
-  public Optional<InputStream> getLocalizationResource(final String resourcePath) {
-    return Optional.ofNullable(getResource(resourcePath));
-  }
+        if (pluginsDirectory == null) {
+            throw new IllegalStateException("Unable to resolve the plugins directory");
+        }
 
-  @Override
-  public Optional<InputStream> getConfigurationResource(final String resourcePath) {
-    return Optional.ofNullable(getResource(resourcePath));
-  }
-
-  @Override
-  public String getMessagePrefixKey() {
-    return "general.prefix";
-  }
-
-  @Override
-  public void reportLocalizationWarning(final String message, final Throwable cause) {
-    reportWarning(message, cause);
-  }
-
-  @Override
-  public void reportConfigurationWarning(final String message, final Throwable cause) {
-    reportWarning(message, cause);
-  }
-
-  private void reportWarning(final String message, final Throwable cause) {
-    if (cause == null) {
-      getLogger().warning(message);
-    } else {
-      getLogger().log(Level.WARNING, message, cause);
+        return pluginsDirectory.resolve("VexSoft").resolve(getName()).normalize();
     }
-  }
+
+    @Override
+    public Collection<String> getLocalizationResources() {
+        return LocalizationResourceScanner.scan(getFile().toPath());
+    }
+
+    @Override
+    public Optional<InputStream> getLocalizationResource(final String resourcePath) {
+        return Optional.ofNullable(getResource(resourcePath));
+    }
+
+    @Override
+    public Optional<InputStream> getConfigurationResource(final String resourcePath) {
+        return Optional.ofNullable(getResource(resourcePath));
+    }
+
+    @Override
+    public String getMessagePrefixKey() {
+        return "general.prefix";
+    }
+
+    @Override
+    public void reportLocalizationWarning(final String message, final Throwable cause) {
+        reportWarning(message, cause);
+    }
+
+    @Override
+    public void reportConfigurationWarning(final String message, final Throwable cause) {
+        reportWarning(message, cause);
+    }
+
+    private void reportWarning(final String message, final Throwable cause) {
+        if (cause == null) {
+            getLogger().warning(message);
+        } else {
+            getLogger().log(Level.WARNING, message, cause);
+        }
+    }
 }

@@ -9,15 +9,21 @@ import org.bukkit.entity.Player;
 /** Coordinates activation and live populations for registered mob spawner points. */
 public interface MobSpawnerRuntimeCoordinatorService extends VexService {
 
-  void register(ServiceOwner owner, MobSpawnerDefinition definition);
+    /** Installs a spawner runtime, retiring the previous population when replacing its definition. */
+    void register(ServiceOwner owner, MobSpawnerDefinition definition);
 
-  void unregister(ServiceOwner owner, MobSpawnerKey key, boolean reload);
+    /** Deactivates an owned spawner and records whether removal was caused by a reload. */
+    void unregister(ServiceOwner owner, MobSpawnerKey key, boolean reload);
 
-  void unregisterOwner(ServiceOwner owner);
+    /** Deactivates every spawner runtime belonging to the owner. */
+    void unregisterOwner(ServiceOwner owner);
 
-  void start();
+    /** Starts spawner listeners and player-bound activation tasks. */
+    void start();
 
-  void shutdown();
+    /** Stops activation tasks and retires all managed spawner populations. */
+    void shutdown();
 
-  void refresh(Player player);
+    /** Refreshes the player's activation task and nearby spawner interest. */
+    void refresh(Player player);
 }

@@ -5,12 +5,12 @@ import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.player.PlayerService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
-import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
-import dev.vexsoft.core.common.service.data.VexPlayerDataCoordinatorService;
-import dev.vexsoft.core.common.service.data.VexPlayerService;
-import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
 import dev.vexsoft.core.common.service.data.LocalStorageOwner;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.VexPlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.VexPlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.VexPlayerService;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -22,76 +22,78 @@ import org.bukkit.plugin.java.JavaPlugin;
 @RequiredArgsConstructor
 public final class PlayerModule implements VexModule, ConfigurationOwner, LocalStorageOwner {
 
-  @NonNull
-  private final JavaPlugin plugin;
-  private VexServiceRegistry services;
+    @NonNull
+    private final JavaPlugin plugin;
+    private VexServiceRegistry services;
 
-  @Override
-  public void enable(final VexServiceRegistry registry) {
-    services = registry.scoped(this);
-    services.register(ConfigurationService.class, VexConfigurationService.class);
-    services.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
-    services.register(PlayerDataCoordinatorService.class, VexPlayerDataCoordinatorService.class);
-    services.register(PlayerService.class, VexPlayerService.class);
-    services.registerQueuedServices();
-  }
-
-  @Override
-  public void start() {
-    PlayerDataStoreService storage = services.require(PlayerDataStoreService.class);
-    String storageType = storage.getStorageType();
-    if (storageType.equals("memory")) {
-      plugin.getLogger().warning(
-          "Shared storage is using memory mode; data will not survive a server restart"
-      );
-    } else {
-      String displayName = switch (storageType) {
-        case "postgresql" -> "PostgreSQL";
-        case "sqlite" -> "SQLite";
-        default -> storageType;
-      };
-      plugin.getLogger().info("Shared storage initialized using " + displayName);
+    @Override
+    public void enable(final VexServiceRegistry registry) {
+        services = registry.scoped(this);
+        services.register(ConfigurationService.class, VexConfigurationService.class);
+        services.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
+        services.register(PlayerDataCoordinatorService.class, VexPlayerDataCoordinatorService.class);
+        services.register(PlayerService.class, VexPlayerService.class);
+        services.registerQueuedServices();
     }
-    PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
-    plugin.getLogger().info(
-        "Player data initialized with " + players.getContainerIds().size()
-            + " persistent containers and " + players.getFeatureContainerCount()
-            + " feature containers"
-    );
-  }
 
-  @Override
-  public void disable() {
-    if (services != null) {
-      services.unregisterOwnedServices();
+    @Override
+    public void start() {
+        PlayerDataStoreService storage = services.require(PlayerDataStoreService.class);
+        String storageType = storage.getStorageType();
+
+        if (storageType.equals("memory")) {
+            plugin.getLogger().warning("Shared storage is using memory mode; data will not survive a server restart");
+        } else {
+            String displayName = switch (storageType) {
+                case "postgresql" -> "PostgreSQL";
+                case "sqlite" -> "SQLite";
+                default -> storageType;
+            };
+
+            plugin.getLogger().info("Shared storage initialized using " + displayName);
+        }
+
+        PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
+
+        plugin.getLogger()
+            .info("Player data initialized with " + players.getContainerIds().size() + " persistent containers and "
+                + players.getFeatureContainerCount() + " feature containers");
     }
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return "VexCore";
-  }
-
-  @Override
-  public Path getConfigurationDirectory() {
-    Path pluginsDirectory = plugin.getDataFolder().toPath().toAbsolutePath().normalize().getParent();
-    if (pluginsDirectory == null) {
-      throw new IllegalStateException("Unable to resolve the plugins directory");
+    @Override
+    public void disable() {
+        if (services != null) {
+            services.unregisterOwnedServices();
+        }
     }
-    return pluginsDirectory.resolve("VexSoft").resolve("VexCore").normalize();
-  }
 
-  @Override
-  public Optional<InputStream> getConfigurationResource(final String resourcePath) {
-    return Optional.ofNullable(plugin.getResource(resourcePath));
-  }
-
-  @Override
-  public void reportConfigurationWarning(final String message, final Throwable cause) {
-    if (cause == null) {
-      plugin.getLogger().warning(message);
-    } else {
-      plugin.getLogger().log(Level.WARNING, message, cause);
+    @Override
+    public String getServiceOwnerName() {
+        return "VexCore";
     }
-  }
+
+    @Override
+    public Path getConfigurationDirectory() {
+        Path pluginsDirectory = plugin.getDataFolder().toPath().toAbsolutePath().normalize().getParent();
+
+        if (pluginsDirectory == null) {
+            throw new IllegalStateException("Unable to resolve the plugins directory");
+        }
+
+        return pluginsDirectory.resolve("VexSoft").resolve("VexCore").normalize();
+    }
+
+    @Override
+    public Optional<InputStream> getConfigurationResource(final String resourcePath) {
+        return Optional.ofNullable(plugin.getResource(resourcePath));
+    }
+
+    @Override
+    public void reportConfigurationWarning(final String message, final Throwable cause) {
+        if (cause == null) {
+            plugin.getLogger().warning(message);
+        } else {
+            plugin.getLogger().log(Level.WARNING, message, cause);
+        }
+    }
 }

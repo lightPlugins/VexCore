@@ -14,49 +14,50 @@ import org.bukkit.entity.Player;
 @Dependencies(MobSpawnerRegistryCoordinatorService.class)
 public final class VexMobSpawnerRegistry implements MobSpawnerRegistry, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final MobSpawnerRegistryCoordinatorService coordinator;
+    private final ServiceOwner owner;
+    private final MobSpawnerRegistryCoordinatorService coordinator;
 
-  public VexMobSpawnerRegistry(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    owner = checked.getOwner();
-    coordinator = checked.require(MobSpawnerRegistryCoordinatorService.class);
-  }
+    public VexMobSpawnerRegistry(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
-  @Override
-  public MobSpawnerDefinition register(final MobSpawnerDefinition definition) {
-    return coordinator.register(owner, definition);
-  }
+        owner = checked.getOwner();
+        coordinator = checked.require(MobSpawnerRegistryCoordinatorService.class);
+    }
 
-  @Override
-  public Collection<MobSpawnerDefinition> synchronize(
-      final Collection<MobSpawnerDefinition> definitions
-  ) {
-    return coordinator.synchronize(owner, definitions);
-  }
+    @Override
+    public MobSpawnerDefinition register(final MobSpawnerDefinition definition) {
+        return coordinator.register(owner, definition);
+    }
 
-  @Override
-  public Optional<MobSpawnerDefinition> find(final MobSpawnerKey key) {
-    return coordinator.find(key);
-  }
+    @Override
+    public Collection<MobSpawnerDefinition> synchronize(
+        final Collection<MobSpawnerDefinition> definitions
+    ) {
+        return coordinator.synchronize(owner, definitions);
+    }
 
-  @Override
-  public boolean unregister(final MobSpawnerKey key) {
-    return coordinator.unregister(owner, key);
-  }
+    @Override
+    public Optional<MobSpawnerDefinition> find(final MobSpawnerKey key) {
+        return coordinator.find(key);
+    }
 
-  @Override
-  public Collection<MobSpawnerDefinition> getDefinitions() {
-    return coordinator.getDefinitions();
-  }
+    @Override
+    public boolean unregister(final MobSpawnerKey key) {
+        return coordinator.unregister(owner, key);
+    }
 
-  @Override
-  public void refresh(final Player player) {
-    coordinator.refresh(Objects.requireNonNull(player, "player"));
-  }
+    @Override
+    public Collection<MobSpawnerDefinition> getDefinitions() {
+        return coordinator.getDefinitions();
+    }
 
-  @Override
-  public void close() {
-    coordinator.unregisterOwner(owner);
-  }
+    @Override
+    public void refresh(final Player player) {
+        coordinator.refresh(Objects.requireNonNull(player, "player"));
+    }
+
+    @Override
+    public void close() {
+        coordinator.unregisterOwner(owner);
+    }
 }

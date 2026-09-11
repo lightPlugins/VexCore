@@ -9,23 +9,21 @@ import net.kyori.adventure.text.event.ClickCallback;
 @SuppressWarnings("UnstableApiUsage")
 public final class DialogActions {
 
-  private static final int DEFAULT_BUTTON_WIDTH = 150;
+    private static final int DEFAULT_BUTTON_WIDTH = 150;
 
-  private DialogActions() { }
+    private DialogActions() {
+    }
 
-  public static ActionButton button(
-      final Component label,
-      final Component tooltip,
-      final DialogActionCallback callback
-  ) {
-    return ActionButton.create(
-        label,
-        tooltip,
-        DEFAULT_BUTTON_WIDTH,
-        DialogAction.customClick(
-            callback,
-            ClickCallback.Options.builder().uses(1).build()
-        )
-    );
-  }
+    public static ActionButton button(
+        final Component label,
+        final Component tooltip,
+        final DialogActionCallback callback
+    ) {
+        return ActionButton.create(
+            label,
+            tooltip,
+            DEFAULT_BUTTON_WIDTH,
+            DialogAction.customClick(callback, ClickCallback.Options.builder().uses(1).build())
+        );
+    }
 }

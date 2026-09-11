@@ -8,14 +8,15 @@ import org.bukkit.inventory.ItemStack;
  */
 public interface InventoryElement {
 
-  /** Creates the item shown to the current viewer */
-  ItemStack render(InventoryContext context);
+    /** Creates the item shown to the current viewer */
+    ItemStack render(InventoryContext context);
 
-  /** Handles a click on this element */
-  default void onClick(InventoryContext context, InventoryClickEvent event) { }
+    /** Handles a click on this element */
+    default void onClick(InventoryContext context, InventoryClickEvent event) {
+    }
 
-  /** Checks whether this element accepts click actions */
-  default boolean isClickable() {
-    return true;
-  }
+    /** Checks whether this element accepts click actions */
+    default boolean isClickable() {
+        return true;
+    }
 }

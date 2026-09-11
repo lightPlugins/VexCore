@@ -8,15 +8,15 @@ import java.util.concurrent.CompletableFuture;
 /** Persists the network-wide player identity index. */
 public interface PlayerIdentityStore {
 
-  /** Creates missing identity storage structures. */
-  CompletableFuture<Void> reconcilePlayerIdentities();
+    /** Creates missing identity storage structures. */
+    CompletableFuture<Void> reconcilePlayerIdentities();
 
-  /** Stores the most recently observed player name. */
-  CompletableFuture<PlayerIdentity> recordPlayerIdentity(UUID uniqueId, String name);
+    /** Stores the most recently observed player name. */
+    CompletableFuture<PlayerIdentity> recordPlayerIdentity(UUID uniqueId, String name);
 
-  /** Finds one identity by UUID. */
-  CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(UUID uniqueId);
+    /** Finds one identity by UUID. */
+    CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(UUID uniqueId);
 
-  /** Finds one identity by normalized name. */
-  CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(String name);
+    /** Finds one identity by normalized name. */
+    CompletableFuture<Optional<PlayerIdentity>> findPlayerIdentity(String name);
 }

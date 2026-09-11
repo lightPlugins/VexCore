@@ -10,8 +10,9 @@ import org.bukkit.NamespacedKey;
 @Value
 @Builder(toBuilder = true)
 public class FakeItemMetaRule {
-  Component displayName;
-  NamespacedKey itemModel;
-  List<Component> lore;
-  FakeItemLoreMode loreMode;
+
+    Component displayName;
+    NamespacedKey itemModel;
+    List<Component> lore;
+    FakeItemLoreMode loreMode;
 }

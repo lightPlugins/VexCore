@@ -14,22 +14,21 @@ import java.util.concurrent.CompletableFuture;
 @Dependencies(PlayerDataCoordinatorService.class)
 public final class ContainerSuggestionProvider implements SuggestionProvider {
 
-  private final PlayerDataCoordinatorService players;
+    private final PlayerDataCoordinatorService players;
 
-  public ContainerSuggestionProvider(final VexServiceRegistry services) {
-    players = Objects.requireNonNull(services, "services")
-        .require(PlayerDataCoordinatorService.class);
-  }
+    public ContainerSuggestionProvider(final VexServiceRegistry services) {
+        players = Objects.requireNonNull(services, "services").require(PlayerDataCoordinatorService.class);
+    }
 
-  @Override
-  public CompletableFuture<Suggestions> suggest(
-      final VexCommandSource source,
-      final SuggestionsBuilder builder
-  ) {
-    String remaining = builder.getRemainingLowerCase();
-    players.getContainerIds().stream()
-        .filter(container -> container.startsWith(remaining))
-        .forEach(builder::suggest);
-    return builder.buildFuture();
-  }
+    @Override
+    public CompletableFuture<Suggestions> suggest(final VexCommandSource source, final SuggestionsBuilder builder) {
+        String remaining = builder.getRemainingLowerCase();
+
+        players.getContainerIds()
+            .stream()
+            .filter(container -> container.startsWith(remaining))
+            .forEach(builder::suggest);
+
+        return builder.buildFuture();
+    }
 }

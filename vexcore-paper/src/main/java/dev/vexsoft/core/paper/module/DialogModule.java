@@ -8,25 +8,26 @@ import dev.vexsoft.core.paper.service.listeners.ListenerService;
 
 public final class DialogModule implements VexModule {
 
-  private VexServiceRegistry services;
+    private VexServiceRegistry services;
 
-  @Override
-  public void enable(final VexServiceRegistry registry) {
-    services = registry.scoped(this);
-    services.register(DialogCoordinatorService.class, VexDialogCoordinatorService.class);
-    services.registerQueuedServices();
-  }
-
-  @Override
-  public void start() {
-    if (services == null) {
-      throw new IllegalStateException("DialogModule has not been loaded yet");
+    @Override
+    public void enable(final VexServiceRegistry registry) {
+        services = registry.scoped(this);
+        services.register(DialogCoordinatorService.class, VexDialogCoordinatorService.class);
+        services.registerQueuedServices();
     }
-    services.require(ListenerService.class).register(VexDialogListener.class, services);
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return "vexcore-dialog";
-  }
+    @Override
+    public void start() {
+        if (services == null) {
+            throw new IllegalStateException("DialogModule has not been loaded yet");
+        }
+
+        services.require(ListenerService.class).register(VexDialogListener.class, services);
+    }
+
+    @Override
+    public String getServiceOwnerName() {
+        return "vexcore-dialog";
+    }
 }

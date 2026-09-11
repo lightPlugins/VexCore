@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 public @interface Argument {
 
-  /** Returns the matching argument name from the command path */
-  String value();
+    /** Returns the matching argument name from the command path */
+    String value();
 }

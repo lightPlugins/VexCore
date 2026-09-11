@@ -8,6 +8,6 @@ package dev.vexsoft.core.paper.signals;
 @FunctionalInterface
 public interface SignalListener<S extends VexSignal> {
 
-  /** Handles one published signal on the publishing thread. */
-  void handle(S signal);
+    /** Handles one published signal on the publishing thread. */
+    void handle(S signal);
 }

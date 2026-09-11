@@ -19,50 +19,38 @@ import dev.vexsoft.core.paper.service.mob.VexMobSpawnerRuntimeCoordinatorService
 /** Installs the non-persistent custom mob registry and runtime. */
 public final class MobModule implements VexModule {
 
-  private VexServiceRegistry services;
+    private VexServiceRegistry services;
 
-  @Override
-  public void enable(final VexServiceRegistry registry) {
-    services = registry.scoped(this);
-    services.register(
-        MobRuntimeCoordinatorService.class,
-        VexMobRuntimeCoordinatorService.class
-    );
-    services.register(
-        MobRegistryCoordinatorService.class,
-        VexMobRegistryCoordinatorService.class
-    );
-    services.register(MobRegistry.class, VexMobRegistry.class);
-    services.register(MobService.class, VexMobService.class);
-    services.register(
-        MobSpawnerRuntimeCoordinatorService.class,
-        VexMobSpawnerRuntimeCoordinatorService.class
-    );
-    services.register(
-        MobSpawnerRegistryCoordinatorService.class,
-        VexMobSpawnerRegistryCoordinatorService.class
-    );
-    services.register(MobSpawnerRegistry.class, VexMobSpawnerRegistry.class);
-    services.registerQueuedServices();
-  }
-
-  @Override
-  public void start() {
-    services.require(MobRuntimeCoordinatorService.class).start();
-    services.require(MobSpawnerRuntimeCoordinatorService.class).start();
-  }
-
-  @Override
-  public void disable() {
-    if (services != null) {
-      services.require(MobSpawnerRuntimeCoordinatorService.class).shutdown();
-      services.require(MobRuntimeCoordinatorService.class).shutdown();
-      services.unregisterOwnedServices();
+    @Override
+    public void enable(final VexServiceRegistry registry) {
+        services = registry.scoped(this);
+        services.register(MobRuntimeCoordinatorService.class, VexMobRuntimeCoordinatorService.class);
+        services.register(MobRegistryCoordinatorService.class, VexMobRegistryCoordinatorService.class);
+        services.register(MobRegistry.class, VexMobRegistry.class);
+        services.register(MobService.class, VexMobService.class);
+        services.register(MobSpawnerRuntimeCoordinatorService.class, VexMobSpawnerRuntimeCoordinatorService.class);
+        services.register(MobSpawnerRegistryCoordinatorService.class, VexMobSpawnerRegistryCoordinatorService.class);
+        services.register(MobSpawnerRegistry.class, VexMobSpawnerRegistry.class);
+        services.registerQueuedServices();
     }
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return "vexcore-mob-runtime";
-  }
+    @Override
+    public void start() {
+        services.require(MobRuntimeCoordinatorService.class).start();
+        services.require(MobSpawnerRuntimeCoordinatorService.class).start();
+    }
+
+    @Override
+    public void disable() {
+        if (services != null) {
+            services.require(MobSpawnerRuntimeCoordinatorService.class).shutdown();
+            services.require(MobRuntimeCoordinatorService.class).shutdown();
+            services.unregisterOwnedServices();
+        }
+    }
+
+    @Override
+    public String getServiceOwnerName() {
+        return "vexcore-mob-runtime";
+    }
 }

@@ -11,24 +11,24 @@ import org.bukkit.inventory.EquipmentSlot;
  */
 public interface EntityEffectPacketAdapterService extends VexService {
 
-  /** Shows an entity hit animation to one viewer */
-  void playHit(Player viewer, LivingEntity target);
+    /** Shows an entity hit animation to one viewer */
+    void playHit(Player viewer, LivingEntity target);
 
-  /** Enables a colored entity glow for one viewer */
-  void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
+    /** Enables a colored entity glow for one viewer */
+    void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
 
-  /** Removes a viewer-specific entity glow */
-  void clearGlow(Player viewer, LivingEntity target);
+    /** Removes a viewer-specific entity glow */
+    void clearGlow(Player viewer, LivingEntity target);
 
-  /** Shows a client-side lightning strike at an entity */
-  void strikeLightning(Player viewer, LivingEntity target);
+    /** Shows a client-side lightning strike at an entity */
+    void strikeLightning(Player viewer, LivingEntity target);
 
-  /**
-   * Shows one hand-swing animation for a player to the selected viewer.
-   *
-   * @param viewer player receiving the packet
-   * @param target player whose hand should appear to swing
-   * @param hand main- or off-hand equipment slot
-   */
-  void swingHand(Player viewer, Player target, EquipmentSlot hand);
+    /**
+     * Shows one hand-swing animation for a player to the selected viewer.
+     *
+     * @param viewer player receiving the packet
+     * @param target player whose hand should appear to swing
+     * @param hand   main- or off-hand equipment slot
+     */
+    void swingHand(Player viewer, Player target, EquipmentSlot hand);
 }

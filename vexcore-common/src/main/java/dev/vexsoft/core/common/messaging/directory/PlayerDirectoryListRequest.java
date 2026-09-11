@@ -6,7 +6,7 @@ import java.util.UUID;
 /** Requests a snapshot of every player currently connected through Velocity. */
 public record PlayerDirectoryListRequest(UUID requestId) {
 
-  public PlayerDirectoryListRequest {
-    requestId = Objects.requireNonNull(requestId, "requestId");
-  }
+    public PlayerDirectoryListRequest {
+        requestId = Objects.requireNonNull(requestId, "requestId");
+    }
 }

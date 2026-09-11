@@ -11,35 +11,35 @@ import java.util.List;
 /** Internal coordinator for provider registration and player snapshots. */
 public interface StatContributionCoordinatorService extends VexService {
 
-  /** Creates and registers one provider. */
-  void register(
-      ServiceOwner owner,
-      VexServiceRegistry services,
-      String key,
-      Class<? extends StatContributionProvider> type
-  );
+    /** Creates and registers one provider. */
+    void register(
+        ServiceOwner owner,
+        VexServiceRegistry services,
+        String key,
+        Class<? extends StatContributionProvider> type
+    );
 
-  /** Removes one owned provider. */
-  boolean unregister(ServiceOwner owner, String key);
+    /** Removes one owned provider. */
+    boolean unregister(ServiceOwner owner, String key);
 
-  /** Removes every provider owned by one service scope. */
-  void unregisterOwner(ServiceOwner owner);
+    /** Removes every provider owned by one service scope. */
+    void unregisterOwner(ServiceOwner owner);
 
-  /** Refreshes one source for one player. */
-  StatContributionRefreshResult refresh(VexPlayer player, ServiceOwner owner, String key);
+    /** Refreshes one source for one player. */
+    StatContributionRefreshResult refresh(VexPlayer player, ServiceOwner owner, String key);
 
-  /** Refreshes all owner sources for one player. */
-  List<StatContributionRefreshResult> refresh(VexPlayer player, ServiceOwner owner);
+    /** Refreshes all owner sources for one player. */
+    List<StatContributionRefreshResult> refresh(VexPlayer player, ServiceOwner owner);
 
-  /** Refreshes one source for every loaded player. */
-  List<StatContributionRefreshResult> refreshAll(ServiceOwner owner, String key);
+    /** Refreshes one source for every loaded player. */
+    List<StatContributionRefreshResult> refreshAll(ServiceOwner owner, String key);
 
-  /** Refreshes all owner sources for every loaded player. */
-  List<StatContributionRefreshResult> refreshAll(ServiceOwner owner);
+    /** Refreshes all owner sources for every loaded player. */
+    List<StatContributionRefreshResult> refreshAll(ServiceOwner owner);
 
-  /** Refreshes every registered provider for a newly loaded player. */
-  List<StatContributionRefreshResult> refreshPlayer(VexPlayer player);
+    /** Refreshes every registered provider for a newly loaded player. */
+    List<StatContributionRefreshResult> refreshPlayer(VexPlayer player);
 
-  /** Forgets runtime handles belonging to a player that is leaving. */
-  void removePlayer(VexPlayer player);
+    /** Forgets runtime handles belonging to a player that is leaving. */
+    void removePlayer(VexPlayer player);
 }

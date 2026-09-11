@@ -10,15 +10,14 @@ import org.bukkit.event.player.PlayerQuitEvent;
 @Dependencies({PerformanceBossBarService.class})
 public final class VexPerformanceBossBarListener implements Listener {
 
-  private final PerformanceBossBarService bossBars;
+    private final PerformanceBossBarService bossBars;
 
-  public VexPerformanceBossBarListener(final VexServiceRegistry services) {
-    bossBars = Objects.requireNonNull(services, "services")
-        .require(PerformanceBossBarService.class);
-  }
+    public VexPerformanceBossBarListener(final VexServiceRegistry services) {
+        bossBars = Objects.requireNonNull(services, "services").require(PerformanceBossBarService.class);
+    }
 
-  @EventHandler
-  public void onPlayerQuit(final PlayerQuitEvent event) {
-    bossBars.hide(event.getPlayer());
-  }
+    @EventHandler
+    public void onPlayerQuit(final PlayerQuitEvent event) {
+        bossBars.hide(event.getPlayer());
+    }
 }

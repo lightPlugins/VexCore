@@ -1,64 +1,67 @@
 package dev.vexsoft.core.paper.service.scheduler;
 
-import dev.vexsoft.core.paper.scheduler.VexTask;
-
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
-import org.bukkit.plugin.Plugin;
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.paper.scheduler.VexTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import org.bukkit.plugin.Plugin;
+import org.junit.jupiter.api.Test;
+
 class ScheduledVexTaskTest {
 
-  @Test
-  void delegatesTaskStateAndCancellation() {
-    TestScheduledTask scheduled = new TestScheduledTask(true);
-    VexTask task = new ScheduledVexTask(scheduled);
+    @Test
+    void delegatesTaskStateAndCancellation() {
+        TestScheduledTask scheduled = new TestScheduledTask(true);
+        VexTask task = new ScheduledVexTask(scheduled);
 
-    assertTrue(task.isRepeating());
-    assertFalse(task.isCancelled());
-    assertFalse(task.isFinished());
+        assertTrue(task.isRepeating());
+        assertFalse(task.isCancelled());
+        assertFalse(task.isFinished());
 
-    task.cancel();
+        task.cancel();
 
-    assertTrue(task.isCancelled());
-  }
-
-  @Test
-  void reportsFinishedTasks() {
-    TestScheduledTask scheduled = new TestScheduledTask(false);
-    scheduled.state = ScheduledTask.ExecutionState.FINISHED;
-
-    assertTrue(new ScheduledVexTask(scheduled).isFinished());
-  }
-
-  private static final class TestScheduledTask implements ScheduledTask {
-    private final boolean repeating;
-    private ExecutionState state = ExecutionState.IDLE;
-
-    private TestScheduledTask(boolean repeating) {
-      this.repeating = repeating;
+        assertTrue(task.isCancelled());
     }
 
-    @Override
-    public Plugin getOwningPlugin() {
-      throw new UnsupportedOperationException("Owning plugin is not used by this test double");
+    @Test
+    void reportsFinishedTasks() {
+        TestScheduledTask scheduled = new TestScheduledTask(false);
+
+        scheduled.state = ScheduledTask.ExecutionState.FINISHED;
+
+        assertTrue(new ScheduledVexTask(scheduled).isFinished());
     }
 
-    @Override
-    public boolean isRepeatingTask() {
-      return repeating;
-    }
+    private static final class TestScheduledTask implements ScheduledTask {
 
-    @Override
-    public CancelledState cancel() {
-      state = ExecutionState.CANCELLED;
-      return CancelledState.CANCELLED_BY_CALLER;
-    }
+        private final boolean repeating;
+        private ExecutionState state = ExecutionState.IDLE;
 
-    @Override
-    public ExecutionState getExecutionState() {
-      return state;
+        private TestScheduledTask(boolean repeating) {
+            this.repeating = repeating;
+        }
+
+        @Override
+        public Plugin getOwningPlugin() {
+            throw new UnsupportedOperationException("Owning plugin is not used by this test double");
+        }
+
+        @Override
+        public boolean isRepeatingTask() {
+            return repeating;
+        }
+
+        @Override
+        public CancelledState cancel() {
+            state = ExecutionState.CANCELLED;
+
+            return CancelledState.CANCELLED_BY_CALLER;
+        }
+
+        @Override
+        public ExecutionState getExecutionState() {
+            return state;
+        }
     }
-  }
 }

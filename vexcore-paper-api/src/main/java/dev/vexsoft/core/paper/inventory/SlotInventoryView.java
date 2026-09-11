@@ -10,8 +10,9 @@ import org.bukkit.event.inventory.ClickType;
  * real inventory items. Existing MutableInventoryView remains the raw-event extension point.</p>
  */
 public interface SlotInventoryView extends InventoryView {
-  /** Controls and cursor slots accept only left-click by default. */
-  default boolean acceptsMenuClick(ClickType click) {
-    return click == ClickType.LEFT;
-  }
+
+    /** Controls and cursor slots accept only left-click by default. */
+    default boolean acceptsMenuClick(ClickType click) {
+        return click == ClickType.LEFT;
+    }
 }

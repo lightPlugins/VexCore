@@ -7,8 +7,9 @@ import org.bukkit.NamespacedKey;
 
 @Value
 public class FakeItemRuleKey {
-  ServiceOwner owner;
-  UUID viewerId;
-  NamespacedKey itemIdKey;
-  String itemId;
+
+    ServiceOwner owner;
+    UUID viewerId;
+    NamespacedKey itemIdKey;
+    String itemId;
 }

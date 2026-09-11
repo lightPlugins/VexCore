@@ -7,14 +7,19 @@ import org.bukkit.Bukkit;
 
 /** Selects an explicitly supported screen UI resource-pack adapter. */
 public final class ScreenUiVersions {
-  private static final List<ScreenUiVersionDefinition> DEFINITIONS = List.of(new V26_2ScreenUiVersionDefinition());
 
-  private ScreenUiVersions() {
-  }
+    private static final List<ScreenUiVersionDefinition> DEFINITIONS = List.of(new V26_2ScreenUiVersionDefinition());
 
-  public static Class<? extends ScreenUiVersionDefinition> select() {
-    String version = Bukkit.getMinecraftVersion();
-    return DEFINITIONS.stream().filter(definition -> definition.getSupportedVersions().contains(version))
-        .findFirst().orElseThrow(() -> new IllegalStateException("Unsupported screen UI version: " + version)).getClass();
-  }
+    private ScreenUiVersions() {
+    }
+
+    public static Class<? extends ScreenUiVersionDefinition> select() {
+        String version = Bukkit.getMinecraftVersion();
+
+        return DEFINITIONS.stream()
+            .filter(definition -> definition.getSupportedVersions().contains(version))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Unsupported screen UI version: " + version))
+            .getClass();
+    }
 }

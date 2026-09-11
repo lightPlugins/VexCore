@@ -6,7 +6,8 @@ import net.kyori.adventure.text.Component;
 /** Describes an available language and the component used to present it to players. */
 @Value
 public class Language {
-  LanguageKey key;
-  Component displayName;
-  boolean defaultLanguage;
+
+    LanguageKey key;
+    Component displayName;
+    boolean defaultLanguage;
 }

@@ -13,26 +13,26 @@ import org.bukkit.entity.Entity;
 @RequiredArgsConstructor
 public final class VexCommandSource {
 
-  @NonNull
-  private final CommandSourceStack paper;
+    @NonNull
+    private final CommandSourceStack paper;
 
-  /** Returns the sender that executed the command */
-  public CommandSender getSender() {
-    return paper.getSender();
-  }
+    /** Returns the sender that executed the command */
+    public CommandSender getSender() {
+        return paper.getSender();
+    }
 
-  /** Returns the entity used as the command executor when one exists */
-  public Entity getExecutor() {
-    return paper.getExecutor();
-  }
+    /** Returns the entity used as the command executor when one exists */
+    public Entity getExecutor() {
+        return paper.getExecutor();
+    }
 
-  /** Returns the location from which the command was executed */
-  public Location getLocation() {
-    return paper.getLocation();
-  }
+    /** Returns the location from which the command was executed */
+    public Location getLocation() {
+        return paper.getLocation();
+    }
 
-  /** Checks whether the sender has the given permission */
-  public boolean hasPermission(final String permission) {
-    return getSender().hasPermission(permission);
-  }
+    /** Checks whether the sender has the given permission */
+    public boolean hasPermission(final String permission) {
+        return getSender().hasPermission(permission);
+    }
 }

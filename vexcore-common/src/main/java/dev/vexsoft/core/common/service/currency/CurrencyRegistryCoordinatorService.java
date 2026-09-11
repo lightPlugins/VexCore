@@ -12,15 +12,21 @@ import java.util.Optional;
 /** Coordinates all active currency registrations behind owner-scoped facades. */
 public interface CurrencyRegistryCoordinatorService extends VexService {
 
-  Currency register(ServiceOwner owner, CurrencyDefinition definition);
+    /** Registers or updates a currency definition for the supplied owner. */
+    Currency register(ServiceOwner owner, CurrencyDefinition definition);
 
-  List<Currency> synchronize(ServiceOwner owner, Collection<CurrencyDefinition> definitions);
+    /** Atomically replaces the owner's active currency definitions with the supplied collection. */
+    List<Currency> synchronize(ServiceOwner owner, Collection<CurrencyDefinition> definitions);
 
-  Optional<Currency> find(CurrencyKey key);
+    /** Finds an active currency by its stable key. */
+    Optional<Currency> find(CurrencyKey key);
 
-  boolean unregister(ServiceOwner owner, CurrencyKey key);
+    /** Removes an owned currency definition without deleting persisted balances. */
+    boolean unregister(ServiceOwner owner, CurrencyKey key);
 
-  void unregisterOwner(ServiceOwner owner);
+    /** Removes every active currency definition belonging to the owner. */
+    void unregisterOwner(ServiceOwner owner);
 
-  Collection<Currency> getRegisteredCurrencies();
+    /** Returns a snapshot of all active currencies. */
+    Collection<Currency> getRegisteredCurrencies();
 }

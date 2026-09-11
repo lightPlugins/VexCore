@@ -5,9 +5,9 @@ package dev.vexsoft.core.common.cache;
  */
 public interface ManagedVexCache {
 
-  /** Invalidates every entry held by the managed cache */
-  void invalidateAll();
+    /** Invalidates every entry held by the managed cache */
+    void invalidateAll();
 
-  /** Performs pending cache maintenance */
-  void cleanUp();
+    /** Performs pending cache maintenance */
+    void cleanUp();
 }

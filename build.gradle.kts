@@ -72,6 +72,28 @@ subprojects {
             enabled = false
         }
 
+        val sourceSets = extensions.getByType<SourceSetContainer>()
+        val checkstyleLayout = tasks.register<Checkstyle>("checkstyleLayout") {
+            group = "verification"
+            description = "Checks readable Java layout in production code and tests"
+            configFile = rootProject.file("config/checkstyle-layout.xml")
+            source(sourceSets.named("main").get().allJava, sourceSets.named("test").get().allJava)
+            classpath = files()
+        }
+
+        val checkstyleServices = tasks.register<Checkstyle>("checkstyleServices") {
+            group = "verification"
+            description = "Checks concise documentation on service types and interface methods"
+            configFile = rootProject.file("config/checkstyle-services.xml")
+            source = sourceSets.named("main").get().allJava
+            include("**/*Service.java", "**/*Registry.java")
+            classpath = files()
+        }
+
+        tasks.named("check") {
+            dependsOn(checkstyleLayout, checkstyleServices)
+        }
+
         extensions.configure<SpotBugsExtension> {
             effort.set(Effort.MAX)
             reportLevel.set(Confidence.MEDIUM)

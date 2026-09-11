@@ -1,8 +1,5 @@
 package dev.vexsoft.core.api.service.registry;
 
-
-
-
 import java.util.Optional;
 
 /**
@@ -14,53 +11,53 @@ import java.util.Optional;
  */
 public interface ServiceRegistry {
 
-  /**
-   * Creates an owner-bound view of this registry
-   *
-   * @param owner the owner of future registrations
-   * @return an owner-bound registry view
-   */
-  VexServiceRegistry scoped(ServiceOwner owner);
+    /**
+     * Creates an owner-bound view of this registry
+     *
+     * @param owner the owner of future registrations
+     * @return an owner-bound registry view
+     */
+    VexServiceRegistry scoped(ServiceOwner owner);
 
-  /**
-   * Finds the currently visible implementation of a service type.
-   *
-   * @param serviceType the service interface
-   * @return the current service, or an empty optional when no visible registration exists
-   */
-  <T extends VexService> Optional<T> find(Class<T> serviceType);
+    /**
+     * Finds the currently visible implementation of a service type.
+     *
+     * @param serviceType the service interface
+     * @return the current service, or an empty optional when no visible registration exists
+     */
+    <T extends VexService> Optional<T> find(Class<T> serviceType);
 
-  /**
-   * Resolves a service and fails when no visible implementation is registered.
-   *
-   * @param serviceType the service interface
-   * @return the registered service
-   * @throws ServiceNotFoundException if the service is unavailable
-   */
-  <T extends VexService> T require(Class<T> serviceType);
+    /**
+     * Resolves a service and fails when no visible implementation is registered.
+     *
+     * @param serviceType the service interface
+     * @return the registered service
+     * @throws ServiceNotFoundException if the service is unavailable
+     */
+    <T extends VexService> T require(Class<T> serviceType);
 
-  /**
-   * Creates a dynamic reference that resolves the current implementation on every access.
-   *
-   * @param serviceType the service interface
-   * @return a dynamic service reference
-   */
-  <T extends VexService> ServiceReference<T> reference(Class<T> serviceType);
+    /**
+     * Creates a dynamic reference that resolves the current implementation on every access.
+     *
+     * @param serviceType the service interface
+     * @return a dynamic service reference
+     */
+    <T extends VexService> ServiceReference<T> reference(Class<T> serviceType);
 
-  /**
-   * Checks whether an implementation is registered for a service type
-   *
-   * @param serviceType the service interface
-   * @return {@code true} when the service is available
-   */
-  boolean isAvailable(Class<? extends VexService> serviceType);
+    /**
+     * Checks whether an implementation is registered for a service type
+     *
+     * @param serviceType the service interface
+     * @return {@code true} when the service is available
+     */
+    boolean isAvailable(Class<? extends VexService> serviceType);
 
-  /**
-   * Removes every service registered by the specified owner.
-   *
-   * <p>Owned services implementing {@link AutoCloseable} are closed during removal.</p>
-   *
-   * @param owner the owner whose services should be removed
-   */
-  void unregisterOwnedBy(ServiceOwner owner);
+    /**
+     * Removes every service registered by the specified owner.
+     *
+     * <p>Owned services implementing {@link AutoCloseable} are closed during removal.</p>
+     *
+     * @param owner the owner whose services should be removed
+     */
+    void unregisterOwnedBy(ServiceOwner owner);
 }

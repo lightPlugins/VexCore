@@ -15,42 +15,42 @@ import org.bukkit.util.Vector;
 /** Owner-scoped lifecycle and state access for non-persistent custom mobs. */
 public interface MobService extends VexService {
 
-  /** Spawns one runtime mob from an owned definition. */
-  MobHandle spawn(MobSpawnRequest request);
+    /** Spawns one runtime mob from an owned definition. */
+    MobHandle spawn(MobSpawnRequest request);
 
-  /** Finds a runtime mob by its handle. */
-  Optional<MobSnapshot> find(MobHandle handle);
+    /** Finds a runtime mob by its handle. */
+    Optional<MobSnapshot> find(MobHandle handle);
 
-  /** Finds a runtime mob represented by a Bukkit entity. */
-  Optional<MobSnapshot> find(Entity entity);
+    /** Finds a runtime mob represented by a Bukkit entity. */
+    Optional<MobSnapshot> find(Entity entity);
 
-  /** Returns every active runtime mob owned by this service scope. */
-  Collection<MobSnapshot> getActiveMobs();
+    /** Returns every active runtime mob owned by this service scope. */
+    Collection<MobSnapshot> getActiveMobs();
 
-  /** Applies positive custom damage and removes the carrier on a lethal hit. */
-  MobDamageResult damage(MobHandle handle, double amount);
+    /** Applies positive custom damage and removes the carrier on a lethal hit. */
+    MobDamageResult damage(MobHandle handle, double amount);
 
-  /** Sets custom health within zero and maximum health. */
-  MobSnapshot setHealth(MobHandle handle, double health);
+    /** Sets custom health within zero and maximum health. */
+    MobSnapshot setHealth(MobHandle handle, double health);
 
-  /** Updates the native scale and refreshes dependent presentation. */
-  MobSnapshot setScale(MobHandle handle, double scale);
+    /** Updates the native scale and refreshes dependent presentation. */
+    MobSnapshot setScale(MobHandle handle, double scale);
 
-  /** Applies a finite launch velocity to an owned mob without exposing its native carrier. */
-  MobSnapshot setVelocity(MobHandle handle, Vector velocity);
+    /** Applies a finite launch velocity to an owned mob without exposing its native carrier. */
+    MobSnapshot setVelocity(MobHandle handle, Vector velocity);
 
-  /** Sets or replaces the viewer-specific default glow. */
-  MobSnapshot setGlow(MobHandle handle, DisplayGlowColor color);
+    /** Sets or replaces the viewer-specific default glow. */
+    MobSnapshot setGlow(MobHandle handle, DisplayGlowColor color);
 
-  /** Removes the viewer-specific default glow. */
-  MobSnapshot clearGlow(MobHandle handle);
+    /** Removes the viewer-specific default glow. */
+    MobSnapshot clearGlow(MobHandle handle);
 
-  /** Re-renders every visible viewer's hologram and glow. */
-  void refreshPresentation(MobHandle handle);
+    /** Re-renders every visible viewer's hologram and glow. */
+    void refreshPresentation(MobHandle handle);
 
-  /** Removes one runtime mob for the supplied lifecycle reason. */
-  boolean remove(MobHandle handle, MobRemovalReason reason);
+    /** Removes one runtime mob for the supplied lifecycle reason. */
+    boolean remove(MobHandle handle, MobRemovalReason reason);
 
-  /** Removes every active runtime mob owned by this service scope. */
-  int removeAll(MobRemovalReason reason);
+    /** Removes every active runtime mob owned by this service scope. */
+    int removeAll(MobRemovalReason reason);
 }

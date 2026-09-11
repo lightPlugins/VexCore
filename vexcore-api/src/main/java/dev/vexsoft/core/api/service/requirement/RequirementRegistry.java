@@ -6,9 +6,9 @@ import dev.vexsoft.core.requirement.Requirement;
 /** Registers owner-scoped handlers for keys inside a {@code requirements} section. */
 public interface RequirementRegistry extends VexService {
 
-  /** Registers a requirement under a globally unique configuration key. */
-  void register(String key, Class<? extends Requirement> requirementType);
+    /** Registers a requirement under a globally unique configuration key. */
+    void register(String key, Class<? extends Requirement> requirementType);
 
-  /** Removes a key when it belongs to this service owner. */
-  boolean unregister(String key);
+    /** Removes a key when it belongs to this service owner. */
+    boolean unregister(String key);
 }

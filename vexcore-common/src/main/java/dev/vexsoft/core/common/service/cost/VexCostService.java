@@ -23,113 +23,107 @@ import net.kyori.adventure.text.Component;
 @Dependencies(ExecutionComponentCoordinatorService.class)
 public final class VexCostService implements CostService {
 
-  private final ExecutionComponentCoordinatorService components;
+    private final ExecutionComponentCoordinatorService components;
 
-  /** Captures the shared component registry. */
-  public VexCostService(final VexServiceRegistry services) {
-    components = Objects.requireNonNull(services, "services")
-        .require(ExecutionComponentCoordinatorService.class);
-  }
-
-  @Override
-  public CompiledCosts compile(final ConfigurationSection section) {
-    ConfigurationSection checked = Objects.requireNonNull(section, "section");
-    List<CompiledCosts.Entry> entries = new ArrayList<>();
-    for (String key : checked.getKeys(false)) {
-      Cost cost = components.find(ExecutionComponentKind.COST, key)
-          .map(Cost.class::cast)
-          .orElseThrow(() -> new IllegalArgumentException("Unknown cost key: " + key));
-      try {
-        entries.add(new CompiledCosts.Entry(key, cost.compile(checked.get(key))));
-      } catch (RuntimeException exception) {
-        throw new IllegalArgumentException("Invalid cost '" + key + "'", exception);
-      }
+    /** Captures the shared component registry. */
+    public VexCostService(final VexServiceRegistry services) {
+        components = Objects.requireNonNull(services, "services").require(ExecutionComponentCoordinatorService.class);
     }
-    return new CompiledCosts(entries);
-  }
 
-  @Override
-  public CostExecutionResult check(
-      final CompiledCosts costs,
-      final PlayerExecutionContext context
-  ) {
-    List<CostExecutionResult.Entry> results = new ArrayList<>();
-    boolean affordable = true;
-    for (CompiledCosts.Entry entry : costs.entries()) {
-      CostCheckResult result = entry.cost().check(context);
-      results.add(new CostExecutionResult.Entry(entry.key(), result.affordable(), result.message()));
-      affordable &= result.affordable();
+    @Override
+    public CompiledCosts compile(final ConfigurationSection section) {
+        ConfigurationSection checked = Objects.requireNonNull(section, "section");
+        List<CompiledCosts.Entry> entries = new ArrayList<>();
+
+        for (String key : checked.getKeys(false)) {
+            Cost cost = components.find(ExecutionComponentKind.COST, key)
+                .map(Cost.class::cast)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown cost key: " + key));
+
+            try {
+                entries.add(new CompiledCosts.Entry(key, cost.compile(checked.get(key))));
+            } catch (RuntimeException exception) {
+                throw new IllegalArgumentException("Invalid cost '" + key + "'", exception);
+            }
+        }
+
+        return new CompiledCosts(entries);
     }
-    return new CostExecutionResult(affordable, results);
-  }
 
-  @Override
-  public CostExecutionResult consume(
-      final CompiledCosts costs,
-      final PlayerExecutionContext context
-  ) {
-    return pay(costs, context).result();
-  }
+    @Override
+    public CostExecutionResult check(final CompiledCosts costs, final PlayerExecutionContext context) {
+        List<CostExecutionResult.Entry> results = new ArrayList<>();
+        boolean affordable = true;
 
-  @Override
-  public CostPayment pay(
-      final CompiledCosts costs,
-      final PlayerExecutionContext context
-  ) {
-    CostExecutionResult checked = check(costs, context);
-    if (!checked.successful()) {
-      return new CostPayment(false, checked, List.of());
+        for (CompiledCosts.Entry entry : costs.entries()) {
+            CostCheckResult result = entry.cost().check(context);
+
+            results.add(new CostExecutionResult.Entry(entry.key(), result.affordable(), result.message()));
+            affordable &= result.affordable();
+        }
+
+        return new CostExecutionResult(affordable, results);
     }
-    List<CostPayment.Entry> consumed = new ArrayList<>();
-    List<CostExecutionResult.Entry> results = new ArrayList<>();
-    for (CompiledCosts.Entry entry : costs.entries()) {
-      CostConsumeResult result = entry.cost().consume(context);
-      results.add(new CostExecutionResult.Entry(entry.key(), result.successful(), result.message()));
-      if (!result.successful()) {
-        refund(consumed, context);
-        return new CostPayment(false, new CostExecutionResult(false, results), List.of());
-      }
-      result.getReceipt().ifPresent(
-          receipt -> consumed.add(new CostPayment.Entry(entry.cost(), receipt))
-      );
+
+    @Override
+    public CostExecutionResult consume(final CompiledCosts costs, final PlayerExecutionContext context) {
+        return pay(costs, context).result();
     }
-    return new CostPayment(true, new CostExecutionResult(true, results), consumed);
-  }
 
-  @Override
-  public void refund(
-      final CostPayment payment,
-      final PlayerExecutionContext context
-  ) {
-    refund(Objects.requireNonNull(payment, "payment").entries(), context);
-  }
+    @Override
+    public CostPayment pay(final CompiledCosts costs, final PlayerExecutionContext context) {
+        CostExecutionResult checked = check(costs, context);
 
-  @Override
-  public List<Component> describe(
-      final CompiledCosts costs,
-      final PlayerExecutionContext context
-  ) {
-    return costs.entries().stream().map(entry -> entry.cost().describe(context)).toList();
-  }
+        if (!checked.successful()) {
+            return new CostPayment(false, checked, List.of());
+        }
 
-  @Override
-  public List<TypedExecutionDescription> present(
-      final CompiledCosts costs,
-      final PlayerExecutionContext context
-  ) {
-    return costs.entries().stream()
-        .flatMap(entry -> entry.cost().describeEntries(context).stream()
-            .map(description -> TypedExecutionDescription.of(entry.key(), description)))
-        .toList();
-  }
+        List<CostPayment.Entry> consumed = new ArrayList<>();
+        List<CostExecutionResult.Entry> results = new ArrayList<>();
 
-  private static void refund(
-      final List<CostPayment.Entry> consumed,
-      final PlayerExecutionContext context
-  ) {
-    for (int index = consumed.size() - 1; index >= 0; index--) {
-      CostPayment.Entry entry = consumed.get(index);
-      entry.cost().refund(context, entry.receipt());
+        for (CompiledCosts.Entry entry : costs.entries()) {
+            CostConsumeResult result = entry.cost().consume(context);
+
+            results.add(new CostExecutionResult.Entry(entry.key(), result.successful(), result.message()));
+
+            if (!result.successful()) {
+                refund(consumed, context);
+
+                return new CostPayment(false, new CostExecutionResult(false, results), List.of());
+            }
+
+            result.getReceipt().ifPresent(receipt -> consumed.add(new CostPayment.Entry(entry.cost(), receipt)));
+        }
+
+        return new CostPayment(true, new CostExecutionResult(true, results), consumed);
     }
-  }
+
+    @Override
+    public void refund(final CostPayment payment, final PlayerExecutionContext context) {
+        refund(Objects.requireNonNull(payment, "payment").entries(), context);
+    }
+
+    @Override
+    public List<Component> describe(final CompiledCosts costs, final PlayerExecutionContext context) {
+        return costs.entries().stream().map(entry -> entry.cost().describe(context)).toList();
+    }
+
+    @Override
+    public List<TypedExecutionDescription> present(final CompiledCosts costs, final PlayerExecutionContext context) {
+        return costs.entries()
+            .stream()
+            .flatMap(entry -> entry.cost()
+                .describeEntries(context)
+                .stream()
+                .map(description -> TypedExecutionDescription.of(entry.key(), description)))
+            .toList();
+    }
+
+    private static void refund(final List<CostPayment.Entry> consumed, final PlayerExecutionContext context) {
+        for (int index = consumed.size() - 1; index >= 0; index--) {
+            CostPayment.Entry entry = consumed.get(index);
+
+            entry.cost().refund(context, entry.receipt());
+        }
+    }
 }

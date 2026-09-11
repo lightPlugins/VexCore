@@ -15,35 +15,35 @@ import org.bukkit.World;
 @Dependencies
 public final class VexWorldService implements WorldService {
 
-  public VexWorldService(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
-  }
+    public VexWorldService(final VexServiceRegistry services) {
+        Objects.requireNonNull(services, "services");
+    }
 
-  @Override
-  public Optional<World> find(final WorldKey key) {
-    WorldKey checkedKey = Objects.requireNonNull(key, "key");
-    return Optional.ofNullable(Bukkit.getWorld(new NamespacedKey(
-        checkedKey.namespace(),
-        checkedKey.value()
-    )));
-  }
+    @Override
+    public Optional<World> find(final WorldKey key) {
+        WorldKey checkedKey = Objects.requireNonNull(key, "key");
 
-  @Override
-  public WorldKey getKey(final World world) {
-    NamespacedKey key = Objects.requireNonNull(world, "world").getKey();
-    return new WorldKey(key.getNamespace(), key.getKey());
-  }
+        return Optional.ofNullable(Bukkit.getWorld(new NamespacedKey(checkedKey.namespace(), checkedKey.value())));
+    }
 
-  @Override
-  public Optional<Location> createLocation(final ServerPosition position) {
-    ServerPosition checkedPosition = Objects.requireNonNull(position, "position");
-    return find(checkedPosition.world()).map(world -> new Location(
-        world,
-        checkedPosition.x(),
-        checkedPosition.y(),
-        checkedPosition.z(),
-        checkedPosition.yaw(),
-        checkedPosition.pitch()
-    ));
-  }
+    @Override
+    public WorldKey getKey(final World world) {
+        NamespacedKey key = Objects.requireNonNull(world, "world").getKey();
+
+        return new WorldKey(key.getNamespace(), key.getKey());
+    }
+
+    @Override
+    public Optional<Location> createLocation(final ServerPosition position) {
+        ServerPosition checkedPosition = Objects.requireNonNull(position, "position");
+
+        return find(checkedPosition.world()).map(world -> new Location(
+            world,
+            checkedPosition.x(),
+            checkedPosition.y(),
+            checkedPosition.z(),
+            checkedPosition.yaw(),
+            checkedPosition.pitch()
+        ));
+    }
 }

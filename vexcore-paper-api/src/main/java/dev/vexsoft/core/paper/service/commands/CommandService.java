@@ -8,9 +8,9 @@ import dev.vexsoft.core.paper.command.argument.CommandArgumentType;
  */
 public interface CommandService extends VexService {
 
-  /** Creates and registers every command declared by the given class */
-  <T> T register(Class<T> commandType);
+    /** Creates and registers every command declared by the given class */
+    <T> T register(Class<T> commandType);
 
-  /** Registers an owner-scoped custom command argument parser. */
-  void registerArgument(Class<? extends CommandArgumentType<?>> argumentType);
+    /** Registers an owner-scoped custom command argument parser. */
+    void registerArgument(Class<? extends CommandArgumentType<?>> argumentType);
 }

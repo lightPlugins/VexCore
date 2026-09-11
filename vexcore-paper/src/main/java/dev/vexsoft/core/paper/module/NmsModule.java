@@ -9,38 +9,37 @@ import org.bukkit.plugin.Plugin;
 /** Installs version-specific native entity control. */
 public final class NmsModule implements VexModule {
 
-  private final Plugin plugin;
-  private VexServiceRegistry services;
-  private NmsVersionDefinition definition;
+    private final Plugin plugin;
+    private VexServiceRegistry services;
+    private NmsVersionDefinition definition;
 
-  public NmsModule(final Plugin plugin) {
-    this.plugin = plugin;
-  }
-
-  @Override
-  public void enable(final VexServiceRegistry registry) {
-    services = registry.scoped(this);
-    definition = NmsVersions.select();
-    services.register(NmsMobAdapterService.class, definition.getMobAdapter());
-    services.registerQueuedServices();
-  }
-
-  @Override
-  public void start() {
-    plugin.getLogger().info(
-        "NMS support for Minecraft " + definition.getAdapterVersion() + " started successfully"
-    );
-  }
-
-  @Override
-  public void disable() {
-    if (services != null) {
-      services.unregisterOwnedServices();
+    public NmsModule(final Plugin plugin) {
+        this.plugin = plugin;
     }
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return "vexcore-nms";
-  }
+    @Override
+    public void enable(final VexServiceRegistry registry) {
+        services = registry.scoped(this);
+        definition = NmsVersions.select();
+        services.register(NmsMobAdapterService.class, definition.getMobAdapter());
+        services.registerQueuedServices();
+    }
+
+    @Override
+    public void start() {
+        plugin.getLogger()
+            .info("NMS support for Minecraft " + definition.getAdapterVersion() + " started successfully");
+    }
+
+    @Override
+    public void disable() {
+        if (services != null) {
+            services.unregisterOwnedServices();
+        }
+    }
+
+    @Override
+    public String getServiceOwnerName() {
+        return "vexcore-nms";
+    }
 }

@@ -46,479 +46,531 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.joml.Vector3f;
 
+/** Creates and updates viewer-side displays and interaction entities using Minecraft 26.2 packets. */
 @Dependencies(PacketTransportAdapterService.class)
 public final class VexDisplayPacketAdapterService implements DisplayPacketAdapterService {
 
-  private final PacketTransportAdapterService transport;
-  private final V26_2PlayerDummies dummies;
-  private final AtomicInteger entityIds = new AtomicInteger(Integer.MAX_VALUE);
-  private final Map<FakeDisplayHandle, Display> displays = new ConcurrentHashMap<>();
-  private final Map<FakeDisplayHandle, Set<DisplayLifecycle>> lifecycles =
-      new ConcurrentHashMap<>();
-  private final Map<FakeDisplayHandle, DisplayGlowColor> glowColors = new ConcurrentHashMap<>();
-  private final Set<FakeDisplayHandle> glowTeams = ConcurrentHashMap.newKeySet();
-  private final Map<Integer, Interaction> interactions = new ConcurrentHashMap<>();
-  private final Map<Integer, UUID> interactionViewers = new ConcurrentHashMap<>();
+    private final PacketTransportAdapterService transport;
+    private final V26_2PlayerDummies dummies;
+    private final AtomicInteger entityIds = new AtomicInteger(Integer.MAX_VALUE);
+    private final Map<FakeDisplayHandle, Display> displays = new ConcurrentHashMap<>();
+    private final Map<FakeDisplayHandle, Set<DisplayLifecycle>> lifecycles = new ConcurrentHashMap<>();
+    private final Map<FakeDisplayHandle, DisplayGlowColor> glowColors = new ConcurrentHashMap<>();
+    private final Set<FakeDisplayHandle> glowTeams = ConcurrentHashMap.newKeySet();
+    private final Map<Integer, Interaction> interactions = new ConcurrentHashMap<>();
+    private final Map<Integer, UUID> interactionViewers = new ConcurrentHashMap<>();
 
-  public VexDisplayPacketAdapterService(final VexServiceRegistry services) {
-    this.transport = services.require(PacketTransportAdapterService.class);
-    this.dummies = new V26_2PlayerDummies(transport);
-  }
+    public VexDisplayPacketAdapterService(final VexServiceRegistry services) {
+        this.transport = services.require(PacketTransportAdapterService.class);
+        this.dummies = new V26_2PlayerDummies(transport);
+    }
 
-  @Override
-  public int allocateEntityId() {
-    return entityIds.getAndDecrement();
-  }
+    @Override
+    public int allocateEntityId() {
+        return entityIds.getAndDecrement();
+    }
 
-  @Override
-  public void spawnText(
-      final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayRequest request) {
-    requireViewer(viewer, handle, request.getLocation());
-    Display.TextDisplay display =
-        new Display.TextDisplay(
-            EntityTypes.TEXT_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
-    prepare(display, handle, request.getLocation());
-    display.setText(PaperAdventure.asVanilla(request.getText()));
-    display
-        .getEntityData()
-        .set(Display.TextDisplay.DATA_LINE_WIDTH_ID, request.getLineWidth(), true);
-    display
-        .getEntityData()
-        .set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, request.getBackgroundColor(), true);
-    display.setTextOpacity(request.getTextOpacity());
-    display.setFlags(V26_2DisplayUpdates.textFlags(request));
-    V26_2DisplayPackets.applyBase(
-        display,
-        request.getTransformation(),
-        request.getBillboard(),
-        request.getBrightness(),
-        request.getViewRange(),
-        request.getShadowRadius(),
-        request.getShadowStrength(),
-        request.getDisplayWidth(),
-        request.getDisplayHeight(),
-        request.getInterpolationDelay(),
-        request.getInterpolationDuration(),
-        request.getTeleportDuration());
-    displays.put(handle, display);
-    lifecycles.put(handle, request.getLifecycle());
-    transport.sendBundle(viewer, V26_2DisplayPackets.spawn(display));
-  }
+    @Override
+    public void spawnText(final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayRequest request) {
+        requireViewer(viewer, handle, request.getLocation());
+        Display.TextDisplay display = new Display.TextDisplay(
+            EntityTypes.TEXT_DISPLAY,
+            ((CraftWorld) request.getLocation().getWorld()).getHandle()
+        );
 
-  @Override
-  public void spawnItem(
-      final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayRequest request) {
-    requireViewer(viewer, handle, request.getLocation());
-    Display.ItemDisplay display =
-        new Display.ItemDisplay(
-            EntityTypes.ITEM_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
-    prepare(display, handle, request.getLocation());
-    display.setItemStack(CraftItemStack.asNMSCopy(request.getItemStack()));
-    display.setItemTransform(V26_2DisplayMapper.toNms(request.getItemTransform()));
-    display.setGlowingTag(request.isGlowing());
-    V26_2DisplayPackets.applyBase(
-        display,
-        request.getTransformation(),
-        request.getBillboard(),
-        request.getBrightness(),
-        request.getViewRange(),
-        request.getShadowRadius(),
-        request.getShadowStrength(),
-        request.getDisplayWidth(),
-        request.getDisplayHeight(),
-        request.getInterpolationDelay(),
-        request.getInterpolationDuration(),
-        request.getTeleportDuration());
-    displays.put(handle, display);
-    lifecycles.put(handle, request.getLifecycle());
-    List<Object> packets = V26_2DisplayPackets.spawn(display);
-    if (request.isGlowing()) {
-      glowTeams.add(handle);
-      if (request.getGlowColor() != null) {
-        glowColors.put(handle, request.getGlowColor());
-      }
-      packets.add(V26_2GlowPackets.addTeam(display, request.getGlowColor()));
+        prepare(display, handle, request.getLocation());
+        display.setText(PaperAdventure.asVanilla(request.getText()));
+        display.getEntityData().set(Display.TextDisplay.DATA_LINE_WIDTH_ID, request.getLineWidth(), true);
+        display.getEntityData().set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, request.getBackgroundColor(), true);
+        display.setTextOpacity(request.getTextOpacity());
+        display.setFlags(V26_2DisplayUpdates.textFlags(request));
+        V26_2DisplayPackets.applyBase(
+            display,
+            request.getTransformation(),
+            request.getBillboard(),
+            request.getBrightness(),
+            request.getViewRange(),
+            request.getShadowRadius(),
+            request.getShadowStrength(),
+            request.getDisplayWidth(),
+            request.getDisplayHeight(),
+            request.getInterpolationDelay(),
+            request.getInterpolationDuration(),
+            request.getTeleportDuration()
+        );
+        displays.put(handle, display);
+        lifecycles.put(handle, request.getLifecycle());
+        transport.sendBundle(viewer, V26_2DisplayPackets.spawn(display));
     }
-    transport.sendBundle(viewer, packets);
-  }
 
-  @Override
-  public void spawnBlock(
-      final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayRequest request) {
-    requireViewer(viewer, handle, request.getLocation());
-    Display.BlockDisplay display =
-        new Display.BlockDisplay(
-            EntityTypes.BLOCK_DISPLAY, ((CraftWorld) request.getLocation().getWorld()).getHandle());
-    prepare(display, handle, request.getLocation());
-    display.setBlockState(((CraftBlockData) request.getBlockData()).getState());
-    display.setGlowingTag(request.isGlowing());
-    V26_2DisplayPackets.applyBase(
-        display,
-        request.getTransformation(),
-        request.getBillboard(),
-        request.getBrightness(),
-        request.getViewRange(),
-        request.getShadowRadius(),
-        request.getShadowStrength(),
-        request.getDisplayWidth(),
-        request.getDisplayHeight(),
-        request.getInterpolationDelay(),
-        request.getInterpolationDuration(),
-        request.getTeleportDuration());
-    displays.put(handle, display);
-    lifecycles.put(handle, request.getLifecycle());
-    List<Object> packets = V26_2DisplayPackets.spawn(display);
-    if (request.isGlowing()) {
-      glowTeams.add(handle);
-      if (request.getGlowColor() != null) {
-        glowColors.put(handle, request.getGlowColor());
-      }
-      packets.add(V26_2GlowPackets.addTeam(display, request.getGlowColor()));
-    }
-    transport.sendBundle(viewer, packets);
-  }
+    @Override
+    public void spawnItem(final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayRequest request) {
+        requireViewer(viewer, handle, request.getLocation());
+        Display.ItemDisplay display = new Display.ItemDisplay(
+            EntityTypes.ITEM_DISPLAY,
+            ((CraftWorld) request.getLocation().getWorld()).getHandle()
+        );
 
-  @Override
-  public void updateText(
-      final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayUpdate update) {
-    Display display = displays.get(handle);
-    if (!(display instanceof Display.TextDisplay textDisplay)) {
-      return;
-    }
-    V26_2DisplayUpdates.applyText(textDisplay, update);
-    sendMetadata(viewer, textDisplay);
-  }
+        prepare(display, handle, request.getLocation());
+        display.setItemStack(CraftItemStack.asNMSCopy(request.getItemStack()));
+        display.setItemTransform(V26_2DisplayMapper.toNms(request.getItemTransform()));
+        display.setGlowingTag(request.isGlowing());
+        V26_2DisplayPackets.applyBase(
+            display,
+            request.getTransformation(),
+            request.getBillboard(),
+            request.getBrightness(),
+            request.getViewRange(),
+            request.getShadowRadius(),
+            request.getShadowStrength(),
+            request.getDisplayWidth(),
+            request.getDisplayHeight(),
+            request.getInterpolationDelay(),
+            request.getInterpolationDuration(),
+            request.getTeleportDuration()
+        );
+        displays.put(handle, display);
+        lifecycles.put(handle, request.getLifecycle());
+        List<Object> packets = V26_2DisplayPackets.spawn(display);
 
-  @Override
-  public void updateItem(
-      final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayUpdate update) {
-    Display display = displays.get(handle);
-    if (!(display instanceof Display.ItemDisplay itemDisplay)) {
-      return;
-    }
-    boolean wasGlowing = itemDisplay.hasGlowingTag();
-    V26_2DisplayUpdates.applyItem(itemDisplay, update);
-    if (update.getGlowColor() != null) {
-      glowColors.put(handle, update.getGlowColor());
-    }
-    List<Object> packets = new ArrayList<>();
-    Object metadata = V26_2DisplayPackets.metadata(itemDisplay);
-    if (metadata != null) {
-      packets.add(metadata);
-    }
-    if (itemDisplay.hasGlowingTag() && !glowTeams.contains(handle)) {
-      glowTeams.add(handle);
-      packets.add(V26_2GlowPackets.addTeam(itemDisplay, glowColors.get(handle)));
-    } else if (itemDisplay.hasGlowingTag() && update.getGlowColor() != null) {
-      packets.add(V26_2GlowPackets.updateTeam(itemDisplay, update.getGlowColor()));
-    } else if (wasGlowing && !itemDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
-      packets.add(V26_2GlowPackets.removeTeam(itemDisplay));
-    }
-    if (!packets.isEmpty()) {
-      transport.sendBundle(viewer, packets);
-    }
-  }
+        if (request.isGlowing()) {
+            glowTeams.add(handle);
 
-  @Override
-  public void updateBlock(
-      final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayUpdate update) {
-    Display display = displays.get(handle);
-    if (!(display instanceof Display.BlockDisplay blockDisplay)) {
-      return;
-    }
-    boolean wasGlowing = blockDisplay.hasGlowingTag();
-    V26_2DisplayUpdates.applyBlock(blockDisplay, update);
-    if (update.getGlowColor() != null) {
-      glowColors.put(handle, update.getGlowColor());
-    }
-    List<Object> packets = new ArrayList<>();
-    Object metadata = V26_2DisplayPackets.metadata(blockDisplay);
-    if (metadata != null) {
-      packets.add(metadata);
-    }
-    if (blockDisplay.hasGlowingTag() && !glowTeams.contains(handle)) {
-      glowTeams.add(handle);
-      packets.add(V26_2GlowPackets.addTeam(blockDisplay, glowColors.get(handle)));
-    } else if (blockDisplay.hasGlowingTag() && update.getGlowColor() != null) {
-      packets.add(V26_2GlowPackets.updateTeam(blockDisplay, update.getGlowColor()));
-    } else if (wasGlowing && !blockDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
-      packets.add(V26_2GlowPackets.removeTeam(blockDisplay));
-    }
-    if (!packets.isEmpty()) {
-      transport.sendBundle(viewer, packets);
-    }
-  }
+            if (request.getGlowColor() != null) {
+                glowColors.put(handle, request.getGlowColor());
+            }
 
-  @Override
-  public void teleport(
-      final Player viewer, final FakeDisplayHandle handle, final Location location) {
-    Display display = displays.get(handle);
-    if (display == null) {
-      return;
+            packets.add(V26_2GlowPackets.addTeam(display, request.getGlowColor()));
+        }
+
+        transport.sendBundle(viewer, packets);
     }
-    requireViewer(viewer, handle, location);
-    position(display, location);
-    transport.send(viewer, V26_2DisplayPackets.teleport(handle.getEntityId(), location));
-  }
 
-  @Override
-  public void attachCamera(
-      final Player viewer, final FakeDisplayHandle handle, final boolean hideSurvivalHud) {
-    Display display = displays.get(handle);
-    if (display == null) {
-      throw new IllegalArgumentException("Unknown fake display camera target");
+    @Override
+    public void spawnBlock(final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayRequest request) {
+        requireViewer(viewer, handle, request.getLocation());
+        Display.BlockDisplay display = new Display.BlockDisplay(
+            EntityTypes.BLOCK_DISPLAY,
+            ((CraftWorld) request.getLocation().getWorld()).getHandle()
+        );
+
+        prepare(display, handle, request.getLocation());
+        display.setBlockState(((CraftBlockData) request.getBlockData()).getState());
+        display.setGlowingTag(request.isGlowing());
+        V26_2DisplayPackets.applyBase(
+            display,
+            request.getTransformation(),
+            request.getBillboard(),
+            request.getBrightness(),
+            request.getViewRange(),
+            request.getShadowRadius(),
+            request.getShadowStrength(),
+            request.getDisplayWidth(),
+            request.getDisplayHeight(),
+            request.getInterpolationDelay(),
+            request.getInterpolationDuration(),
+            request.getTeleportDuration()
+        );
+        displays.put(handle, display);
+        lifecycles.put(handle, request.getLifecycle());
+        List<Object> packets = V26_2DisplayPackets.spawn(display);
+
+        if (request.isGlowing()) {
+            glowTeams.add(handle);
+
+            if (request.getGlowColor() != null) {
+                glowColors.put(handle, request.getGlowColor());
+            }
+
+            packets.add(V26_2GlowPackets.addTeam(display, request.getGlowColor()));
+        }
+
+        transport.sendBundle(viewer, packets);
     }
-    requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
-    List<Object> packets = new ArrayList<>();
-    if (hideSurvivalHud) {
-      packets.add(
-          new ClientboundGameEventPacket(
-              ClientboundGameEventPacket.CHANGE_GAME_MODE, GameType.SPECTATOR.getId()));
+
+    @Override
+    public void updateText(final Player viewer, final FakeDisplayHandle handle, final FakeTextDisplayUpdate update) {
+        Display display = displays.get(handle);
+
+        if (!(display instanceof Display.TextDisplay textDisplay)) {
+            return;
+        }
+
+        V26_2DisplayUpdates.applyText(textDisplay, update);
+        sendMetadata(viewer, textDisplay);
     }
-    packets.add(new ClientboundSetCameraPacket(display));
-    transport.sendBundle(viewer, packets);
-  }
 
-  @Override
-  public void resetCamera(final Player viewer, final boolean restoreSurvivalHud) {
-    ServerPlayer player = ((CraftPlayer) viewer).getHandle();
-    List<Object> packets = new ArrayList<>();
-    packets.add(new ClientboundSetCameraPacket(player));
-    if (restoreSurvivalHud) {
-      packets.add(
-          new ClientboundGameEventPacket(
-              ClientboundGameEventPacket.CHANGE_GAME_MODE, gameType(viewer).getId()));
+    @Override
+    public void updateItem(final Player viewer, final FakeDisplayHandle handle, final FakeItemDisplayUpdate update) {
+        Display display = displays.get(handle);
+
+        if (!(display instanceof Display.ItemDisplay itemDisplay)) {
+            return;
+        }
+
+        boolean wasGlowing = itemDisplay.hasGlowingTag();
+
+        V26_2DisplayUpdates.applyItem(itemDisplay, update);
+
+        if (update.getGlowColor() != null) {
+            glowColors.put(handle, update.getGlowColor());
+        }
+
+        List<Object> packets = new ArrayList<>();
+        Object metadata = V26_2DisplayPackets.metadata(itemDisplay);
+
+        if (metadata != null) {
+            packets.add(metadata);
+        }
+
+        if (itemDisplay.hasGlowingTag() && !glowTeams.contains(handle)) {
+            glowTeams.add(handle);
+            packets.add(V26_2GlowPackets.addTeam(itemDisplay, glowColors.get(handle)));
+        } else if (itemDisplay.hasGlowingTag() && update.getGlowColor() != null) {
+            packets.add(V26_2GlowPackets.updateTeam(itemDisplay, update.getGlowColor()));
+        } else if (wasGlowing && !itemDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
+            packets.add(V26_2GlowPackets.removeTeam(itemDisplay));
+        }
+
+        if (!packets.isEmpty()) {
+            transport.sendBundle(viewer, packets);
+        }
     }
-    transport.sendBundle(viewer, packets);
-  }
 
-  private static GameType gameType(final Player viewer) {
-    return switch (viewer.getGameMode()) {
-      case SURVIVAL -> GameType.SURVIVAL;
-      case CREATIVE -> GameType.CREATIVE;
-      case ADVENTURE -> GameType.ADVENTURE;
-      case SPECTATOR -> GameType.SPECTATOR;
-    };
-  }
+    @Override
+    public void updateBlock(final Player viewer, final FakeDisplayHandle handle, final FakeBlockDisplayUpdate update) {
+        Display display = displays.get(handle);
 
-  @Override
-  public void remove(final Player viewer, final int... entityIds) {
-    List<Object> packets = new ArrayList<>();
-    for (int entityId : entityIds) {
-      displays.entrySet().stream()
-          .filter(entry -> entry.getKey().getEntityId() == entityId)
-          .findFirst()
-          .ifPresent(
-              entry -> {
-                if (glowTeams.remove(entry.getKey())) {
-                  packets.add(V26_2GlowPackets.removeTeam(entry.getValue()));
-                }
-                glowColors.remove(entry.getKey());
-              });
-      displays.keySet().removeIf(handle -> handle.getEntityId() == entityId);
-      lifecycles.keySet().removeIf(handle -> handle.getEntityId() == entityId);
-      interactions.remove(entityId);
-      interactionViewers.remove(entityId);
+        if (!(display instanceof Display.BlockDisplay blockDisplay)) {
+            return;
+        }
+
+        boolean wasGlowing = blockDisplay.hasGlowingTag();
+
+        V26_2DisplayUpdates.applyBlock(blockDisplay, update);
+
+        if (update.getGlowColor() != null) {
+            glowColors.put(handle, update.getGlowColor());
+        }
+
+        List<Object> packets = new ArrayList<>();
+        Object metadata = V26_2DisplayPackets.metadata(blockDisplay);
+
+        if (metadata != null) {
+            packets.add(metadata);
+        }
+
+        if (blockDisplay.hasGlowingTag() && !glowTeams.contains(handle)) {
+            glowTeams.add(handle);
+            packets.add(V26_2GlowPackets.addTeam(blockDisplay, glowColors.get(handle)));
+        } else if (blockDisplay.hasGlowingTag() && update.getGlowColor() != null) {
+            packets.add(V26_2GlowPackets.updateTeam(blockDisplay, update.getGlowColor()));
+        } else if (wasGlowing && !blockDisplay.hasGlowingTag() && glowTeams.remove(handle)) {
+            packets.add(V26_2GlowPackets.removeTeam(blockDisplay));
+        }
+
+        if (!packets.isEmpty()) {
+            transport.sendBundle(viewer, packets);
+        }
     }
-    packets.add(V26_2DisplayPackets.remove(entityIds));
-    transport.sendBundle(viewer, packets);
-  }
 
-  @Override
-  public void spawnInteraction(
-      final Player viewer,
-      final int entityId,
-      final UUID entityUuid,
-      final Location location,
-      final float width,
-      final float height) {
-    requireViewerLocation(viewer, location);
-    if (!Float.isFinite(width) || !Float.isFinite(height) || width <= 0.0F || height <= 0.0F) {
-      throw new IllegalArgumentException("interaction dimensions must be finite and positive");
+    @Override
+    public void teleport(final Player viewer, final FakeDisplayHandle handle, final Location location) {
+        Display display = displays.get(handle);
+
+        if (display == null) {
+            return;
+        }
+
+        requireViewer(viewer, handle, location);
+        position(display, location);
+        transport.send(viewer, V26_2DisplayPackets.teleport(handle.getEntityId(), location));
     }
-    Interaction interaction =
-        new Interaction(EntityTypes.INTERACTION, ((CraftWorld) location.getWorld()).getHandle());
-    interaction.setId(entityId);
-    interaction.setUUID(entityUuid);
-    position(interaction, location);
-    interaction.setWidth(width);
-    interaction.setHeight(height);
-    interactions.put(entityId, interaction);
-    interactionViewers.put(entityId, viewer.getUniqueId());
-    transport.sendBundle(viewer, V26_2DisplayPackets.spawn(interaction));
-  }
 
-  @Override
-  public void updateInteraction(
-      final Player viewer, final int entityId, final float width, final float height) {
-    Interaction interaction = interactions.get(entityId);
-    if (interaction == null) {
-      return;
+    @Override
+    public void attachCamera(final Player viewer, final FakeDisplayHandle handle, final boolean hideSurvivalHud) {
+        Display display = displays.get(handle);
+
+        if (display == null) {
+            throw new IllegalArgumentException("Unknown fake display camera target");
+        }
+
+        requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
+        List<Object> packets = new ArrayList<>();
+
+        if (hideSurvivalHud) {
+            packets.add(new ClientboundGameEventPacket(
+                ClientboundGameEventPacket.CHANGE_GAME_MODE,
+                GameType.SPECTATOR.getId()
+            ));
+        }
+
+        packets.add(new ClientboundSetCameraPacket(display));
+        transport.sendBundle(viewer, packets);
     }
-    requireInteractionViewer(viewer, entityId);
-    interaction.setWidth(width);
-    interaction.setHeight(height);
-    sendMetadata(viewer, interaction);
-  }
 
-  @Override
-  public void teleport(final Player viewer, final int entityId, final Location location) {
-    Entity entity = interactions.get(entityId);
-    if (entity == null) {
-      return;
+    @Override
+    public void resetCamera(final Player viewer, final boolean restoreSurvivalHud) {
+        ServerPlayer player = ((CraftPlayer) viewer).getHandle();
+        List<Object> packets = new ArrayList<>();
+
+        packets.add(new ClientboundSetCameraPacket(player));
+
+        if (restoreSurvivalHud) {
+            packets.add(new ClientboundGameEventPacket(
+                ClientboundGameEventPacket.CHANGE_GAME_MODE,
+                gameType(viewer).getId()
+            ));
+        }
+
+        transport.sendBundle(viewer, packets);
     }
-    requireInteractionViewer(viewer, entityId);
-    requireViewerLocation(viewer, location);
-    position(entity, location);
-    transport.send(viewer, V26_2DisplayPackets.teleport(entityId, location));
-  }
 
-  @Override
-  public void setPassengers(
-      final Player viewer, final int vehicleEntityId, final List<Integer> passengerEntityIds) {
-    Entity vehicle = findEntity(vehicleEntityId);
-    if (vehicle == null) {
-      // The constructor only reads entity state before we replace the actual vehicle id
-      vehicle =
-          new Interaction(EntityTypes.INTERACTION, ((CraftWorld) viewer.getWorld()).getHandle());
+    private static GameType gameType(final Player viewer) {
+        return switch (viewer.getGameMode()) {
+            case SURVIVAL -> GameType.SURVIVAL;
+            case CREATIVE -> GameType.CREATIVE;
+            case ADVENTURE -> GameType.ADVENTURE;
+            case SPECTATOR -> GameType.SPECTATOR;
+        };
     }
-    transport.send(
-        viewer,
-        V26_2PassengerPackets.create(
-            vehicle,
-            vehicleEntityId,
-            passengerEntityIds.stream().mapToInt(Integer::intValue).toArray()));
-  }
 
-  @Override
-  public void setTranslation(
-      final Player viewer,
-      final FakeDisplayHandle handle,
-      final float offsetX,
-      final float offsetY,
-      final float offsetZ) {
-    Display display = displays.get(handle);
-    if (display == null) {
-      return;
+    @Override
+    public void remove(final Player viewer, final int... entityIds) {
+        List<Object> packets = new ArrayList<>();
+
+        for (int entityId : entityIds) {
+            displays.entrySet()
+                .stream()
+                .filter(entry -> entry.getKey().getEntityId() == entityId)
+                .findFirst()
+                .ifPresent(entry -> {
+                    if (glowTeams.remove(entry.getKey())) {
+                        packets.add(V26_2GlowPackets.removeTeam(entry.getValue()));
+                    }
+
+                    glowColors.remove(entry.getKey());
+                });
+            displays.keySet().removeIf(handle -> handle.getEntityId() == entityId);
+            lifecycles.keySet().removeIf(handle -> handle.getEntityId() == entityId);
+            interactions.remove(entityId);
+            interactionViewers.remove(entityId);
+        }
+
+        packets.add(V26_2DisplayPackets.remove(entityIds));
+        transport.sendBundle(viewer, packets);
     }
-    V26_2DisplayPackets.setTranslation(display, new Vector3f(offsetX, offsetY, offsetZ));
-    sendMetadata(viewer, display);
-  }
 
-  @Override
-  public void removeOwned(final ServiceOwner owner) {
-    displays.keySet().removeIf(handle -> handle.getOwner().equals(owner));
-    lifecycles.keySet().removeIf(handle -> handle.getOwner().equals(owner));
-    glowColors.keySet().removeIf(handle -> handle.getOwner().equals(owner));
-    glowTeams.removeIf(handle -> handle.getOwner().equals(owner));
-  }
+    @Override
+    public void spawnInteraction(
+        final Player viewer,
+        final int entityId,
+        final UUID entityUuid,
+        final Location location,
+        final float width,
+        final float height
+    ) {
+        requireViewerLocation(viewer, location);
 
-  @Override
-  public void removeViewer(final UUID viewerId) {
-    displays.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
-    lifecycles.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
-    glowColors.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
-    glowTeams.removeIf(handle -> handle.getViewerId().equals(viewerId));
-    interactionViewers
-        .entrySet()
-        .removeIf(
-            entry -> {
-              if (!entry.getValue().equals(viewerId)) {
+        if (!Float.isFinite(width) || !Float.isFinite(height) || width <= 0.0F || height <= 0.0F) {
+            throw new IllegalArgumentException("interaction dimensions must be finite and positive");
+        }
+
+        Interaction interaction =
+            new Interaction(EntityTypes.INTERACTION, ((CraftWorld) location.getWorld()).getHandle());
+
+        interaction.setId(entityId);
+        interaction.setUUID(entityUuid);
+        position(interaction, location);
+        interaction.setWidth(width);
+        interaction.setHeight(height);
+        interactions.put(entityId, interaction);
+        interactionViewers.put(entityId, viewer.getUniqueId());
+        transport.sendBundle(viewer, V26_2DisplayPackets.spawn(interaction));
+    }
+
+    @Override
+    public void updateInteraction(final Player viewer, final int entityId, final float width, final float height) {
+        Interaction interaction = interactions.get(entityId);
+
+        if (interaction == null) {
+            return;
+        }
+
+        requireInteractionViewer(viewer, entityId);
+        interaction.setWidth(width);
+        interaction.setHeight(height);
+        sendMetadata(viewer, interaction);
+    }
+
+    @Override
+    public void teleport(final Player viewer, final int entityId, final Location location) {
+        Entity entity = interactions.get(entityId);
+
+        if (entity == null) {
+            return;
+        }
+
+        requireInteractionViewer(viewer, entityId);
+        requireViewerLocation(viewer, location);
+        position(entity, location);
+        transport.send(viewer, V26_2DisplayPackets.teleport(entityId, location));
+    }
+
+    @Override
+    public void setPassengers(final Player viewer, final int vehicleEntityId, final List<Integer> passengerEntityIds) {
+        Entity vehicle = findEntity(vehicleEntityId);
+
+        if (vehicle == null) {
+            // The constructor only reads entity state before we replace the actual vehicle id
+            vehicle = new Interaction(EntityTypes.INTERACTION, ((CraftWorld) viewer.getWorld()).getHandle());
+        }
+
+        transport.send(
+            viewer,
+            V26_2PassengerPackets.create(
+                vehicle,
+                vehicleEntityId,
+                passengerEntityIds.stream().mapToInt(Integer::intValue).toArray()
+            )
+        );
+    }
+
+    @Override
+    public void setTranslation(
+        final Player viewer,
+        final FakeDisplayHandle handle,
+        final float offsetX,
+        final float offsetY,
+        final float offsetZ
+    ) {
+        Display display = displays.get(handle);
+
+        if (display == null) {
+            return;
+        }
+
+        V26_2DisplayPackets.setTranslation(display, new Vector3f(offsetX, offsetY, offsetZ));
+        sendMetadata(viewer, display);
+    }
+
+    @Override
+    public void removeOwned(final ServiceOwner owner) {
+        displays.keySet().removeIf(handle -> handle.getOwner().equals(owner));
+        lifecycles.keySet().removeIf(handle -> handle.getOwner().equals(owner));
+        glowColors.keySet().removeIf(handle -> handle.getOwner().equals(owner));
+        glowTeams.removeIf(handle -> handle.getOwner().equals(owner));
+    }
+
+    @Override
+    public void removeViewer(final UUID viewerId) {
+        displays.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
+        lifecycles.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
+        glowColors.keySet().removeIf(handle -> handle.getViewerId().equals(viewerId));
+        glowTeams.removeIf(handle -> handle.getViewerId().equals(viewerId));
+        interactionViewers.entrySet().removeIf(entry -> {
+            if (!entry.getValue().equals(viewerId)) {
                 return false;
-              }
-              interactions.remove(entry.getKey());
-              return true;
-            });
-  }
+            }
 
-  @Override
-  public void removeViewer(final Player viewer, final DisplayLifecycle lifecycle) {
-    int[] entityIds =
-        lifecycles.entrySet().stream()
+            interactions.remove(entry.getKey());
+
+            return true;
+        });
+    }
+
+    @Override
+    public void removeViewer(final Player viewer, final DisplayLifecycle lifecycle) {
+        int[] entityIds = lifecycles.entrySet()
+            .stream()
             .filter(entry -> entry.getKey().getViewerId().equals(viewer.getUniqueId()))
             .filter(entry -> entry.getValue().contains(lifecycle))
             .map(Map.Entry::getKey)
             .mapToInt(FakeDisplayHandle::getEntityId)
             .toArray();
-    if (entityIds.length > 0) {
-      remove(viewer, entityIds);
+
+        if (entityIds.length > 0) {
+            remove(viewer, entityIds);
+        }
     }
-  }
 
-  private void sendMetadata(final Player viewer, final Entity entity) {
-    Object packet = V26_2DisplayPackets.metadata(entity);
-    if (packet != null) {
-      transport.send(viewer, packet);
+    private void sendMetadata(final Player viewer, final Entity entity) {
+        Object packet = V26_2DisplayPackets.metadata(entity);
+
+        if (packet != null) {
+            transport.send(viewer, packet);
+        }
     }
-  }
 
-  private Entity findEntity(final int entityId) {
-    Interaction interaction = interactions.get(entityId);
-    if (interaction != null) {
-      return interaction;
+    private Entity findEntity(final int entityId) {
+        Interaction interaction = interactions.get(entityId);
+
+        if (interaction != null) {
+            return interaction;
+        }
+
+        return displays.entrySet()
+            .stream()
+            .filter(entry -> entry.getKey().getEntityId() == entityId)
+            .map(Map.Entry::getValue)
+            .findFirst()
+            .orElse(null);
     }
-    return displays.entrySet().stream()
-        .filter(entry -> entry.getKey().getEntityId() == entityId)
-        .map(Map.Entry::getValue)
-        .findFirst()
-        .orElse(null);
-  }
 
-  private static void prepare(
-      final Entity entity, final FakeDisplayHandle handle, final Location location) {
-    entity.setId(handle.getEntityId());
-    entity.setUUID(handle.getEntityUuid());
-    position(entity, location);
-  }
-
-  private static void position(final Entity entity, final Location location) {
-    entity.setPos(location.getX(), location.getY(), location.getZ());
-    entity.setRot(location.getYaw(), location.getPitch());
-    entity.setYHeadRot(location.getYaw());
-  }
-
-  private static void requireViewer(
-      final Player viewer, final FakeDisplayHandle handle, final Location location) {
-    if (!viewer.getUniqueId().equals(handle.getViewerId())) {
-      throw new IllegalArgumentException("Display handle belongs to another viewer");
+    private static void prepare(final Entity entity, final FakeDisplayHandle handle, final Location location) {
+        entity.setId(handle.getEntityId());
+        entity.setUUID(handle.getEntityUuid());
+        position(entity, location);
     }
-    requireViewerLocation(viewer, location);
-  }
 
-  private void requireInteractionViewer(final Player viewer, final int entityId) {
-    if (!viewer.getUniqueId().equals(interactionViewers.get(entityId))) {
-      throw new IllegalArgumentException("Interaction entity belongs to another viewer");
+    private static void position(final Entity entity, final Location location) {
+        entity.setPos(location.getX(), location.getY(), location.getZ());
+        entity.setRot(location.getYaw(), location.getPitch());
+        entity.setYHeadRot(location.getYaw());
     }
-  }
 
-  private static void requireViewerLocation(final Player viewer, final Location location) {
-    if (location.getWorld() == null || !viewer.getWorld().equals(location.getWorld())) {
-      throw new IllegalArgumentException("Fake displays must be in the viewer's current world");
+    private static void requireViewer(final Player viewer, final FakeDisplayHandle handle, final Location location) {
+        if (!viewer.getUniqueId().equals(handle.getViewerId())) {
+            throw new IllegalArgumentException("Display handle belongs to another viewer");
+        }
+
+        requireViewerLocation(viewer, location);
     }
-  }
 
-  @Override
-  public void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center) {
-    dummies.spawn(viewer, handle, center);
-  }
+    private void requireInteractionViewer(final Player viewer, final int entityId) {
+        if (!viewer.getUniqueId().equals(interactionViewers.get(entityId))) {
+            throw new IllegalArgumentException("Interaction entity belongs to another viewer");
+        }
+    }
 
-  @Override
-  public void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin) {
-    dummies.skin(viewer, handle, skin);
-  }
+    private static void requireViewerLocation(final Player viewer, final Location location) {
+        if (location.getWorld() == null || !viewer.getWorld().equals(location.getWorld())) {
+            throw new IllegalArgumentException("Fake displays must be in the viewer's current world");
+        }
+    }
 
-  @Override
-  public void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor) {
-    dummies.armor(viewer, handle, armor);
-  }
+    @Override
+    public void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center) {
+        dummies.spawn(viewer, handle, center);
+    }
 
-  @Override
-  public void moveDummy(Player viewer, FakeDisplayHandle handle, Location center) {
-    dummies.move(viewer, handle, center);
-  }
+    @Override
+    public void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin) {
+        dummies.skin(viewer, handle, skin);
+    }
 
-  @Override
-  public void removeDummy(Player viewer, FakeDisplayHandle handle) {
-    dummies.remove(viewer, handle);
-  }
+    @Override
+    public void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor) {
+        dummies.armor(viewer, handle, armor);
+    }
+
+    @Override
+    public void moveDummy(Player viewer, FakeDisplayHandle handle, Location center) {
+        dummies.move(viewer, handle, center);
+    }
+
+    @Override
+    public void removeDummy(Player viewer, FakeDisplayHandle handle) {
+        dummies.remove(viewer, handle);
+    }
 }

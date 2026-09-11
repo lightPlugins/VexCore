@@ -10,20 +10,24 @@ import java.util.Optional;
 /** Coordinates custom mob definitions across owner-scoped registry facades. */
 public interface MobRegistryCoordinatorService extends VexService {
 
-  MobDefinition register(ServiceOwner owner, MobDefinition definition);
+    /** Registers or updates a mob definition belonging to the supplied owner. */
+    MobDefinition register(ServiceOwner owner, MobDefinition definition);
 
-  Collection<MobDefinition> synchronize(
-      ServiceOwner owner,
-      Collection<MobDefinition> definitions
-  );
+    /** Reconciles the owner's registered mob definitions with the supplied collection. */
+    Collection<MobDefinition> synchronize(ServiceOwner owner, Collection<MobDefinition> definitions);
 
-  Optional<MobDefinition> find(MobKey key);
+    /** Finds a registered mob definition by its stable key. */
+    Optional<MobDefinition> find(MobKey key);
 
-  boolean unregister(ServiceOwner owner, MobKey key);
+    /** Removes a mob definition belonging to the supplied owner. */
+    boolean unregister(ServiceOwner owner, MobKey key);
 
-  void unregisterOwner(ServiceOwner owner);
+    /** Removes every mob definition belonging to the supplied owner. */
+    void unregisterOwner(ServiceOwner owner);
 
-  Collection<MobDefinition> getDefinitions();
+    /** Returns a snapshot of all registered mob definitions. */
+    Collection<MobDefinition> getDefinitions();
 
-  boolean owns(ServiceOwner owner, MobKey key);
+    /** Checks whether the owner registered the given mob definition. */
+    boolean owns(ServiceOwner owner, MobKey key);
 }

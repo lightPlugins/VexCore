@@ -12,24 +12,22 @@ import java.util.Objects;
 
 /** Delivers Velocity player-directory responses to their pending futures. */
 @Dependencies(PlayerDirectoryCoordinatorService.class)
-public final class VexPlayerDirectoryResponseHandler implements
-    MessageHandler<PlayerDirectoryResponse> {
+public final class VexPlayerDirectoryResponseHandler implements MessageHandler<PlayerDirectoryResponse> {
 
-  private final PlayerDirectoryCoordinatorService directory;
+    private final PlayerDirectoryCoordinatorService directory;
 
-  public VexPlayerDirectoryResponseHandler(final VexServiceRegistry services) {
-    directory = Objects.requireNonNull(services, "services")
-        .require(PlayerDirectoryCoordinatorService.class);
-  }
+    public VexPlayerDirectoryResponseHandler(final VexServiceRegistry services) {
+        directory = Objects.requireNonNull(services, "services").require(PlayerDirectoryCoordinatorService.class);
+    }
 
-  @Override
-  public MessageType<PlayerDirectoryResponse> getMessageType() {
-    return PlayerDirectoryMessages.RESPONSE;
-  }
+    @Override
+    public MessageType<PlayerDirectoryResponse> getMessageType() {
+        return PlayerDirectoryMessages.RESPONSE;
+    }
 
-  @Override
-  public void handle(final PlayerDirectoryResponse message, final MessageContext context) {
-    Objects.requireNonNull(context, "context");
-    directory.complete(message);
-  }
+    @Override
+    public void handle(final PlayerDirectoryResponse message, final MessageContext context) {
+        Objects.requireNonNull(context, "context");
+        directory.complete(message);
+    }
 }

@@ -9,49 +9,49 @@ import org.bukkit.entity.Player;
 /** Manages viewer-specific interaction hitboxes without spawning server entities. */
 public interface InteractionPacketService extends VexService {
 
-  /**
-   * Spawns an interaction entity visible and usable only by the given viewer.
-   *
-   * @param viewer player receiving and interacting with the virtual entity
-   * @param request hitbox, lifecycle and callback properties
-   * @return owner- and viewer-bound interaction handle
-   */
-  FakeInteractionHandle spawn(Player viewer, FakeInteractionRequest request);
+    /**
+     * Spawns an interaction entity visible and usable only by the given viewer.
+     *
+     * @param viewer  player receiving and interacting with the virtual entity
+     * @param request hitbox, lifecycle and callback properties
+     * @return owner- and viewer-bound interaction handle
+     */
+    FakeInteractionHandle spawn(Player viewer, FakeInteractionRequest request);
 
-  /** Blocks callbacks from every virtual interaction entity for this viewer and service owner. */
-  void blockInput(Player viewer);
+    /** Blocks callbacks from every virtual interaction entity for this viewer and service owner. */
+    void blockInput(Player viewer);
 
-  /** Releases this service owner's virtual-interaction input block for the viewer. */
-  void unblockInput(Player viewer);
+    /** Releases this service owner's virtual-interaction input block for the viewer. */
+    void unblockInput(Player viewer);
 
-  /**
-   * Changes the dimensions of a tracked interaction hitbox.
-   *
-   * @param handle tracked interaction identity
-   * @param width positive finite hitbox width
-   * @param height positive finite hitbox height
-   */
-  void updateHitbox(FakeInteractionHandle handle, float width, float height);
+    /**
+     * Changes the dimensions of a tracked interaction hitbox.
+     *
+     * @param handle tracked interaction identity
+     * @param width  positive finite hitbox width
+     * @param height positive finite hitbox height
+     */
+    void updateHitbox(FakeInteractionHandle handle, float width, float height);
 
-  /**
-   * Teleports a tracked interaction entity for its viewer.
-   *
-   * @param handle tracked interaction identity
-   * @param location destination in the viewer's current world
-   */
-  void teleport(FakeInteractionHandle handle, Location location);
+    /**
+     * Teleports a tracked interaction entity for its viewer.
+     *
+     * @param handle   tracked interaction identity
+     * @param location destination in the viewer's current world
+     */
+    void teleport(FakeInteractionHandle handle, Location location);
 
-  /**
-   * Removes a tracked interaction entity from its viewer.
-   *
-   * @param handle tracked interaction identity
-   */
-  void remove(FakeInteractionHandle handle);
+    /**
+     * Removes a tracked interaction entity from its viewer.
+     *
+     * @param handle tracked interaction identity
+     */
+    void remove(FakeInteractionHandle handle);
 
-  /**
-   * Removes every interaction entity owned by this service for the viewer.
-   *
-   * @param viewer player whose owned interaction entities should be removed
-   */
-  void removeAll(Player viewer);
+    /**
+     * Removes every interaction entity owned by this service for the viewer.
+     *
+     * @param viewer player whose owned interaction entities should be removed
+     */
+    void removeAll(Player viewer);
 }

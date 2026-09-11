@@ -6,12 +6,12 @@ import java.util.Set;
 /** Selects native entity control implementations for compatible Minecraft versions. */
 public interface NmsVersionDefinition {
 
-  /** Returns the base Minecraft revision represented by this definition. */
-  String getAdapterVersion();
+    /** Returns the base Minecraft revision represented by this definition. */
+    String getAdapterVersion();
 
-  /** Returns every Minecraft version explicitly supported by this definition. */
-  Set<String> getSupportedVersions();
+    /** Returns every Minecraft version explicitly supported by this definition. */
+    Set<String> getSupportedVersions();
 
-  /** Returns the selected native mob control implementation. */
-  Class<? extends NmsMobAdapterService> getMobAdapter();
+    /** Returns the selected native mob control implementation. */
+    Class<? extends NmsMobAdapterService> getMobAdapter();
 }

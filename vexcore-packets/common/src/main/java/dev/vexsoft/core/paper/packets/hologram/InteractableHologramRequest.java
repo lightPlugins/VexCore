@@ -15,53 +15,51 @@ import org.bukkit.util.Vector;
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class InteractableHologramRequest {
 
-  private final FakeTextDisplayRequest textDisplayRequest;
-  private final float hitboxWidth;
-  private final float hitboxHeight;
-  private final Vector hitboxOffset;
-  private final HologramInteractHandler interactHandler;
+    private final FakeTextDisplayRequest textDisplayRequest;
+    private final float hitboxWidth;
+    private final float hitboxHeight;
+    private final Vector hitboxOffset;
+    private final HologramInteractHandler interactHandler;
 
-  /** Starts a hologram request from a location and text using default display settings. */
-  public static InteractableHologramRequestBuilder builder(
-      final Location location,
-      final Component text
-  ) {
-    return builder(FakeTextDisplayRequest.builder(location, text).build());
-  }
-
-  /** Starts a hologram request around an existing text-display request. */
-  public static InteractableHologramRequestBuilder builder(
-      final FakeTextDisplayRequest textDisplayRequest
-  ) {
-    return internalBuilder()
-        .textDisplayRequest(textDisplayRequest)
-        .hitboxWidth(1.5F)
-        .hitboxHeight(0.5F)
-        .hitboxOffset(new Vector())
-        .interactHandler(interaction -> { });
-  }
-
-  public Vector getHitboxOffset() {
-    return hitboxOffset.clone();
-  }
-
-  @Builder(builderMethodName = "internalBuilder")
-  private static InteractableHologramRequest create(
-      final FakeTextDisplayRequest textDisplayRequest,
-      final float hitboxWidth,
-      final float hitboxHeight,
-      final Vector hitboxOffset,
-      final HologramInteractHandler interactHandler
-  ) {
-    if (hitboxWidth <= 0.0F || hitboxHeight <= 0.0F) {
-      throw new IllegalArgumentException("hitbox dimensions must be positive");
+    /** Starts a hologram request from a location and text using default display settings. */
+    public static InteractableHologramRequestBuilder builder(final Location location, final Component text) {
+        return builder(FakeTextDisplayRequest.builder(location, text).build());
     }
-    return new InteractableHologramRequest(
-        Objects.requireNonNull(textDisplayRequest, "textDisplayRequest"),
-        hitboxWidth,
-        hitboxHeight,
-        Objects.requireNonNull(hitboxOffset, "hitboxOffset").clone(),
-        Objects.requireNonNull(interactHandler, "interactHandler")
-    );
-  }
+
+    /** Starts a hologram request around an existing text-display request. */
+    public static InteractableHologramRequestBuilder builder(
+        final FakeTextDisplayRequest textDisplayRequest
+    ) {
+        return internalBuilder().textDisplayRequest(textDisplayRequest)
+            .hitboxWidth(1.5F)
+            .hitboxHeight(0.5F)
+            .hitboxOffset(new Vector())
+            .interactHandler(interaction -> {
+            });
+    }
+
+    public Vector getHitboxOffset() {
+        return hitboxOffset.clone();
+    }
+
+    @Builder(builderMethodName = "internalBuilder")
+    private static InteractableHologramRequest create(
+        final FakeTextDisplayRequest textDisplayRequest,
+        final float hitboxWidth,
+        final float hitboxHeight,
+        final Vector hitboxOffset,
+        final HologramInteractHandler interactHandler
+    ) {
+        if (hitboxWidth <= 0.0F || hitboxHeight <= 0.0F) {
+            throw new IllegalArgumentException("hitbox dimensions must be positive");
+        }
+
+        return new InteractableHologramRequest(
+            Objects.requireNonNull(textDisplayRequest, "textDisplayRequest"),
+            hitboxWidth,
+            hitboxHeight,
+            Objects.requireNonNull(hitboxOffset, "hitboxOffset").clone(),
+            Objects.requireNonNull(interactHandler, "interactHandler")
+        );
+    }
 }

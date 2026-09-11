@@ -9,6 +9,6 @@ import java.util.UUID;
  */
 public interface PageSortControl<T> extends PageControl {
 
-  /** Returns the comparator applied for the selected mode and viewer */
-  Comparator<T> getComparator(String modeId, InventoryKey inventoryKey, UUID viewerId);
+    /** Returns the comparator applied for the selected mode and viewer */
+    Comparator<T> getComparator(String modeId, InventoryKey inventoryKey, UUID viewerId);
 }

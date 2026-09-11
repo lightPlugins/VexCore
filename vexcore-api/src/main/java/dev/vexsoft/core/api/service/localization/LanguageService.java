@@ -1,7 +1,6 @@
 package dev.vexsoft.core.api.service.localization;
 
 import dev.vexsoft.core.api.localization.Language;
-
 import dev.vexsoft.core.api.service.registry.VexService;
 import java.util.Collection;
 import java.util.Optional;
@@ -13,12 +12,12 @@ import java.util.Optional;
  */
 public interface LanguageService extends VexService {
 
-  /** Finds a globally available language by its folder key */
-  Optional<Language> findLanguage(String language);
+    /** Finds a globally available language by its folder key */
+    Optional<Language> findLanguage(String language);
 
-  /** Returns every language globally available through VexCore */
-  Collection<Language> getLanguages();
+    /** Returns every language globally available through VexCore */
+    Collection<Language> getLanguages();
 
-  /** Reloads every registered localization cache */
-  void reload();
+    /** Reloads every registered localization cache */
+    void reload();
 }

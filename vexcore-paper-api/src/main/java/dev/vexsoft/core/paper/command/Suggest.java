@@ -11,6 +11,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 public @interface Suggest {
 
-  /** Returns the provider used to suggest values for this argument */
-  Class<? extends SuggestionProvider> value();
+    /** Returns the provider used to suggest values for this argument */
+    Class<? extends SuggestionProvider> value();
 }

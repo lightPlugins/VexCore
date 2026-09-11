@@ -8,6 +8,6 @@ import java.util.Map;
 /** Calculates the complete current runtime stat snapshot for one external system. */
 public interface StatContributionProvider {
 
-  /** Returns the complete desired contribution for this source and player. */
-  Map<StatKey, StatModifier> calculate(VexPlayer player);
+    /** Returns the complete desired contribution for this source and player. */
+    Map<StatKey, StatModifier> calculate(VexPlayer player);
 }

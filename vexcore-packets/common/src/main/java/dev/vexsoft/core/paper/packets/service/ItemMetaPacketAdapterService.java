@@ -1,8 +1,7 @@
 package dev.vexsoft.core.paper.packets.service;
 
-import dev.vexsoft.core.paper.packets.internal.FakeItemMetaLookup;
-
 import dev.vexsoft.core.api.service.registry.VexService;
+import dev.vexsoft.core.paper.packets.internal.FakeItemMetaLookup;
 import java.util.UUID;
 
 /**
@@ -10,9 +9,9 @@ import java.util.UUID;
  */
 public interface ItemMetaPacketAdapterService extends VexService {
 
-  /** Applies fake metadata to supported outbound item packets */
-  Object rewriteOutbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
+    /** Applies fake metadata to supported outbound item packets */
+    Object rewriteOutbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
 
-  /** Removes fake metadata from supported inbound item packets */
-  Object sanitizeInbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
+    /** Removes fake metadata from supported inbound item packets */
+    Object sanitizeInbound(UUID viewerId, Object packet, FakeItemMetaLookup lookup);
 }

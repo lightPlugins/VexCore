@@ -12,50 +12,53 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Objects;
 import org.bukkit.entity.Player;
 
+/** Creates dialog builders and closes dialogs belonging to the current service owner. */
 @Dependencies({DialogCoordinatorService.class, ScheduleService.class})
 public final class VexDialogService implements DialogService, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final DialogCoordinatorService coordinator;
-  private final ScheduleService scheduler;
+    private final ServiceOwner owner;
+    private final DialogCoordinatorService coordinator;
+    private final ScheduleService scheduler;
 
-  public VexDialogService(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    owner = checkedServices.getOwner();
-    coordinator = checkedServices.require(DialogCoordinatorService.class);
-    scheduler = checkedServices.require(ScheduleService.class);
-  }
+    public VexDialogService(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-  @Override
-  public NoticeDialogBuilder notice(final Player player) {
-    return new VexNoticeDialogBuilder(owner, coordinator, scheduler, player);
-  }
-
-  @Override
-  public ConfirmationDialogBuilder confirmation(final Player player) {
-    return new VexConfirmationDialogBuilder(owner, coordinator, scheduler, player);
-  }
-
-  @Override
-  public TextInputDialogBuilder textInput(final Player player) {
-    return new VexTextInputDialogBuilder(owner, coordinator, scheduler, player);
-  }
-
-  @Override
-  public NumberRangeDialogBuilder numberRange(final Player player) {
-    return new VexNumberRangeDialogBuilder(owner, coordinator, scheduler, player);
-  }
-
-  @Override
-  public void close(final Player player) {
-    Player checkedPlayer = Objects.requireNonNull(player, "player");
-    if (coordinator.close(owner, checkedPlayer.getUniqueId(), DialogResultType.CLOSED)) {
-      scheduler.runFor(checkedPlayer, checkedPlayer::closeDialog);
+        owner = checkedServices.getOwner();
+        coordinator = checkedServices.require(DialogCoordinatorService.class);
+        scheduler = checkedServices.require(ScheduleService.class);
     }
-  }
 
-  @Override
-  public void close() {
-    coordinator.closeOwned(owner, DialogResultType.PLUGIN_DISABLED);
-  }
+    @Override
+    public NoticeDialogBuilder notice(final Player player) {
+        return new VexNoticeDialogBuilder(owner, coordinator, scheduler, player);
+    }
+
+    @Override
+    public ConfirmationDialogBuilder confirmation(final Player player) {
+        return new VexConfirmationDialogBuilder(owner, coordinator, scheduler, player);
+    }
+
+    @Override
+    public TextInputDialogBuilder textInput(final Player player) {
+        return new VexTextInputDialogBuilder(owner, coordinator, scheduler, player);
+    }
+
+    @Override
+    public NumberRangeDialogBuilder numberRange(final Player player) {
+        return new VexNumberRangeDialogBuilder(owner, coordinator, scheduler, player);
+    }
+
+    @Override
+    public void close(final Player player) {
+        Player checkedPlayer = Objects.requireNonNull(player, "player");
+
+        if (coordinator.close(owner, checkedPlayer.getUniqueId(), DialogResultType.CLOSED)) {
+            scheduler.runFor(checkedPlayer, checkedPlayer::closeDialog);
+        }
+    }
+
+    @Override
+    public void close() {
+        coordinator.closeOwned(owner, DialogResultType.PLUGIN_DISABLED);
+    }
 }

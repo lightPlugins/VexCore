@@ -16,71 +16,74 @@ import java.util.concurrent.CompletableFuture;
 /** Coordinates registered containers, cached players and persistence operations */
 public interface PlayerDataCoordinatorService extends VexService {
 
-  /** Captures owner data as classloader-independent JSON before plugin unload. */
-  void prepareUnload(ServiceOwner owner);
+    /** Captures owner data as classloader-independent JSON before plugin unload. */
+    void prepareUnload(ServiceOwner owner);
 
-  /**
-   * Writes operator-reviewable recovery files for still-dirty loaded players after a failed save.
-   */
-  default void exportRecovery(final Path directory) {
-    throw new UnsupportedOperationException("Player recovery export is unavailable");
-  }
+    /**
+     * Writes operator-reviewable recovery files for still-dirty loaded players after a failed save.
+     */
+    default void exportRecovery(final Path directory) {
+        throw new UnsupportedOperationException("Player recovery export is unavailable");
+    }
 
-  /** Registers every container declared by a plugin data definition */
-  void register(ServiceOwner owner, PlayerDataDefinition definition);
+    /** Registers every container declared by a plugin data definition */
+    void register(ServiceOwner owner, PlayerDataDefinition definition);
 
-  /** Registers a player feature container owned by a plugin. */
-  <T extends PlayerContainer> void registerContainer(
-      ServiceOwner owner, Class<T> type, PlayerContainerFactory<? extends T> factory);
+    /** Registers a player feature container owned by a plugin. */
+    <T extends PlayerContainer> void registerContainer(
+        ServiceOwner owner,
+        Class<T> type,
+        PlayerContainerFactory<? extends T> factory
+    );
 
-  /** Removes and closes every player feature container registered by an owner. */
-  void unregisterContainers(ServiceOwner owner);
+    /** Removes and closes every player feature container registered by an owner. */
+    void unregisterContainers(ServiceOwner owner);
 
-  /** Creates or refreshes a cached player with every registered container */
-  VexPlayer create(UUID uniqueId, String name);
+    /** Creates or refreshes a cached player with every registered container */
+    VexPlayer create(UUID uniqueId, String name);
 
-  /** Loads a player and places it in the shared cache */
-  CompletableFuture<VexPlayer> load(UUID uniqueId, String name);
+    /** Loads a player and places it in the shared cache */
+    CompletableFuture<VexPlayer> load(UUID uniqueId, String name);
 
-  /** Finds a player in the shared online cache */
-  Optional<VexPlayer> find(UUID uniqueId);
+    /** Finds a player in the shared online cache */
+    Optional<VexPlayer> find(UUID uniqueId);
 
-  /** Returns a snapshot of every currently loaded player session. */
-  Collection<VexPlayer> getLoadedPlayers();
+    /** Returns a snapshot of every currently loaded player session. */
+    Collection<VexPlayer> getLoadedPlayers();
 
-  /** Removes a player from the shared online cache */
-  Optional<VexPlayer> remove(UUID uniqueId);
+    /** Removes a player from the shared online cache */
+    Optional<VexPlayer> remove(UUID uniqueId);
 
-  /** Saves every changed container before removing a cached player */
-  CompletableFuture<Void> saveAndRemove(UUID uniqueId);
+    /** Saves every changed container before removing a cached player */
+    CompletableFuture<Void> saveAndRemove(UUID uniqueId);
 
-  /** Saves every changed container while retaining the cached player. */
-  CompletableFuture<Void> save(UUID uniqueId);
+    /** Saves every changed container while retaining the cached player. */
+    CompletableFuture<Void> save(UUID uniqueId);
 
-  /** Saves every changed container of every cached player */
-  CompletableFuture<Void> saveAll();
+    /** Saves every changed container of every cached player */
+    CompletableFuture<Void> saveAll();
 
-  /** Returns all container keys registered by an owner */
-  Collection<DataContainerKey<?>> getKeys(ServiceOwner owner);
+    /** Returns all container keys registered by an owner */
+    Collection<DataContainerKey<?>> getKeys(ServiceOwner owner);
 
-  /** Returns the user-facing names of every registered persistent container. */
-  Collection<String> getContainerIds();
+    /** Returns the user-facing names of every registered persistent container. */
+    Collection<String> getContainerIds();
 
-  /** Returns the number of registered player-facing feature containers. */
-  int getFeatureContainerCount();
+    /** Returns the number of registered player-facing feature containers. */
+    int getFeatureContainerCount();
 
-  /** Resets one registered container for one player. */
-  CompletableFuture<Void> resetPlayerContainer(UUID uniqueId, String containerId);
+    /** Resets one registered container for one player. */
+    CompletableFuture<Void> resetPlayerContainer(UUID uniqueId, String containerId);
 
-  /** Resets every registered container for one player. */
-  CompletableFuture<Void> resetPlayerContainers(UUID uniqueId);
+    /** Resets every registered container for one player. */
+    CompletableFuture<Void> resetPlayerContainers(UUID uniqueId);
 
-  /** Resets one registered container for all stored and loaded players. */
-  CompletableFuture<Void> resetGlobalContainer(String containerId);
+    /** Resets one registered container for all stored and loaded players. */
+    CompletableFuture<Void> resetGlobalContainer(String containerId);
 
-  /** Resets every registered container for all stored and loaded players. */
-  CompletableFuture<Void> resetGlobalContainers();
+    /** Resets every registered container for all stored and loaded players. */
+    CompletableFuture<Void> resetGlobalContainers();
 
-  /** Resolves a loaded or stored player identity from a name or UUID. */
-  CompletableFuture<Optional<UUID>> resolveUniqueId(String player);
+    /** Resolves a loaded or stored player identity from a name or UUID. */
+    CompletableFuture<Optional<UUID>> resolveUniqueId(String player);
 }

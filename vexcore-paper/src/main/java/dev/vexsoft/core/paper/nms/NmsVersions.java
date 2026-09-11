@@ -8,21 +8,19 @@ import org.bukkit.Bukkit;
 /** Selects the native adapter matching the running Minecraft server. */
 public final class NmsVersions {
 
-  private static final List<NmsVersionDefinition> DEFINITIONS = List.of(
-      new V26_2NmsVersionDefinition()
-  );
+    private static final List<NmsVersionDefinition> DEFINITIONS = List.of(new V26_2NmsVersionDefinition());
 
-  private NmsVersions() {
-  }
+    private NmsVersions() {
+    }
 
-  /** Returns the native definition for the running Minecraft version. */
-  public static NmsVersionDefinition select() {
-    String minecraftVersion = Bukkit.getMinecraftVersion();
-    return DEFINITIONS.stream()
-        .filter(definition -> definition.getSupportedVersions().contains(minecraftVersion))
-        .findFirst()
-        .orElseThrow(() -> new IllegalStateException(
-            "Unsupported Minecraft version for VexCore NMS: " + minecraftVersion
-        ));
-  }
+    /** Returns the native definition for the running Minecraft version. */
+    public static NmsVersionDefinition select() {
+        String minecraftVersion = Bukkit.getMinecraftVersion();
+
+        return DEFINITIONS.stream()
+            .filter(definition -> definition.getSupportedVersions().contains(minecraftVersion))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "Unsupported Minecraft version for VexCore NMS: " + minecraftVersion));
+    }
 }

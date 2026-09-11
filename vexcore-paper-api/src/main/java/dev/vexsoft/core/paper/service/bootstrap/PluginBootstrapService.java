@@ -8,9 +8,9 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
  */
 public interface PluginBootstrapService extends VexService {
 
-  /** Queues every infrastructure service required by a Vex plugin */
-  void initialize(VexServiceRegistry services);
+    /** Queues every infrastructure service required by a Vex plugin */
+    void initialize(VexServiceRegistry services);
 
-  /** Starts infrastructure that requires an enabled Bukkit plugin */
-  void enable(VexServiceRegistry services);
+    /** Starts infrastructure that requires an enabled Bukkit plugin */
+    void enable(VexServiceRegistry services);
 }

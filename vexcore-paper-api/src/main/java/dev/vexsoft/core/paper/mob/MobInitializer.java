@@ -6,6 +6,6 @@ import org.bukkit.entity.Mob;
 @FunctionalInterface
 public interface MobInitializer {
 
-  /** Initializes one freshly spawned mob carrier. */
-  void initialize(Mob mob);
+    /** Initializes one freshly spawned mob carrier. */
+    void initialize(Mob mob);
 }

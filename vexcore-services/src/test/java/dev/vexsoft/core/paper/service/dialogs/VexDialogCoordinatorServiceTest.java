@@ -1,53 +1,55 @@
 package dev.vexsoft.core.paper.service.dialogs;
 
-import dev.vexsoft.core.api.service.registry.ServiceOwner;
-import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.dialogs.DialogResultType;
-import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.api.service.registry.ServiceOwner;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
+import dev.vexsoft.core.paper.dialogs.DialogResultType;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+
 public final class VexDialogCoordinatorServiceTest {
 
-  @Test
-  public void replacesThePreviousPlayerSession() {
-    VexDialogCoordinatorService coordinator = coordinator();
-    ServiceOwner firstOwner = owner("first");
-    ServiceOwner secondOwner = owner("second");
-    UUID playerId = UUID.randomUUID();
+    @Test
+    public void replacesThePreviousPlayerSession() {
+        VexDialogCoordinatorService coordinator = coordinator();
+        ServiceOwner firstOwner = owner("first");
+        ServiceOwner secondOwner = owner("second");
+        UUID playerId = UUID.randomUUID();
 
-    DialogSession<String> first = coordinator.begin(firstOwner, playerId);
-    DialogSession<Boolean> second = coordinator.begin(secondOwner, playerId);
+        DialogSession<String> first = coordinator.begin(firstOwner, playerId);
+        DialogSession<Boolean> second = coordinator.begin(secondOwner, playerId);
 
-    assertEquals(DialogResultType.REPLACED, first.getFuture().join().getType());
-    assertTrue(coordinator.isActive(second));
-    assertFalse(coordinator.isActive(first));
-  }
+        assertEquals(DialogResultType.REPLACED, first.getFuture().join().getType());
+        assertTrue(coordinator.isActive(second));
+        assertFalse(coordinator.isActive(first));
+    }
 
-  @Test
-  public void closesOnlySessionsBelongingToTheOwner() {
-    VexDialogCoordinatorService coordinator = coordinator();
-    ServiceOwner firstOwner = owner("first");
-    ServiceOwner secondOwner = owner("second");
-    DialogSession<String> first = coordinator.begin(firstOwner, UUID.randomUUID());
-    DialogSession<String> second = coordinator.begin(secondOwner, UUID.randomUUID());
+    @Test
+    public void closesOnlySessionsBelongingToTheOwner() {
+        VexDialogCoordinatorService coordinator = coordinator();
+        ServiceOwner firstOwner = owner("first");
+        ServiceOwner secondOwner = owner("second");
+        DialogSession<String> first = coordinator.begin(firstOwner, UUID.randomUUID());
+        DialogSession<String> second = coordinator.begin(secondOwner, UUID.randomUUID());
 
-    coordinator.closeOwned(firstOwner, DialogResultType.PLUGIN_DISABLED);
+        coordinator.closeOwned(firstOwner, DialogResultType.PLUGIN_DISABLED);
 
-    assertEquals(DialogResultType.PLUGIN_DISABLED, first.getFuture().join().getType());
-    assertFalse(second.getFuture().isDone());
-  }
+        assertEquals(DialogResultType.PLUGIN_DISABLED, first.getFuture().join().getType());
+        assertFalse(second.getFuture().isDone());
+    }
 
-  private VexDialogCoordinatorService coordinator() {
-    DefaultServiceRegistry registry = new DefaultServiceRegistry();
-    VexServiceRegistry services = registry.scoped(owner("test"));
-    return new VexDialogCoordinatorService(services);
-  }
+    private VexDialogCoordinatorService coordinator() {
+        DefaultServiceRegistry registry = new DefaultServiceRegistry();
+        VexServiceRegistry services = registry.scoped(owner("test"));
 
-  private ServiceOwner owner(final String name) {
-    return () -> name;
-  }
+        return new VexDialogCoordinatorService(services);
+    }
+
+    private ServiceOwner owner(final String name) {
+        return () -> name;
+    }
 }

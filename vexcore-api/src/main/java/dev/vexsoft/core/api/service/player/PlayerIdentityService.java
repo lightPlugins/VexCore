@@ -9,12 +9,12 @@ import java.util.concurrent.CompletableFuture;
 /** Resolves current and previously seen player identities independent of plugin data owners. */
 public interface PlayerIdentityService extends VexService {
 
-  /** Records a player's current name. */
-  CompletableFuture<PlayerIdentity> record(UUID uniqueId, String name);
+    /** Records a player's current name. */
+    CompletableFuture<PlayerIdentity> record(UUID uniqueId, String name);
 
-  /** Finds a stored identity by UUID. */
-  CompletableFuture<Optional<PlayerIdentity>> find(UUID uniqueId);
+    /** Finds a stored identity by UUID. */
+    CompletableFuture<Optional<PlayerIdentity>> find(UUID uniqueId);
 
-  /** Finds a stored identity by case-insensitive player name. */
-  CompletableFuture<Optional<PlayerIdentity>> find(String name);
+    /** Finds a stored identity by case-insensitive player name. */
+    CompletableFuture<Optional<PlayerIdentity>> find(String name);
 }

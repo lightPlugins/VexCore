@@ -10,9 +10,6 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface SuggestionProvider {
 
-  /** Creates suggestions for the current command argument */
-  CompletableFuture<Suggestions> suggest(
-      VexCommandSource source,
-      SuggestionsBuilder builder
-  );
+    /** Creates suggestions for the current command argument */
+    CompletableFuture<Suggestions> suggest(VexCommandSource source, SuggestionsBuilder builder);
 }

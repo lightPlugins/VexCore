@@ -20,77 +20,75 @@ import org.bukkit.inventory.ItemStack;
 /** Encodes version-specific display, interaction and passenger packets */
 public interface DisplayPacketAdapterService extends VexService {
 
-  /** Allocates an entity id that cannot collide with native server entities */
-  int allocateEntityId();
+    /** Allocates an entity id that cannot collide with native server entities */
+    int allocateEntityId();
 
-  /** Spawns a virtual text display using the supplied handle */
-  void spawnText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayRequest request);
+    /** Spawns a virtual text display using the supplied handle */
+    void spawnText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayRequest request);
 
-  /** Spawns a virtual block display using the supplied handle */
-  void spawnBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayRequest request);
+    /** Spawns a virtual block display using the supplied handle */
+    void spawnBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayRequest request);
 
-  /** Spawns a virtual item display using the supplied handle */
-  void spawnItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayRequest request);
+    /** Spawns a virtual item display using the supplied handle */
+    void spawnItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayRequest request);
 
-  /** Applies an update to a virtual text display */
-  void updateText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayUpdate update);
+    /** Applies an update to a virtual text display */
+    void updateText(Player viewer, FakeDisplayHandle handle, FakeTextDisplayUpdate update);
 
-  /** Applies an update to a virtual block display */
-  void updateBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayUpdate update);
+    /** Applies an update to a virtual block display */
+    void updateBlock(Player viewer, FakeDisplayHandle handle, FakeBlockDisplayUpdate update);
 
-  /** Applies an update to a virtual item display */
-  void updateItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayUpdate update);
+    /** Applies an update to a virtual item display */
+    void updateItem(Player viewer, FakeDisplayHandle handle, FakeItemDisplayUpdate update);
 
-  /** Teleports a virtual display entity */
-  void teleport(Player viewer, FakeDisplayHandle handle, Location location);
+    /** Teleports a virtual display entity */
+    void teleport(Player viewer, FakeDisplayHandle handle, Location location);
 
-  /** Attaches the viewer camera to a virtual display and optionally spoofs spectator HUD state */
-  void attachCamera(Player viewer, FakeDisplayHandle handle, boolean hideSurvivalHud);
+    /** Attaches the viewer camera to a virtual display and optionally spoofs spectator HUD state */
+    void attachCamera(Player viewer, FakeDisplayHandle handle, boolean hideSurvivalHud);
 
-  /** Returns the viewer camera and client HUD state to the real player */
-  void resetCamera(Player viewer, boolean restoreSurvivalHud);
+    /** Returns the viewer camera and client HUD state to the real player */
+    void resetCamera(Player viewer, boolean restoreSurvivalHud);
 
-  /** Removes one or more virtual entity ids */
-  void remove(Player viewer, int... entityIds);
+    /** Removes one or more virtual entity ids */
+    void remove(Player viewer, int... entityIds);
 
-  /** Spawns a virtual interaction hitbox */
-  void spawnInteraction(
-      Player viewer, int entityId, UUID entityUuid, Location location, float width, float height);
+    /** Spawns a virtual interaction hitbox */
+    void spawnInteraction(Player viewer, int entityId, UUID entityUuid, Location location, float width, float height);
 
-  /** Updates a virtual interaction hitbox */
-  void updateInteraction(Player viewer, int entityId, float width, float height);
+    /** Updates a virtual interaction hitbox */
+    void updateInteraction(Player viewer, int entityId, float width, float height);
 
-  /** Teleports a virtual entity id without requiring a display handle */
-  void teleport(Player viewer, int entityId, Location location);
+    /** Teleports a virtual entity id without requiring a display handle */
+    void teleport(Player viewer, int entityId, Location location);
 
-  /** Replaces the passengers mounted onto an entity id */
-  void setPassengers(Player viewer, int vehicleEntityId, List<Integer> passengerEntityIds);
+    /** Replaces the passengers mounted onto an entity id */
+    void setPassengers(Player viewer, int vehicleEntityId, List<Integer> passengerEntityIds);
 
-  /** Applies a local passenger translation to a virtual display */
-  void setTranslation(
-      Player viewer, FakeDisplayHandle handle, float offsetX, float offsetY, float offsetZ);
+    /** Applies a local passenger translation to a virtual display */
+    void setTranslation(Player viewer, FakeDisplayHandle handle, float offsetX, float offsetY, float offsetZ);
 
-  /** Removes native display state owned by one plugin */
-  void removeOwned(ServiceOwner owner);
+    /** Removes native display state owned by one plugin */
+    void removeOwned(ServiceOwner owner);
 
-  /** Removes native display state associated with one viewer */
-  void removeViewer(UUID viewerId);
+    /** Removes native display state associated with one viewer */
+    void removeViewer(UUID viewerId);
 
-  /** Removes displays configured for a viewer lifecycle event */
-  void removeViewer(Player viewer, DisplayLifecycle lifecycle);
+    /** Removes displays configured for a viewer lifecycle event */
+    void removeViewer(Player viewer, DisplayLifecycle lifecycle);
 
-  /** Creates a viewer-only dummy centered at the supplied location. */
-  void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center);
+    /** Creates a viewer-only dummy centered at the supplied location. */
+    void spawnDummy(Player viewer, FakeDisplayHandle handle, Location center);
 
-  /** Applies the resolved texture property to an existing dummy. */
-  void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin);
+    /** Applies the resolved texture property to an existing dummy. */
+    void skinDummy(Player viewer, FakeDisplayHandle handle, SkinTexture skin);
 
-  /** Updates boots, leggings, chestplate and helmet while keeping both hands empty. */
-  void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor);
+    /** Updates boots, leggings, chestplate and helmet while keeping both hands empty. */
+    void armorDummy(Player viewer, FakeDisplayHandle handle, ItemStack[] armor);
 
-  /** Moves the body center and updates the head and body rotation. */
-  void moveDummy(Player viewer, FakeDisplayHandle handle, Location center);
+    /** Moves the body center and updates the head and body rotation. */
+    void moveDummy(Player viewer, FakeDisplayHandle handle, Location center);
 
-  /** Releases dummy state and removes client entities when the viewer is available. */
-  void removeDummy(Player viewer, FakeDisplayHandle handle);
+    /** Releases dummy state and removes client entities when the viewer is available. */
+    void removeDummy(Player viewer, FakeDisplayHandle handle);
 }

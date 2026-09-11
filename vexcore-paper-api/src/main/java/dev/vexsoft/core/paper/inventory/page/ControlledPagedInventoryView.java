@@ -19,118 +19,110 @@ import org.bukkit.Material;
 /** Paged view that applies viewer-specific filter and sort controls before rendering. */
 public abstract class ControlledPagedInventoryView<T> extends PagedInventoryView<T> {
 
-  private final PageSource<T> source;
-  private final String areaId;
-  private final PageControlStateStore states;
-  private final List<PageFilterControl<T>> filters = new ArrayList<>();
-  private final List<PageSortControl<T>> sorts = new ArrayList<>();
+    private final PageSource<T> source;
+    private final String areaId;
+    private final PageControlStateStore states;
+    private final List<PageFilterControl<T>> filters = new ArrayList<>();
+    private final List<PageSortControl<T>> sorts = new ArrayList<>();
 
-  protected ControlledPagedInventoryView(
-      final VexServiceRegistry services,
-      final InventoryKey key,
-      final int size,
-      final PageBounds bounds,
-      final String areaId,
-      final PageSource<T> source,
-      final PageItemRenderer<T> itemRenderer
-  ) {
-    this(
-        services,
-        key,
-        size,
-        bounds,
-        areaId,
-        source,
-        itemRenderer,
-        new InMemoryPageControlStateStore()
-    );
-  }
+    protected ControlledPagedInventoryView(
+        final VexServiceRegistry services,
+        final InventoryKey key,
+        final int size,
+        final PageBounds bounds,
+        final String areaId,
+        final PageSource<T> source,
+        final PageItemRenderer<T> itemRenderer
+    ) {
+        this(services, key, size, bounds, areaId, source, itemRenderer, new InMemoryPageControlStateStore());
+    }
 
-  protected ControlledPagedInventoryView(
-      final VexServiceRegistry services,
-      final InventoryKey key,
-      final int size,
-      final PageBounds bounds,
-      final String areaId,
-      final PageSource<T> source,
-      final PageItemRenderer<T> itemRenderer,
-      final PageControlStateStore states
-  ) {
-    super(services, key, size, bounds, source, itemRenderer);
-    this.source = Objects.requireNonNull(source, "source");
-    this.areaId = Objects.requireNonNull(areaId, "areaId");
-    this.states = Objects.requireNonNull(states, "states");
-  }
+    protected ControlledPagedInventoryView(
+        final VexServiceRegistry services,
+        final InventoryKey key,
+        final int size,
+        final PageBounds bounds,
+        final String areaId,
+        final PageSource<T> source,
+        final PageItemRenderer<T> itemRenderer,
+        final PageControlStateStore states
+    ) {
+        super(services, key, size, bounds, source, itemRenderer);
+        this.source = Objects.requireNonNull(source, "source");
+        this.areaId = Objects.requireNonNull(areaId, "areaId");
+        this.states = Objects.requireNonNull(states, "states");
+    }
 
-  protected final <C extends PageFilterControl<T>> C addFilterControl(
-      final int slot,
-      final Component title,
-      final Material material,
-      final C control
-  ) {
-    filters.add(Objects.requireNonNull(control, "control"));
-    addElement(slot, new PageControlInventoryElement(
-        material,
-        title,
-        getKey(),
-        areaId,
-        control,
-        states,
-        this::refreshAndResetPage
-    ));
-    return control;
-  }
+    protected final <C extends PageFilterControl<T>> C addFilterControl(
+        final int slot,
+        final Component title,
+        final Material material,
+        final C control
+    ) {
+        filters.add(Objects.requireNonNull(control, "control"));
+        addElement(
+            slot,
+            new PageControlInventoryElement(
+                material,
+                title,
+                getKey(),
+                areaId,
+                control,
+                states,
+                this::refreshAndResetPage
+            )
+        );
 
-  protected final <C extends PageSortControl<T>> C addSortControl(
-      final int slot,
-      final Component title,
-      final Material material,
-      final C control
-  ) {
-    sorts.add(Objects.requireNonNull(control, "control"));
-    addElement(slot, new PageControlInventoryElement(
-        material,
-        title,
-        getKey(),
-        areaId,
-        control,
-        states,
-        this::refreshAndResetPage
-    ));
-    return control;
-  }
+        return control;
+    }
 
-  protected final String getActiveMode(
-      final InventoryContext context,
-      final PageControl control
-  ) {
-    return states.getActiveMode(
-        context.getViewer().getUniqueId(),
-        getKey(),
-        areaId,
-        control.getControlId()
-    ).orElse(control.getDefaultModeId());
-  }
+    protected final <C extends PageSortControl<T>> C addSortControl(
+        final int slot,
+        final Component title,
+        final Material material,
+        final C control
+    ) {
+        sorts.add(Objects.requireNonNull(control, "control"));
+        addElement(
+            slot,
+            new PageControlInventoryElement(
+                material,
+                title,
+                getKey(),
+                areaId,
+                control,
+                states,
+                this::refreshAndResetPage
+            )
+        );
 
-  protected final PageControlStateStore getControlStateStore() {
-    return states;
-  }
+        return control;
+    }
 
-  @Override
-  protected List<T> resolveItems(final InventoryContext context) {
-    return PageControlPipeline.apply(
-        source.getItems(context),
-        context.getViewer().getUniqueId(),
-        getKey(),
-        areaId,
-        states,
-        filters,
-        sorts
-    );
-  }
+    protected final String getActiveMode(final InventoryContext context, final PageControl control) {
+        return states.getActiveMode(context.getViewer().getUniqueId(), getKey(), areaId, control.getControlId())
+            .orElse(control.getDefaultModeId());
+    }
 
-  private void refreshAndResetPage(final InventoryContext context) {
-    setPage(context, 0);
-    context.getInventoryService().refresh(context.getViewer());
-  }
+    protected final PageControlStateStore getControlStateStore() {
+        return states;
+    }
+
+    @Override
+    protected List<T> resolveItems(final InventoryContext context) {
+        return PageControlPipeline.apply(
+            source.getItems(context),
+            context.getViewer().getUniqueId(),
+            getKey(),
+            areaId,
+            states,
+            filters,
+            sorts
+        );
+    }
+
+    private void refreshAndResetPage(final InventoryContext context) {
+        setPage(context, 0);
+        context.getInventoryService().refresh(context.getViewer());
+    }
 }

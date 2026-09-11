@@ -8,28 +8,29 @@ import org.bukkit.inventory.ItemStack;
 @Value
 @Builder
 public class FakeItemDisplayUpdate {
-  ItemStack itemStack;
-  ItemDisplayTransform itemTransform;
-  DisplayTransformation transformation;
-  DisplayBillboard billboard;
-  DisplayBrightness brightness;
-  Float viewRange;
-  Float shadowRadius;
-  Float shadowStrength;
-  Float displayWidth;
-  Float displayHeight;
-  Integer interpolationDelay;
-  Integer interpolationDuration;
-  Integer teleportDuration;
-  Boolean glowing;
-  DisplayGlowColor glowColor;
 
-  public ItemStack getItemStack() {
-    return itemStack == null ? null : itemStack.clone();
-  }
+    ItemStack itemStack;
+    ItemDisplayTransform itemTransform;
+    DisplayTransformation transformation;
+    DisplayBillboard billboard;
+    DisplayBrightness brightness;
+    Float viewRange;
+    Float shadowRadius;
+    Float shadowStrength;
+    Float displayWidth;
+    Float displayHeight;
+    Integer interpolationDelay;
+    Integer interpolationDuration;
+    Integer teleportDuration;
+    Boolean glowing;
+    DisplayGlowColor glowColor;
 
-  /** Creates an update that only replaces the displayed item stack. */
-  public static FakeItemDisplayUpdate item(final ItemStack itemStack) {
-    return builder().itemStack(itemStack).build();
-  }
+    public ItemStack getItemStack() {
+        return itemStack == null ? null : itemStack.clone();
+    }
+
+    /** Creates an update that only replaces the displayed item stack. */
+    public static FakeItemDisplayUpdate item(final ItemStack itemStack) {
+        return builder().itemStack(itemStack).build();
+    }
 }

@@ -11,42 +11,49 @@ import net.minecraft.network.protocol.game.ClientboundBundlePacket;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
+/** Sends individual packets and packet bundles to Minecraft 26.2 players. */
 @Dependencies
 public final class VexPacketTransportAdapterService implements PacketTransportAdapterService {
 
-  public VexPacketTransportAdapterService(final VexServiceRegistry services) {
-  }
-
-  @Override
-  public void send(final Player player, final Object packet) {
-    ((CraftPlayer) player).getHandle().connection.send(requirePacket(packet));
-  }
-
-  @Override
-  public void sendBundle(final Player player, final List<Object> packets) {
-    if (packets.isEmpty()) {
-      return;
+    public VexPacketTransportAdapterService(final VexServiceRegistry services) {
     }
-    if (packets.size() == 1) {
-      send(player, packets.getFirst());
-      return;
-    }
-    List<Packet<? super ClientGamePacketListener>> checkedPackets = new ArrayList<>(packets.size());
-    for (Object packet : packets) {
-      checkedPackets.add(requireGamePacket(packet));
-    }
-    send(player, new ClientboundBundlePacket(checkedPackets));
-  }
 
-  private static Packet<?> requirePacket(final Object packet) {
-    if (!(packet instanceof Packet<?> checkedPacket)) {
-      throw new IllegalArgumentException("Packet adapter received a non-packet value");
+    @Override
+    public void send(final Player player, final Object packet) {
+        ((CraftPlayer) player).getHandle().connection.send(requirePacket(packet));
     }
-    return checkedPacket;
-  }
 
-  @SuppressWarnings("unchecked")
-  private static Packet<? super ClientGamePacketListener> requireGamePacket(final Object packet) {
-    return (Packet<? super ClientGamePacketListener>) requirePacket(packet);
-  }
+    @Override
+    public void sendBundle(final Player player, final List<Object> packets) {
+        if (packets.isEmpty()) {
+            return;
+        }
+
+        if (packets.size() == 1) {
+            send(player, packets.getFirst());
+
+            return;
+        }
+
+        List<Packet<? super ClientGamePacketListener>> checkedPackets = new ArrayList<>(packets.size());
+
+        for (Object packet : packets) {
+            checkedPackets.add(requireGamePacket(packet));
+        }
+
+        send(player, new ClientboundBundlePacket(checkedPackets));
+    }
+
+    private static Packet<?> requirePacket(final Object packet) {
+        if (!(packet instanceof Packet<?> checkedPacket)) {
+            throw new IllegalArgumentException("Packet adapter received a non-packet value");
+        }
+
+        return checkedPacket;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Packet<? super ClientGamePacketListener> requireGamePacket(final Object packet) {
+        return (Packet<? super ClientGamePacketListener>) requirePacket(packet);
+    }
 }

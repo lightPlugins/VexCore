@@ -7,9 +7,9 @@ import net.kyori.adventure.text.Component;
  */
 public interface NoticeDialogBuilder extends DialogBuilder<Void, NoticeDialogBuilder> {
 
-  /** Sets the label of the acknowledgement button */
-  NoticeDialogBuilder button(Component label);
+    /** Sets the label of the acknowledgement button */
+    NoticeDialogBuilder button(Component label);
 
-  /** Sets the optional tooltip of the acknowledgement button */
-  NoticeDialogBuilder buttonTooltip(Component tooltip);
+    /** Sets the optional tooltip of the acknowledgement button */
+    NoticeDialogBuilder buttonTooltip(Component tooltip);
 }

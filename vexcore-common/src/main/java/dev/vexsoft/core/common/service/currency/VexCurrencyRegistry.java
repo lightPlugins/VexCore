@@ -16,50 +16,49 @@ import java.util.Optional;
 @Dependencies(CurrencyRegistryCoordinatorService.class)
 public final class VexCurrencyRegistry implements CurrencyRegistry, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final CurrencyRegistryCoordinatorService coordinator;
+    private final ServiceOwner owner;
+    private final CurrencyRegistryCoordinatorService coordinator;
 
-  /** Captures the calling service owner and shared coordinator. */
-  public VexCurrencyRegistry(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    owner = checked.getOwner();
-    coordinator = checked.require(CurrencyRegistryCoordinatorService.class);
-  }
+    /** Captures the calling service owner and shared coordinator. */
+    public VexCurrencyRegistry(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
-  @Override
-  public Currency register(final CurrencyDefinition definition) {
-    return coordinator.register(owner, definition);
-  }
+        owner = checked.getOwner();
+        coordinator = checked.require(CurrencyRegistryCoordinatorService.class);
+    }
 
-  @Override
-  public List<Currency> synchronize(final Collection<CurrencyDefinition> definitions) {
-    return coordinator.synchronize(owner, definitions);
-  }
+    @Override
+    public Currency register(final CurrencyDefinition definition) {
+        return coordinator.register(owner, definition);
+    }
 
-  @Override
-  public Optional<Currency> find(final CurrencyKey key) {
-    return coordinator.find(key);
-  }
+    @Override
+    public List<Currency> synchronize(final Collection<CurrencyDefinition> definitions) {
+        return coordinator.synchronize(owner, definitions);
+    }
 
-  @Override
-  public Currency require(final CurrencyKey key) {
-    return find(key).orElseThrow(() -> new IllegalStateException(
-        "Currency is not registered: " + key
-    ));
-  }
+    @Override
+    public Optional<Currency> find(final CurrencyKey key) {
+        return coordinator.find(key);
+    }
 
-  @Override
-  public boolean unregister(final CurrencyKey key) {
-    return coordinator.unregister(owner, key);
-  }
+    @Override
+    public Currency require(final CurrencyKey key) {
+        return find(key).orElseThrow(() -> new IllegalStateException("Currency is not registered: " + key));
+    }
 
-  @Override
-  public Collection<Currency> getRegisteredCurrencies() {
-    return coordinator.getRegisteredCurrencies();
-  }
+    @Override
+    public boolean unregister(final CurrencyKey key) {
+        return coordinator.unregister(owner, key);
+    }
 
-  @Override
-  public void close() {
-    coordinator.unregisterOwner(owner);
-  }
+    @Override
+    public Collection<Currency> getRegisteredCurrencies() {
+        return coordinator.getRegisteredCurrencies();
+    }
+
+    @Override
+    public void close() {
+        coordinator.unregisterOwner(owner);
+    }
 }

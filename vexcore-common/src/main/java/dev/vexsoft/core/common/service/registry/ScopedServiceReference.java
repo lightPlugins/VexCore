@@ -10,23 +10,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 final class ScopedServiceReference<T extends VexService> implements ServiceReference<T> {
 
-  @NonNull
-  private final VexServiceRegistry registry;
-  @NonNull
-  private final Class<T> serviceType;
+    @NonNull
+    private final VexServiceRegistry registry;
+    @NonNull
+    private final Class<T> serviceType;
 
-  @Override
-  public Optional<T> find() {
-    return registry.find(serviceType);
-  }
+    @Override
+    public Optional<T> find() {
+        return registry.find(serviceType);
+    }
 
-  @Override
-  public T require() {
-    return registry.require(serviceType);
-  }
+    @Override
+    public T require() {
+        return registry.require(serviceType);
+    }
 
-  @Override
-  public boolean isAvailable() {
-    return registry.isAvailable(serviceType);
-  }
+    @Override
+    public boolean isAvailable() {
+        return registry.isAvailable(serviceType);
+    }
 }

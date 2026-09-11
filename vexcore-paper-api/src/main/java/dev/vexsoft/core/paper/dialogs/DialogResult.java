@@ -10,31 +10,31 @@ import lombok.Getter;
 @Getter
 public final class DialogResult<T> {
 
-  private final DialogResultType type;
-  private final T value;
+    private final DialogResultType type;
+    private final T value;
 
-  private DialogResult(final DialogResultType type, final T value) {
-    this.type = Objects.requireNonNull(type, "type");
-    this.value = value;
-  }
+    private DialogResult(final DialogResultType type, final T value) {
+        this.type = Objects.requireNonNull(type, "type");
+        this.value = value;
+    }
 
-  /** Creates a result containing a submitted value */
-  public static <T> DialogResult<T> value(final DialogResultType type, final T value) {
-    return new DialogResult<>(type, Objects.requireNonNull(value, "value"));
-  }
+    /** Creates a result containing a submitted value */
+    public static <T> DialogResult<T> value(final DialogResultType type, final T value) {
+        return new DialogResult<>(type, Objects.requireNonNull(value, "value"));
+    }
 
-  /** Creates a result without a submitted value */
-  public static <T> DialogResult<T> empty(final DialogResultType type) {
-    return new DialogResult<>(type, null);
-  }
+    /** Creates a result without a submitted value */
+    public static <T> DialogResult<T> empty(final DialogResultType type) {
+        return new DialogResult<>(type, null);
+    }
 
-  /** Returns the submitted value when one is available */
-  public Optional<T> getValue() {
-    return Optional.ofNullable(value);
-  }
+    /** Returns the submitted value when one is available */
+    public Optional<T> getValue() {
+        return Optional.ofNullable(value);
+    }
 
-  /** Returns whether the player confirmed or submitted the dialog */
-  public boolean isConfirmed() {
-    return type == DialogResultType.CONFIRMED;
-  }
+    /** Returns whether the player confirmed or submitted the dialog */
+    public boolean isConfirmed() {
+        return type == DialogResultType.CONFIRMED;
+    }
 }

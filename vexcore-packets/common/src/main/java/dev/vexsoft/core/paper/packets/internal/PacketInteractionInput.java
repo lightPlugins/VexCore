@@ -6,7 +6,8 @@ import org.bukkit.inventory.EquipmentSlot;
 
 @Value
 public class PacketInteractionInput {
-  int entityId;
-  FakeInteractionType interactionType;
-  EquipmentSlot hand;
+
+    int entityId;
+    FakeInteractionType interactionType;
+    EquipmentSlot hand;
 }

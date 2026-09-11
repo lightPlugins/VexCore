@@ -9,16 +9,25 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 final class DynamicServiceReference<T extends VexService> implements ServiceReference<T> {
-  @NonNull
-  private final ServiceRegistry registry;
-  @NonNull
-  private final Class<T> type;
 
-  @Override
-  public Optional<T> find() {
-    // Resolve every time so reloads cannot leave callers with a stale service instance
-    return registry.find(type);
-  }
-  @Override public T require() { return registry.require(type); }
-  @Override public boolean isAvailable() { return registry.isAvailable(type); }
+    @NonNull
+    private final ServiceRegistry registry;
+    @NonNull
+    private final Class<T> type;
+
+    @Override
+    public Optional<T> find() {
+        // Resolve every time so reloads cannot leave callers with a stale service instance
+        return registry.find(type);
+    }
+
+    @Override
+    public T require() {
+        return registry.require(type);
+    }
+
+    @Override
+    public boolean isAvailable() {
+        return registry.isAvailable(type);
+    }
 }

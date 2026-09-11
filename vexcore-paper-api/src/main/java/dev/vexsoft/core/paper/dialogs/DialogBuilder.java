@@ -10,21 +10,21 @@ import org.bukkit.inventory.ItemStack;
  */
 public interface DialogBuilder<T, B extends DialogBuilder<T, B>> {
 
-  /** Sets the title shown at the top of the dialog */
-  B title(Component title);
+    /** Sets the title shown at the top of the dialog */
+    B title(Component title);
 
-  /** Adds a component to the dialog body */
-  B message(Component message);
+    /** Adds a component to the dialog body */
+    B message(Component message);
 
-  /** Adds an item to the dialog body */
-  B item(ItemStack item);
+    /** Adds an item to the dialog body */
+    B item(ItemStack item);
 
-  /** Controls whether the player may close the dialog with escape */
-  B canCloseWithEscape(boolean canCloseWithEscape);
+    /** Controls whether the player may close the dialog with escape */
+    B canCloseWithEscape(boolean canCloseWithEscape);
 
-  /** Sets how long the dialog may remain unanswered */
-  B timeout(Duration timeout);
+    /** Sets how long the dialog may remain unanswered */
+    B timeout(Duration timeout);
 
-  /** Opens the dialog and returns its asynchronous result */
-  CompletableFuture<DialogResult<T>> open();
+    /** Opens the dialog and returns its asynchronous result */
+    CompletableFuture<DialogResult<T>> open();
 }

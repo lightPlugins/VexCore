@@ -8,11 +8,9 @@ import org.bukkit.NamespacedKey;
  */
 @UtilityClass
 public class VexItemKeys {
-  public static final NamespacedKey ITEM_ID = new NamespacedKey("vexcore", "item_id");
 
-  /** Marks stack-localized variants whose stored presentation must survive normalization. */
-  public static final NamespacedKey PRESERVE_PRESENTATION = new NamespacedKey(
-      "vexcore",
-      "preserve_presentation"
-  );
+    public static final NamespacedKey ITEM_ID = new NamespacedKey("vexcore", "item_id");
+
+    /** Marks stack-localized variants whose stored presentation must survive normalization. */
+    public static final NamespacedKey PRESERVE_PRESENTATION = new NamespacedKey("vexcore", "preserve_presentation");
 }

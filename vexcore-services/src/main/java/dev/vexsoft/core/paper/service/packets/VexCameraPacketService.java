@@ -17,59 +17,64 @@ import org.bukkit.entity.Player;
 @Dependencies(DisplayPacketAdapterService.class)
 public final class VexCameraPacketService implements CameraPacketService, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final DisplayPacketAdapterService adapter;
-  private final Map<UUID, Boolean> attachedViewers = new ConcurrentHashMap<>();
+    private final ServiceOwner owner;
+    private final DisplayPacketAdapterService adapter;
+    private final Map<UUID, Boolean> attachedViewers = new ConcurrentHashMap<>();
 
-  /** Creates the camera service through VexCore's service registry. */
-  public VexCameraPacketService(final VexServiceRegistry services) {
-    VexServiceRegistry checked = Objects.requireNonNull(services, "services");
-    owner = checked.getOwner();
-    adapter = checked.require(DisplayPacketAdapterService.class);
-  }
+    /** Creates the camera service through VexCore's service registry. */
+    public VexCameraPacketService(final VexServiceRegistry services) {
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
-  @Override
-  public void attach(
-      final Player viewer,
-      final FakeDisplayHandle target,
-      final boolean hideSurvivalHud
-  ) {
-    Player checkedViewer = Objects.requireNonNull(viewer, "viewer");
-    FakeDisplayHandle checkedTarget = Objects.requireNonNull(target, "target");
-    if (!checkedTarget.getOwner().equals(owner)) {
-      throw new IllegalArgumentException("Camera target belongs to another plugin");
+        owner = checked.getOwner();
+        adapter = checked.require(DisplayPacketAdapterService.class);
     }
-    if (!checkedTarget.getViewerId().equals(checkedViewer.getUniqueId())) {
-      throw new IllegalArgumentException("Camera target belongs to another viewer");
-    }
-    Boolean previous = attachedViewers.put(checkedViewer.getUniqueId(), hideSurvivalHud);
-    if (Boolean.TRUE.equals(previous) && !hideSurvivalHud) {
-      adapter.resetCamera(checkedViewer, previous);
-    }
-    adapter.attachCamera(checkedViewer, checkedTarget, hideSurvivalHud);
-  }
 
-  @Override
-  public void reset(final Player viewer) {
-    Player checkedViewer = Objects.requireNonNull(viewer, "viewer");
-    Boolean hiddenHud = attachedViewers.get(checkedViewer.getUniqueId());
-    if (hiddenHud != null && checkedViewer.isOnline()) {
-      adapter.resetCamera(checkedViewer, hiddenHud);
-    }
-    if (hiddenHud != null) {
-      attachedViewers.remove(checkedViewer.getUniqueId(), hiddenHud);
-    }
-  }
+    @Override
+    public void attach(final Player viewer, final FakeDisplayHandle target, final boolean hideSurvivalHud) {
+        Player checkedViewer = Objects.requireNonNull(viewer, "viewer");
+        FakeDisplayHandle checkedTarget = Objects.requireNonNull(target, "target");
 
-  @Override
-  public void close() {
-    attachedViewers.keySet().stream().toList().forEach(viewerId -> {
-      Player viewer = Bukkit.getPlayer(viewerId);
-      if (viewer != null) {
-        reset(viewer);
-      } else {
-        attachedViewers.remove(viewerId);
-      }
-    });
-  }
+        if (!checkedTarget.getOwner().equals(owner)) {
+            throw new IllegalArgumentException("Camera target belongs to another plugin");
+        }
+
+        if (!checkedTarget.getViewerId().equals(checkedViewer.getUniqueId())) {
+            throw new IllegalArgumentException("Camera target belongs to another viewer");
+        }
+
+        Boolean previous = attachedViewers.put(checkedViewer.getUniqueId(), hideSurvivalHud);
+
+        if (Boolean.TRUE.equals(previous) && !hideSurvivalHud) {
+            adapter.resetCamera(checkedViewer, previous);
+        }
+
+        adapter.attachCamera(checkedViewer, checkedTarget, hideSurvivalHud);
+    }
+
+    @Override
+    public void reset(final Player viewer) {
+        Player checkedViewer = Objects.requireNonNull(viewer, "viewer");
+        Boolean hiddenHud = attachedViewers.get(checkedViewer.getUniqueId());
+
+        if (hiddenHud != null && checkedViewer.isOnline()) {
+            adapter.resetCamera(checkedViewer, hiddenHud);
+        }
+
+        if (hiddenHud != null) {
+            attachedViewers.remove(checkedViewer.getUniqueId(), hiddenHud);
+        }
+    }
+
+    @Override
+    public void close() {
+        attachedViewers.keySet().stream().toList().forEach(viewerId -> {
+            Player viewer = Bukkit.getPlayer(viewerId);
+
+            if (viewer != null) {
+                reset(viewer);
+            } else {
+                attachedViewers.remove(viewerId);
+            }
+        });
+    }
 }

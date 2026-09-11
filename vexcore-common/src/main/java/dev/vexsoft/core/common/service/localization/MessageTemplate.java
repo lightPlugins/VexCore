@@ -5,6 +5,7 @@ import lombok.Value;
 
 @Value
 final class MessageTemplate {
-  List<String> lines;
-  boolean list;
+
+    List<String> lines;
+    boolean list;
 }

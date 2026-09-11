@@ -10,9 +10,9 @@ import java.util.concurrent.CompletableFuture;
 /** Resolves the backend server currently hosting an online player. */
 public interface PlayerDirectoryService extends VexService {
 
-  /** Looks up one player through the Velocity proxy. */
-  CompletableFuture<Optional<NetworkPlayer>> find(UUID uniqueId);
+    /** Looks up one player through the Velocity proxy. */
+    CompletableFuture<Optional<NetworkPlayer>> find(UUID uniqueId);
 
-  /** Returns a short-lived cached snapshot of players connected through Velocity. */
-  List<NetworkPlayer> getOnlinePlayers();
+    /** Returns a short-lived cached snapshot of players connected through Velocity. */
+    List<NetworkPlayer> getOnlinePlayers();
 }

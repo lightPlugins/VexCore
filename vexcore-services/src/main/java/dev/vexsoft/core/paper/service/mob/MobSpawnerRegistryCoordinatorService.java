@@ -11,20 +11,24 @@ import org.bukkit.entity.Player;
 /** Coordinates spawner definitions across owner-scoped registry facades. */
 public interface MobSpawnerRegistryCoordinatorService extends VexService {
 
-  MobSpawnerDefinition register(ServiceOwner owner, MobSpawnerDefinition definition);
+    /** Registers or updates an owner's spawner definition and its runtime state. */
+    MobSpawnerDefinition register(ServiceOwner owner, MobSpawnerDefinition definition);
 
-  Collection<MobSpawnerDefinition> synchronize(
-      ServiceOwner owner,
-      Collection<MobSpawnerDefinition> definitions
-  );
+    /** Reconciles the owner's spawner definitions and refreshes their runtime state. */
+    Collection<MobSpawnerDefinition> synchronize(ServiceOwner owner, Collection<MobSpawnerDefinition> definitions);
 
-  Optional<MobSpawnerDefinition> find(MobSpawnerKey key);
+    /** Finds a registered spawner definition by its stable key. */
+    Optional<MobSpawnerDefinition> find(MobSpawnerKey key);
 
-  boolean unregister(ServiceOwner owner, MobSpawnerKey key);
+    /** Removes an owned spawner definition and deactivates its runtime population. */
+    boolean unregister(ServiceOwner owner, MobSpawnerKey key);
 
-  void unregisterOwner(ServiceOwner owner);
+    /** Removes the owner's spawner definitions and deactivates their populations. */
+    void unregisterOwner(ServiceOwner owner);
 
-  Collection<MobSpawnerDefinition> getDefinitions();
+    /** Returns a snapshot of all registered spawner definitions. */
+    Collection<MobSpawnerDefinition> getDefinitions();
 
-  void refresh(Player player);
+    /** Refreshes the spawners relevant to the player's current location. */
+    void refresh(Player player);
 }

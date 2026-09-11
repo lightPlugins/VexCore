@@ -10,9 +10,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 public @interface OptionalArgument {
 
-  /** Returns the matching optional argument name from the command path */
-  String value();
+    /** Returns the matching optional argument name from the command path */
+    String value();
 
-  /** Returns the value used when the argument was omitted */
-  String defaultValue() default "";
+    /** Returns the value used when the argument was omitted */
+    String defaultValue() default "";
 }

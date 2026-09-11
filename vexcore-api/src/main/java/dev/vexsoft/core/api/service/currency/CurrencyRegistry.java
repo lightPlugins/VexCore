@@ -11,21 +11,21 @@ import java.util.Optional;
 /** Owner-scoped registry for dynamically configured virtual currencies. */
 public interface CurrencyRegistry extends VexService {
 
-  /** Registers a new definition or updates an active currency owned by this scope. */
-  Currency register(CurrencyDefinition definition);
+    /** Registers a new definition or updates an active currency owned by this scope. */
+    Currency register(CurrencyDefinition definition);
 
-  /** Atomically reconciles every currency owned by this registry scope. */
-  List<Currency> synchronize(Collection<CurrencyDefinition> definitions);
+    /** Atomically reconciles every currency owned by this registry scope. */
+    List<Currency> synchronize(Collection<CurrencyDefinition> definitions);
 
-  /** Finds an active currency from any owner by its stable key. */
-  Optional<Currency> find(CurrencyKey key);
+    /** Finds an active currency from any owner by its stable key. */
+    Optional<Currency> find(CurrencyKey key);
 
-  /** Returns an active currency or fails when it is unavailable. */
-  Currency require(CurrencyKey key);
+    /** Returns an active currency or fails when it is unavailable. */
+    Currency require(CurrencyKey key);
 
-  /** Removes an owned currency without deleting persisted balances. */
-  boolean unregister(CurrencyKey key);
+    /** Removes an owned currency without deleting persisted balances. */
+    boolean unregister(CurrencyKey key);
 
-  /** Returns a snapshot of every currently active currency. */
-  Collection<Currency> getRegisteredCurrencies();
+    /** Returns a snapshot of every currently active currency. */
+    Collection<Currency> getRegisteredCurrencies();
 }

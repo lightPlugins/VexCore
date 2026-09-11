@@ -11,14 +11,14 @@ import org.bukkit.event.player.PlayerQuitEvent;
 @Dependencies({DialogCoordinatorService.class})
 public final class VexDialogListener implements Listener {
 
-  private final DialogCoordinatorService dialogs;
+    private final DialogCoordinatorService dialogs;
 
-  public VexDialogListener(final VexServiceRegistry services) {
-    dialogs = Objects.requireNonNull(services, "services").require(DialogCoordinatorService.class);
-  }
+    public VexDialogListener(final VexServiceRegistry services) {
+        dialogs = Objects.requireNonNull(services, "services").require(DialogCoordinatorService.class);
+    }
 
-  @EventHandler
-  public void onPlayerQuit(final PlayerQuitEvent event) {
-    dialogs.closePlayer(event.getPlayer().getUniqueId(), DialogResultType.PLAYER_LEFT);
-  }
+    @EventHandler
+    public void onPlayerQuit(final PlayerQuitEvent event) {
+        dialogs.closePlayer(event.getPlayer().getUniqueId(), DialogResultType.PLAYER_LEFT);
+    }
 }

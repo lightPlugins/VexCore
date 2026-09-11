@@ -19,26 +19,22 @@ import org.bukkit.entity.Player;
 @Dependencies(PlayerDirectoryService.class)
 public final class PlayerNameSuggestionProvider implements SuggestionProvider {
 
-  private final PlayerDirectoryService directory;
+    private final PlayerDirectoryService directory;
 
-  /** Creates a provider backed by the shared network player directory. */
-  public PlayerNameSuggestionProvider(final VexServiceRegistry services) {
-    directory = Objects.requireNonNull(services, "services")
-        .require(PlayerDirectoryService.class);
-  }
+    /** Creates a provider backed by the shared network player directory. */
+    public PlayerNameSuggestionProvider(final VexServiceRegistry services) {
+        directory = Objects.requireNonNull(services, "services").require(PlayerDirectoryService.class);
+    }
 
-  @Override
-  public CompletableFuture<Suggestions> suggest(
-      final VexCommandSource source,
-      final SuggestionsBuilder builder
-  ) {
-    String remaining = builder.getRemainingLowerCase();
-    Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    Bukkit.getOnlinePlayers().stream().map(Player::getName).forEach(names::add);
-    directory.getOnlinePlayers().stream().map(NetworkPlayer::name).forEach(names::add);
-    names.stream()
-        .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(remaining))
-        .forEach(builder::suggest);
-    return builder.buildFuture();
-  }
+    @Override
+    public CompletableFuture<Suggestions> suggest(final VexCommandSource source, final SuggestionsBuilder builder) {
+        String remaining = builder.getRemainingLowerCase();
+        Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+        Bukkit.getOnlinePlayers().stream().map(Player::getName).forEach(names::add);
+        directory.getOnlinePlayers().stream().map(NetworkPlayer::name).forEach(names::add);
+        names.stream().filter(name -> name.toLowerCase(Locale.ROOT).startsWith(remaining)).forEach(builder::suggest);
+
+        return builder.buildFuture();
+    }
 }

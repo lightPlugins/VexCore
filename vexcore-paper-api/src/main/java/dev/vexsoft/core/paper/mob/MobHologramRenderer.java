@@ -7,6 +7,6 @@ import org.bukkit.entity.Player;
 @FunctionalInterface
 public interface MobHologramRenderer {
 
-  /** Renders the complete hologram component for one viewer. */
-  Component render(Player viewer, MobSnapshot mob);
+    /** Renders the complete hologram component for one viewer. */
+    Component render(Player viewer, MobSnapshot mob);
 }

@@ -14,21 +14,20 @@ import java.util.Objects;
 @Dependencies(TeleportCoordinatorService.class)
 public final class VexTeleportCompletionHandler implements MessageHandler<TeleportCompletion> {
 
-  private final TeleportCoordinatorService teleports;
+    private final TeleportCoordinatorService teleports;
 
-  public VexTeleportCompletionHandler(final VexServiceRegistry services) {
-    teleports = Objects.requireNonNull(services, "services")
-        .require(TeleportCoordinatorService.class);
-  }
+    public VexTeleportCompletionHandler(final VexServiceRegistry services) {
+        teleports = Objects.requireNonNull(services, "services").require(TeleportCoordinatorService.class);
+    }
 
-  @Override
-  public MessageType<TeleportCompletion> getMessageType() {
-    return TeleportMessages.COMPLETION;
-  }
+    @Override
+    public MessageType<TeleportCompletion> getMessageType() {
+        return TeleportMessages.COMPLETION;
+    }
 
-  @Override
-  public void handle(final TeleportCompletion message, final MessageContext context) {
-    Objects.requireNonNull(context, "context");
-    teleports.complete(message);
-  }
+    @Override
+    public void handle(final TeleportCompletion message, final MessageContext context) {
+        Objects.requireNonNull(context, "context");
+        teleports.complete(message);
+    }
 }

@@ -14,22 +14,22 @@ import java.util.concurrent.CompletableFuture;
 @Dependencies(LanguageService.class)
 public final class LanguageSuggestionProvider implements SuggestionProvider {
 
-  private final LanguageService languages;
+    private final LanguageService languages;
 
-  public LanguageSuggestionProvider(final VexServiceRegistry services) {
-    languages = Objects.requireNonNull(services, "services").require(LanguageService.class);
-  }
+    public LanguageSuggestionProvider(final VexServiceRegistry services) {
+        languages = Objects.requireNonNull(services, "services").require(LanguageService.class);
+    }
 
-  @Override
-  public CompletableFuture<Suggestions> suggest(
-      final VexCommandSource source,
-      final SuggestionsBuilder builder
-  ) {
-    String remaining = builder.getRemainingLowerCase();
-    languages.getLanguages().stream()
-        .map(language -> language.getKey().getValue())
-        .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(remaining))
-        .forEach(builder::suggest);
-    return builder.buildFuture();
-  }
+    @Override
+    public CompletableFuture<Suggestions> suggest(final VexCommandSource source, final SuggestionsBuilder builder) {
+        String remaining = builder.getRemainingLowerCase();
+
+        languages.getLanguages()
+            .stream()
+            .map(language -> language.getKey().getValue())
+            .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(remaining))
+            .forEach(builder::suggest);
+
+        return builder.buildFuture();
+    }
 }

@@ -12,50 +12,51 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
 @SuppressWarnings("UnstableApiUsage")
-public final class VexNoticeDialogBuilder
-    extends AbstractDialogBuilder<Void, NoticeDialogBuilder>
-    implements NoticeDialogBuilder {
+public final class VexNoticeDialogBuilder extends AbstractDialogBuilder<Void, NoticeDialogBuilder> implements
+    NoticeDialogBuilder {
 
-  private Component button = Component.text("Done");
-  private Component buttonTooltip;
+    private Component button = Component.text("Done");
+    private Component buttonTooltip;
 
-  public VexNoticeDialogBuilder(
-      final ServiceOwner owner,
-      final DialogCoordinatorService coordinator,
-      final ScheduleService scheduler,
-      final Player player
-  ) {
-    super(owner, coordinator, scheduler, player);
-  }
+    public VexNoticeDialogBuilder(
+        final ServiceOwner owner,
+        final DialogCoordinatorService coordinator,
+        final ScheduleService scheduler,
+        final Player player
+    ) {
+        super(owner, coordinator, scheduler, player);
+    }
 
-  @Override
-  public NoticeDialogBuilder button(final Component label) {
-    button = Objects.requireNonNull(label, "label");
-    return this;
-  }
+    @Override
+    public NoticeDialogBuilder button(final Component label) {
+        button = Objects.requireNonNull(label, "label");
 
-  @Override
-  public NoticeDialogBuilder buttonTooltip(final Component tooltip) {
-    buttonTooltip = Objects.requireNonNull(tooltip, "tooltip");
-    return this;
-  }
+        return this;
+    }
 
-  @Override
-  protected NoticeDialogBuilder self() {
-    return this;
-  }
+    @Override
+    public NoticeDialogBuilder buttonTooltip(final Component tooltip) {
+        buttonTooltip = Objects.requireNonNull(tooltip, "tooltip");
 
-  @Override
-  protected Dialog buildDialog(final DialogSession<Void> session) {
-    return Dialog.create(factory -> factory.empty()
-        .base(base(List.of()))
-        .type(DialogType.notice(DialogActions.button(
-            button,
-            buttonTooltip,
-            (response, audience) -> scheduler.runFor(
-                player,
-                () -> coordinator.complete(session, DialogResultType.CONFIRMED)
-            )
-        ))));
-  }
+        return this;
+    }
+
+    @Override
+    protected NoticeDialogBuilder self() {
+        return this;
+    }
+
+    @Override
+    protected Dialog buildDialog(final DialogSession<Void> session) {
+        return Dialog.create(factory -> factory.empty()
+            .base(base(List.of()))
+            .type(DialogType.notice(DialogActions.button(
+                button,
+                buttonTooltip,
+                (response, audience) -> scheduler.runFor(
+                    player,
+                    () -> coordinator.complete(session, DialogResultType.CONFIRMED)
+                )
+            ))));
+    }
 }

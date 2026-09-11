@@ -10,18 +10,18 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface CommandRoot {
 
-  /** Returns the primary name of the command */
-  String name();
+    /** Returns the primary name of the command */
+    String name();
 
-  /** Returns the description shown by the server */
-  String description() default "";
+    /** Returns the description shown by the server */
+    String description() default "";
 
-  /** Returns the alternative names of the command */
-  String[] aliases() default {};
+    /** Returns the alternative names of the command */
+    String[] aliases() default {};
 
-  /** Returns the permission required for the complete command */
-  String permission() default "";
+    /** Returns the permission required for the complete command */
+    String permission() default "";
 
-  /** Checks whether the complete command requires a player */
-  boolean playerOnly() default false;
+    /** Checks whether the complete command requires a player */
+    boolean playerOnly() default false;
 }

@@ -6,24 +6,24 @@ import dev.vexsoft.core.paper.service.platform.VexPlatformService;
 
 public final class PlatformModule implements VexModule {
 
-  private VexServiceRegistry services;
+    private VexServiceRegistry services;
 
-  @Override
-  public void enable(final VexServiceRegistry registry) {
-    services = registry.scoped(this);
-    services.register(PlatformService.class, VexPlatformService.class);
-    services.registerQueuedServices();
-  }
-
-  @Override
-  public void disable() {
-    if (services != null) {
-      services.unregisterOwnedServices();
+    @Override
+    public void enable(final VexServiceRegistry registry) {
+        services = registry.scoped(this);
+        services.register(PlatformService.class, VexPlatformService.class);
+        services.registerQueuedServices();
     }
-  }
 
-  @Override
-  public String getServiceOwnerName() {
-    return "vexcore-platform";
-  }
+    @Override
+    public void disable() {
+        if (services != null) {
+            services.unregisterOwnedServices();
+        }
+    }
+
+    @Override
+    public String getServiceOwnerName() {
+        return "vexcore-platform";
+    }
 }

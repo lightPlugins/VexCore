@@ -5,9 +5,9 @@ package dev.vexsoft.core.paper.inventory;
  */
 public interface InventoryDefinition {
 
-  /** Returns the unique key used to open this inventory */
-  InventoryKey getKey();
+    /** Returns the unique key used to open this inventory */
+    InventoryKey getKey();
 
-  /** Creates a new view for the given viewer context */
-  InventoryView create(InventoryContext context);
+    /** Creates a new view for the given viewer context */
+    InventoryView create(InventoryContext context);
 }

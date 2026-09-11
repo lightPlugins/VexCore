@@ -11,18 +11,14 @@ import java.util.Objects;
 @Dependencies
 public final class GameplayPlayerData implements PlayerDataDefinition {
 
-  static final DataContainerKey<StatData> STATS = DataContainerKey.of(
-      "stats",
-      StatData.class,
-      StatData::new
-  );
+    static final DataContainerKey<StatData> STATS = DataContainerKey.of("stats", StatData.class, StatData::new);
 
-  public GameplayPlayerData(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
-  }
+    public GameplayPlayerData(final VexServiceRegistry services) {
+        Objects.requireNonNull(services, "services");
+    }
 
-  @Override
-  public void register(final DataContainerRegistry registry) {
-    registry.register(STATS);
-  }
+    @Override
+    public void register(final DataContainerRegistry registry) {
+        registry.register(STATS);
+    }
 }

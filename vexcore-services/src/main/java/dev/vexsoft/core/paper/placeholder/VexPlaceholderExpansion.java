@@ -15,56 +15,57 @@ import org.jetbrains.annotations.Nullable;
 /** Publishes one Vex plugin's registered placeholders to PlaceholderAPI. */
 public final class VexPlaceholderExpansion extends PlaceholderExpansion {
 
-  private final Plugin plugin;
-  private final String identifier;
-  private final VexPaperPlaceholderService placeholders;
-  private final PlayerService players;
+    private final Plugin plugin;
+    private final String identifier;
+    private final VexPaperPlaceholderService placeholders;
+    private final PlayerService players;
 
-  public VexPlaceholderExpansion(
-      final Plugin plugin,
-      final VexPaperPlaceholderService placeholders,
-      final PlayerService players
-  ) {
-    this.plugin = Objects.requireNonNull(plugin, "plugin");
-    identifier = PlaceholderNames.namespace(plugin.getName());
-    this.placeholders = Objects.requireNonNull(placeholders, "placeholders");
-    this.players = Objects.requireNonNull(players, "players");
-  }
-
-  @Override
-  public @NotNull String getIdentifier() {
-    return identifier;
-  }
-
-  @Override
-  public @NotNull String getAuthor() {
-    return String.join(", ", plugin.getPluginMeta().getAuthors());
-  }
-
-  @Override
-  public @NotNull String getVersion() {
-    return plugin.getPluginMeta().getVersion();
-  }
-
-  @Override
-  public boolean persist() {
-    return true;
-  }
-
-  @Override
-  public @Nullable String onRequest(
-      final OfflinePlayer player,
-      final @NotNull String parameters
-  ) {
-    if (player == null || parameters.isBlank()) {
-      return null;
+    public VexPlaceholderExpansion(
+        final Plugin plugin,
+        final VexPaperPlaceholderService placeholders,
+        final PlayerService players
+    ) {
+        this.plugin = Objects.requireNonNull(plugin, "plugin");
+        identifier = PlaceholderNames.namespace(plugin.getName());
+        this.placeholders = Objects.requireNonNull(placeholders, "placeholders");
+        this.players = Objects.requireNonNull(players, "players");
     }
-    VexPlayer vexPlayer = players.find(player.getUniqueId()).orElse(null);
-    if (vexPlayer == null) {
-      return null;
+
+    @Override
+    public @NotNull String getIdentifier() {
+        return identifier;
     }
-    String source = '%' + identifier + '_' + parameters + '%';
-    String resolved = placeholders.resolveRegistered(PlaceholderContext.of(vexPlayer), source);
-    return source.equals(resolved) ? null : resolved;
-  }
+
+    @Override
+    public @NotNull String getAuthor() {
+        return String.join(", ", plugin.getPluginMeta().getAuthors());
+    }
+
+    @Override
+    public @NotNull String getVersion() {
+        return plugin.getPluginMeta().getVersion();
+    }
+
+    @Override
+    public boolean persist() {
+        return true;
+    }
+
+    @Override
+    public @Nullable String onRequest(final OfflinePlayer player, final @NotNull String parameters) {
+        if (player == null || parameters.isBlank()) {
+            return null;
+        }
+
+        VexPlayer vexPlayer = players.find(player.getUniqueId()).orElse(null);
+
+        if (vexPlayer == null) {
+            return null;
+        }
+
+        String source = '%' + identifier + '_' + parameters + '%';
+        String resolved = placeholders.resolveRegistered(PlaceholderContext.of(vexPlayer), source);
+
+        return source.equals(resolved) ? null : resolved;
+    }
 }

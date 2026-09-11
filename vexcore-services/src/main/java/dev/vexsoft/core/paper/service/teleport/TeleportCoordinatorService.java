@@ -11,12 +11,12 @@ import java.util.concurrent.CompletableFuture;
 /** Coordinates local Paper teleports and cross-server transfer callbacks. */
 public interface TeleportCoordinatorService extends VexService {
 
-  /** Starts a local or cross-server teleport. */
-  CompletableFuture<TeleportResult> teleport(VexPlayer player, ServerPosition destination);
+    /** Starts a local or cross-server teleport. */
+    CompletableFuture<TeleportResult> teleport(VexPlayer player, ServerPosition destination);
 
-  /** Finishes an arrival teleport for a player that has reached this backend. */
-  CompletableFuture<TeleportResult> acceptArrival(UUID playerId, ServerPosition destination);
+    /** Finishes an arrival teleport for a player that has reached this backend. */
+    CompletableFuture<TeleportResult> acceptArrival(UUID playerId, ServerPosition destination);
 
-  /** Completes a pending source-server transfer. */
-  void complete(TeleportCompletion completion);
+    /** Completes a pending source-server transfer. */
+    void complete(TeleportCompletion completion);
 }

@@ -12,19 +12,19 @@ import org.bukkit.entity.Player;
 
 /** Shared bossbar-backed UI. Resolve from the requesting plugin's scoped registry. */
 public interface ScreenUiService extends VexService {
-  /** Opens a named viewer-specific screen. */
-  ScreenUi open(Player player, String id);
 
-  /** Finds an existing screen for the viewer without creating it. */
-  Optional<ScreenUi> find(Player player, String id);
+    /** Opens a named viewer-specific screen. */
+    ScreenUi open(Player player, String id);
 
-  /** Checks that the dialogue layout can be rendered by the active adapter. */
-  void validateDialogueLayout(DialoguePanelLayout layout);
+    /** Finds an existing screen for the viewer without creating it. */
+    Optional<ScreenUi> find(Player player, String id);
 
-  /** Wraps paragraphs into immutable pages for the requested speaker and layout. */
-  PreparedDialogue prepareDialogue(
-      Component speaker, List<Component> paragraphs, DialoguePanelLayout layout);
+    /** Checks that the dialogue layout can be rendered by the active adapter. */
+    void validateDialogueLayout(DialoguePanelLayout layout);
 
-  /** Opens the prepared dialogue for the viewer. */
-  DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue);
+    /** Wraps paragraphs into immutable pages for the requested speaker and layout. */
+    PreparedDialogue prepareDialogue(Component speaker, List<Component> paragraphs, DialoguePanelLayout layout);
+
+    /** Opens the prepared dialogue for the viewer. */
+    DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue);
 }

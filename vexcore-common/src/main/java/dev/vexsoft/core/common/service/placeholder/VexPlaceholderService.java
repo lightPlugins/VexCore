@@ -14,43 +14,43 @@ import net.kyori.adventure.text.Component;
 @Dependencies(PlaceholderRegistryCoordinatorService.class)
 public final class VexPlaceholderService implements PlaceholderService, AutoCloseable {
 
-  private final VexServiceRegistry services;
-  private final ServiceOwner owner;
-  private final PlaceholderRegistryCoordinatorService coordinator;
+    private final VexServiceRegistry services;
+    private final ServiceOwner owner;
+    private final PlaceholderRegistryCoordinatorService coordinator;
 
-  public VexPlaceholderService(final VexServiceRegistry services) {
-    this.services = Objects.requireNonNull(services, "services");
-    owner = services.getOwner();
-    coordinator = services.require(PlaceholderRegistryCoordinatorService.class);
-  }
+    public VexPlaceholderService(final VexServiceRegistry services) {
+        this.services = Objects.requireNonNull(services, "services");
+        owner = services.getOwner();
+        coordinator = services.require(PlaceholderRegistryCoordinatorService.class);
+    }
 
-  @Override
-  public <T extends VexPlaceholder> T register(final Class<T> placeholderType) {
-    return coordinator.register(owner, services, placeholderType);
-  }
+    @Override
+    public <T extends VexPlaceholder> T register(final Class<T> placeholderType) {
+        return coordinator.register(owner, services, placeholderType);
+    }
 
-  @Override
-  public String resolve(final VexPlayer player, final String input) {
-    return resolve(PlaceholderContext.of(player), input);
-  }
+    @Override
+    public String resolve(final VexPlayer player, final String input) {
+        return resolve(PlaceholderContext.of(player), input);
+    }
 
-  @Override
-  public String resolve(final PlaceholderContext context, final String input) {
-    return coordinator.resolve(context, input);
-  }
+    @Override
+    public String resolve(final PlaceholderContext context, final String input) {
+        return coordinator.resolve(context, input);
+    }
 
-  @Override
-  public Component resolve(final VexPlayer player, final Component component) {
-    return PlaceholderComponents.resolve(this, player, component);
-  }
+    @Override
+    public Component resolve(final VexPlayer player, final Component component) {
+        return PlaceholderComponents.resolve(this, player, component);
+    }
 
-  @Override
-  public void clear() {
-    coordinator.unregisterOwner(owner);
-  }
+    @Override
+    public void clear() {
+        coordinator.unregisterOwner(owner);
+    }
 
-  @Override
-  public void close() {
-    clear();
-  }
+    @Override
+    public void close() {
+        clear();
+    }
 }

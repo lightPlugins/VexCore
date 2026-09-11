@@ -7,166 +7,210 @@ import dev.vexsoft.core.currency.CurrencyBatchTransaction;
 import dev.vexsoft.core.currency.CurrencyContainer;
 import dev.vexsoft.core.currency.CurrencyKey;
 import dev.vexsoft.core.currency.CurrencyTransaction;
+import dev.vexsoft.core.number.WholeAmount;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import dev.vexsoft.core.number.WholeAmount;
 
 /** VexPlayer-backed persistent implementation of virtual-currency balances. */
 public final class VexCurrencyContainer implements CurrencyContainer {
 
-  private final VexPlayer player;
+    private final VexPlayer player;
 
-  /** Binds currency access to one loaded Vex player. */
-  public VexCurrencyContainer(final VexPlayer player) {
-    this.player = Objects.requireNonNull(player, "player");
-  }
-
-  @Override
-  public WholeAmount getBalance(final Currency currency) {
-    Currency checked = requireAvailable(currency);
-    return player.read(CurrencyPlayerData.CURRENCIES, data -> balance(data, checked));
-  }
-
-  @Override
-  public CurrencyTransaction deposit(final Currency currency, final WholeAmount amount) {
-    Currency checked = available(currency);
-    if (checked == null) {
-      return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
+    /** Binds currency access to one loaded Vex player. */
+    public VexCurrencyContainer(final VexPlayer player) {
+        this.player = Objects.requireNonNull(player, "player");
     }
-    if (amount == null || !amount.isPositive()) {
-      return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
-    }
-    return player.update(CurrencyPlayerData.CURRENCIES, data -> {
-      WholeAmount previous = balance(data, checked);
-      WholeAmount updated = previous.add(amount);
-      if (checked.getDefinition().getMaximumBalance()
-          .map(maximum -> updated.compareTo(maximum) > 0).orElse(false)) {
-        return transaction(
-            CurrencyTransaction.Status.MAXIMUM_EXCEEDED,
-            previous,
-            previous,
-            "maximum-exceeded"
-        );
-      }
-      data.getBalances().put(checked.getKey().toString(), updated.toString());
-      return transaction(CurrencyTransaction.Status.SUCCESS, previous, updated, "");
-    });
-  }
 
-  @Override
-  public CurrencyBatchTransaction depositAll(final Map<Currency, WholeAmount> amounts) {
-    Map<Currency, WholeAmount> checkedAmounts = new LinkedHashMap<>();
-    Objects.requireNonNull(amounts, "amounts").forEach((currency, amount) -> {
-      Currency checked = requireAvailable(currency);
-      WholeAmount checkedAmount = Objects.requireNonNull(amount, "amount");
-      if (!checkedAmount.isPositive()) {
-        throw new IllegalArgumentException("Currency deposit amount must be positive");
-      }
-      checkedAmounts.merge(checked, checkedAmount, WholeAmount::add);
-    });
-    return player.update(CurrencyPlayerData.CURRENCIES, data -> {
-      Map<CurrencyKey, WholeAmount> updated = new LinkedHashMap<>();
-      for (Map.Entry<Currency, WholeAmount> entry : checkedAmounts.entrySet()) {
-        Currency currency = entry.getKey();
-        WholeAmount balance = balance(data, currency).add(entry.getValue());
-        if (currency.getDefinition().getMaximumBalance()
-            .map(maximum -> balance.compareTo(maximum) > 0).orElse(false)) {
-          return new CurrencyBatchTransaction(false, "maximum-exceeded", Map.of());
+    @Override
+    public WholeAmount getBalance(final Currency currency) {
+        Currency checked = requireAvailable(currency);
+
+        return player.read(CurrencyPlayerData.CURRENCIES, data -> balance(data, checked));
+    }
+
+    @Override
+    public CurrencyTransaction deposit(final Currency currency, final WholeAmount amount) {
+        Currency checked = available(currency);
+
+        if (checked == null) {
+            return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
         }
-        updated.put(currency.getKey(), balance);
-      }
-      updated.forEach((key, balance) -> data.getBalances().put(key.toString(), balance.toString()));
-      return new CurrencyBatchTransaction(true, "", updated);
-    });
-  }
 
-  @Override
-  public CurrencyTransaction withdraw(final Currency currency, final WholeAmount amount) {
-    Currency checked = available(currency);
-    if (checked == null) {
-      return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
-    }
-    if (amount == null || !amount.isPositive()) {
-      return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
-    }
-    return player.update(CurrencyPlayerData.CURRENCIES, data -> {
-      WholeAmount previous = balance(data, checked);
-      if (previous.compareTo(amount) < 0) {
-        return transaction(
-            CurrencyTransaction.Status.INSUFFICIENT_BALANCE,
-            previous,
-            previous,
-            "insufficient-balance"
+        if (amount == null || !amount.isPositive()) {
+            return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+        }
+
+        return player.update(
+            CurrencyPlayerData.CURRENCIES,
+            data -> {
+                WholeAmount previous = balance(data, checked);
+                WholeAmount updated = previous.add(amount);
+
+                if (checked.getDefinition()
+                    .getMaximumBalance()
+                    .map(maximum -> updated.compareTo(maximum) > 0)
+                    .orElse(false)) {
+                    return transaction(
+                        CurrencyTransaction.Status.MAXIMUM_EXCEEDED,
+                        previous,
+                        previous,
+                        "maximum-exceeded"
+                    );
+                }
+
+                data.getBalances().put(checked.getKey().toString(), updated.toString());
+
+                return transaction(CurrencyTransaction.Status.SUCCESS, previous, updated, "");
+            }
         );
-      }
-      WholeAmount updated = previous.subtract(amount);
-      data.getBalances().put(checked.getKey().toString(), updated.toString());
-      return transaction(CurrencyTransaction.Status.SUCCESS, previous, updated, "");
-    });
-  }
-
-  @Override
-  public CurrencyTransaction setBalance(final Currency currency, final WholeAmount balance) {
-    Currency checked = available(currency);
-    if (checked == null) {
-      return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
     }
-    if (balance == null) {
-      return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+
+    @Override
+    public CurrencyBatchTransaction depositAll(final Map<Currency, WholeAmount> amounts) {
+        Map<Currency, WholeAmount> checkedAmounts = new LinkedHashMap<>();
+
+        Objects.requireNonNull(amounts, "amounts").forEach((currency, amount) -> {
+            Currency checked = requireAvailable(currency);
+            WholeAmount checkedAmount = Objects.requireNonNull(amount, "amount");
+
+            if (!checkedAmount.isPositive()) {
+                throw new IllegalArgumentException("Currency deposit amount must be positive");
+            }
+
+            checkedAmounts.merge(checked, checkedAmount, WholeAmount::add);
+        });
+
+        return player.update(
+            CurrencyPlayerData.CURRENCIES,
+            data -> {
+                Map<CurrencyKey, WholeAmount> updated = new LinkedHashMap<>();
+
+                for (Map.Entry<Currency, WholeAmount> entry : checkedAmounts.entrySet()) {
+                    Currency currency = entry.getKey();
+                    WholeAmount balance = balance(data, currency).add(entry.getValue());
+
+                    if (currency.getDefinition()
+                        .getMaximumBalance()
+                        .map(maximum -> balance.compareTo(maximum) > 0)
+                        .orElse(false)) {
+                        return new CurrencyBatchTransaction(false, "maximum-exceeded", Map.of());
+                    }
+
+                    updated.put(currency.getKey(), balance);
+                }
+
+                updated.forEach((key, balance) -> data.getBalances().put(key.toString(), balance.toString()));
+
+                return new CurrencyBatchTransaction(true, "", updated);
+            }
+        );
     }
-    if (checked.getDefinition().getMaximumBalance()
-        .map(maximum -> balance.compareTo(maximum) > 0).orElse(false)) {
-      return failed(CurrencyTransaction.Status.MAXIMUM_EXCEEDED, "maximum-exceeded");
+
+    @Override
+    public CurrencyTransaction withdraw(final Currency currency, final WholeAmount amount) {
+        Currency checked = available(currency);
+
+        if (checked == null) {
+            return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
+        }
+
+        if (amount == null || !amount.isPositive()) {
+            return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+        }
+
+        return player.update(
+            CurrencyPlayerData.CURRENCIES,
+            data -> {
+                WholeAmount previous = balance(data, checked);
+
+                if (previous.compareTo(amount) < 0) {
+                    return transaction(
+                        CurrencyTransaction.Status.INSUFFICIENT_BALANCE,
+                        previous,
+                        previous,
+                        "insufficient-balance"
+                    );
+                }
+
+                WholeAmount updated = previous.subtract(amount);
+
+                data.getBalances().put(checked.getKey().toString(), updated.toString());
+
+                return transaction(CurrencyTransaction.Status.SUCCESS, previous, updated, "");
+            }
+        );
     }
-    return player.update(CurrencyPlayerData.CURRENCIES, data -> {
-      WholeAmount previous = balance(data, checked);
-      data.getBalances().put(checked.getKey().toString(), balance.toString());
-      return transaction(CurrencyTransaction.Status.SUCCESS, previous, balance, "");
-    });
-  }
 
-  @Override
-  public void onDataReset(final DataContainerKey<?> key) {
-    // Balances are read directly from VexPlayer data, so no derived cache needs rebuilding.
-  }
+    @Override
+    public CurrencyTransaction setBalance(final Currency currency, final WholeAmount balance) {
+        Currency checked = available(currency);
 
-  private static WholeAmount balance(final CurrencyData data, final Currency currency) {
-    String value = data.getBalances().get(
-        currency.getKey().toString()
-    );
-    if (value == null) {
-      return currency.getDefinition().getDefaultBalance();
+        if (checked == null) {
+            return failed(CurrencyTransaction.Status.UNAVAILABLE, "currency-unavailable");
+        }
+
+        if (balance == null) {
+            return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+        }
+
+        if (checked.getDefinition().getMaximumBalance().map(maximum -> balance.compareTo(maximum) > 0).orElse(false)) {
+            return failed(CurrencyTransaction.Status.MAXIMUM_EXCEEDED, "maximum-exceeded");
+        }
+
+        return player.update(
+            CurrencyPlayerData.CURRENCIES,
+            data -> {
+                WholeAmount previous = balance(data, checked);
+
+                data.getBalances().put(checked.getKey().toString(), balance.toString());
+
+                return transaction(CurrencyTransaction.Status.SUCCESS, previous, balance, "");
+            }
+        );
     }
-    return WholeAmount.parse(value);
-  }
 
-  private static Currency requireAvailable(final Currency currency) {
-    Currency checked = available(currency);
-    if (checked == null) {
-      throw new IllegalStateException("Currency registration is unavailable");
+    @Override
+    public void onDataReset(final DataContainerKey<?> key) {
+        // Balances are read directly from VexPlayer data, so no derived cache needs rebuilding.
     }
-    return checked;
-  }
 
-  private static Currency available(final Currency currency) {
-    Currency checked = Objects.requireNonNull(currency, "currency");
-    return checked.isRegistered() ? checked : null;
-  }
+    private static WholeAmount balance(final CurrencyData data, final Currency currency) {
+        String value = data.getBalances().get(currency.getKey().toString());
 
-  private static CurrencyTransaction failed(
-      final CurrencyTransaction.Status status,
-      final String message
-  ) {
-    return transaction(status, WholeAmount.ZERO, WholeAmount.ZERO, message);
-  }
+        if (value == null) {
+            return currency.getDefinition().getDefaultBalance();
+        }
 
-  private static CurrencyTransaction transaction(
-      final CurrencyTransaction.Status status,
-      final WholeAmount previous,
-      final WholeAmount balance,
-      final String message
-  ) {
-    return new CurrencyTransaction(status, previous, balance, message);
-  }
+        return WholeAmount.parse(value);
+    }
+
+    private static Currency requireAvailable(final Currency currency) {
+        Currency checked = available(currency);
+
+        if (checked == null) {
+            throw new IllegalStateException("Currency registration is unavailable");
+        }
+
+        return checked;
+    }
+
+    private static Currency available(final Currency currency) {
+        Currency checked = Objects.requireNonNull(currency, "currency");
+
+        return checked.isRegistered() ? checked : null;
+    }
+
+    private static CurrencyTransaction failed(final CurrencyTransaction.Status status, final String message) {
+        return transaction(status, WholeAmount.ZERO, WholeAmount.ZERO, message);
+    }
+
+    private static CurrencyTransaction transaction(
+        final CurrencyTransaction.Status status,
+        final WholeAmount previous,
+        final WholeAmount balance,
+        final String message
+    ) {
+        return new CurrencyTransaction(status, previous, balance, message);
+    }
 }

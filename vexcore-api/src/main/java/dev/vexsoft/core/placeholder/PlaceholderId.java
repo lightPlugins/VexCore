@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface PlaceholderId {
 
-  /** Returns the identifier below the owning plugin namespace. */
-  String value();
+    /** Returns the identifier below the owning plugin namespace. */
+    String value();
 }

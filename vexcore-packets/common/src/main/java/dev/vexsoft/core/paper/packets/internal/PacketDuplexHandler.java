@@ -7,9 +7,9 @@ import java.util.UUID;
  */
 public interface PacketDuplexHandler {
 
-  /** Rewrites an outbound packet before it reaches the client */
-  Object write(UUID viewerId, Object packet);
+    /** Rewrites an outbound packet before it reaches the client */
+    Object write(UUID viewerId, Object packet);
 
-  /** Rewrites an inbound packet or returns null to consume it */
-  Object read(UUID viewerId, Object packet);
+    /** Rewrites an inbound packet or returns null to consume it */
+    Object read(UUID viewerId, Object packet);
 }

@@ -12,26 +12,25 @@ import org.bukkit.inventory.meta.ItemMeta;
 /** Builds uniformly modelled menu entries on top of NAME_TAG items. */
 public final class LevelMenuItems {
 
-  private LevelMenuItems() {}
-
-  /** Creates a localized level item while keeping the physical material fixed to NAME_TAG. */
-  public static ItemStack create(
-      final Key itemModel,
-      final Component name,
-      final List<Component> lore
-  ) {
-    ItemStack item = new ItemStack(Material.NAME_TAG);
-    ItemMeta meta = item.getItemMeta();
-    meta.displayName(Objects.requireNonNull(name, "name"));
-    meta.lore(List.copyOf(Objects.requireNonNull(lore, "lore")));
-    NamespacedKey model = NamespacedKey.fromString(
-        Objects.requireNonNull(itemModel, "itemModel").asString()
-    );
-    if (model == null) {
-      throw new IllegalArgumentException("Invalid item model: " + itemModel.asString());
+    private LevelMenuItems() {
     }
-    meta.setItemModel(model);
-    item.setItemMeta(meta);
-    return item;
-  }
+
+    /** Creates a localized level item while keeping the physical material fixed to NAME_TAG. */
+    public static ItemStack create(final Key itemModel, final Component name, final List<Component> lore) {
+        ItemStack item = new ItemStack(Material.NAME_TAG);
+        ItemMeta meta = item.getItemMeta();
+
+        meta.displayName(Objects.requireNonNull(name, "name"));
+        meta.lore(List.copyOf(Objects.requireNonNull(lore, "lore")));
+        NamespacedKey model = NamespacedKey.fromString(Objects.requireNonNull(itemModel, "itemModel").asString());
+
+        if (model == null) {
+            throw new IllegalArgumentException("Invalid item model: " + itemModel.asString());
+        }
+
+        meta.setItemModel(model);
+        item.setItemMeta(meta);
+
+        return item;
+    }
 }

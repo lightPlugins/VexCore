@@ -14,18 +14,15 @@ import org.junit.jupiter.api.Test;
 /** Verifies the owner-scoped damage-overlay service contract. */
 final class VexBlockDamageOverlayPacketServiceTest {
 
-  @Test
-  void declaresItemDisplayDependencyAndRegistryConstructor() throws NoSuchMethodException {
-    Dependencies dependencies = VexBlockDamageOverlayPacketService.class
-        .getAnnotation(Dependencies.class);
-    Constructor<VexBlockDamageOverlayPacketService> constructor =
-        VexBlockDamageOverlayPacketService.class.getConstructor(VexServiceRegistry.class);
+    @Test
+    void declaresItemDisplayDependencyAndRegistryConstructor() throws NoSuchMethodException {
+        Dependencies dependencies = VexBlockDamageOverlayPacketService.class.getAnnotation(Dependencies.class);
+        Constructor<VexBlockDamageOverlayPacketService> constructor =
+            VexBlockDamageOverlayPacketService.class.getConstructor(VexServiceRegistry.class);
 
-    assertArrayEquals(new Class<?>[]{ItemDisplayPacketService.class}, dependencies.value());
-    assertTrue(Modifier.isPublic(constructor.getModifiers()));
-    assertTrue(BlockDamageOverlayPacketService.class.isAssignableFrom(
-        VexBlockDamageOverlayPacketService.class
-    ));
-    assertTrue(AutoCloseable.class.isAssignableFrom(VexBlockDamageOverlayPacketService.class));
-  }
+        assertArrayEquals(new Class<?>[]{ItemDisplayPacketService.class}, dependencies.value());
+        assertTrue(Modifier.isPublic(constructor.getModifiers()));
+        assertTrue(BlockDamageOverlayPacketService.class.isAssignableFrom(VexBlockDamageOverlayPacketService.class));
+        assertTrue(AutoCloseable.class.isAssignableFrom(VexBlockDamageOverlayPacketService.class));
+    }
 }

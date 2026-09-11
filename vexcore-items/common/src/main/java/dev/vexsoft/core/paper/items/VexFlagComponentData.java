@@ -5,7 +5,7 @@ package dev.vexsoft.core.paper.items;
  */
 public final class VexFlagComponentData extends VexComponentData<Void> {
 
-  VexFlagComponentData(final VexComponentKey key, final VexComponentTarget target) {
-    super(key, target, Void.class, value -> value);
-  }
+    VexFlagComponentData(final VexComponentKey key, final VexComponentTarget target) {
+        super(key, target, Void.class, value -> value);
+    }
 }

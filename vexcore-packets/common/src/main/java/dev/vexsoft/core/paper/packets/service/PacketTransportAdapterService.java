@@ -9,9 +9,9 @@ import org.bukkit.entity.Player;
  */
 public interface PacketTransportAdapterService extends VexService {
 
-  /** Sends one native packet object to the given player */
-  void send(Player player, Object packet);
+    /** Sends one native packet object to the given player */
+    void send(Player player, Object packet);
 
-  /** Sends native packet objects as one bundle when supported */
-  void sendBundle(Player player, List<Object> packets);
+    /** Sends native packet objects as one bundle when supported */
+    void sendBundle(Player player, List<Object> packets);
 }

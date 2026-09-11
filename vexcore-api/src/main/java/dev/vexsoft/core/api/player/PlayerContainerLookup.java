@@ -7,6 +7,6 @@ import org.jetbrains.annotations.ApiStatus;
 @FunctionalInterface
 public interface PlayerContainerLookup {
 
-  /** Returns the registered slot, or {@code -1} when the type is unknown. */
-  int findSlot(Class<? extends PlayerContainer> type);
+    /** Returns the registered slot, or {@code -1} when the type is unknown. */
+    int findSlot(Class<? extends PlayerContainer> type);
 }

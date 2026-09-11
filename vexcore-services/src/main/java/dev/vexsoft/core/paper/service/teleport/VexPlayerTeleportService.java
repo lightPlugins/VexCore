@@ -12,18 +12,14 @@ import java.util.concurrent.CompletableFuture;
 @Dependencies(TeleportCoordinatorService.class)
 public final class VexPlayerTeleportService implements PlayerTeleportService {
 
-  private final TeleportCoordinatorService coordinator;
+    private final TeleportCoordinatorService coordinator;
 
-  public VexPlayerTeleportService(final VexServiceRegistry services) {
-    coordinator = Objects.requireNonNull(services, "services")
-        .require(TeleportCoordinatorService.class);
-  }
+    public VexPlayerTeleportService(final VexServiceRegistry services) {
+        coordinator = Objects.requireNonNull(services, "services").require(TeleportCoordinatorService.class);
+    }
 
-  @Override
-  public CompletableFuture<TeleportResult> teleport(
-      final VexPlayer player,
-      final ServerPosition destination
-  ) {
-    return coordinator.teleport(player, destination);
-  }
+    @Override
+    public CompletableFuture<TeleportResult> teleport(final VexPlayer player, final ServerPosition destination) {
+        return coordinator.teleport(player, destination);
+    }
 }

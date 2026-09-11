@@ -8,13 +8,9 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class ProxyDebugMessages {
 
-  public static final MessageType<ProxyPingRequest> PING_REQUEST = MessageType.json(
-      MessageKey.of("vexcore", "debug-proxy-ping-request"),
-      ProxyPingRequest.class
-  );
+    public static final MessageType<ProxyPingRequest> PING_REQUEST =
+        MessageType.json(MessageKey.of("vexcore", "debug-proxy-ping-request"), ProxyPingRequest.class);
 
-  public static final MessageType<ProxyPingResponse> PING_RESPONSE = MessageType.json(
-      MessageKey.of("vexcore", "debug-proxy-ping-response"),
-      ProxyPingResponse.class
-  );
+    public static final MessageType<ProxyPingResponse> PING_RESPONSE =
+        MessageType.json(MessageKey.of("vexcore", "debug-proxy-ping-response"), ProxyPingResponse.class);
 }

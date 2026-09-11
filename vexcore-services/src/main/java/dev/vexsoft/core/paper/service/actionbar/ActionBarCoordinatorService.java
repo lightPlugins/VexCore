@@ -8,36 +8,31 @@ import org.bukkit.entity.Player;
 /** Coordinates action-bar channels across all owner-scoped Vex plugins. */
 public interface ActionBarCoordinatorService extends VexService {
 
-  void setSuppressed(ServiceOwner owner, Player player, String channel, boolean suppressed);
+    /** Adds or removes an owner's channel suppression while preserving the player's action-bar contents. */
+    void setSuppressed(ServiceOwner owner, Player player, String channel, boolean suppressed);
 
-  /** Sets or replaces one persistent owner channel. */
-  void setPersistent(
-      ServiceOwner owner,
-      Player player,
-      String channel,
-      Component component,
-      int priority
-  );
+    /** Sets or replaces one persistent owner channel. */
+    void setPersistent(ServiceOwner owner, Player player, String channel, Component component, int priority);
 
-  /** Sets or replaces one temporary owner channel. */
-  void showTemporary(
-      ServiceOwner owner,
-      Player player,
-      String channel,
-      Component component,
-      long durationTicks,
-      int priority
-  );
+    /** Sets or replaces one temporary owner channel. */
+    void showTemporary(
+        ServiceOwner owner,
+        Player player,
+        String channel,
+        Component component,
+        long durationTicks,
+        int priority
+    );
 
-  /** Removes one persistent owner channel. */
-  void clearPersistent(ServiceOwner owner, Player player, String channel);
+    /** Removes one persistent owner channel. */
+    void clearPersistent(ServiceOwner owner, Player player, String channel);
 
-  /** Removes one temporary owner channel. */
-  void clearTemporary(ServiceOwner owner, Player player, String channel);
+    /** Removes one temporary owner channel. */
+    void clearTemporary(ServiceOwner owner, Player player, String channel);
 
-  /** Removes every channel belonging to an owner for one player. */
-  void clear(ServiceOwner owner, Player player);
+    /** Removes every channel belonging to an owner for one player. */
+    void clear(ServiceOwner owner, Player player);
 
-  /** Removes every channel belonging to an owner across all players. */
-  void clearOwner(ServiceOwner owner);
+    /** Removes every channel belonging to an owner across all players. */
+    void clearOwner(ServiceOwner owner);
 }

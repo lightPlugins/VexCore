@@ -9,7 +9,8 @@ import lombok.Value;
 /** Internal association between a virtual interaction entity and its callback policy. */
 @Value
 public class TrackedInteraction {
-  FakeInteractionHandle handle;
-  FakeInteractHandler interactHandler;
-  Set<DisplayLifecycle> lifecycle;
+
+    FakeInteractionHandle handle;
+    FakeInteractHandler interactHandler;
+    Set<DisplayLifecycle> lifecycle;
 }

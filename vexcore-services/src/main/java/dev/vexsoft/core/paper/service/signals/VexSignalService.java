@@ -19,60 +19,60 @@ import net.kyori.adventure.key.Key;
 @Dependencies(SignalRegistryService.class)
 public final class VexSignalService implements SignalService, AutoCloseable {
 
-  private final ServiceOwner owner;
-  private final SignalRegistryService registry;
-  private boolean closed;
+    private final ServiceOwner owner;
+    private final SignalRegistryService registry;
+    private boolean closed;
 
-  /**
-   * Creates an owner-scoped signal service.
-   *
-   * @param services registry used to determine the owner and resolve signal infrastructure
-   */
-  public VexSignalService(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    owner = checkedServices.getOwner();
-    registry = checkedServices.require(SignalRegistryService.class);
-  }
+    /**
+     * Creates an owner-scoped signal service.
+     *
+     * @param services registry used to determine the owner and resolve signal infrastructure
+     */
+    public VexSignalService(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-  @Override
-  public synchronized <S extends VexSignal> SignalSubscription subscribe(
-      final Class<S> signalType,
-      final SignalListener<? super S> listener
-  ) {
-    requireOpen();
-    return registry.subscribe(owner, signalType, listener);
-  }
-
-  @Override
-  public synchronized SignalSubscription subscribe(
-      final Key signalKey,
-      final SignalListener<VexSignal> listener
-  ) {
-    requireOpen();
-    return registry.subscribe(owner, signalKey, listener);
-  }
-
-  @Override
-  public SignalDispatchResult publish(final VexSignal signal) {
-    return registry.publish(signal);
-  }
-
-  @Override
-  public synchronized void unsubscribeAll() {
-    registry.unsubscribeAll(owner);
-  }
-
-  @Override
-  public synchronized void close() {
-    if (!closed) {
-      closed = true;
-      unsubscribeAll();
+        owner = checkedServices.getOwner();
+        registry = checkedServices.require(SignalRegistryService.class);
     }
-  }
 
-  private void requireOpen() {
-    if (closed) {
-      throw new IllegalStateException("SignalService is already closed");
+    @Override
+    public synchronized <S extends VexSignal> SignalSubscription subscribe(
+        final Class<S> signalType,
+        final SignalListener<? super S> listener
+    ) {
+        requireOpen();
+
+        return registry.subscribe(owner, signalType, listener);
     }
-  }
+
+    @Override
+    public synchronized SignalSubscription subscribe(final Key signalKey, final SignalListener<VexSignal> listener) {
+        requireOpen();
+
+        return registry.subscribe(owner, signalKey, listener);
+    }
+
+    @Override
+    public SignalDispatchResult publish(final VexSignal signal) {
+        return registry.publish(signal);
+    }
+
+    @Override
+    public synchronized void unsubscribeAll() {
+        registry.unsubscribeAll(owner);
+    }
+
+    @Override
+    public synchronized void close() {
+        if (!closed) {
+            closed = true;
+            unsubscribeAll();
+        }
+    }
+
+    private void requireOpen() {
+        if (closed) {
+            throw new IllegalStateException("SignalService is already closed");
+        }
+    }
 }

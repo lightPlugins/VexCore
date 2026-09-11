@@ -9,6 +9,6 @@ import java.util.function.Predicate;
  */
 public interface PageFilterControl<T> extends PageControl {
 
-  /** Returns the predicate applied for the selected mode and viewer */
-  Predicate<T> getPredicate(String modeId, InventoryKey inventoryKey, UUID viewerId);
+    /** Returns the predicate applied for the selected mode and viewer */
+    Predicate<T> getPredicate(String modeId, InventoryKey inventoryKey, UUID viewerId);
 }

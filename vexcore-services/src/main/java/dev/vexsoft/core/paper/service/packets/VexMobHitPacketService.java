@@ -7,17 +7,18 @@ import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
+/** Sends viewer-specific mob hit effects through the active packet adapter. */
 @Dependencies(EntityEffectPacketAdapterService.class)
 public final class VexMobHitPacketService implements MobHitPacketService {
 
-  private final EntityEffectPacketAdapterService adapter;
+    private final EntityEffectPacketAdapterService adapter;
 
-  public VexMobHitPacketService(final VexServiceRegistry services) {
-    this.adapter = services.require(EntityEffectPacketAdapterService.class);
-  }
+    public VexMobHitPacketService(final VexServiceRegistry services) {
+        this.adapter = services.require(EntityEffectPacketAdapterService.class);
+    }
 
-  @Override
-  public void playHit(final Player viewer, final LivingEntity target) {
-    adapter.playHit(viewer, target);
-  }
+    @Override
+    public void playHit(final Player viewer, final LivingEntity target) {
+        adapter.playHit(viewer, target);
+    }
 }

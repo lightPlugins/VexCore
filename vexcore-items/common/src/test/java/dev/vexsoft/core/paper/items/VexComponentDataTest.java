@@ -1,60 +1,57 @@
 package dev.vexsoft.core.paper.items;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public final class VexComponentDataTest {
 
-  @Test
-  public void copiesLoreBeforeStoringIt() {
-    List<Component> source = new ArrayList<>();
-    source.add(Component.text("First"));
+    @Test
+    public void copiesLoreBeforeStoringIt() {
+        List<Component> source = new ArrayList<>();
 
-    List<Component> normalized = VexComponentData.LORE.normalize(source);
-    source.add(Component.text("Second"));
+        source.add(Component.text("First"));
 
-    assertEquals(List.of(Component.text("First")), normalized);
-  }
+        List<Component> normalized = VexComponentData.LORE.normalize(source);
 
-  @Test
-  public void rejectsInvalidStackSizes() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> VexComponentData.MAX_STACK_SIZE.normalize(0)
-    );
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> VexComponentData.MAX_STACK_SIZE.normalize(100)
-    );
-  }
+        source.add(Component.text("Second"));
 
-  @Test
-  public void marksPresentationComponentsForPackets() {
-    assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.DISPLAY_NAME.getTarget());
-    assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.LORE.getTarget());
-  }
+        assertEquals(List.of(Component.text("First")), normalized);
+    }
 
-  @Test
-  public void exposesItemModelAndTooltipStyleAsItemComponents() {
-    NamespacedKey value = new NamespacedKey("vexcore", "default");
+    @Test
+    public void rejectsInvalidStackSizes() {
+        assertThrows(IllegalArgumentException.class, () -> VexComponentData.MAX_STACK_SIZE.normalize(0));
+        assertThrows(IllegalArgumentException.class, () -> VexComponentData.MAX_STACK_SIZE.normalize(100));
+    }
 
-    assertEquals(value, VexComponentData.ITEM_MODEL.normalize(value));
-    assertEquals(value, VexComponentData.TOOLTIP_STYLE.normalize(value));
-    assertEquals(VexComponentTarget.ITEM, VexComponentData.ITEM_MODEL.getTarget());
-    assertEquals(VexComponentTarget.ITEM, VexComponentData.TOOLTIP_STYLE.getTarget());
-  }
+    @Test
+    public void marksPresentationComponentsForPackets() {
+        assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.DISPLAY_NAME.getTarget());
+        assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.LORE.getTarget());
+    }
 
-  @Test
-  public void validatesPlayerHeadTexturesBeforeVersionAdaptation() {
-    VexPlayerHeadProfile profile = new VexPlayerHeadProfile("e30=");
+    @Test
+    public void exposesItemModelAndTooltipStyleAsItemComponents() {
+        NamespacedKey value = new NamespacedKey("vexcore", "default");
 
-    assertEquals(profile, VexComponentData.PLAYER_HEAD_PROFILE.normalize(profile));
-    assertEquals(VexComponentTarget.ITEM, VexComponentData.PLAYER_HEAD_PROFILE.getTarget());
-    assertThrows(IllegalArgumentException.class, () -> new VexPlayerHeadProfile("not base64"));
-  }
+        assertEquals(value, VexComponentData.ITEM_MODEL.normalize(value));
+        assertEquals(value, VexComponentData.TOOLTIP_STYLE.normalize(value));
+        assertEquals(VexComponentTarget.ITEM, VexComponentData.ITEM_MODEL.getTarget());
+        assertEquals(VexComponentTarget.ITEM, VexComponentData.TOOLTIP_STYLE.getTarget());
+    }
+
+    @Test
+    public void validatesPlayerHeadTexturesBeforeVersionAdaptation() {
+        VexPlayerHeadProfile profile = new VexPlayerHeadProfile("e30=");
+
+        assertEquals(profile, VexComponentData.PLAYER_HEAD_PROFILE.normalize(profile));
+        assertEquals(VexComponentTarget.ITEM, VexComponentData.PLAYER_HEAD_PROFILE.getTarget());
+        assertThrows(IllegalArgumentException.class, () -> new VexPlayerHeadProfile("not base64"));
+    }
 }

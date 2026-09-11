@@ -4,6 +4,6 @@ package dev.vexsoft.core.api.globaldata;
 @FunctionalInterface
 public interface GlobalDataRegistry {
 
-  /** Registers one global-data key. */
-  void register(GlobalDataKey<?> key);
+    /** Registers one global-data key. */
+    void register(GlobalDataKey<?> key);
 }

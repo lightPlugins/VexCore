@@ -8,33 +8,33 @@ import org.junit.jupiter.api.Test;
 
 final class CurrencyDefinitionTest {
 
-  @Test
-  void preservesKebabCaseValuesAndNormalizesNamespaces() {
-    CurrencyKey key = CurrencyKey.parse("Arcane-Monolith:Monolith-Dust");
+    @Test
+    void preservesKebabCaseValuesAndNormalizesNamespaces() {
+        CurrencyKey key = CurrencyKey.parse("Arcane-Monolith:Monolith-Dust");
 
-    assertEquals("arcane_monolith", key.namespace());
-    assertEquals("monolith-dust", key.value());
-    assertEquals("arcane_monolith:monolith-dust", key.toString());
-  }
+        assertEquals("arcane_monolith", key.namespace());
+        assertEquals("monolith-dust", key.value());
+        assertEquals("arcane_monolith:monolith-dust", key.toString());
+    }
 
-  @Test
-  void validatesBalancesAndBuildsLocalizationKeys() {
-    CurrencyKey key = CurrencyKey.of("arcane", "dust");
-    CurrencyDefinition definition = CurrencyDefinition.builder(key)
-        .defaultBalance(WholeAmount.of(5L))
-        .maximumBalance(WholeAmount.of(100L))
-        .build();
+    @Test
+    void validatesBalancesAndBuildsLocalizationKeys() {
+        CurrencyKey key = CurrencyKey.of("arcane", "dust");
+        CurrencyDefinition definition = CurrencyDefinition.builder(key)
+            .defaultBalance(WholeAmount.of(5L))
+            .maximumBalance(WholeAmount.of(100L))
+            .build();
 
-    assertEquals(WholeAmount.of(5L), definition.getDefaultBalance());
-    assertEquals(WholeAmount.of(100L), definition.getMaximumBalance().orElseThrow());
-    assertEquals("currencies.dust.name", definition.getNameKey());
-    assertEquals("currencies.dust.format", definition.getFormatKey());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> CurrencyDefinition.builder(key)
-            .defaultBalance(WholeAmount.of(2L))
-            .maximumBalance(WholeAmount.ONE)
-            .build()
-    );
-  }
+        assertEquals(WholeAmount.of(5L), definition.getDefaultBalance());
+        assertEquals(WholeAmount.of(100L), definition.getMaximumBalance().orElseThrow());
+        assertEquals("currencies.dust.name", definition.getNameKey());
+        assertEquals("currencies.dust.format", definition.getFormatKey());
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CurrencyDefinition.builder(key)
+                .defaultBalance(WholeAmount.of(2L))
+                .maximumBalance(WholeAmount.ONE)
+                .build()
+        );
+    }
 }

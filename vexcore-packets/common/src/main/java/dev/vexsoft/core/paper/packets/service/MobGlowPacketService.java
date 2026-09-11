@@ -10,9 +10,9 @@ import org.bukkit.entity.Player;
  */
 public interface MobGlowPacketService extends VexService {
 
-  /** Enables the colored glow effect for one viewer */
-  void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
+    /** Enables the colored glow effect for one viewer */
+    void setGlow(Player viewer, LivingEntity target, DisplayGlowColor color);
 
-  /** Removes the viewer-specific glow effect from the target */
-  void clearGlow(Player viewer, LivingEntity target);
+    /** Removes the viewer-specific glow effect from the target */
+    void clearGlow(Player viewer, LivingEntity target);
 }

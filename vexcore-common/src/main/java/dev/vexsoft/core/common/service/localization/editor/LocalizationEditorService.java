@@ -9,27 +9,18 @@ import java.util.Collection;
 /** Inspects and safely edits registered plugin localizations. */
 public interface LocalizationEditorService extends VexService {
 
-  Collection<LocalizationOwner> getOwners();
+    /** Returns the registered owners whose localization resources can be edited. */
+    Collection<LocalizationOwner> getOwners();
 
-  Collection<LanguageKey> getLanguages(String ownerName);
+    /** Returns the languages available for the selected owner. */
+    Collection<LanguageKey> getLanguages(String ownerName);
 
-  Collection<LocalizationBrowserNode> browse(
-      String ownerName,
-      LanguageKey language,
-      Path relativeDirectory
-  );
+    /** Lists localization files and subdirectories inside the selected language directory. */
+    Collection<LocalizationBrowserNode> browse(String ownerName, LanguageKey language, Path relativeDirectory);
 
-  Collection<LocalizationEntryView> getEntries(
-      String ownerName,
-      LanguageKey language,
-      Path relativeFile
-  );
+    /** Returns the file's localized entries, including entries supplied by the English fallback. */
+    Collection<LocalizationEntryView> getEntries(String ownerName, LanguageKey language, Path relativeFile);
 
-  void update(
-      String ownerName,
-      LanguageKey language,
-      Path relativeFile,
-      String key,
-      LocalizationValue value
-  );
+    /** Saves one localized value and reloads its owner, restoring the previous file if reload fails. */
+    void update(String ownerName, LanguageKey language, Path relativeFile, String key, LocalizationValue value);
 }

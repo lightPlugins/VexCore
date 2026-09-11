@@ -9,12 +9,13 @@ import java.util.Optional;
  * Supplies the paths and resources needed to load plugin configurations
  */
 public interface ConfigurationOwner extends ServiceOwner {
-  /** Returns the root directory used to store this owner's configuration files */
-  Path getConfigurationDirectory();
 
-  /** Opens a bundled configuration resource when it exists */
-  Optional<InputStream> getConfigurationResource(String resourcePath);
+    /** Returns the root directory used to store this owner's configuration files */
+    Path getConfigurationDirectory();
 
-  /** Reports a non-fatal warning produced while processing configuration data */
-  void reportConfigurationWarning(String message, Throwable cause);
+    /** Opens a bundled configuration resource when it exists */
+    Optional<InputStream> getConfigurationResource(String resourcePath);
+
+    /** Reports a non-fatal warning produced while processing configuration data */
+    void reportConfigurationWarning(String message, Throwable cause);
 }

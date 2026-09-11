@@ -12,12 +12,13 @@ import org.bukkit.Color;
 @Value
 @Builder(toBuilder = true)
 public class VexCustomModelData {
-  @Singular("floatValue")
-  List<Float> floatValues;
-  @Singular("flagValue")
-  List<Boolean> flagValues;
-  @Singular("stringValue")
-  List<String> stringValues;
-  @Singular("colorValue")
-  List<Color> colorValues;
+
+    @Singular("floatValue")
+    List<Float> floatValues;
+    @Singular("flagValue")
+    List<Boolean> flagValues;
+    @Singular("stringValue")
+    List<String> stringValues;
+    @Singular("colorValue")
+    List<Color> colorValues;
 }

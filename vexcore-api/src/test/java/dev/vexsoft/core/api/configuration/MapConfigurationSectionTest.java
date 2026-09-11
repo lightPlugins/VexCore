@@ -13,44 +13,40 @@ import org.junit.jupiter.api.Test;
 
 class MapConfigurationSectionTest {
 
-  @Test
-  void recursivelyCopiesAndResolvesValues() {
-    Map<String, Object> nestedValues = new LinkedHashMap<>();
-    nestedValues.put("amount", 4);
-    Map<String, Object> source = new LinkedHashMap<>();
-    source.put("reward", nestedValues);
-    source.put("names", List.of("cod", "salmon", 3));
+    @Test
+    void recursivelyCopiesAndResolvesValues() {
+        Map<String, Object> nestedValues = new LinkedHashMap<>();
 
-    MapConfigurationSection section = new MapConfigurationSection(source);
-    nestedValues.put("amount", 99);
+        nestedValues.put("amount", 4);
+        Map<String, Object> source = new LinkedHashMap<>();
 
-    assertEquals(4, section.getInt("reward.amount", 0));
-    assertEquals(List.of("cod", "salmon"), section.getStringList("names"));
-    assertTrue(section.contains("reward.amount"));
-    assertFalse(section.contains("reward.missing"));
-  }
+        source.put("reward", nestedValues);
+        source.put("names", List.of("cod", "salmon", 3));
 
-  @Test
-  void exposesConsistentDeepKeysAndValues() {
-    MapConfigurationSection section = new MapConfigurationSection(Map.of(
-        "reward", Map.of("amount", 4, "type", "item")
-    ));
+        MapConfigurationSection section = new MapConfigurationSection(source);
 
-    assertEquals(
-        Set.of("reward", "reward.amount", "reward.type"),
-        section.getKeys(true)
-    );
-    assertEquals(
-        Map.of("reward.amount", 4, "reward.type", "item"),
-        section.getValues(true)
-    );
-  }
+        nestedValues.put("amount", 99);
 
-  @Test
-  void rejectsMutation() {
-    MapConfigurationSection section = new MapConfigurationSection(Map.of());
+        assertEquals(4, section.getInt("reward.amount", 0));
+        assertEquals(List.of("cod", "salmon"), section.getStringList("names"));
+        assertTrue(section.contains("reward.amount"));
+        assertFalse(section.contains("reward.missing"));
+    }
 
-    assertThrows(UnsupportedOperationException.class, () -> section.set("value", 1));
-    assertThrows(UnsupportedOperationException.class, () -> section.getValues(false).clear());
-  }
+    @Test
+    void exposesConsistentDeepKeysAndValues() {
+        MapConfigurationSection section =
+            new MapConfigurationSection(Map.of("reward", Map.of("amount", 4, "type", "item")));
+
+        assertEquals(Set.of("reward", "reward.amount", "reward.type"), section.getKeys(true));
+        assertEquals(Map.of("reward.amount", 4, "reward.type", "item"), section.getValues(true));
+    }
+
+    @Test
+    void rejectsMutation() {
+        MapConfigurationSection section = new MapConfigurationSection(Map.of());
+
+        assertThrows(UnsupportedOperationException.class, () -> section.set("value", 1));
+        assertThrows(UnsupportedOperationException.class, () -> section.getValues(false).clear());
+    }
 }

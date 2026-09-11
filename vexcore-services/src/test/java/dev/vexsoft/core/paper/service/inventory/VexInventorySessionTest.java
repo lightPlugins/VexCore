@@ -14,62 +14,72 @@ import org.junit.jupiter.api.Test;
 
 class VexInventorySessionTest {
 
-  @Test
-  void popsMultipleViewsWithoutOffByOneErrors() {
-    VexInventorySession session = session();
-    TestView menuA = new TestView("test:a");
-    TestView menuB = new TestView("test:b");
-    session.push(menuA);
-    session.push(menuB);
+    @Test
+    void popsMultipleViewsWithoutOffByOneErrors() {
+        VexInventorySession session = session();
+        TestView menuA = new TestView("test:a");
+        TestView menuB = new TestView("test:b");
 
-    assertSame(menuA, session.pop(2));
-    assertTrue(session.getHistory().isEmpty());
-  }
+        session.push(menuA);
+        session.push(menuB);
 
-  @Test
-  void popsDirectlyToTheNearestMatchingKey() {
-    VexInventorySession session = session();
-    TestView menuA = new TestView("test:a");
-    session.push(menuA);
-    session.push(new TestView("test:b"));
-
-    assertSame(menuA, session.popTo(menuA.getKey()).orElseThrow());
-    assertTrue(session.getHistory().isEmpty());
-  }
-
-  private VexInventorySession session() {
-    UUID viewerId = UUID.randomUUID();
-    return new VexInventorySession(
-        viewerId,
-        new VexInventoryHolder((InventoryService) java.lang.reflect.Proxy.newProxyInstance(
-            InventoryService.class.getClassLoader(), new Class<?>[]{InventoryService.class},
-            (proxy, method, args) -> null), viewerId, InventoryKey.of("test:current"))
-    );
-  }
-
-  private record TestView(InventoryKey key) implements InventoryView {
-    private TestView(final String key) {
-      this(InventoryKey.of(key));
+        assertSame(menuA, session.pop(2));
+        assertTrue(session.getHistory().isEmpty());
     }
 
-    @Override
-    public InventoryKey getKey() {
-      return key;
+    @Test
+    void popsDirectlyToTheNearestMatchingKey() {
+        VexInventorySession session = session();
+        TestView menuA = new TestView("test:a");
+
+        session.push(menuA);
+        session.push(new TestView("test:b"));
+
+        assertSame(menuA, session.popTo(menuA.getKey()).orElseThrow());
+        assertTrue(session.getHistory().isEmpty());
     }
 
-    @Override
-    public int getSize() {
-      return 9;
+    private VexInventorySession session() {
+        UUID viewerId = UUID.randomUUID();
+
+        return new VexInventorySession(
+            viewerId,
+            new VexInventoryHolder(
+                (InventoryService) java.lang.reflect.Proxy.newProxyInstance(
+                    InventoryService.class.getClassLoader(),
+                    new Class<?>[]{InventoryService.class},
+                    (proxy, method, args) -> null
+                ),
+                viewerId,
+                InventoryKey.of("test:current")
+            )
+        );
     }
 
-    @Override
-    public Component getTitle(final InventoryContext context) {
-      return Component.empty();
-    }
+    private record TestView(InventoryKey key) implements InventoryView {
 
-    @Override
-    public Map<Integer, InventoryElement> getElements(final InventoryContext context) {
-      return Map.of();
+        private TestView(final String key) {
+            this(InventoryKey.of(key));
+        }
+
+        @Override
+        public InventoryKey getKey() {
+            return key;
+        }
+
+        @Override
+        public int getSize() {
+            return 9;
+        }
+
+        @Override
+        public Component getTitle(final InventoryContext context) {
+            return Component.empty();
+        }
+
+        @Override
+        public Map<Integer, InventoryElement> getElements(final InventoryContext context) {
+            return Map.of();
+        }
     }
-  }
 }

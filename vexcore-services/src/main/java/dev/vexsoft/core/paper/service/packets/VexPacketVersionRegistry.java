@@ -10,44 +10,45 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Registers packet adapters and resolves their definitions by supported Minecraft version. */
 public final class VexPacketVersionRegistry implements PacketVersionRegistry {
 
-  private final VexServiceRegistry services;
-  private final Map<MinecraftVersion, PacketVersionDefinition> definitions = new LinkedHashMap<>();
+    private final VexServiceRegistry services;
+    private final Map<MinecraftVersion, PacketVersionDefinition> definitions = new LinkedHashMap<>();
 
-  public VexPacketVersionRegistry(final VexServiceRegistry services) {
-    this.services = services;
-  }
-
-  @Override
-  public void register(final Class<? extends PacketVersionDefinition> definitionType) {
-    PacketVersionDefinition definition = VexClassFactory.create(
-        definitionType,
-        services,
-        "Packet version definition"
-    );
-    for (MinecraftVersion version : definition.getSupportedVersions()) {
-      PacketVersionDefinition existing = definitions.putIfAbsent(version, definition);
-      if (existing != null) {
-        throw new IllegalStateException("Packet version is already registered: " + version);
-      }
+    public VexPacketVersionRegistry(final VexServiceRegistry services) {
+        this.services = services;
     }
-  }
 
-  @Override
-  public PacketVersionDefinition require(final MinecraftVersion minecraftVersion) {
-    PacketVersionDefinition definition = definitions.get(minecraftVersion);
-    if (definition == null) {
-      throw new IllegalStateException(
-          "VexCore does not support Minecraft " + minecraftVersion
-              + " packets. Supported versions: " + getSupportedVersions()
-      );
+    @Override
+    public void register(final Class<? extends PacketVersionDefinition> definitionType) {
+        PacketVersionDefinition definition =
+            VexClassFactory.create(definitionType, services, "Packet version definition");
+
+        for (MinecraftVersion version : definition.getSupportedVersions()) {
+            PacketVersionDefinition existing = definitions.putIfAbsent(version, definition);
+
+            if (existing != null) {
+                throw new IllegalStateException("Packet version is already registered: " + version);
+            }
+        }
     }
-    return definition;
-  }
 
-  @Override
-  public Collection<MinecraftVersion> getSupportedVersions() {
-    return List.copyOf(definitions.keySet());
-  }
+    @Override
+    public PacketVersionDefinition require(final MinecraftVersion minecraftVersion) {
+        PacketVersionDefinition definition = definitions.get(minecraftVersion);
+
+        if (definition == null) {
+            throw new IllegalStateException(
+                "VexCore does not support Minecraft " + minecraftVersion + " packets. Supported versions: "
+                    + getSupportedVersions());
+        }
+
+        return definition;
+    }
+
+    @Override
+    public Collection<MinecraftVersion> getSupportedVersions() {
+        return List.copyOf(definitions.keySet());
+    }
 }

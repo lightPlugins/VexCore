@@ -114,83 +114,80 @@ import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
 import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
 import java.util.Objects;
 
+/** Registers the standard owner-bound services and listeners for Paper plugins. */
 @Dependencies
 public final class VexPluginBootstrapService implements PluginBootstrapService {
 
-  public VexPluginBootstrapService(final VexServiceRegistry services) {
-    Objects.requireNonNull(services, "services");
-  }
+    public VexPluginBootstrapService(final VexServiceRegistry services) {
+        Objects.requireNonNull(services, "services");
+    }
 
-  @Override
-  public void initialize(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
-    checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
-    checkedServices.register(ScheduleService.class, VexScheduleService.class);
-    checkedServices.register(ActionBarService.class, VexActionBarService.class);
-    checkedServices.register(SidebarService.class, VexSidebarService.class);
-    checkedServices.register(InventoryService.class, VexInventoryService.class);
-    checkedServices.register(CommandService.class, VexCommandService.class);
-    checkedServices.register(CacheService.class, VexCacheService.class);
-    checkedServices.register(SignalService.class, VexSignalService.class);
-    checkedServices.register(ListenerService.class, VexListenerService.class);
-    checkedServices.register(DialogService.class, VexDialogService.class);
-    checkedServices.register(ItemService.class, VexItemService.class);
-    checkedServices.register(DataService.class, VexDataService.class);
-    checkedServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
-    checkedServices.register(LocalizationService.class, VexLocalizationService.class);
-    checkedServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
-    checkedServices.register(SendMessageService.class, VexSendMessageService.class);
-    checkedServices.register(MessagingService.class, VexMessagingService.class);
-    checkedServices.register(GlobalDataService.class, VexGlobalDataService.class);
-    checkedServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
-    checkedServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
-    checkedServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
-    checkedServices.register(
-        PlaceholderApiBridgeService.class, VexPlaceholderApiBridgeService.class);
-    checkedServices.register(StatRegistry.class, VexStatRegistry.class);
-    checkedServices.register(CurrencyRegistry.class, VexCurrencyRegistry.class);
-    checkedServices.register(
-        CurrencyLocalizationService.class, VexCurrencyLocalizationService.class);
-    checkedServices.register(ExpressionService.class, VexExpressionService.class);
-    checkedServices.register(RewardRegistry.class, VexRewardRegistry.class);
-    checkedServices.register(RewardService.class, VexRewardService.class);
-    checkedServices.register(CostRegistry.class, VexCostRegistry.class);
-    checkedServices.register(CostService.class, VexCostService.class);
-    checkedServices.register(RequirementRegistry.class, VexRequirementRegistry.class);
-    checkedServices.register(RequirementService.class, VexRequirementService.class);
-    checkedServices.register(LevelService.class, VexLevelService.class);
-    checkedServices.register(LevelClaimService.class, VexLevelClaimService.class);
-    checkedServices.register(StatContributionRegistry.class, VexStatContributionRegistry.class);
-    checkedServices.register(MobRegistry.class, VexMobRegistry.class);
-    checkedServices.register(MobService.class, VexMobService.class);
-    checkedServices.register(MobSpawnerRegistry.class, VexMobSpawnerRegistry.class);
-    checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
-    checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
-    checkedServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
-    checkedServices.register(SkinService.class, VexSkinService.class);
-    checkedServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
-    checkedServices.register(CameraPacketService.class, VexCameraPacketService.class);
-    checkedServices.register(
-        BlockDamageOverlayPacketService.class, VexBlockDamageOverlayPacketService.class);
-    checkedServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
-    checkedServices.register(
-        DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
-    checkedServices.register(
-        InteractableHologramService.class, VexInteractableHologramService.class);
-    checkedServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
-    checkedServices.register(
-        PlayerAnimationPacketService.class, VexPlayerAnimationPacketService.class);
-    checkedServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
-    checkedServices.register(LightningPacketService.class, VexLightningPacketService.class);
-    checkedServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
-  }
+    @Override
+    public void initialize(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-  @Override
-  public void enable(final VexServiceRegistry services) {
-    VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-    checkedServices.require(PlaceholderApiBridgeService.class).enable();
-    checkedServices.require(ListenerService.class).register(VexInventoryListener.class, services);
-    checkedServices.require(ListenerService.class).register(VexPlayerDummyListener.class, services);
-  }
+        checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
+        checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
+        checkedServices.register(ScheduleService.class, VexScheduleService.class);
+        checkedServices.register(ActionBarService.class, VexActionBarService.class);
+        checkedServices.register(SidebarService.class, VexSidebarService.class);
+        checkedServices.register(InventoryService.class, VexInventoryService.class);
+        checkedServices.register(CommandService.class, VexCommandService.class);
+        checkedServices.register(CacheService.class, VexCacheService.class);
+        checkedServices.register(SignalService.class, VexSignalService.class);
+        checkedServices.register(ListenerService.class, VexListenerService.class);
+        checkedServices.register(DialogService.class, VexDialogService.class);
+        checkedServices.register(ItemService.class, VexItemService.class);
+        checkedServices.register(DataService.class, VexDataService.class);
+        checkedServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
+        checkedServices.register(LocalizationService.class, VexLocalizationService.class);
+        checkedServices.register(LocalizedMessageService.class, VexLocalizedMessageService.class);
+        checkedServices.register(SendMessageService.class, VexSendMessageService.class);
+        checkedServices.register(MessagingService.class, VexMessagingService.class);
+        checkedServices.register(GlobalDataService.class, VexGlobalDataService.class);
+        checkedServices.register(PlaceholderService.class, VexPaperPlaceholderService.class);
+        checkedServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
+        checkedServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
+        checkedServices.register(PlaceholderApiBridgeService.class, VexPlaceholderApiBridgeService.class);
+        checkedServices.register(StatRegistry.class, VexStatRegistry.class);
+        checkedServices.register(CurrencyRegistry.class, VexCurrencyRegistry.class);
+        checkedServices.register(CurrencyLocalizationService.class, VexCurrencyLocalizationService.class);
+        checkedServices.register(ExpressionService.class, VexExpressionService.class);
+        checkedServices.register(RewardRegistry.class, VexRewardRegistry.class);
+        checkedServices.register(RewardService.class, VexRewardService.class);
+        checkedServices.register(CostRegistry.class, VexCostRegistry.class);
+        checkedServices.register(CostService.class, VexCostService.class);
+        checkedServices.register(RequirementRegistry.class, VexRequirementRegistry.class);
+        checkedServices.register(RequirementService.class, VexRequirementService.class);
+        checkedServices.register(LevelService.class, VexLevelService.class);
+        checkedServices.register(LevelClaimService.class, VexLevelClaimService.class);
+        checkedServices.register(StatContributionRegistry.class, VexStatContributionRegistry.class);
+        checkedServices.register(MobRegistry.class, VexMobRegistry.class);
+        checkedServices.register(MobService.class, VexMobService.class);
+        checkedServices.register(MobSpawnerRegistry.class, VexMobSpawnerRegistry.class);
+        checkedServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
+        checkedServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
+        checkedServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
+        checkedServices.register(SkinService.class, VexSkinService.class);
+        checkedServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
+        checkedServices.register(CameraPacketService.class, VexCameraPacketService.class);
+        checkedServices.register(BlockDamageOverlayPacketService.class, VexBlockDamageOverlayPacketService.class);
+        checkedServices.register(InteractionPacketService.class, VexInteractionPacketService.class);
+        checkedServices.register(DisplayPassengerPacketService.class, VexDisplayPassengerPacketService.class);
+        checkedServices.register(InteractableHologramService.class, VexInteractableHologramService.class);
+        checkedServices.register(MobHitPacketService.class, VexMobHitPacketService.class);
+        checkedServices.register(PlayerAnimationPacketService.class, VexPlayerAnimationPacketService.class);
+        checkedServices.register(MobGlowPacketService.class, VexMobGlowPacketService.class);
+        checkedServices.register(LightningPacketService.class, VexLightningPacketService.class);
+        checkedServices.register(FakeItemMetaService.class, VexFakeItemMetaService.class);
+    }
+
+    @Override
+    public void enable(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
+
+        checkedServices.require(PlaceholderApiBridgeService.class).enable();
+        checkedServices.require(ListenerService.class).register(VexInventoryListener.class, services);
+        checkedServices.require(ListenerService.class).register(VexPlayerDummyListener.class, services);
+    }
 }

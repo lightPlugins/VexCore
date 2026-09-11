@@ -9,36 +9,35 @@ import net.minecraft.world.entity.Entity;
 @UtilityClass
 public class V26_2PassengerPackets {
 
-  private static final Field VEHICLE = findField("vehicle", "f_133272_", "b");
-  private static final Field PASSENGERS = findField("passengers", "f_133273_", "c");
+    private static final Field VEHICLE = findField("vehicle", "f_133272_", "b");
+    private static final Field PASSENGERS = findField("passengers", "f_133273_", "c");
 
-  public static Object create(
-      final Entity packetVehicle,
-      final int vehicleEntityId,
-      final int[] passengerEntityIds
-  ) {
-    ClientboundSetPassengersPacket packet = new ClientboundSetPassengersPacket(packetVehicle);
-    try {
-      VEHICLE.setInt(packet, vehicleEntityId);
-      PASSENGERS.set(packet, passengerEntityIds.clone());
-      return packet;
-    } catch (IllegalAccessException exception) {
-      throw new IllegalStateException("Unable to create fake passenger packet", exception);
-    }
-  }
+    public static Object create(final Entity packetVehicle, final int vehicleEntityId, final int[] passengerEntityIds) {
+        ClientboundSetPassengersPacket packet = new ClientboundSetPassengersPacket(packetVehicle);
 
-  private static Field findField(final String... names) {
-    for (String name : names) {
-      try {
-        Field field = ClientboundSetPassengersPacket.class.getDeclaredField(name);
-        field.setAccessible(true);
-        return field;
-      } catch (ReflectiveOperationException ignored) {
-        // Names can differ between development and production mappings
-      }
+        try {
+            VEHICLE.setInt(packet, vehicleEntityId);
+            PASSENGERS.set(packet, passengerEntityIds.clone());
+
+            return packet;
+        } catch (IllegalAccessException exception) {
+            throw new IllegalStateException("Unable to create fake passenger packet", exception);
+        }
     }
-    throw new IllegalStateException(
-        "Unable to resolve ClientboundSetPassengersPacket field " + List.of(names)
-    );
-  }
+
+    private static Field findField(final String... names) {
+        for (String name : names) {
+            try {
+                Field field = ClientboundSetPassengersPacket.class.getDeclaredField(name);
+
+                field.setAccessible(true);
+
+                return field;
+            } catch (ReflectiveOperationException ignored) {
+                // Names can differ between development and production mappings
+            }
+        }
+
+        throw new IllegalStateException("Unable to resolve ClientboundSetPassengersPacket field " + List.of(names));
+    }
 }

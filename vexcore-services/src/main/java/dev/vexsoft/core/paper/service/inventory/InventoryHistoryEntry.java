@@ -8,11 +8,11 @@ import lombok.Getter;
 @Getter
 final class InventoryHistoryEntry {
 
-  private final InventoryKey key;
-  private final InventoryView view;
+    private final InventoryKey key;
+    private final InventoryView view;
 
-  InventoryHistoryEntry(final InventoryView view) {
-    this.view = Objects.requireNonNull(view, "view");
-    this.key = view.getKey();
-  }
+    InventoryHistoryEntry(final InventoryView view) {
+        this.view = Objects.requireNonNull(view, "view");
+        this.key = view.getKey();
+    }
 }

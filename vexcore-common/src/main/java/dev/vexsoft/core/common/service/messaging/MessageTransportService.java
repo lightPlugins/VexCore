@@ -7,12 +7,12 @@ import java.util.function.Consumer;
 /** Connects the shared messaging layer to its current server platform */
 public interface MessageTransportService extends VexService {
 
-  /** Starts platform listeners after the owning plugin has initialized */
-  void start();
+    /** Starts platform listeners after the owning plugin has initialized */
+    void start();
 
-  /** Sends one encoded message through the current platform */
-  DeliveryResult send(MessageEnvelope message);
+    /** Sends one encoded message through the current platform */
+    DeliveryResult send(MessageEnvelope message);
 
-  /** Registers a local receiver for decoded incoming messages */
-  AutoCloseable subscribe(Consumer<MessageEnvelope> receiver);
+    /** Registers a local receiver for decoded incoming messages */
+    AutoCloseable subscribe(Consumer<MessageEnvelope> receiver);
 }

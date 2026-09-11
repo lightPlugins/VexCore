@@ -7,13 +7,13 @@ import org.junit.jupiter.api.Test;
 
 class InventoryKeyTest {
 
-  @Test
-  void normalizesNamespacedKeys() {
-    assertEquals("vexskills:main/menu", InventoryKey.of(" VexSkills:Main/Menu ").getValue());
-  }
+    @Test
+    void normalizesNamespacedKeys() {
+        assertEquals("vexskills:main/menu", InventoryKey.of(" VexSkills:Main/Menu ").getValue());
+    }
 
-  @Test
-  void rejectsKeysWithoutNamespace() {
-    assertThrows(IllegalArgumentException.class, () -> InventoryKey.of("main"));
-  }
+    @Test
+    void rejectsKeysWithoutNamespace() {
+        assertThrows(IllegalArgumentException.class, () -> InventoryKey.of("main"));
+    }
 }

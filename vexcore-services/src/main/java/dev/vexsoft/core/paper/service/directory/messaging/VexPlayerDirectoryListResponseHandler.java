@@ -12,23 +12,21 @@ import java.util.Objects;
 
 /** Delivers Velocity network-player snapshots to the Paper directory cache. */
 @Dependencies(PlayerDirectoryCoordinatorService.class)
-public final class VexPlayerDirectoryListResponseHandler implements
-    MessageHandler<PlayerDirectoryListResponse> {
+public final class VexPlayerDirectoryListResponseHandler implements MessageHandler<PlayerDirectoryListResponse> {
 
-  private final PlayerDirectoryCoordinatorService directory;
+    private final PlayerDirectoryCoordinatorService directory;
 
-  public VexPlayerDirectoryListResponseHandler(final VexServiceRegistry services) {
-    directory = Objects.requireNonNull(services, "services")
-        .require(PlayerDirectoryCoordinatorService.class);
-  }
+    public VexPlayerDirectoryListResponseHandler(final VexServiceRegistry services) {
+        directory = Objects.requireNonNull(services, "services").require(PlayerDirectoryCoordinatorService.class);
+    }
 
-  @Override
-  public MessageType<PlayerDirectoryListResponse> getMessageType() {
-    return PlayerDirectoryMessages.LIST_RESPONSE;
-  }
+    @Override
+    public MessageType<PlayerDirectoryListResponse> getMessageType() {
+        return PlayerDirectoryMessages.LIST_RESPONSE;
+    }
 
-  @Override
-  public void handle(final PlayerDirectoryListResponse message, final MessageContext context) {
-    directory.complete(message);
-  }
+    @Override
+    public void handle(final PlayerDirectoryListResponse message, final MessageContext context) {
+        directory.complete(message);
+    }
 }

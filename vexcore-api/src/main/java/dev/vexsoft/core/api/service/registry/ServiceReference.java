@@ -1,6 +1,5 @@
 package dev.vexsoft.core.api.service.registry;
 
-
 import java.util.Optional;
 
 /**
@@ -13,25 +12,25 @@ import java.util.Optional;
  */
 public interface ServiceReference<T extends VexService> {
 
-  /**
-   * Resolves the currently registered service when one is available
-   *
-   * @return the current service, or an empty optional
-   */
-  Optional<T> find();
+    /**
+     * Resolves the currently registered service when one is available
+     *
+     * @return the current service, or an empty optional
+     */
+    Optional<T> find();
 
-  /**
-   * Resolves the currently registered service or fails when it is unavailable
-   *
-   * @return the current service
-   * @throws ServiceNotFoundException if the service is unavailable
-   */
-  T require();
+    /**
+     * Resolves the currently registered service or fails when it is unavailable
+     *
+     * @return the current service
+     * @throws ServiceNotFoundException if the service is unavailable
+     */
+    T require();
 
-  /**
-   * Checks whether the referenced service is currently registered
-   *
-   * @return {@code true} when the service is available
-   */
-  boolean isAvailable();
+    /**
+     * Checks whether the referenced service is currently registered
+     *
+     * @return {@code true} when the service is available
+     */
+    boolean isAvailable();
 }
