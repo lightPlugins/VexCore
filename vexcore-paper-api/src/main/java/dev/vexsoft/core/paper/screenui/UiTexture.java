@@ -24,6 +24,15 @@ public record UiTexture(Key fontPrefix, int codePoint, int width, int height, in
         return new UiTexture(Key.key("vexcore:ui/card_" + height), 0xE100, width, height, width + 9, -8);
     }
 
+    /** Creates a contributed anchored sprite on a 256-square atlas with two metadata rows. */
+    public static UiTexture sprite(Key asset, int width, int height) {
+        Objects.requireNonNull(asset, "asset");
+        if (width < 1 || width > 254 || height < 1 || height > 240) {
+            throw new IllegalArgumentException("Sprite content must fit 254 x 240 pixels");
+        }
+        return new UiTexture(Key.key(asset.namespace(), "sprite/" + asset.value()), 0xE100, width, height);
+    }
+
     /** Creates the layout using the supplied options and defaults for omitted settings. */
     public UiTexture(Key fontPrefix, int codePoint, int width, int height) {
         this(fontPrefix, codePoint, width, height, width + 1, 0);

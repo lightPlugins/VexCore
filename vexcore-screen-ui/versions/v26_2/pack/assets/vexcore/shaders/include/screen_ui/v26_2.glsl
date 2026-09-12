@@ -1,4 +1,4 @@
-// VexCore shader protocol 7. Constants are filled from protocol.properties at build time.
+// VexCore shader protocol 8. Constants are filled from protocol.properties at build time.
 // 26.2 BakedSheetGlyph emits TL, BL, BR, TR. Every quad starts on a multiple of four.
 #define VEX_BASE @base@
 #define VEX_STRIDE @stride@
@@ -10,13 +10,17 @@ float vexOwned = 0.0;
 
 vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
     int encoded = int(floor(position.y / float(VEX_STRIDE))) - VEX_BASE;
-    if (encoded < 0 || encoded >= 657 * VEX_Y_COUNT) return position;
+    if (encoded < 0 || encoded >= 711 * VEX_Y_COUNT) return position;
 
     int group = encoded / VEX_Y_COUNT;
     int kind = group / 9;
     int transition = -1;
     float scale = 1.0;
-    if (kind >= 25) {
+    bool sprite = kind >= 73;
+    if (sprite) {
+        scale = float(5 + kind - 73) / 10.0;
+        kind = 0;
+    } else if (kind >= 25) {
         transition = (kind - 25) / 6;
         scale = float(5 + (kind - 25) % 6) / 10.0;
         kind = 0;
@@ -28,7 +32,7 @@ vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
     bool card = kind == 2 || kind == 4 || kind == 6 || kind == 8;
     int anchor = group % 9;
     int localY = encoded % VEX_Y_COUNT + VEX_MIN_Y;
-    ivec2 cell = (panel || card) ? ivec2(256, 256) : ivec2(16, 14);
+    ivec2 cell = (panel || card || sprite) ? ivec2(256, 256) : ivec2(16, 14);
     int corner = vertexId % 4;
     bool bottom = corner == 1 || corner == 2;
     bool right = corner == 2 || corner == 3;

@@ -1,7 +1,7 @@
 # VexCore Screen UI
 
 Owner-scoped bossbar UI for Minecraft Java 26.2, using m5x7 and the matching resource-pack
-shader protocol 7. ArcaneMonolith uses this API for dialogue, quest progress, its permanent
+shader protocol 8. ArcaneMonolith uses this API for dialogue, quest progress, its permanent
 info card and item acquisition notifications. No client mod is required.
 
 ## Build and test
@@ -134,3 +134,28 @@ outside the bitmap atlas. Typographic minus/dashes, quotes, ellipses, bullets an
 ASCII equivalents; unsupported whitespace becomes a space and other missing glyphs become `?`.
 Styles and input/output budgets remain enforced. Contributed icon glyphs stay strict. This behavior
 uses existing pack glyphs and requires no resource-pack rebuild.
+
+## Contributed anchored sprites (protocol 8)
+
+`UiTexture.sprite(Key asset, int width, int height)` renders a plugin-owned bitmap with the existing
+screen anchor and scale presets (0.5 through 1.0). Static sprites use no animation payload. Declare
+content at most 254 x 240 pixels, beginning at (0, 2) on a 256 x 256 RGBA atlas; wider panels must be
+split. Metadata pixels are (0,0)=0x01565831 and (0,1)=0x01434F52. An alpha-1 pixel at
+(width-1,1) preserves the declared width+1 glyph advance. Leave unused canvas transparent.
+
+The plugin pack supplies bitmap fonts at `<namespace>:ui/v26_2/sprite/<asset-path>/<scale-percent>/<anchor>`.
+Each provider has height 256, the single E100 glyph, and ascent `8 - (encoded * 4096 + 512)` where
+`encoded = 1024 + ((73 + scale-tenth - 5) * 9 + anchor-ordinal) * 513 + 256`.
+The existing horizontal Y transport carries the runtime offset. Shader kinds 73..78 recognize
+256-square cells, preserve RGB/alpha and scale around the anchor. Font assets remain plugin-owned;
+VexCore supplies the rendering contract, validation and shared shader. Deploy the matching protocol-8
+pack and plugin together. Existing card/text/transition kinds retain their encoding.
+
+### Dialogue skins
+
+The four-argument `ScreenUiService.openDialogue` accepts a `DialoguePanelSkin`: up to eight static
+texture parts positioned relative to the standard panel and an optional reserved hint width. Parts
+must fit within 280 x 96. The built-in dialogue owns installation, replacement and cleanup, so callers
+retain the same pagination/reveal lifecycle without accessing internal screen element identifiers.
+The existing three-argument overload retains the default panel. Sprite skins require matching plugin
+assets in the accepted resource pack.

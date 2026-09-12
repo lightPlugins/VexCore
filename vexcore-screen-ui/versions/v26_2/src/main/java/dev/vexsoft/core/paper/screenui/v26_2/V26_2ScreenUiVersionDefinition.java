@@ -13,7 +13,7 @@ import java.util.Properties;
 import java.util.Set;
 import net.kyori.adventure.key.Key;
 
-/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 7. */
+/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 8. */
 @Dependencies
 public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefinition {
 
@@ -32,6 +32,9 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
 
     @Override
     public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, double scale) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, animated, scale);
+        }
         String prefix = scalePrefix(scale);
 
         if (scale == 1.0) {
@@ -100,6 +103,9 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
 
     @Override
     public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, false, 1.0);
+        }
         if (texture.equals(UiTexture.card(texture.height()))) {
             return font("card_" + texture.height(), anchor, y);
         }
@@ -123,6 +129,9 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
 
     @Override
     public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, boolean compact) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, animated, compact ? 0.5 : 1.0);
+        }
         if (!compact) {
             return animated ? animatedTextureFont(texture, anchor, y) : textureFont(texture, anchor, y);
         }
@@ -178,6 +187,17 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
         }
 
         return font("toast_card", anchor, y);
+    }
+
+    private Key spriteFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, double scale) {
+        UiScale.validate(scale);
+        horizontalTransport(y);
+        if (animated || texture.width() > 254 || texture.height() > 240 || texture.codePoint() != 0xE100
+            || texture.glyphOffsetX() != 0 || texture.glyphAdvance() != texture.width() + 1) {
+            throw new IllegalArgumentException("Invalid contributed sprite metrics or animation");
+        }
+        return Key.key(texture.fontPrefix().namespace(), "ui/v26_2/" + texture.fontPrefix().value()
+            + "/" + Math.round(scale * 100) + "/" + anchor.name().toLowerCase(Locale.ROOT));
     }
 
     private static Key font(String kind, ScreenAnchor anchor, int y) {

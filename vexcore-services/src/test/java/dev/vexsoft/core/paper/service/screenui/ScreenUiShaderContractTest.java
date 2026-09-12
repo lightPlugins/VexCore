@@ -19,12 +19,32 @@ final class ScreenUiShaderContractTest {
     private final V26_2ScreenUiVersionDefinition version = new V26_2ScreenUiVersionDefinition();
 
     @Test
+    void contributedSpritesResolveNamespacedFontsAndRejectInvalidContracts() {
+        var sprite = UiTexture.sprite(net.kyori.adventure.key.Key.key("demo:hud/frame"), 180, 56);
+        for (int tenth = 5; tenth <= 10; tenth++) {
+            for (ScreenAnchor anchor : ScreenAnchor.values()) {
+                assertEquals("demo:ui/v26_2/sprite/hud/frame/" + tenth * 10 + "/"
+                    + anchor.name().toLowerCase(Locale.ROOT),
+                    version.textureFont(sprite, anchor, 8, false, tenth / 10.0).asString());
+            }
+        }
+        assertThrows(IllegalArgumentException.class,
+            () -> UiTexture.sprite(net.kyori.adventure.key.Key.key("demo:wide"), 256, 56));
+        assertThrows(IllegalArgumentException.class,
+            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 8, true, 0.7));
+        assertThrows(IllegalArgumentException.class,
+            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 257, false, 0.7));
+        assertNotNull(ScreenUiRenderer.texture(sprite, TextureLayout.builder()
+            .anchor(ScreenAnchor.TOP_CENTER).x(-180).y(8).scale(0.7).build(), version));
+    }
+
+    @Test
     void transitionPresetsResolveAndDecodeTheirAnchorAfterFloatTransport() throws Exception {
         Properties protocol = new Properties();
         try (var input = Files.newInputStream(pack.resolve("vexcore-screen-ui.properties"))) {
             protocol.load(input);
         }
-        assertEquals("7", protocol.getProperty("protocol"));
+        assertEquals("8", protocol.getProperty("protocol"));
         int stride = Integer.parseInt(protocol.getProperty("stride"));
         int base = Integer.parseInt(protocol.getProperty("base"));
         int count = Integer.parseInt(protocol.getProperty("maxY")) - Integer.parseInt(protocol.getProperty("minY")) + 1;

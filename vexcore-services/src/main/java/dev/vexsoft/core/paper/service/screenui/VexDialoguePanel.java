@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.service.screenui;
 
 import dev.vexsoft.core.paper.screenui.DialoguePanel;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.TextBlockLayout;
@@ -17,11 +18,17 @@ public final class VexDialoguePanel implements DialoguePanel {
 
     private final ScreenUi screen;
     private final PreparedDialogue dialogue;
+    private final int hintInset;
     private int lastPage = -1;
     private int lastVisible = -1;
 
     public VexDialoguePanel(ScreenUi screen, PreparedDialogue dialogue) {
+        this(screen, dialogue, null);
+    }
+
+    public VexDialoguePanel(ScreenUi screen, PreparedDialogue dialogue, DialoguePanelSkin skin) {
         this.screen = screen;
+        hintInset = skin == null ? 0 : skin.hintInset();
         this.dialogue = dialogue;
         screen.remove("hint");
         var layout = dialogue.layout();
@@ -30,11 +37,21 @@ public final class VexDialoguePanel implements DialoguePanel {
             screen.remove("line-" + lineIndex);
         }
 
-        screen.textureBlock(
-            "panel",
-            UiTexture.PANEL,
-            TextureLayout.builder().anchor(layout.anchor()).x(layout.panelX()).y(layout.panelY()).layer(0).build()
-        );
+        screen.remove("panel");
+        for (int index = 0; index < 8; index++) {
+            screen.remove("skin-" + index);
+        }
+        if (skin == null) {
+            screen.textureBlock("panel", UiTexture.PANEL, TextureLayout.builder()
+                .anchor(layout.anchor()).x(layout.panelX()).y(layout.panelY()).layer(0).build());
+        } else {
+            for (int index = 0; index < skin.parts().size(); index++) {
+                var part = skin.parts().get(index);
+                screen.textureBlock("skin-" + index, part.texture(), TextureLayout.builder()
+                    .anchor(layout.anchor()).x(layout.panelX() + part.x()).y(layout.panelY() + part.y())
+                    .layer(index).build());
+            }
+        }
         screen.textBlock(
             "speaker",
             List.of(dialogue.speaker()),
@@ -75,7 +92,7 @@ public final class VexDialoguePanel implements DialoguePanel {
                 .anchor(layout.anchor())
                 .x(layout.textX())
                 .y(layout.hintY())
-                .maxWidth(layout.textWidth())
+                .maxWidth(layout.textWidth() - hintInset)
                 .overflow(TextOverflow.ELLIPSIS)
                 .layer(10)
                 .build()

@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.screenui.DialoguePanel;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
@@ -51,10 +52,15 @@ public final class VexScreenUiService implements ScreenUiService, AutoCloseable 
 
     @Override
     public DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue) {
+        return openDialogue(player, id, dialogue, null);
+    }
+
+    @Override
+    public DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue, DialoguePanelSkin skin) {
         ScreenUi screen = open(player, id);
 
         try {
-            return new VexDialoguePanel(screen, dialogue);
+            return new VexDialoguePanel(screen, dialogue, skin);
         } catch (RuntimeException exception) {
             screen.close();
             throw exception;

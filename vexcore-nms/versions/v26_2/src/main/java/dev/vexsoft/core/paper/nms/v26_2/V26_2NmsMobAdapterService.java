@@ -10,12 +10,22 @@ import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.minecraft.network.protocol.game.ClientboundUpdateAttributesPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.phys.Vec3;
+import org.bukkit.Location;
 import org.bukkit.craftbukkit.entity.CraftMob;
 import org.bukkit.entity.Mob;
 
@@ -28,6 +38,33 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
 
     public V26_2NmsMobAdapterService(final VexServiceRegistry services) {
         Objects.requireNonNull(services, "services");
+    }
+
+    @Override
+    public List<Object> visualSpawnPackets(final Mob mob) {
+        var entity = handle(mob).getHandle();
+        return List.of(
+            new ClientboundAddEntityPacket(entity.getId(), entity.getUUID(),
+                entity.getX(), entity.getY(), entity.getZ(), entity.getXRot(), entity.getYRot(), entity.getType(),
+                0, Vec3.ZERO, entity.getYHeadRot()),
+            new ClientboundSetEntityDataPacket(entity.getId(),
+                entity.getEntityData().packAll()),
+            new ClientboundUpdateAttributesPacket(entity.getId(),
+                entity.getAttributes().getSyncableAttributes()));
+    }
+
+    @Override
+    public Object visualMovePacket(final Mob mob, final Location location) {
+        var position = new PositionMoveRotation(
+            new Vec3(location.getX(), location.getY(), location.getZ()),
+            Vec3.ZERO, location.getYaw(), location.getPitch());
+        return ClientboundTeleportEntityPacket.teleport(
+            mob.getEntityId(), position, Set.of(), false);
+    }
+
+    @Override
+    public Object visualRemovePacket(final Mob mob) {
+        return new ClientboundRemoveEntitiesPacket(mob.getEntityId());
     }
 
     @Override

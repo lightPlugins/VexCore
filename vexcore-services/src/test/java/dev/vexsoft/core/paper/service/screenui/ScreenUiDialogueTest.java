@@ -18,6 +18,44 @@ public final class ScreenUiDialogueTest {
     private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
 
     @Test
+    public void customFrameSurvivesRevealAndIsRemovedWhenReturningToDefault() {
+        Map<String, UiTexture> textures = new HashMap<>();
+        Map<String, TextBlockLayout> layouts = new HashMap<>();
+        int[] writes = {0};
+        ScreenUi screen = (ScreenUi) Proxy.newProxyInstance(ScreenUi.class.getClassLoader(),
+            new Class<?>[]{ScreenUi.class}, (proxy, method, args) -> {
+                switch (method.getName()) {
+                    case "isClosed" -> {
+                        return false;
+                    }
+                    case "textureBlock" -> {
+                        textures.put((String) args[0], (UiTexture) args[1]);
+                        writes[0]++;
+                    }
+                    case "textBlock" -> layouts.put((String) args[0], (TextBlockLayout) args[2]);
+                    case "remove" -> textures.remove(args[0]);
+                    case "setLines", "close" -> { }
+                    default -> throw new AssertionError(method.getName());
+                }
+                return null;
+            });
+        var prepared = ScreenUiDialogueLayout.prepare(Component.text("NPC"), List.of(Component.text("Hello")),
+            DialoguePanelLayout.defaults(), new V26_2ScreenUiVersionDefinition());
+        var texture = UiTexture.sprite(net.kyori.adventure.key.Key.key("test:frame"), 140, 96);
+        var skin = new DialoguePanelSkin(List.of(new DialoguePanelSkin.Part(texture, 0, 0),
+            new DialoguePanelSkin.Part(texture, 140, 0)), 16);
+        var panel = new VexDialoguePanel(screen, prepared, skin);
+        panel.setHint(Component.text("Continue"));
+        assertEquals(244, layouts.get("hint").maxWidth());
+        panel.show(0, 1);
+        panel.show(0, 5);
+        assertEquals(2, writes[0]);
+        assertEquals(2, textures.size());
+        new VexDialoguePanel(screen, prepared);
+        assertEquals(Map.of("panel", UiTexture.PANEL), textures);
+    }
+
+    @Test
     public void sentencesStayOnSeparatePagesAndOversizedSentencesRemainReadable() {
         var prepared = ScreenUiDialogueLayout.prepare(
             Component.text("NPC"),

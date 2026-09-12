@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.screenui.DialoguePanel;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
@@ -27,4 +28,6 @@ public interface ScreenUiService extends VexService {
 
     /** Opens the prepared dialogue for the viewer. */
     DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue);
+    /** Opens the prepared dialogue with plugin-owned frame textures and reserved hint space. */
+    DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue, DialoguePanelSkin skin);
 }

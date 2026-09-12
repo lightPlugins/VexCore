@@ -3,17 +3,33 @@ package dev.vexsoft.core.paper.service.mob;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.mob.MobDamageResult;
 import dev.vexsoft.core.paper.mob.MobHandle;
+import dev.vexsoft.core.paper.mob.MobKey;
 import dev.vexsoft.core.paper.mob.MobRemovalReason;
 import dev.vexsoft.core.paper.mob.MobSnapshot;
 import dev.vexsoft.core.paper.mob.MobSpawnRequest;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import java.util.Collection;
 import java.util.Optional;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 /** Owner-scoped lifecycle and state access for non-persistent custom mobs. */
 public interface MobService extends VexService {
+
+    /**
+     * Shows an owned definition only to one viewer, without a server entity, AI, goals or holograms.
+     * Call on the viewer thread; visual handles are separate from combat snapshots and removed on viewer lifecycle changes.
+     */
+    MobHandle spawnVisual(Player viewer, MobKey key,
+                          Location location, double scale);
+
+    /** Moves a viewer-only visual; it must stay in that viewer's current world. */
+    void moveVisual(MobHandle handle, Location location);
+
+    /** Removes one viewer-only visual and releases its unspawned carrier. */
+    void removeVisual(MobHandle handle);
 
     /** Spawns one runtime mob from an owned definition. */
     MobHandle spawn(MobSpawnRequest request);
