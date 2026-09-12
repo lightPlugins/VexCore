@@ -186,6 +186,38 @@ class DefaultServiceRegistryTest {
         );
     }
 
+    @Test
+    void rollbackPreservesConstructorFailureAndRemovesRemainingServicesWhenCloseFails() {
+        VexServiceRegistry services = registry("rollback-close");
+        services.register(TestService.class, VexTestService.class);
+        services.register(DependentService.class, ThrowingCloseService.class);
+        services.register(FailingService.class, VexFailingService.class);
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, services::registerQueuedServices);
+
+        assertEquals("expected failure", failure.getMessage());
+        assertEquals(1, failure.getSuppressed().length);
+        assertEquals("close failure", failure.getSuppressed()[0].getCause().getMessage());
+        assertFalse(services.isAvailable(TestService.class));
+        assertFalse(services.isAvailable(DependentService.class));
+    }
+
+    @Dependencies({TestService.class})
+    public static final class ThrowingCloseService implements DependentService, AutoCloseable {
+
+        @Getter
+        private final TestService dependency;
+
+        public ThrowingCloseService(final VexServiceRegistry services) {
+            dependency = services.require(TestService.class);
+        }
+
+        @Override
+        public void close() {
+            throw new IllegalStateException("close failure");
+        }
+    }
+
     private VexServiceRegistry registry(final String name) {
         return new DefaultServiceRegistry().scoped(new TestOwner(name));
     }

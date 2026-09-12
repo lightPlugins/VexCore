@@ -87,7 +87,13 @@ final class ScopedServiceRegistry implements VexServiceRegistry {
         } catch (RuntimeException | Error throwable) {
             // Do not leave a half-created service group behind after a constructor failure
             for (Class<? extends VexService> serviceType : registered.reversed()) {
-                registry.unregister(owner, serviceType);
+                try {
+                    registry.unregister(owner, serviceType);
+                } catch (RuntimeException | Error cleanupFailure) {
+                    if (cleanupFailure != throwable) {
+                        throwable.addSuppressed(cleanupFailure);
+                    }
+                }
             }
 
             throw throwable;

@@ -41,6 +41,7 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
     private PluginBootstrapService bootstrap;
     private VexLogger logger;
     private boolean initialized;
+    private DataService dataService;
 
     @Override
     public final void onLoad() {
@@ -58,7 +59,8 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
             bootstrap.initialize(services);
             registerServices();
             services.registerQueuedServices();
-            registerData(services.require(DataService.class));
+            dataService = services.require(DataService.class);
+            registerData(dataService);
             registerContainers(services.require(PlayerContainerService.class));
             registerGlobalData(services.require(GlobalDataService.class));
             registerMessages(services.require(MessagingService.class));
@@ -67,7 +69,13 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
             onVexLoad();
             initialized = true;
         } catch (RuntimeException | Error throwable) {
-            cleanupInfrastructure();
+            try {
+                cleanupInfrastructure();
+            } catch (RuntimeException | Error cleanupFailure) {
+                if (cleanupFailure != throwable) {
+                    throwable.addSuppressed(cleanupFailure);
+                }
+            }
             throw throwable;
         }
     }
@@ -227,12 +235,16 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
     private void cleanupInfrastructure() {
         if (services != null) {
-            var data = services.find(DataService.class);
+            // Registration rollback may have removed our service; never resolve another owner's.
+            DataService data = dataService;
+            dataService = null;
 
             try {
                 services.unregisterOwnedServices();
             } finally {
-                data.ifPresent(DataService::prepareUnload);
+                if (data != null) {
+                    data.prepareUnload();
+                }
             }
         }
     }
