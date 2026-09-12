@@ -72,14 +72,21 @@ public final class GenerateScreenUiPack {
                         10
                     );
                 int offsetX = Math.max(0, -bounds.x);
+                // Windows rasterization can put accented capitals above the nominal baseline.
+                // Fit their complete ink inside the existing cell instead of clipping the accent.
+                int offsetY = Math.max(0, -bounds.y);
 
-                if (bounds.y < 0 || bounds.x + offsetX + bounds.width > cellWidth
-                    || bounds.y + bounds.height > cellHeight) {
+                if (bounds.y + bounds.height + offsetY > cellHeight) {
+                    offsetY = cellHeight - bounds.y - bounds.height;
+                }
+
+                if (bounds.y + offsetY < 0 || bounds.x + offsetX + bounds.width > cellWidth
+                    || bounds.y + bounds.height + offsetY > cellHeight) {
                     throw new IllegalStateException("Clipped glyph " + point);
                 }
 
                 graphics.setClip(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
-                graphics.drawString(Character.toString(point), col * cellWidth + offsetX, row * cellHeight + 10);
+                graphics.drawString(Character.toString(point), col * cellWidth + offsetX, row * cellHeight + 10 + offsetY);
                 int inkWidth = 0;
 
                 for (int x = 0; x < cellWidth; x++) {
@@ -393,6 +400,23 @@ public final class GenerateScreenUiPack {
                     "\"\\ue100\"",
                     false
                 );
+            }
+        }
+
+        // Bounded motion/fade presets reuse the text atlas, with no extra texture allocation.
+        for (int mode = 0; mode < 2; mode++) {
+            for (int duration = 0; duration < 4; duration++) {
+                for (int tenth = 5; tenth <= 10; tenth++) {
+                    int kind = 25 + (mode * 4 + duration) * 6 + tenth - 5;
+                    String name = "transition_" + (mode == 0 ? "move" : "fade") + "_" + (2 << duration)
+                        + "_" + (tenth * 10);
+
+                    for (int anchor = 0; anchor < anchors.length; anchor++) {
+                        extraFont(root, protocol, name, anchors[anchor],
+                            base + (kind * 9 + anchor) * count - minY,
+                            "anchored_text", 14, String.join(",", rows), true);
+                    }
+                }
             }
         }
 

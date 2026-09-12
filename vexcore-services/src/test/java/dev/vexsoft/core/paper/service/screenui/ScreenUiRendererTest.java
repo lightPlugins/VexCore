@@ -12,6 +12,20 @@ import org.junit.jupiter.api.Test;
 public final class ScreenUiRendererTest {
 
     @Test
+    public void missingLocalizedGlyphsUseMeasuredStyledFallbacks() {
+        var layout = TextBlockLayout.builder().maxWidth(512).build();
+        var actual = ScreenUiRenderer.layout(List.of(Component.text(
+            "PERFEKT! \u221220 % \u2014 \u201eFang\u201c\u2026 \u2192 \u2605 \ud83d\ude00",
+            NamedTextColor.GREEN)), layout);
+        var expected = ScreenUiRenderer.layout(List.of(Component.text(
+            "PERFEKT! -20 % - \"Fang\"... -> * ?", NamedTextColor.GREEN)), layout);
+        assertEquals(expected, actual);
+        assertDoesNotThrow(() -> ScreenUiRenderer.text(List.of(Component.text("\u2212\ud83d\ude00")), layout));
+        assertThrows(IllegalArgumentException.class, () -> ScreenUiRenderer.layout(
+            List.of(Component.text("\u2026".repeat(1400))), layout));
+    }
+
+    @Test
     public void usesProportionalM5x7MetricsAndSupportsGermanText() {
         var lines = ScreenUiRenderer.layout(
             List.of(Component.text("Wi. \u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df")),
@@ -79,10 +93,6 @@ public final class ScreenUiRendererTest {
                 List.of(Component.text("ABCD")),
                 TextBlockLayout.builder().maxWidth(18).overflow(TextOverflow.REJECT).build()
             )
-        );
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> ScreenUiRenderer.text(List.of(Component.text("😀")), TextBlockLayout.builder().build())
         );
         assertThrows(
             IllegalArgumentException.class,

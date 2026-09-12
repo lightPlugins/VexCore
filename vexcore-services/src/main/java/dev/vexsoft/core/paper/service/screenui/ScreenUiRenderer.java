@@ -6,6 +6,7 @@ import dev.vexsoft.core.paper.screenui.TextOverflow;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
 import dev.vexsoft.core.paper.screenui.UiAnimation;
 import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiTransition;
 import dev.vexsoft.core.paper.screenui.VerticalAlignment;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import java.util.ArrayList;
@@ -124,22 +125,23 @@ public final class ScreenUiRenderer {
                 continue;
             }
 
-            if (!(icon ? point == 0xE001
-                : point >= 32 && point <= 126 || point >= 160 && point <= 255 || point == 0x25A0 || point == 0x25A1)) {
-                throw new IllegalArgumentException("Unsupported UI font code point: " + point);
+            if (icon && point != 0xE001) {
+                throw new IllegalArgumentException("Unsupported UI icon code point: " + point);
             }
-
-            int width = icon ? 13 : ScreenUiFont.advance(point);
-
+            String glyphText = icon ? Character.toString(point) : ScreenUiFont.fallback(point);
+            if ((budget[0] -= glyphText.codePointCount(0, glyphText.length()) - 1) < 0) {
+                throw new IllegalArgumentException("UI text exceeds its character budget");
+            }
             if (icon) {
                 style = style.decoration(TextDecoration.BOLD, false);
             }
-
-            if (style.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE) {
-                width++;
+            for (int glyph : glyphText.codePoints().toArray()) {
+                int width = icon ? 13 : ScreenUiFont.advance(glyph);
+                if (style.decoration(TextDecoration.BOLD) == TextDecoration.State.TRUE) {
+                    width++;
+                }
+                lines.getLast().add(new Glyph(Character.toString(glyph), style, width));
             }
-
-            lines.getLast().add(new Glyph(Character.toString(point), style, width));
         }
 
         for (Component child : component.children()) {
@@ -275,6 +277,10 @@ public final class ScreenUiRenderer {
                         layout.animation() != null,
                         layout.scale()
                     );
+            if (layout.transition() != null) {
+                font = Objects.requireNonNull(version, "Transition requires a version adapter")
+                    .transitionTextFont(layout.anchor(), line.y(), layout.scale(), layout.transition());
+            }
             int transport = layout.anchor() == null ? 0 : version.horizontalTransport(line.y());
 
             output.append(space(line.x() + transport));
@@ -297,7 +303,7 @@ public final class ScreenUiRenderer {
                 if (current != null && !current.equals(glyph.style())) {
                     output.append(textRun(
                         run,
-                        animatedStyle(current, layout.animation()),
+                        transitionStyle(animatedStyle(current, layout.animation()), layout.transition()),
                         runFont(current, font, layout, line.y(), version),
                         layout.anchor() != null
                     ));
@@ -311,7 +317,7 @@ public final class ScreenUiRenderer {
             if (current != null) {
                 output.append(textRun(
                     run,
-                    animatedStyle(current, layout.animation()),
+                    transitionStyle(animatedStyle(current, layout.animation()), layout.transition()),
                     runFont(current, font, layout, line.y(), version),
                     layout.anchor() != null
                 ));
@@ -338,11 +344,30 @@ public final class ScreenUiRenderer {
             return style;
         }
 
-        var color = style.color() == null ? NamedTextColor.WHITE : style.color();
+        var color = style.color();
+        if (color == null) {
+            color = NamedTextColor.WHITE;
+        }
         int rgb = ((color.red() * 7 + 127) / 255 << 6) | ((color.green() * 7 + 127) / 255 << 3)
             | (color.blue() * 7 + 127) / 255;
 
         return style.color(TextColor.color((rgb << 15) | animation.startTick()));
+    }
+
+    private static Style transitionStyle(Style style, UiTransition transition) {
+        if (transition == null) {
+            return style;
+        }
+
+        var color = style.color();
+        if (color == null) {
+            color = NamedTextColor.WHITE;
+        }
+        int rgb = ((color.red() * 7 + 127) / 255 << 6) | ((color.green() * 7 + 127) / 255 << 3)
+            | (color.blue() * 7 + 127) / 255;
+        int payload = (rgb << 15) | (transition.startTick() << 6) | (transition.offsetX() + 32);
+
+        return style.color(TextColor.color(payload));
     }
 
     private static Key runFont(
@@ -354,6 +379,10 @@ public final class ScreenUiRenderer {
     ) {
         if (style.font() == null || !style.font().value().startsWith("icon/")) {
             return fallback;
+        }
+
+        if (layout.transition() != null) {
+            throw new IllegalArgumentException("Short transitions require built-in UI text, not contributed icons");
         }
 
         if (layout.anchor() == null) {

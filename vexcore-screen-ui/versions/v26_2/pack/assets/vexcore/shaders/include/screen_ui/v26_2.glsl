@@ -1,4 +1,4 @@
-// VexCore shader protocol 6. Constants are filled from protocol.properties at build time.
+// VexCore shader protocol 7. Constants are filled from protocol.properties at build time.
 // 26.2 BakedSheetGlyph emits TL, BL, BR, TR. Every quad starts on a multiple of four.
 #define VEX_BASE @base@
 #define VEX_STRIDE @stride@
@@ -10,12 +10,17 @@ float vexOwned = 0.0;
 
 vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
     int encoded = int(floor(position.y / float(VEX_STRIDE))) - VEX_BASE;
-    if (encoded < 0 || encoded >= 225 * VEX_Y_COUNT) return position;
+    if (encoded < 0 || encoded >= 657 * VEX_Y_COUNT) return position;
 
     int group = encoded / VEX_Y_COUNT;
     int kind = group / 9;
+    int transition = -1;
     float scale = 1.0;
-    if (kind >= 9) {
+    if (kind >= 25) {
+        transition = (kind - 25) / 6;
+        scale = float(5 + (kind - 25) % 6) / 10.0;
+        kind = 0;
+    } else if (kind >= 9) {
         scale = float(6 + (kind - 9) / 4) / 10.0;
         kind = 5 + (kind - 9) % 4;
     } else if (kind >= 5) scale = 0.5;
@@ -62,6 +67,22 @@ vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
         float opacity = smoothstep(0.0, 5.0, age) * (1.0 - smoothstep(65.0, 73.0, age));
         vexAnimatedColor = vec4(vec3((rgb >> 6) & 7, (rgb >> 3) & 7, rgb & 7) / 7.0, opacity);
         position.x += 20.0 * (1.0 - smoothstep(0.0, 5.0, age));
+    }
+    if (transition >= 0) {
+        ivec3 bytes = ivec3(round(Color.rgb * 255.0));
+        int payload = (bytes.r << 16) | (bytes.g << 8) | bytes.b;
+        int started = (payload >> 6) & 511;
+        int rgb = payload >> 15;
+        int offsetX = (payload & 63) - 32;
+        // 500 divides the 24000-tick shader clock, including the day boundary.
+        float age = mod(GameTime * 24000.0 - float(started) + 500.0, 500.0);
+        if (age > 250.0) age -= 500.0; // Short future transport lead: hold the initial state.
+        float duration = float(2 << (transition % 4));
+        float progress = clamp(age / duration, 0.0, 1.0);
+        float opacity = 1.0;
+        if (transition < 4) position.x += float(offsetX) * (1.0 - progress);
+        else opacity = 1.0 - smoothstep(0.0, 1.0, progress);
+        vexAnimatedColor = vec4(vec3((rgb >> 6) & 7, (rgb >> 3) & 7, rgb & 7) / 7.0, opacity);
     }
     // Explicit scale is independent of window width; all local geometry shares its anchor pivot.
     position.xy = reference + (position.xy - reference) * scale;

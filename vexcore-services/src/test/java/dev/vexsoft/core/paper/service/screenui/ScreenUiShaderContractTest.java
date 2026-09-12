@@ -10,12 +10,75 @@ import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.format.TextColor;
 import org.junit.jupiter.api.Test;
 
 final class ScreenUiShaderContractTest {
 
     private final Path pack = Path.of(System.getProperty("screenUiPackDirectory"));
     private final V26_2ScreenUiVersionDefinition version = new V26_2ScreenUiVersionDefinition();
+
+    @Test
+    void transitionPresetsResolveAndDecodeTheirAnchorAfterFloatTransport() throws Exception {
+        Properties protocol = new Properties();
+        try (var input = Files.newInputStream(pack.resolve("vexcore-screen-ui.properties"))) {
+            protocol.load(input);
+        }
+        assertEquals("7", protocol.getProperty("protocol"));
+        int stride = Integer.parseInt(protocol.getProperty("stride"));
+        int base = Integer.parseInt(protocol.getProperty("base"));
+        int count = Integer.parseInt(protocol.getProperty("maxY")) - Integer.parseInt(protocol.getProperty("minY")) + 1;
+        for (UiTransition.Kind mode : UiTransition.Kind.values()) {
+            for (int duration : new int[]{2, 4, 8, 16}) {
+                for (int tenth = 5; tenth <= 10; tenth++) {
+                    for (ScreenAnchor anchor : ScreenAnchor.values()) {
+                        var transition = new UiTransition(mode, 499, duration, 0);
+                        var font = version.transitionTextFont(anchor, 0, tenth / 10.0, transition);
+                        String json = Files.readString(pack.resolve("assets/vexcore/font/" + font.value() + ".json"));
+                        var match = Pattern.compile("\"ascent\":(-?\\d+)").matcher(json);
+                        assertTrue(match.find());
+                        int ascent = Integer.parseInt(match.group(1));
+                        int kind = 25 + (mode.ordinal() * 4 + transition.durationIndex()) * 6 + tenth - 5;
+                        for (int carrier : new int[]{3, 1000}) {
+                            for (int corner : new int[]{0, 14}) {
+                                float vertex = (float) (8 - ascent) + carrier + corner;
+                                int encoded = (int) Math.floor(vertex / stride) - base;
+                                assertEquals(kind * 9 + anchor.ordinal(), encoded / count);
+                                assertEquals(0, encoded % count + Integer.parseInt(protocol.getProperty("minY")));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void transitionPayloadRetainsClockOffsetAndTintAcrossClockBoundaries() {
+        for (long clock : new long[]{0, 499, 500, 23999, 24000, 48001}) {
+            for (int offset : new int[]{-32, -1, 0, 31}) {
+                var transition = UiTransition.move(clock + 2, 4, offset);
+                var layout = TextBlockLayout.builder().anchor(ScreenAnchor.CENTER).transition(transition).build();
+                var rendered = ScreenUiRenderer.text(List.of(Component.text("A", TextColor.color(0xFF0000))), layout, version);
+                var glyph = rendered.children().stream()
+                    .filter(c -> c instanceof net.kyori.adventure.text.TextComponent t && t.content().equals("A"))
+                    .findFirst().orElseThrow();
+                int payload = Objects.requireNonNull(glyph.color()).value();
+                assertEquals(offset, (payload & 63) - 32);
+                assertEquals((clock + 2) % 500, (payload >> 6) & 511);
+                assertEquals(7 << 6, payload >> 15);
+                double age = ((clock % 24000) - ((payload >> 6) & 511) + 500) % 500;
+                if (age > 250) {
+                    age -= 500;
+                }
+                assertEquals(-2, age);
+            }
+        }
+        assertThrows(IllegalArgumentException.class, () -> UiTransition.move(0, 3, 0));
+        assertThrows(IllegalArgumentException.class, () -> UiTransition.move(0, 2, 32));
+        assertThrows(IllegalArgumentException.class,
+            () -> TextBlockLayout.builder().transition(UiTransition.fadeOut(0, 4)).build());
+    }
 
     @Test
     void everyDebugAnchorResolvesToAnExistingFontAndDecodesAfterFloatConversion() throws Exception {
@@ -67,7 +130,7 @@ final class ScreenUiShaderContractTest {
         }
 
         try (var files = Files.walk(pack.resolve("assets/vexcore/font/ui/v26_2"))) {
-            assertEquals(495, files.filter(Files::isRegularFile).count(), "Scale presets must remain bounded");
+            assertEquals(927, files.filter(Files::isRegularFile).count(), "Scale and transition presets stay bounded");
         }
     }
 

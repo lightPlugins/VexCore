@@ -3,11 +3,17 @@ package dev.vexsoft.core.paper.screenui.version;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.screenui.ScreenAnchor;
 import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiTransition;
 import java.util.Set;
 import net.kyori.adventure.key.Key;
 
 /** Selects the font/shader protocol matching a client resource-pack revision. */
 public interface ScreenUiVersionDefinition extends VexService {
+
+    /** Resolves a short-transition font, or fails when this adapter does not support it. */
+    default Key transitionTextFont(ScreenAnchor anchor, int y, double scale, UiTransition transition) {
+        throw new UnsupportedOperationException("This UI version does not support short transitions");
+    }
 
     /** Returns the resource-pack protocol version implemented by this adapter. */
     String getAdapterVersion();

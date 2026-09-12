@@ -1,7 +1,7 @@
 # VexCore Screen UI
 
 Owner-scoped bossbar UI for Minecraft Java 26.2, using m5x7 and the matching resource-pack
-shader protocol 6. ArcaneMonolith uses this API for dialogue, quest progress, its permanent
+shader protocol 7. ArcaneMonolith uses this API for dialogue, quest progress, its permanent
 info card and item acquisition notifications. No client mod is required.
 
 ## Build and test
@@ -58,7 +58,7 @@ Supported presets are 0.5, 0.6, 0.7, 0.8, 0.9 and 1.0. Scale is independent of w
 anchors still follow the window edges/center. A 240-unit card at 0.7 is 168 GUI pixels wide.
 There is no automatic collision avoidance or additional shrink on narrow windows. Dialogues remain
 full size. Existing API compact(true/false) selects 0.5/1.0 when no explicit scale is supplied.
-The Arcane configuration uses scale instead of compact. Protocol 6 requires a matching rebuilt pack
+The Arcane configuration uses scale instead of compact. Protocol 7 requires a matching rebuilt pack
 once; switching between supported scales afterward does not require regeneration.
 m5x7 supports ASCII, Latin-1 (including umlauts), and the filled/empty progress squares.
 Anchored text supports colors and bold; italic, underline, strikethrough and obfuscation are
@@ -100,8 +100,8 @@ Feature plugins should update only changed content and use existing player-bound
 
 ## Version and compatibility boundaries
 
-`vexcore-screen-ui/versions/v26_2` owns the adapter, manifest and shader assets. Protocol 6 ships
-495 core anchored font files, plus separately generated icon fonts. The versioned shader overrides
+`vexcore-screen-ui/versions/v26_2` owns the adapter, manifest and shader assets. Protocol 7 ships
+927 core anchored font files, plus separately generated icon fonts. The versioned shader overrides
 both Minecraft text vertex and fragment stages; ordinary glyphs retain vanilla behavior. Two reserved
 low-alpha marker pixels identify UI glyphs. Generator output is derived; edit source assets/tools.
 
@@ -113,3 +113,24 @@ No 50-100-player live-load test or final in-game visual acceptance is claimed by
 
 The bundled m5x7 font by Daniel Linssen is CC0; see `resource-pack-tools/fonts/LICENSE.txt`.
 The pack includes `FONT-LICENSE.txt`. The TTF is used only during asset generation.
+
+## Short text transitions (protocol 7)
+
+`TextBlockLayout.transition(UiTransition.move(gameTime, ticks, offsetX))` moves an anchored text
+block from a relative horizontal offset to its destination. `UiTransition.fadeOut(gameTime, ticks)`
+fades an overlay away. Both run per client frame using the existing glyph atlas; they create no
+scheduler. Supported durations are 2, 4, 8 and 16 ticks, offsets -32..31 logical pixels, scales
+0.5..1.0 in 0.1 steps. Tint uses three bits per channel. Icons and simultaneous toast animation
+are unsupported. Reuse the same element ID and replace/clear finite transitions within 250 ticks;
+the compact clock wraps every 500 ticks. Use world game time, with the shared two-tick render lead.
+Rebuild and distribute VexCore and the combined resource pack together. Protocol 6 packs do not
+contain these fonts. The original TextBlockLayout constructor remains available.
+
+
+## Missing text glyphs
+
+The renderer measures and renders the same replacement glyphs when localized text contains characters
+outside the bitmap atlas. Typographic minus/dashes, quotes, ellipses, bullets and horizontal arrows use
+ASCII equivalents; unsupported whitespace becomes a space and other missing glyphs become `?`.
+Styles and input/output budgets remain enforced. Contributed icon glyphs stay strict. This behavior
+uses existing pack glyphs and requires no resource-pack rebuild.

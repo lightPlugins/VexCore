@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.screenui.ScreenAnchor;
 import dev.vexsoft.core.paper.screenui.UiScale;
 import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiTransition;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import java.io.IOException;
 import java.util.Locale;
@@ -12,9 +13,17 @@ import java.util.Properties;
 import java.util.Set;
 import net.kyori.adventure.key.Key;
 
-/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 6. */
+/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 7. */
 @Dependencies
 public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefinition {
+
+    @Override
+    public Key transitionTextFont(ScreenAnchor anchor, int y, double scale, UiTransition transition) {
+        UiScale.validate(scale);
+        String kind = transition.kind() == UiTransition.Kind.MOVE_X ? "move" : "fade";
+        return font("transition_" + kind + "_" + transition.durationTicks() + "_"
+            + Math.round(scale * 100), anchor, y);
+    }
 
     @Override
     public Key textFont(ScreenAnchor anchor, int y, boolean animated, double scale) {
