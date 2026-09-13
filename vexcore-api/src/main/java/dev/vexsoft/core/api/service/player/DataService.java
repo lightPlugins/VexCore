@@ -2,6 +2,8 @@ package dev.vexsoft.core.api.service.player;
 
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
 import dev.vexsoft.core.api.service.registry.VexService;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Registers persistent player-data definitions owned by the current plugin scope.
@@ -10,6 +12,11 @@ import dev.vexsoft.core.api.service.registry.VexService;
  * with defaults on players that are already loaded.</p>
  */
 public interface DataService extends VexService {
+
+    /** Persists the loaded player's current dirty data; completion acknowledges the storage write. */
+    default CompletableFuture<Void> save(UUID playerId) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("Explicit saves are not supported"));
+    }
 
     /** Freezes this owner's loaded data after feature cleanup, before its classloader closes. */
     void prepareUnload();

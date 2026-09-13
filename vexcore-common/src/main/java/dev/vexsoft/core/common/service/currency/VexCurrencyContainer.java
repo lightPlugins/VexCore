@@ -67,6 +67,38 @@ public final class VexCurrencyContainer implements CurrencyContainer {
     }
 
     @Override
+    public CurrencyTransaction depositOnce(final Currency currency, final WholeAmount amount, final String operationId) {
+        Objects.requireNonNull(currency, "currency");
+        Objects.requireNonNull(amount, "amount");
+        if (operationId == null || operationId.isBlank() || operationId.length() > 160) {
+            throw new IllegalArgumentException("Invalid currency operation id");
+        }
+
+        synchronized (player) {
+            String signature = currency.getKey() + "=" + amount;
+            String receipt = player.read(CurrencyPlayerData.CURRENCIES, data -> data.getReceipts().get(operationId));
+
+            if (receipt != null) {
+                if (!receipt.equals(signature)) {
+                    throw new IllegalArgumentException("Currency operation id reused with different arguments");
+                }
+
+                WholeAmount current = player.read(CurrencyPlayerData.CURRENCIES, data -> balance(data, currency));
+                return transaction(CurrencyTransaction.Status.SUCCESS, current, current, "already-applied");
+            }
+
+            CurrencyTransaction result = deposit(currency, amount);
+            if (result.successful()) {
+                // The receipt and balance share one serialized container and one player lock.
+                player.update(CurrencyPlayerData.CURRENCIES, data -> {
+                    data.getReceipts().put(operationId, signature);
+                });
+            }
+            return result;
+        }
+    }
+
+    @Override
     public CurrencyBatchTransaction depositAll(final Map<Currency, WholeAmount> amounts) {
         Map<Currency, WholeAmount> checkedAmounts = new LinkedHashMap<>();
 

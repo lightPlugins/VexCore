@@ -13,6 +13,11 @@ public interface CurrencyContainer extends PlayerContainer {
     /** Atomically adds a positive amount to one currency. */
     CurrencyTransaction deposit(Currency currency, WholeAmount amount);
 
+    /** Credits a durable operation once; replays must use the same currency and amount. */
+    default CurrencyTransaction depositOnce(Currency currency, WholeAmount amount, String operationId) {
+        throw new UnsupportedOperationException("Idempotent deposits are not supported");
+    }
+
     /** Atomically deposits every positive amount or applies none of them. */
     CurrencyBatchTransaction depositAll(Map<Currency, WholeAmount> amounts);
 

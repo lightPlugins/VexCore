@@ -6,6 +6,8 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexClassFactory;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /** Registers this owner's player-data definitions and freezes loaded data before unload. */
 @Dependencies(PlayerDataCoordinatorService.class)
@@ -22,6 +24,11 @@ public final class VexDataService implements DataService {
     @Override
     public void prepareUnload() {
         coordinator.prepareUnload(services.getOwner());
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final UUID playerId) {
+        return coordinator.save(playerId);
     }
 
     @Override

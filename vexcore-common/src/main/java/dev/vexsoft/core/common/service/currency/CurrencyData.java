@@ -7,6 +7,15 @@ import java.util.Objects;
 final class CurrencyData {
 
     private Map<String, String> balances = new LinkedHashMap<>();
+    private Map<String, String> receipts = new LinkedHashMap<>();
+
+    public Map<String, String> getReceipts() {
+        return receipts;
+    }
+
+    public void setReceipts(final Map<String, String> values) {
+        receipts = values == null ? new LinkedHashMap<>() : new LinkedHashMap<>(values);
+    }
 
     public Map<String, String> getBalances() {
         return balances;

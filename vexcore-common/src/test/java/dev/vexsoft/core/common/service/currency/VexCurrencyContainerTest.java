@@ -3,6 +3,7 @@ package dev.vexsoft.core.common.service.currency;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.currency.Currency;
@@ -14,6 +15,31 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 final class VexCurrencyContainerTest {
+
+    @Test
+    void receiptSurvivesContainerRecreationAndRejectsMismatchedReplay() {
+        VexPlayer player = player();
+        Currency coins = currency("coins", 0, 1000);
+        VexCurrencyContainer first = new VexCurrencyContainer(player);
+        assertTrue(first.depositOnce(coins, WholeAmount.of(250), "sale-1").successful());
+        VexCurrencyContainer restored = new VexCurrencyContainer(player);
+        assertTrue(restored.depositOnce(coins, WholeAmount.of(250), "sale-1").successful());
+        assertEquals(WholeAmount.of(250), restored.getBalance(coins));
+        assertThrows(IllegalArgumentException.class,
+            () -> restored.depositOnce(coins, WholeAmount.of(251), "sale-1"));
+        assertTrue(restored.depositOnce(coins, WholeAmount.of(250), "sale-2").successful());
+        assertEquals(WholeAmount.of(500), restored.getBalance(coins));
+    }
+
+    @Test
+    void rejectedDepositDoesNotConsumeReceipt() {
+        VexCurrencyContainer container = new VexCurrencyContainer(player());
+        Currency coins = currency("coins", 90, 100);
+        assertFalse(container.depositOnce(coins, WholeAmount.of(20), "retry").successful());
+        container.withdraw(coins, WholeAmount.of(50));
+        assertTrue(container.depositOnce(coins, WholeAmount.of(20), "retry").successful());
+        assertEquals(WholeAmount.of(60), container.getBalance(coins));
+    }
 
     @Test
     void mutatesPersistentBalancesAndRejectsInvalidTransactions() {
