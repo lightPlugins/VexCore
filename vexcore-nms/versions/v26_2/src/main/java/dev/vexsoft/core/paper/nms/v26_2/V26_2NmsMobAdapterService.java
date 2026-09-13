@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerAmphibiousNavigation;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
 import java.lang.reflect.Field;
 import java.util.List;
@@ -23,6 +24,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
@@ -35,6 +37,7 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
 
     private static final Field GOAL_SELECTOR = selectorField("goalSelector");
     private static final Field TARGET_SELECTOR = selectorField("targetSelector");
+    private static final Field NAVIGATION = selectorField("navigation");
 
     public V26_2NmsMobAdapterService(final VexServiceRegistry services) {
         Objects.requireNonNull(services, "services");
@@ -113,6 +116,24 @@ public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
     @Override
     public void addOwnerMelee(final Mob mob, final NmsOwnerMeleeSpec specification) {
         NmsOwnerMeleeSpec checkedSpecification = Objects.requireNonNull(specification, "specification");
+
+        var entity = handle(mob).getHandle();
+        if (entity.getNavigation().getClass() == AmphibiousPathNavigation.class) {
+            var previous = entity.getNavigation();
+            var replacement = new V26_2OwnerAmphibiousNavigation(entity, entity.level());
+            var originalEvaluator = previous.getNodeEvaluator();
+            var replacementEvaluator = replacement.getNodeEvaluator();
+            replacementEvaluator.setCanPassDoors(originalEvaluator.canPassDoors());
+            replacementEvaluator.setCanOpenDoors(originalEvaluator.canOpenDoors());
+            replacementEvaluator.setCanFloat(originalEvaluator.canFloat());
+            replacementEvaluator.setCanWalkOverFences(originalEvaluator.canWalkOverFences());
+            try {
+                previous.stop();
+                NAVIGATION.set(entity, replacement);
+            } catch (IllegalAccessException exception) {
+                throw new IllegalStateException("Unable to replace owner amphibious navigation", exception);
+            }
+        }
 
         selector(handle(mob), GOAL_SELECTOR).addGoal(
             checkedSpecification.priority(),

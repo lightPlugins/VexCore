@@ -20,6 +20,8 @@ import dev.vexsoft.core.paper.mob.goal.OwnerMeleeGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMeleeLeapSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMeleeRangedSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
@@ -408,12 +410,22 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void onTrack(final PlayerTrackEntityEvent event) {
         RuntimeMob runtime = findRuntime(event.getEntity());
 
         if (runtime != null && runtime.scope.includes(event.getPlayer().getUniqueId())) {
-            showPresentation(runtime, event.getPlayer());
+            Player viewer = event.getPlayer();
+            clearPresentation(runtime, viewer);
+            long epoch = viewerEpochs.getOrDefault(viewer.getUniqueId(), 0L);
+            // Paper fires this event before addPairing sends the carrier spawn packet.
+            // Defer both display spawn and mount; getTrackedBy is already populated here.
+            runtime.presentationGate.defer(viewer.getUniqueId(),
+                (ready, retired) -> schedules.runForLater(runtime.entity, 1L, ready, retired),
+                () -> viewer.isOnline() && !runtime.removing
+                    && mobs.get(runtime.handle.instanceId()) == runtime
+                    && viewerEpochs.getOrDefault(viewer.getUniqueId(), 0L) == epoch,
+                () -> showPresentation(runtime, viewer));
         }
     }
 
@@ -589,7 +601,14 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                         melee.damage(),
                         melee.attackIntervalTicks(),
                         melee.pathIntervalTicks(),
-                        runtime.scope.playerId().orElse(null)
+                        runtime.scope.playerId().orElse(null),
+                        new NmsMeleeLeapSpec(
+                            melee.leap().enabled(), melee.leap().minDistance(), melee.leap().cooldownTicks(),
+                            melee.leap().horizontalSpeed(), melee.leap().maxHorizontalSpeed(), melee.leap().verticalSpeed(),
+                            melee.leap().waterEnabled(), melee.leap().waterVerticalSpeed(),
+                            melee.leap().waterHorizontalMultiplier(), melee.leap().swimSpeedMultiplier()),
+                        new NmsMeleeRangedSpec(melee.ranged().enabled(), melee.ranged().stuckTicks(),
+                            melee.ranged().intervalTicks(), melee.ranged().speed(), melee.ranged().lifetimeTicks())
                     )
                 );
             } else {
@@ -628,7 +647,8 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
     }
 
     private void showPresentation(final RuntimeMob runtime, final Player viewer) {
-        if (!runtime.entity.isValid() || runtime.entity.getWorld() != viewer.getWorld()
+        if (runtime.presentationGate.isPending(viewer.getUniqueId())
+            || !runtime.entity.isValid() || runtime.entity.getWorld() != viewer.getWorld()
             || !runtime.entity.getTrackedBy().contains(viewer) || !runtime.scope.includes(viewer.getUniqueId())) {
             return;
         }
@@ -668,7 +688,9 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                     .shadowed(hologram.get().shadowed())
                     .seeThrough(hologram.get().seeThrough())
                     .lineWidth(hologram.get().lineWidth())
-                    .transformation(DisplayTransformation.scale(hologram.get().scale()))
+                    // Include the height in the initial metadata bundle, not a later offset packet.
+                    .transformation(DisplayTransformation.scale(hologram.get().scale()).toBuilder()
+                        .translationY(hologramOffset(runtime, hologram.get())).build())
                     .lifecycle(Set.<DisplayLifecycle>of());
 
             hologram.get().brightness().ifPresent(requestBuilder::brightness);
@@ -695,6 +717,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
     }
 
     private void clearPresentation(final RuntimeMob runtime, final Player viewer) {
+        runtime.presentationGate.cancel(viewer.getUniqueId());
         clearHologram(runtime, viewer);
         glows.clearGlow(viewer, runtime.entity);
     }
@@ -884,6 +907,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         private final MobScope scope;
         private final Mob entity;
         private final Map<UUID, HologramSession> holograms = new ConcurrentHashMap<>();
+        private final MobPresentationGate presentationGate = new MobPresentationGate();
         private double health;
         private double scale;
         private DisplayGlowColor glow;
