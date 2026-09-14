@@ -24,6 +24,24 @@ import org.junit.jupiter.api.Test;
 
 final class ItemDepositViewTest {
     @Test
+    void feedbackReportsCommittedMovementAndRejectedTransfersOnce() {
+        Fixture fixture = new Fixture();
+        fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(8));
+        fixture.click(0, ClickType.LEFT);
+        assertEquals(List.of(true), fixture.feedback);
+        fixture.accept = false;
+        fixture.click(1, ClickType.LEFT);
+        assertEquals(List.of(true, false), fixture.feedback);
+        assertEquals(8, fixture.data.cursor.getAmount());
+        fixture.accept = true;
+        InventoryDragEvent drag = fixture.drag(Map.of(1, new ItemSaleSessionTest.Stack(8)));
+        fixture.menu.onInventoryDrag(fixture.context, drag);
+        assertEquals(2, fixture.feedback.size());
+        fixture.run();
+        assertEquals(List.of(true, false, true), fixture.feedback);
+    }
+
+    @Test
     void shiftMovesItemsInBothDirectionsAndNeverMovesAControl() {
         Fixture fixture = new Fixture();
         fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(8);
@@ -38,16 +56,184 @@ final class ItemDepositViewTest {
     }
 
     @Test
+    void shiftTransfersImmediatelyInBothDirectionsWithoutADeferredReplay() {
+        Fixture fixture = new Fixture();
+        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(8);
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(54, ClickType.SHIFT_LEFT));
+        assertEquals(0, fixture.data.storage.count());
+        assertEquals(8, fixture.session.inventory().getItem(0).getAmount());
+        assertTrue(fixture.tasks.isEmpty());
+        assertEquals(1, fixture.refreshes);
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.SHIFT_LEFT));
+        assertEquals(8, fixture.data.storage.count());
+        assertTrue(fixture.session.inventory().isEmpty());
+        assertEquals(2, fixture.refreshes);
+        fixture.run();
+        fixture.data.restart();
+        fixture.data.session().close();
+        assertEquals(8, fixture.data.storage.count());
+    }
+
+    @Test
+    void upperPickupPlacementSplitAndMergeCompleteBeforeEventReturns() {
+        Fixture fixture = new Fixture();
+        fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(9));
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.LEFT));
+        assertEquals(9, fixture.data.cursor.getAmount());
+        assertTrue(fixture.session.inventory().isEmpty());
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(1, ClickType.RIGHT));
+        assertEquals(8, fixture.data.cursor.getAmount());
+        assertEquals(1, fixture.session.inventory().getItem(1).getAmount());
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(1, ClickType.LEFT));
+        assertTrue(fixture.data.cursor.isEmpty());
+        assertEquals(9, fixture.session.inventory().getItem(1).getAmount());
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(1, ClickType.RIGHT));
+        assertEquals(5, fixture.data.cursor.getAmount());
+        assertEquals(4, fixture.session.inventory().getItem(1).getAmount());
+        assertTrue(fixture.tasks.isEmpty());
+        assertEquals(4, fixture.refreshes);
+        fixture.data.restart();
+        fixture.data.session().close();
+        assertEquals(9, fixture.data.storage.count());
+    }
+
+    @Test
+    void shiftReturnUsesReverseChestOrderAndMergesBeforeEmptySlots() {
+        for (ClickType click : List.of(ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT)) {
+            Fixture fixture = new Fixture();
+            fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(10));
+            fixture.data.storage.slots[35] = new ItemSaleSessionTest.Stack(60);
+            fixture.menu.onInventoryClick(fixture.context, fixture.event(0, click));
+            assertEquals(64, fixture.data.storage.slots[35].getAmount());
+            assertEquals(6, fixture.data.storage.slots[8].getAmount());
+            assertNull(fixture.data.storage.slots[0]);
+            assertTrue(fixture.session.inventory().isEmpty());
+            assertTrue(fixture.tasks.isEmpty());
+        }
+    }
+
+    @Test
+    void fullDestinationLeavesShiftRemainderAndCursorUntouched() {
+        Fixture fixture = new Fixture();
+        for (int slot = 0; slot < 36; slot++) {
+            fixture.data.storage.slots[slot] = new ItemSaleSessionTest.Stack(64);
+        }
+        fixture.data.storage.slots[8] = new ItemSaleSessionTest.Stack(62);
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(3);
+        fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(10));
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.SHIFT_LEFT));
+        assertEquals(8, fixture.session.inventory().getItem(0).getAmount());
+        assertEquals(3, fixture.data.cursor.getAmount());
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.SHIFT_LEFT));
+        assertEquals(8, fixture.session.inventory().getItem(0).getAmount());
+        assertEquals(36 * 64, fixture.data.storage.count());
+    }
+
+    @Test
+    void failedImmediateClickRollsBackCursorAndDeposit() {
+        Fixture fixture = new Fixture();
+        fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(9));
+        fixture.data.failNativeAt = fixture.data.nativeSaves + 1;
+        assertThrows(IllegalStateException.class,
+            () -> fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.LEFT)));
+        assertTrue(fixture.data.cursor.isEmpty());
+        assertEquals(9, fixture.session.inventory().getItem(0).getAmount());
+    }
+
+    @Test
+    void storageOnlyDragRemainsNativeAndCheckpointsWithoutReplay() {
+        Fixture fixture = new Fixture();
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(4);
+        InventoryDragEvent event = fixture.drag(Map.of(54, new ItemSaleSessionTest.Stack(2),
+            55, new ItemSaleSessionTest.Stack(2)));
+        fixture.menu.onInventoryDrag(fixture.context, event);
+        assertFalse(event.isCancelled());
+        assertEquals(0, fixture.data.storage.count());
+        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(2);
+        fixture.data.storage.slots[1] = new ItemSaleSessionTest.Stack(2);
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(0);
+        fixture.run();
+        assertEquals(4, fixture.data.storage.count());
+        fixture.data.restart();
+        fixture.data.session().close();
+        assertEquals(4, fixture.data.storage.count());
+    }
+
+    @Test
     void cursorPickupSplitAndPlacementConserveItems() {
         Fixture fixture = new Fixture();
-        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
-        fixture.click(54, ClickType.RIGHT);
+        fixture.session.inventory().setItem(1, new ItemSaleSessionTest.Stack(9));
+        fixture.click(1, ClickType.RIGHT);
         assertEquals(5, fixture.data.cursor.getAmount());
-        assertEquals(4, fixture.data.storage.count());
+        assertEquals(4, fixture.session.inventory().getItem(1).getAmount());
         fixture.click(0, ClickType.RIGHT);
         assertEquals(1, fixture.session.inventory().getItem(0).getAmount());
         assertEquals(4, fixture.data.cursor.getAmount());
         fixture.menu.onClose(fixture.context);
+        assertEquals(9, fixture.data.storage.count());
+    }
+
+    @Test
+    void nativeStorageClicksAreNotReplayedAndCheckpointTheResult() {
+        for (ClickType click : List.of(ClickType.LEFT, ClickType.RIGHT)) {
+            Fixture fixture = new Fixture();
+            fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
+            InventoryClickEvent event = fixture.event(54, click);
+            fixture.menu.onInventoryClick(fixture.context, event);
+            assertFalse(event.isCancelled());
+            assertEquals(9, fixture.data.storage.count());
+            assertTrue(fixture.data.cursor.isEmpty());
+
+            // Simulate the server applying the uncancelled click after event dispatch.
+            int picked = click == ClickType.RIGHT ? 5 : 9;
+            fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9 - picked);
+            fixture.data.cursor = new ItemSaleSessionTest.Stack(picked);
+            fixture.run();
+            assertEquals(picked, fixture.data.cursor.getAmount());
+            assertEquals(9 - picked, fixture.data.storage.count());
+            fixture.data.restart();
+            fixture.data.session().close();
+            assertEquals(9, fixture.data.storage.count());
+        }
+    }
+
+    @Test
+    void nativePickupAndPlacementInOneTickRemainAllowed() {
+        Fixture fixture = new Fixture();
+        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
+        InventoryClickEvent pickup = fixture.event(54, ClickType.LEFT);
+        fixture.menu.onInventoryClick(fixture.context, pickup);
+        assertFalse(pickup.isCancelled());
+        fixture.data.storage.slots[0] = null;
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(9);
+        InventoryClickEvent placement = fixture.event(55, ClickType.LEFT);
+        fixture.menu.onInventoryClick(fixture.context, placement);
+        assertFalse(placement.isCancelled());
+        fixture.data.storage.slots[1] = fixture.data.cursor;
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(0);
+        fixture.run();
+        assertTrue(fixture.data.cursor.isEmpty());
+        assertEquals(9, fixture.data.storage.slots[1].getAmount());
+        fixture.data.restart();
+        fixture.data.session().close();
+        assertEquals(9, fixture.data.storage.count());
+    }
+
+    @Test
+    void closingAfterNativePickupPersistsItemsBeforeTheDeferredCheckpoint() {
+        Fixture fixture = new Fixture();
+        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
+        InventoryClickEvent event = fixture.event(54, ClickType.LEFT);
+        fixture.menu.onInventoryClick(fixture.context, event);
+        assertFalse(event.isCancelled());
+        fixture.data.storage.slots[0] = null;
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(9);
+        fixture.menu.onClose(fixture.context);
+        int saves = fixture.data.nativeSaves;
+        fixture.run();
+        assertEquals(saves, fixture.data.nativeSaves);
+        fixture.data.restart();
+        fixture.data.session().close();
         assertEquals(9, fixture.data.storage.count());
     }
 
@@ -87,8 +273,8 @@ final class ItemDepositViewTest {
     @Test
     void closingBeforeDeferredTransferPreventsLateItemMovement() {
         Fixture fixture = new Fixture();
-        fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(8);
-        fixture.menu.onInventoryClick(fixture.context, fixture.event(54, ClickType.SHIFT_LEFT));
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(8);
+        fixture.menu.onInventoryDrag(fixture.context, fixture.drag(Map.of(0, new ItemSaleSessionTest.Stack(8))));
         fixture.menu.onClose(fixture.context);
         fixture.run();
         assertEquals(8, fixture.data.storage.count());
@@ -99,7 +285,9 @@ final class ItemDepositViewTest {
         final ItemSaleSessionTest.Fixture data = new ItemSaleSessionTest.Fixture();
         final ItemSaleSession session = data.session();
         final List<Runnable> tasks = new ArrayList<>();
+        final List<Boolean> feedback = new ArrayList<>();
         int controls;
+        int refreshes;
         boolean accept = true;
         final ScheduleService scheduler = proxy(ScheduleService.class, (ignored, method, args) -> {
             tasks.add((Runnable) args[2]);
@@ -109,13 +297,22 @@ final class ItemDepositViewTest {
             (ignored, method, args) -> args[0] == ScheduleService.class ? scheduler : data.services.require((Class) args[0]));
         final ItemDepositView menu = new ItemDepositView(registry, InventoryKey.of("test:sale"), data.player,
             session, item -> accept) {
+            @Override
+            protected void onItemInteraction(final boolean successful) {
+                feedback.add(successful);
+            }
+
             {
                 addElement(53, new RefreshableInventoryElement(context -> new ItemSaleSessionTest.Stack(1),
                     (context, event) -> controls++));
             }
         };
-        final InventoryService inventories = proxy(InventoryService.class,
-            (ignored, method, args) -> method.getName().equals("getCurrentView") ? Optional.of(menu) : null);
+        final InventoryService inventories = proxy(InventoryService.class, (ignored, method, args) -> {
+            if (method.getName().equals("refresh")) {
+                refreshes++;
+            }
+            return method.getName().equals("getCurrentView") ? Optional.of(menu) : null;
+        });
         final InventoryContext context = new InventoryContext(registry, data.player, inventories);
         final Inventory top = proxy(Inventory.class, (ignored, method, args) -> 54);
         final org.bukkit.inventory.InventoryView view = proxy(org.bukkit.inventory.InventoryView.class,

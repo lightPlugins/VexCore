@@ -39,21 +39,16 @@ final class VexInventoryRenderer {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(inventory, "inventory");
         Objects.requireNonNull(elements, "elements");
-        inventory.clear();
-
-        for (Map.Entry<Integer, InventoryElement> entry : elements.entrySet()) {
-            int slot = entry.getKey();
-            InventoryElement element = entry.getValue();
-
-            if (slot < 0 || slot >= inventory.getSize() || element == null) {
-                continue;
-            }
-
-            ItemStack rendered = element.render(context);
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            InventoryElement element = elements.get(slot);
+            ItemStack rendered = element == null ? null : element.render(context);
             ItemStack item = rendered == null ? null : rendered.clone();
 
             applyDefaultTooltipStyle(item, defaultTooltipStyle);
-            inventory.setItem(slot, item);
+            // Keep unchanged stacks in place; clearing and refilling creates needless slot updates.
+            if (!Objects.equals(inventory.getItem(slot), item)) {
+                inventory.setItem(slot, item);
+            }
         }
     }
 

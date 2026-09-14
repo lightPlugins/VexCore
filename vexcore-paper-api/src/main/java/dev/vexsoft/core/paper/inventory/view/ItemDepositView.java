@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
@@ -55,6 +56,10 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         return session;
     }
 
+    /** Reports a completed or rejected item interaction; controls provide their own feedback. */
+    protected void onItemInteraction(final boolean successful) {
+    }
+
     @Override
     public void onInventoryClick(final InventoryContext context, final InventoryClickEvent event) {
         if (event.isCancelled()) {
@@ -62,34 +67,60 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         }
         event.setCancelled(true);
         if (pending || closed || session.isLocked()) {
+            onItemInteraction(false);
             return;
         }
         int raw = event.getRawSlot();
         ClickType click = event.getClick();
-        if (click != ClickType.LEFT && click != ClickType.RIGHT && click != ClickType.SHIFT_LEFT) {
+        if (click != ClickType.LEFT && click != ClickType.RIGHT
+            && click != ClickType.SHIFT_LEFT && click != ClickType.SHIFT_RIGHT) {
+            onItemInteraction(false);
             return;
         }
         if (raw >= session.inventory().getSize() && raw < getSize()) {
             InventoryElement element = getElements(context).get(raw);
             if (element != null && element.isClickable()) {
                 defer(context, () -> element.onClick(context, event));
+            } else {
+                onItemInteraction(false);
             }
             return;
         }
         if (raw < 0 || (raw >= getSize() && (event.getSlot() < 0 || event.getSlot() >= 36))) {
+            onItemInteraction(false);
             return;
         }
         boolean top = raw < getSize();
+        if (!top && (click == ClickType.LEFT || click == ClickType.RIGHT)) {
+            // Let the server apply ordinary storage clicks without a cancel/cursor correction.
+            // Persist afterwards, when the native inventory and cursor contain the result.
+            if (defer(context, () -> {
+                session.checkpoint();
+                onItemInteraction(!event.isCancelled() && event.getAction() != InventoryAction.NOTHING);
+            }, false)) {
+                event.setCancelled(false);
+            } else {
+                onItemInteraction(false);
+            }
+            return;
+        }
         int slot = top ? raw : event.getSlot();
         Inventory source = top ? session.inventory() : player.getInventory();
-        ItemStack current = source.getItem(slot);
-        ItemStack expectedItem = current == null ? null : current.clone();
-        ItemStack expectedCursor = player.getItemOnCursor().clone();
-        defer(context, () -> {
-            if (Objects.equals(expectedItem, source.getItem(slot)) && expectedCursor.equals(player.getItemOnCursor())) {
-                session.transfer(() -> transfer(top, slot, click));
-            }
-        });
+        ItemStack previous = source.getItem(slot);
+        ItemStack before = previous == null ? null : previous.clone();
+        ItemStack cursorBefore = player.getItemOnCursor().clone();
+        // Cancelled clicks may be applied synchronously. Only cancelled drags restore the cursor
+        // after dispatch and require a deferred transfer. Render before the click correction.
+        try {
+            session.transfer(() -> transfer(top, slot, click));
+            context.getInventoryService().refresh(player);
+        } catch (RuntimeException failure) {
+            onItemInteraction(false);
+            defer(context, player::closeInventory);
+            throw failure;
+        }
+        onItemInteraction(!Objects.equals(before, source.getItem(slot))
+            || !cursorBefore.equals(player.getItemOnCursor()));
     }
 
     @Override
@@ -99,6 +130,19 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         }
         event.setCancelled(true);
         if (pending || closed || session.isLocked()) {
+            onItemInteraction(false);
+            return;
+        }
+        if (!event.getRawSlots().isEmpty()
+            && event.getRawSlots().stream().allMatch(slot -> slot >= getSize() && slot < getSize() + 36)) {
+            if (defer(context, () -> {
+                session.checkpoint();
+                onItemInteraction(!event.isCancelled());
+            }, false)) {
+                event.setCancelled(false);
+            } else {
+                onItemInteraction(false);
+            }
             return;
         }
         Map<Integer, ItemStack> changes = new LinkedHashMap<>();
@@ -108,6 +152,7 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
             if (raw < 0 || raw >= getSize() + 36
                 || (raw >= session.inventory().getSize() && raw < getSize())
                 || (raw < getSize() && !accepted.test(entry.getValue()))) {
+                onItemInteraction(false);
                 return;
             }
             int encoded = raw < getSize() ? raw : getSize() + event.getView().convertSlot(raw);
@@ -119,10 +164,12 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         ItemStack newCursor = event.getCursor() == null ? null : event.getCursor().clone();
         defer(context, () -> {
             if (!player.getItemOnCursor().equals(oldCursor)) {
+                onItemInteraction(false);
                 return;
             }
             for (var entry : before.entrySet()) {
                 if (!Objects.equals(entry.getValue(), itemAt(entry.getKey()))) {
+                    onItemInteraction(false);
                     return;
                 }
             }
@@ -130,14 +177,25 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
                 changes.forEach(this::setItemAt);
                 player.setItemOnCursor(newCursor);
             });
+            onItemInteraction(!changes.isEmpty());
         });
     }
 
     private void defer(final InventoryContext context, final Runnable transfer) {
-        pending = true;
+        if (!defer(context, transfer, true)) {
+            onItemInteraction(false);
+        }
+    }
+
+    private boolean defer(final InventoryContext context, final Runnable transfer, final boolean blockInteractions) {
+        if (blockInteractions) {
+            pending = true;
+        }
         // A cancelled drag restores its cursor after dispatch; mutate and save only on the next tick.
-        if (schedules.runForLater(player, 1L, () -> {
-            pending = false;
+        boolean scheduled = schedules.runForLater(player, 1L, () -> {
+            if (blockInteractions) {
+                pending = false;
+            }
             if (closed || context.getInventoryService().getCurrentView(player.getUniqueId()).orElse(null) != this) {
                 return;
             }
@@ -147,24 +205,30 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
                     context.getInventoryService().refresh(player);
                 }
             } catch (RuntimeException failure) {
+                onItemInteraction(false);
                 player.closeInventory();
                 throw failure;
             }
-        }, () -> pending = false).isEmpty()) {
+        }, () -> {
+            if (blockInteractions) {
+                pending = false;
+            }
+        }).isPresent();
+        if (!scheduled && blockInteractions) {
             pending = false;
         }
+        return scheduled;
     }
 
     private void transfer(final boolean top, final int slot, final ClickType click) {
         Inventory source = top ? session.inventory() : player.getInventory();
         ItemStack current = source.getItem(slot);
-        if (click == ClickType.SHIFT_LEFT) {
+        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
             if (current == null || current.isEmpty() || (!top && !accepted.test(current))) {
                 return;
             }
-            Inventory target = top ? player.getInventory() : session.inventory();
-            var remaining = target.addItem(current.clone());
-            source.setItem(slot, remaining.isEmpty() ? null : remaining.values().iterator().next());
+            ItemStack remaining = shift(current, top);
+            source.setItem(slot, remaining.isEmpty() ? null : remaining);
             return;
         }
         ItemStack cursor = player.getItemOnCursor().clone();
@@ -196,6 +260,34 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
             source.setItem(slot, cursor);
             player.setItemOnCursor(current.clone());
         }
+    }
+
+    private ItemStack shift(final ItemStack current, final boolean toPlayer) {
+        Inventory target = toPlayer ? player.getInventory() : session.inventory();
+        ItemStack remaining = current.clone();
+        int size = toPlayer ? 36 : target.getSize();
+        // Chest quick-move merges first, then fills empty slots. Returning items traverses
+        // the displayed player slots backwards (hotbar 8..0, then backpack 35..9).
+        for (int pass = 0; pass < 2 && !remaining.isEmpty(); pass++) {
+            for (int index = 0; index < size && !remaining.isEmpty(); index++) {
+                int slot = toPlayer ? index < 9 ? 8 - index : 44 - index : index;
+                ItemStack existing = target.getItem(slot);
+                boolean empty = existing == null || existing.isEmpty();
+                if (pass == 0 ? empty || !existing.isSimilar(remaining) : !empty) {
+                    continue;
+                }
+                int amount = empty ? 0 : existing.getAmount();
+                int moved = Math.min(remaining.getAmount(), remaining.getMaxStackSize() - amount);
+                if (moved <= 0) {
+                    continue;
+                }
+                ItemStack placed = remaining.clone();
+                placed.setAmount(amount + moved);
+                target.setItem(slot, placed);
+                remaining.setAmount(remaining.getAmount() - moved);
+            }
+        }
+        return remaining;
     }
 
     private ItemStack itemAt(final int encoded) {
