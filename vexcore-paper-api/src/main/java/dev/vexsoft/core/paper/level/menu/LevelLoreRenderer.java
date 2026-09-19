@@ -4,19 +4,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 
 /** Expands the three mandatory structural lore placeholders into localized multiline blocks. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LevelLoreRenderer {
 
     public static final String REWARDS = "%rewards%";
     public static final String COSTS = "%costs%";
     public static final String REQUIREMENTS = "%requirements%";
     private static final List<String> REQUIRED = List.of(REWARDS, COSTS, REQUIREMENTS);
-
-    private LevelLoreRenderer() {
-    }
 
     /** Expands each placeholder line and rejects language templates missing a structural block. */
     public static List<Component> render(

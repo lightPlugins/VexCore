@@ -4,22 +4,19 @@ import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
 /** Base element that optionally delegates clicks to a supplied handler. */
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class AbstractInventoryElement implements InventoryElement {
 
     private final BiConsumer<InventoryContext, InventoryClickEvent> clickHandler;
 
     protected AbstractInventoryElement() {
         this(null);
-    }
-
-    protected AbstractInventoryElement(
-        final BiConsumer<InventoryContext, InventoryClickEvent> clickHandler
-    ) {
-        this.clickHandler = clickHandler;
     }
 
     @Override

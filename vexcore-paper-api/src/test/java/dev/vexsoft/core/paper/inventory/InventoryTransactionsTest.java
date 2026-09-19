@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Proxy;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.Test;
@@ -63,23 +67,12 @@ final class InventoryTransactionsTest {
         );
     }
 
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class Stack extends ItemStack {
 
+        @Getter(onMethod_ = @Override)
+        @Setter(onMethod_ = @Override)
         private int amount;
-
-        private Stack(final int amount) {
-            this.amount = amount;
-        }
-
-        @Override
-        public int getAmount() {
-            return amount;
-        }
-
-        @Override
-        public void setAmount(final int amount) {
-            this.amount = amount;
-        }
 
         @Override
         public ItemStack clone() {

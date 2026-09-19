@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /** Default global coordinator for custom mob definitions. */
 @Dependencies(MobRuntimeCoordinatorService.class)
@@ -152,10 +154,8 @@ public final class VexMobRegistryCoordinatorService implements MobRegistryCoordi
 
     }
 
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class ListCopy {
-
-        private ListCopy() {
-        }
 
         private static <T> Collection<T> copy(final Collection<T> values) {
             return List.copyOf(values);

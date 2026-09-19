@@ -2,6 +2,8 @@ package dev.vexsoft.core.paper.level.menu;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
@@ -10,10 +12,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 /** Builds uniformly modelled menu entries on top of NAME_TAG items. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LevelMenuItems {
-
-    private LevelMenuItems() {
-    }
 
     /** Creates a localized level item while keeping the physical material fixed to NAME_TAG. */
     public static ItemStack create(final Key itemModel, final Component name, final List<Component> lore) {

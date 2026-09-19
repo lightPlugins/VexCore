@@ -33,13 +33,13 @@ import org.bukkit.entity.Mob;
 
 /** Minecraft 26.2 implementation of native mob control. */
 @Dependencies
-public final class V26_2NmsMobAdapterService implements NmsMobAdapterService {
+public final class VexNmsMobAdapterService implements NmsMobAdapterService {
 
     private static final Field GOAL_SELECTOR = selectorField("goalSelector");
     private static final Field TARGET_SELECTOR = selectorField("targetSelector");
     private static final Field NAVIGATION = selectorField("navigation");
 
-    public V26_2NmsMobAdapterService(final VexServiceRegistry services) {
+    public VexNmsMobAdapterService(final VexServiceRegistry services) {
         Objects.requireNonNull(services, "services");
     }
 

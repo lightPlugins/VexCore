@@ -12,7 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -57,12 +58,9 @@ class VexInventoryRendererTest {
             (proxy, method, args) -> null));
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestStack extends ItemStack {
         private final int count;
-
-        private TestStack(final int count) {
-            this.count = count;
-        }
 
         @Override
         public ItemStack clone() {

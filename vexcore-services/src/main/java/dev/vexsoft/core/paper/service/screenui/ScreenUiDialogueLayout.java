@@ -12,16 +12,16 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /** Bounded immutable layout preparation, independent of player/task lifetime. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ScreenUiDialogueLayout {
-
-    private ScreenUiDialogueLayout() {
-    }
 
     public static void validate(DialoguePanelLayout layout, ScreenUiVersionDefinition version) {
         ScreenUiRenderer.texture(

@@ -9,9 +9,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
+import lombok.RequiredArgsConstructor;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
 
+@RequiredArgsConstructor
 public class ConfigurateConfigurationSection implements ConfigurationSection {
 
     protected final CommentedConfigurationNode node;
@@ -28,11 +30,6 @@ public class ConfigurateConfigurationSection implements ConfigurationSection {
         root.raw(value);
 
         return new ConfigurateConfigurationSection(root);
-    }
-
-    public ConfigurateConfigurationSection(CommentedConfigurationNode node, ReentrantReadWriteLock lock) {
-        this.node = node;
-        this.lock = lock;
     }
 
     @Override

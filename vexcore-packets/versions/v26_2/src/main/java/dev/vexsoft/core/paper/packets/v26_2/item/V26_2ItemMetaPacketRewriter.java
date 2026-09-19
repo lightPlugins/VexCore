@@ -6,6 +6,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.network.HashedPatchMap;
 import net.minecraft.network.HashedStack;
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket;
@@ -112,21 +114,12 @@ public final class V26_2ItemMetaPacketRewriter {
         return new ClientboundContainerSetContentPacket(packet.containerId(), packet.stateId(), rewritten, carried);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private final class SanitizingHashedStack implements HashedStack {
 
         private final UUID viewerId;
         private final HashedStack delegate;
         private final FakeItemMetaLookup lookup;
-
-        private SanitizingHashedStack(
-            final UUID viewerId,
-            final HashedStack delegate,
-            final FakeItemMetaLookup lookup
-        ) {
-            this.viewerId = viewerId;
-            this.delegate = delegate;
-            this.lookup = lookup;
-        }
 
         @Override
         public boolean matches(final ItemStack item, final HashedPatchMap.HashGenerator hasher) {

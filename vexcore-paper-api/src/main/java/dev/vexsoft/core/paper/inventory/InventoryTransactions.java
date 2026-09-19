@@ -1,14 +1,14 @@
 package dev.vexsoft.core.paper.inventory;
 
 import java.util.function.BooleanSupplier;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /** Native inventory rollback companion for synchronous player-data transactions. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class InventoryTransactions {
-
-    private InventoryTransactions() {
-    }
 
     /** Restores copied contents on failure or exception; invoke only on the player's owning thread. */
     public static boolean withRollback(final PlayerInventory inventory, final BooleanSupplier operation) {

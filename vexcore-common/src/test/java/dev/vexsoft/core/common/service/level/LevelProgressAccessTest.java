@@ -8,6 +8,9 @@ import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.level.LevelProgress;
 import dev.vexsoft.core.level.LevelProgressAccess;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.Test;
 
 final class LevelProgressAccessTest {
@@ -34,18 +37,13 @@ final class LevelProgressAccessTest {
         assertTrue(player.getDirtyKeys().contains(key));
     }
 
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestData {
 
         private double experience;
         private int claimedLevel;
 
-        private TestData() {
-        }
-
-        private TestData(final double experience, final int claimedLevel) {
-            this.experience = experience;
-            this.claimedLevel = claimedLevel;
-        }
     }
 
     private record Snapshot(double experience, int claimedLevel) implements LevelProgress {

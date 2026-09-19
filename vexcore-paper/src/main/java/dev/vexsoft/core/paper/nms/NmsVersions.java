@@ -3,15 +3,15 @@ package dev.vexsoft.core.paper.nms;
 import dev.vexsoft.core.paper.nms.v26_2.V26_2NmsVersionDefinition;
 import dev.vexsoft.core.paper.nms.version.NmsVersionDefinition;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
 
 /** Selects the native adapter matching the running Minecraft server. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class NmsVersions {
 
     private static final List<NmsVersionDefinition> DEFINITIONS = List.of(new V26_2NmsVersionDefinition());
-
-    private NmsVersions() {
-    }
 
     /** Returns the native definition for the running Minecraft version. */
     public static NmsVersionDefinition select() {

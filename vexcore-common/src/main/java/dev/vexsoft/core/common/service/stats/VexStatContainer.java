@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** Array-backed stat container used by one loaded player. */
 public final class VexStatContainer implements StatContainer {
@@ -338,15 +340,11 @@ public final class VexStatContainer implements StatContainer {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class VexPlayerStat implements PlayerStat {
 
         private final VexStatContainer container;
         private final RegisteredStat stat;
-
-        private VexPlayerStat(final VexStatContainer container, final RegisteredStat stat) {
-            this.container = container;
-            this.stat = stat;
-        }
 
         @Override
         public Stat getStat() {
@@ -379,22 +377,13 @@ public final class VexStatContainer implements StatContainer {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class ModifierHandle implements StatModifierHandle {
 
         private final VexStatContainer container;
         private final RegisteredStat stat;
         private final StatModifier modifier;
         private final AtomicBoolean removed = new AtomicBoolean();
-
-        private ModifierHandle(
-            final VexStatContainer container,
-            final RegisteredStat stat,
-            final StatModifier modifier
-        ) {
-            this.container = container;
-            this.stat = stat;
-            this.modifier = modifier;
-        }
 
         @Override
         public boolean isActive() {
@@ -409,14 +398,11 @@ public final class VexStatContainer implements StatContainer {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class Batch implements StatUpdateBatch {
 
         private final VexStatContainer container;
         private final AtomicBoolean closed = new AtomicBoolean();
-
-        private Batch(final VexStatContainer container) {
-            this.container = container;
-        }
 
         @Override
         public void close() {

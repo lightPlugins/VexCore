@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import lombok.Getter;
 import net.kyori.adventure.text.format.TextColor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -84,17 +85,13 @@ class VexThemeColorServiceTest {
 
     private static final class TestServices implements VexServiceRegistry {
 
+        @Getter(onMethod_ = @Override)
         private final ConfigurationOwner owner;
         private final ConfigurationService configurations;
 
         private TestServices(final ConfigurationOwner owner) {
             this.owner = owner;
             configurations = new VexConfigurationService(this);
-        }
-
-        @Override
-        public ConfigurationOwner getOwner() {
-            return owner;
         }
 
         @Override

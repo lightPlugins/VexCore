@@ -2,8 +2,11 @@ package dev.vexsoft.core.common.messaging.directory;
 
 import dev.vexsoft.core.api.messaging.MessageKey;
 import dev.vexsoft.core.api.messaging.MessageType;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /** Defines typed request and response messages for the network player directory. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PlayerDirectoryMessages {
 
     public static final MessageType<PlayerDirectoryRequest> REQUEST =
@@ -14,7 +17,4 @@ public final class PlayerDirectoryMessages {
         MessageType.json(MessageKey.of("vexcore", "directory.player_list_request"), PlayerDirectoryListRequest.class);
     public static final MessageType<PlayerDirectoryListResponse> LIST_RESPONSE =
         MessageType.json(MessageKey.of("vexcore", "directory.player_list_response"), PlayerDirectoryListResponse.class);
-
-    private PlayerDirectoryMessages() {
-    }
 }

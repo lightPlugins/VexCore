@@ -9,16 +9,14 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 /** Registers packet adapters and resolves their definitions by supported Minecraft version. */
+@RequiredArgsConstructor
 public final class VexPacketVersionRegistry implements PacketVersionRegistry {
 
     private final VexServiceRegistry services;
     private final Map<MinecraftVersion, PacketVersionDefinition> definitions = new LinkedHashMap<>();
-
-    public VexPacketVersionRegistry(final VexServiceRegistry services) {
-        this.services = services;
-    }
 
     @Override
     public void register(final Class<? extends PacketVersionDefinition> definitionType) {

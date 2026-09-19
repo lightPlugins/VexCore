@@ -7,6 +7,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
 
 /**
@@ -16,6 +19,7 @@ import net.kyori.adventure.key.Key;
  * array-backed representation avoids a map allocation for the small payloads signals commonly
  * carry.</p>
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SignalAttributes {
 
     private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9_-]*");
@@ -23,11 +27,6 @@ public final class SignalAttributes {
 
     private final String[] names;
     private final Object[] values;
-
-    private SignalAttributes(final String[] names, final Object[] values) {
-        this.names = names;
-        this.values = values;
-    }
 
     /** Returns the shared empty attribute collection. */
     public static SignalAttributes empty() {
@@ -113,13 +112,11 @@ public final class SignalAttributes {
     /**
      * Builds a compact immutable signal attribute collection.
      */
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Builder {
 
         private final List<String> names = new ArrayList<>();
         private final List<Object> values = new ArrayList<>();
-
-        private Builder() {
-        }
 
         /** Adds a string attribute. */
         public Builder putString(final String name, final String value) {

@@ -12,6 +12,8 @@ import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -22,10 +24,8 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
 /** Pure bounded layout compiler for the VexCore bitmap font contract. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ScreenUiRenderer {
-
-    private ScreenUiRenderer() {
-    }
 
     public record Glyph(String text, Style style, int width) {
 

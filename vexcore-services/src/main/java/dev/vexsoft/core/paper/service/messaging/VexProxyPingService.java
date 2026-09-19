@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -106,28 +110,15 @@ public final class VexProxyPingService implements ProxyPingService, AutoCloseabl
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class PendingPing {
 
+        @Getter(AccessLevel.PRIVATE)
         private final UUID playerId;
+        @Getter(AccessLevel.PRIVATE)
         private final long startedAt;
+        @Setter(AccessLevel.PRIVATE)
         private volatile VexTask timeoutTask;
-
-        private PendingPing(final UUID playerId, final long startedAt) {
-            this.playerId = playerId;
-            this.startedAt = startedAt;
-        }
-
-        private UUID getPlayerId() {
-            return playerId;
-        }
-
-        private long getStartedAt() {
-            return startedAt;
-        }
-
-        private void setTimeoutTask(final VexTask timeoutTask) {
-            this.timeoutTask = timeoutTask;
-        }
 
         private void cancelTimeout() {
             VexTask task = timeoutTask;

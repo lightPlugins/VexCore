@@ -3,14 +3,19 @@ package dev.vexsoft.core.currency;
 import dev.vexsoft.core.number.WholeAmount;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.Getter;
 
 /** Immutable balance and localization rules for one virtual currency. */
 public final class CurrencyDefinition {
 
+    @Getter
     private final CurrencyKey key;
+    @Getter
     private final WholeAmount defaultBalance;
     private final WholeAmount maximumBalance;
+    @Getter
     private final String nameKey;
+    @Getter
     private final String formatKey;
 
     private CurrencyDefinition(final Builder builder) {
@@ -31,24 +36,8 @@ public final class CurrencyDefinition {
         return new Builder(key);
     }
 
-    public CurrencyKey getKey() {
-        return key;
-    }
-
-    public WholeAmount getDefaultBalance() {
-        return defaultBalance;
-    }
-
     public Optional<WholeAmount> getMaximumBalance() {
         return Optional.ofNullable(maximumBalance);
-    }
-
-    public String getNameKey() {
-        return nameKey;
-    }
-
-    public String getFormatKey() {
-        return formatKey;
     }
 
     private static String requireLocalizationKey(final String value, final String name) {

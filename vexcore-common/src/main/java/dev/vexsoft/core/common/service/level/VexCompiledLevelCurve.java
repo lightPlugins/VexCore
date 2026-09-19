@@ -5,11 +5,14 @@ import dev.vexsoft.core.level.LevelChange;
 import dev.vexsoft.core.level.LevelSnapshot;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
 
 /** Immutable, precomputed implementation of a level curve. */
 final class VexCompiledLevelCurve implements CompiledLevelCurve {
 
+    @Getter(onMethod_ = @Override)
     private final int minimumLevel;
+    @Getter(onMethod_ = @Override)
     private final int maximumLevel;
     private final double[] thresholds;
 
@@ -17,16 +20,6 @@ final class VexCompiledLevelCurve implements CompiledLevelCurve {
         this.minimumLevel = minimumLevel;
         this.maximumLevel = maximumLevel;
         this.thresholds = thresholds.clone();
-    }
-
-    @Override
-    public int getMinimumLevel() {
-        return minimumLevel;
-    }
-
-    @Override
-    public int getMaximumLevel() {
-        return maximumLevel;
     }
 
     @Override

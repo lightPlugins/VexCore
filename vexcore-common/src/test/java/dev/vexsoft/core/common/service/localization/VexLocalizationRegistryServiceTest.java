@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -188,6 +189,7 @@ class VexLocalizationRegistryServiceTest {
 
     private static final class TestServices implements VexServiceRegistry {
 
+        @Getter(onMethod_ = @Override)
         private final ServiceOwner owner;
         private final CacheService cache;
         private final ThemeColorService themeColors = new TestThemeColors();
@@ -195,11 +197,6 @@ class VexLocalizationRegistryServiceTest {
         private TestServices(final ServiceOwner owner) {
             this.owner = owner;
             cache = new VexCacheService(this);
-        }
-
-        @Override
-        public ServiceOwner getOwner() {
-            return owner;
         }
 
         @Override

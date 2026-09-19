@@ -1,11 +1,14 @@
 package dev.vexsoft.core.paper.nms.position;
 
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 
 /** Shared block-level safety checks for native navigation and spawner placement. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class GroundPositionSafety {
 
     private static final Set<Material> HAZARDS = Set.of(
@@ -18,9 +21,6 @@ public final class GroundPositionSafety {
         Material.SOUL_CAMPFIRE,
         Material.SWEET_BERRY_BUSH
     );
-
-    private GroundPositionSafety() {
-    }
 
     /** Returns whether the supplied ground and vertical clearance satisfy all rules. */
     public static boolean isSafe(

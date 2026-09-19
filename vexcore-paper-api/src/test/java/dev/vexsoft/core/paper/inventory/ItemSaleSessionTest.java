@@ -24,6 +24,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -325,22 +329,11 @@ final class ItemSaleSessionTest {
         }
     }
 
+    @AllArgsConstructor(access = AccessLevel.PACKAGE)
     static final class Stack extends ItemStack {
+        @Getter(onMethod_ = @Override)
+        @Setter(onMethod_ = @Override)
         private int amount;
-
-        Stack(final int amount) {
-            this.amount = amount;
-        }
-
-        @Override
-        public int getAmount() {
-            return amount;
-        }
-
-        @Override
-        public void setAmount(final int value) {
-            amount = value;
-        }
 
         @Override
         public boolean isEmpty() {

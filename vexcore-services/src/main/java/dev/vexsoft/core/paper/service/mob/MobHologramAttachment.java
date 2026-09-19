@@ -4,15 +4,15 @@ import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.display.FakePassengerMount;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
 import dev.vexsoft.core.paper.packets.service.TextDisplayPacketService;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 /** Keeps a mounted mob hologram upright when the client attaches it to its vehicle. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class MobHologramAttachment {
-
-    private MobHologramAttachment() {
-    }
 
     /** Copies the carrier position without inheriting its vertical look direction. */
     public static Location uprightLocation(final Location carrier) {

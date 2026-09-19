@@ -1,12 +1,13 @@
 package dev.vexsoft.core.paper.screenui;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 /**
  * Bounded pack-backed scale presets. Scaling changes geometry, never text layout or packet cadence.
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class UiScale {
-
-    private UiScale() {
-    }
 
     /** Validates a supported scale and returns it unchanged. */
     public static double validate(double scale) {

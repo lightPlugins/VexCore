@@ -5,17 +5,17 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /** Player-bound input and request-local values used during placeholder resolution. */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PlaceholderContext {
 
+    @Getter
     private final VexPlayer player;
     private final Map<String, String> localValues;
-
-    private PlaceholderContext(final VexPlayer player, final Map<String, String> localValues) {
-        this.player = player;
-        this.localValues = localValues;
-    }
 
     /** Creates a context without local placeholders. */
     public static PlaceholderContext of(final VexPlayer player) {
@@ -30,11 +30,6 @@ public final class PlaceholderContext {
         updated.put(key, Objects.toString(value, ""));
 
         return new PlaceholderContext(player, Map.copyOf(updated));
-    }
-
-    /** Returns the player required for every resolution. */
-    public VexPlayer getPlayer() {
-        return player;
     }
 
     /** Returns one temporary placeholder value, or {@code null} when it is not present. */

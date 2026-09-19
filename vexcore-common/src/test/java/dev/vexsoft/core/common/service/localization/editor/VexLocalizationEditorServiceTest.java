@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -63,14 +65,11 @@ class VexLocalizationEditorServiceTest {
         assertFalse(local.inherited());
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestRegistry implements LocalizationRegistryService {
 
         private final TestOwner owner;
         private final AtomicInteger reloads = new AtomicInteger();
-
-        private TestRegistry(final TestOwner owner) {
-            this.owner = owner;
-        }
 
         @Override
         public void register(final LocalizationOwner owner) {
@@ -124,6 +123,7 @@ class VexLocalizationEditorServiceTest {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestOwner implements LocalizationOwner {
 
         private final Path directory;
@@ -133,10 +133,6 @@ class VexLocalizationEditorServiceTest {
             "languages/en_EN/menus/warps.yml",
             "title: '<blue>Warps'\n"
         );
-
-        private TestOwner(final Path directory) {
-            this.directory = directory;
-        }
 
         @Override
         public Path getLocalizationDirectory() {

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
@@ -27,14 +28,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /** Mannequins never join the world or tick; only their packets reach their owner. */
+@RequiredArgsConstructor
 public final class V26_2PlayerDummies {
 
     private final PacketTransportAdapterService transport;
     private final Map<FakeDisplayHandle, Mannequin> entities = new ConcurrentHashMap<>();
-
-    public V26_2PlayerDummies(PacketTransportAdapterService transport) {
-        this.transport = transport;
-    }
 
     public void spawn(Player viewer, FakeDisplayHandle handle, Location center) {
         var entity = new Mannequin(EntityTypes.MANNEQUIN, ((CraftWorld) center.getWorld()).getHandle());

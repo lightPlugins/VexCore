@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
 
 /**
@@ -256,6 +258,7 @@ public final class VexSignalRegistryService implements SignalRegistryService {
 
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class RegisteredListener implements SignalSubscription {
 
         private final long id;
@@ -265,22 +268,6 @@ public final class VexSignalRegistryService implements SignalRegistryService {
         private final Key signalKey;
         private final VexSignalRegistryService registry;
         private final AtomicBoolean active = new AtomicBoolean(true);
-
-        private RegisteredListener(
-            final long id,
-            final ServiceOwner owner,
-            final SignalInvoker invoker,
-            final Class<? extends VexSignal> signalType,
-            final Key signalKey,
-            final VexSignalRegistryService registry
-        ) {
-            this.id = id;
-            this.owner = owner;
-            this.invoker = invoker;
-            this.signalType = signalType;
-            this.signalKey = signalKey;
-            this.registry = registry;
-        }
 
         @Override
         public boolean isActive() {

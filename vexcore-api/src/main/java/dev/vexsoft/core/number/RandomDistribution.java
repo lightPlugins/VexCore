@@ -3,12 +3,12 @@ package dev.vexsoft.core.number;
 import java.util.List;
 import java.util.function.ToDoubleFunction;
 import java.util.random.RandomGenerator;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /** Shared bounded random sampling for gameplay catalogs and numerical rolls. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class RandomDistribution {
-
-    private RandomDistribution() {
-    }
 
     /** Picks an entry proportionally to its non-negative finite weight. */
     public static <T> T weighted(

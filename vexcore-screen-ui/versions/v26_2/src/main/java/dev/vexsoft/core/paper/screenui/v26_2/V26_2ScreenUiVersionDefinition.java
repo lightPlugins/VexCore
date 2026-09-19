@@ -11,9 +11,11 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.Set;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 
 /** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 8. */
+@NoArgsConstructor
 @Dependencies
 public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefinition {
 
@@ -70,9 +72,6 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
     }
 
     private static final Properties PROTOCOL = loadProtocol();
-
-    public V26_2ScreenUiVersionDefinition() {
-    }
 
     public V26_2ScreenUiVersionDefinition(VexServiceRegistry services) {
     }

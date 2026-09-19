@@ -4,18 +4,16 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.nms.NmsVersions;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.nms.version.NmsVersionDefinition;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.Plugin;
 
 /** Installs version-specific native entity control. */
+@RequiredArgsConstructor
 public final class NmsModule implements VexModule {
 
     private final Plugin plugin;
     private VexServiceRegistry services;
     private NmsVersionDefinition definition;
-
-    public NmsModule(final Plugin plugin) {
-        this.plugin = plugin;
-    }
 
     @Override
     public void enable(final VexServiceRegistry registry) {

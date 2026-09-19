@@ -5,13 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 
 /** Applies localized per-type line templates to structured execution descriptions. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class LevelTypeLineRenderer {
-
-    private LevelTypeLineRenderer() {
-    }
 
     /**
      * Renders descriptions with {@code type.state} templates taking precedence over {@code type}.

@@ -10,23 +10,20 @@ import dev.vexsoft.core.paper.packets.version.PacketComponent;
 import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 
 /** Reports the active packet adapter versions and their supported capabilities. */
 @Dependencies
 public final class VexPacketVersionService implements PacketVersionService {
 
+    @Getter(onMethod_ = @Override)
     private final MinecraftVersion minecraftVersion;
     private final PacketVersionDefinition definition;
 
     public VexPacketVersionService(final VexServiceRegistry services) {
         this.minecraftVersion = MinecraftVersion.of(Bukkit.getMinecraftVersion());
         this.definition = PacketVersions.select(services);
-    }
-
-    @Override
-    public MinecraftVersion getMinecraftVersion() {
-        return minecraftVersion;
     }
 
     @Override

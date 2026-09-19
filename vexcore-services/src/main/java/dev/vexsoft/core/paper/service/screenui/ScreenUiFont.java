@@ -2,15 +2,15 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import java.io.IOException;
 import java.util.Properties;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /** Metrics generated together with the resource pack; no runtime font rasterization. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class ScreenUiFont {
 
     private static final Properties METRICS = load();
     static final int HEIGHT = Integer.parseInt(METRICS.getProperty("height"));
-
-    private ScreenUiFont() {
-    }
 
     static int advance(int point) {
         String value = METRICS.getProperty(Integer.toString(point));

@@ -2,15 +2,15 @@ package dev.vexsoft.core.text;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.Style;
 
 /** Converts embedded newlines to independent lore rows without losing inherited styles. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ComponentLines {
-
-    private ComponentLines() {
-    }
 
     /** Splits textual newlines, preserving decorations, fonts, and interaction events. */
     public static List<Component> split(final Component component) {

@@ -21,6 +21,31 @@ These conventions apply to production code, tests, and Java resource-pack tools.
 - Established terms such as UUID and geometric coordinates x/y/z are acceptable in their usual context.
 - Use `var` when the type is obvious at the declaration. Prefer an explicit type for unclear return values.
 - Do not rename public methods, record components, serialized fields, or configuration keys during a style-only change.
+- Service contracts use responsibility names such as `ScheduleService`; concrete Core implementations
+  use `Vex` plus the contract name, such as `VexScheduleService`. Version-specific adapters follow
+  the same rule inside their version package. Abstract shared bases may retain the `Abstract` prefix.
+- Group services and their supporting classes by feature, with subpackages for distinct responsibilities.
+  Keep related types together rather than creating a package for every class. Plugin implementations
+  follow their project's prefix (`Arcane` in ArcaneMonolith), not the Core prefix.
+
+## Lombok
+
+- Prefer Lombok whenever it can replace handwritten boilerplate while preserving the existing API
+  and behavior. Apply this rule to new code and when editing existing classes.
+- Use `@Getter` and `@Setter` for direct field accessors, and `@RequiredArgsConstructor`,
+  `@AllArgsConstructor`, or `@NoArgsConstructor` for equivalent assignment-only or empty constructors.
+  Prefer field-level annotations when only selected fields should expose accessors.
+- Keep explicit methods and constructors that validate or normalize values, copy mutable data,
+  synchronize access, perform side effects, or resolve dependencies from `VexServiceRegistry`.
+  Do not replace the registry constructor with a constructor accepting individual dependencies.
+- Preserve accessor names, visibility, boolean naming, null handling, constructor signatures,
+  and serialization behavior. Persistent models retain their required no-argument constructor,
+  field names, defaults, and custom setters. Copy constructors remain explicit when they copy state.
+- Use focused annotations rather than adding `@Data`, `@Value`, or `@Builder` indiscriminately:
+  generated equality, string representations, mutability, and construction APIs must be intentional.
+  Keep existing records when they already express the required value semantics.
+- Declare Lombok as a compile-only dependency and annotation processor for each applicable source
+  set. Keep its version consistent across modules; Lombok is not a runtime dependency.
 
 ## Comments
 

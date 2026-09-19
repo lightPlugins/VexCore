@@ -2,11 +2,15 @@ package dev.vexsoft.core.api.globaldata;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+import lombok.Getter;
 
 /** Identifies one typed global value owned by a plugin. */
 public final class GlobalDataKey<T> {
 
+    /** Owner-local persistence name. */
+    @Getter
     private final String name;
+    @Getter
     private final Class<T> type;
     private final Supplier<? extends T> defaultValue;
 
@@ -23,16 +27,6 @@ public final class GlobalDataKey<T> {
         final Supplier<? extends T> defaultValue
     ) {
         return new GlobalDataKey<>(name, type, defaultValue);
-    }
-
-    /** Returns the owner-local persistence name. */
-    public String getName() {
-        return name;
-    }
-
-    /** Returns the serialized value type. */
-    public Class<T> getType() {
-        return type;
     }
 
     /** Creates a fresh default value. */

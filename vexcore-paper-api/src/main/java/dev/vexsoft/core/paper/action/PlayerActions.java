@@ -2,15 +2,15 @@ package dev.vexsoft.core.paper.action;
 
 import dev.vexsoft.core.action.ActionRegistry;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.Player;
 
 /** Standard player-only presentation actions for owner-scoped action registries. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PlayerActions {
-
-    private PlayerActions() {
-    }
 
     /** Registers the standard player presentation actions in the supplied action registry. */
     public static void register(ActionRegistry<Player> registry) {

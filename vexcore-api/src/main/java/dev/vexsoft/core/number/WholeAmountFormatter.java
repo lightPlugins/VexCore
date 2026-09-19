@@ -7,14 +7,14 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /** Parses and formats exact whole amounts with incremental-game suffixes. */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class WholeAmountFormatter {
 
     private static final Pattern COMPACT = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*([a-zA-Z]*)");
-
-    private WholeAmountFormatter() {
-    }
 
     /**
      * Formats an amount with at most three significant digits using k, m, b, t, aa, ab and beyond.

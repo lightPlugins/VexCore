@@ -10,6 +10,10 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.stream.IntStream;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.*;
 import org.bukkit.inventory.Inventory;
@@ -327,29 +331,17 @@ public final class VexSlotInventoryInteractionsTest {
     }
 
     /** Minimal stack double: no Bukkit server or item factory is involved in routing tests. */
+    @AllArgsConstructor(access = AccessLevel.PACKAGE)
     private static final class Stack extends ItemStack {
 
         final String id;
+        @Getter(onMethod_ = @Override)
+        @Setter(onMethod_ = @Override)
         int amount;
-
-        Stack(String id, int amount) {
-            this.id = id;
-            this.amount = amount;
-        }
 
         @Override
         public ItemStack clone() {
             return new Stack(id, amount);
-        }
-
-        @Override
-        public int getAmount() {
-            return amount;
-        }
-
-        @Override
-        public void setAmount(int value) {
-            amount = value;
         }
 
         @Override

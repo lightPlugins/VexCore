@@ -292,9 +292,14 @@ public final class VexScheduleService implements ScheduleService, AutoCloseable 
     }
 
     private VexTask track(final ScheduledTask scheduled) {
-        ScheduledVexTask task = new ScheduledVexTask(scheduled);
+        ScheduledVexTask task = new ScheduledVexTask(scheduled, tasks::remove);
 
         tasks.put(scheduled, task);
+
+        // Closing may race with the scheduler returning a newly registered handle.
+        if (closed.get()) {
+            task.cancel();
+        }
 
         // Async tasks may finish before the scheduler returns their handle
         if (task.isFinished() || task.isCancelled()) {

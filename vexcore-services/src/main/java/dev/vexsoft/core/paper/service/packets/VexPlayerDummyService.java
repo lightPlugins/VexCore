@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -146,6 +148,7 @@ public final class VexPlayerDummyService implements PlayerDummyService, AutoClos
         states.keySet().stream().toList().forEach(this::remove);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
     private static final class State {
 
         final Player viewer;
@@ -154,10 +157,5 @@ public final class VexPlayerDummyService implements PlayerDummyService, AutoClos
         final long started = System.nanoTime();
         ItemStack[] armor;
 
-        State(Player viewer, Location center, BobRotation animation) {
-            this.viewer = viewer;
-            this.center = center;
-            this.animation = animation;
-        }
     }
 }

@@ -44,6 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 /** Coordinates player-data definitions, online containers, asynchronous saves, and recovery snapshots. */
@@ -863,16 +865,15 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         player.install(key, key.getType().cast(value), false);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class OwnerContainers {
 
         private final ServiceOwner owner;
         private final Map<String, DataContainerKey<?>> keys = new LinkedHashMap<>();
 
-        private OwnerContainers(final ServiceOwner owner) {
-            this.owner = owner;
-        }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class RegisteredContainer<T extends PlayerContainer> {
 
         private final ServiceOwner owner;
@@ -880,17 +881,6 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         private final PlayerContainerFactory<? extends T> factory;
         private final int slot;
 
-        private RegisteredContainer(
-            final ServiceOwner owner,
-            final Class<T> type,
-            final PlayerContainerFactory<? extends T> factory,
-            final int slot
-        ) {
-            this.owner = owner;
-            this.type = type;
-            this.factory = factory;
-            this.slot = slot;
-        }
     }
 
     private record ContainerSelection(String owner, DataContainerKey<?> key) {

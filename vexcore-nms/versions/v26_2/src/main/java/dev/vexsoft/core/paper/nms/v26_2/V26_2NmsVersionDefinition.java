@@ -21,6 +21,6 @@ public final class V26_2NmsVersionDefinition implements NmsVersionDefinition {
 
     @Override
     public Class<? extends NmsMobAdapterService> getMobAdapter() {
-        return V26_2NmsMobAdapterService.class;
+        return VexNmsMobAdapterService.class;
     }
 }

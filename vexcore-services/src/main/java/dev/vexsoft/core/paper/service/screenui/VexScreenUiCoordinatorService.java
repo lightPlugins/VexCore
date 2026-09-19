@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -243,6 +246,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     }
 
     /** Holds a player's screens, shared boss bar, and pending render task. */
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Session {
 
         private final Player player;
@@ -253,23 +257,17 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         private VexTask task;
         private boolean shown;
 
-        private Session(Player player) {
-            this.player = player;
-        }
     }
 
     /** Updates one screen's elements and schedules rendering through its player session. */
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public final class Handle implements ScreenUi {
 
         private final Session session;
         private final ScreenKey key;
         private final Map<String, Element> elements = new LinkedHashMap<>();
+        @Getter(onMethod_ = @Override)
         private volatile boolean closed;
-
-        private Handle(Session session, ScreenKey key) {
-            this.session = session;
-            this.key = key;
-        }
 
         private void put(String id, Element value) {
             validId(id);
@@ -337,11 +335,6 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
                     request(session);
                 }
             }
-        }
-
-        @Override
-        public boolean isClosed() {
-            return closed;
         }
 
         @Override

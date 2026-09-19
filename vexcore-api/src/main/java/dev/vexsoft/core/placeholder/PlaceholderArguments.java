@@ -3,16 +3,15 @@ package dev.vexsoft.core.placeholder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** Immutable argument path following a registered placeholder identifier. */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PlaceholderArguments {
 
     private static final PlaceholderArguments EMPTY = new PlaceholderArguments(List.of());
     private final List<String> values;
-
-    private PlaceholderArguments(final List<String> values) {
-        this.values = values;
-    }
 
     /** Returns an empty argument path. */
     public static PlaceholderArguments empty() {

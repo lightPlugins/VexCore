@@ -7,11 +7,13 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.nio.file.Path;
 import java.util.Objects;
+import lombok.Getter;
 
 /** Loads the current backend ID configured for Velocity routing. */
 @Dependencies(ConfigurationService.class)
 public final class VexServerIdentityService implements ServerIdentityService {
 
+    @Getter(onMethod_ = @Override)
     private final ServerId serverId;
 
     public VexServerIdentityService(final VexServiceRegistry services) {
@@ -23,10 +25,5 @@ public final class VexServerIdentityService implements ServerIdentityService {
             );
 
         serverId = new ServerId(configuration.getString("server-id", "server"));
-    }
-
-    @Override
-    public ServerId getServerId() {
-        return serverId;
     }
 }

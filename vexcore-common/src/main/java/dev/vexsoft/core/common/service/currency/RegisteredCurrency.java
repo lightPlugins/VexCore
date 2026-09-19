@@ -4,11 +4,16 @@ import dev.vexsoft.core.currency.Currency;
 import dev.vexsoft.core.currency.CurrencyDefinition;
 import dev.vexsoft.core.currency.CurrencyKey;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
 
 final class RegisteredCurrency implements Currency {
 
+    @Getter(AccessLevel.PACKAGE)
     private final String owner;
+    @Getter(onMethod_ = @Override)
     private volatile CurrencyDefinition definition;
+    @Getter(onMethod_ = @Override)
     private volatile boolean registered = true;
 
     RegisteredCurrency(final String owner, final CurrencyDefinition definition) {
@@ -19,20 +24,6 @@ final class RegisteredCurrency implements Currency {
     @Override
     public CurrencyKey getKey() {
         return definition.getKey();
-    }
-
-    @Override
-    public CurrencyDefinition getDefinition() {
-        return definition;
-    }
-
-    @Override
-    public boolean isRegistered() {
-        return registered;
-    }
-
-    String getOwner() {
-        return owner;
     }
 
     void update(final CurrencyDefinition updatedDefinition) {

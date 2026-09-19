@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
 
@@ -130,11 +131,10 @@ public final class VexRewardTransactionTest {
         return new VexRewardService(registry);
     }
 
+    @NoArgsConstructor
     public static final class Balance {
 
         private int amount;
 
-        public Balance() {
-        }
     }
 }

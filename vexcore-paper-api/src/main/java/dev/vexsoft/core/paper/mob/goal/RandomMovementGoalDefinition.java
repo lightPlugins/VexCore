@@ -2,6 +2,8 @@ package dev.vexsoft.core.paper.mob.goal;
 
 import java.util.Objects;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.bukkit.Material;
 
 /** Cave-safe random ground movement constrained around the spawn origin. */
@@ -35,6 +37,7 @@ public record RandomMovementGoalDefinition(int priority, double speed, double mi
     }
 
     /** Builder for a random movement goal. */
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Builder {
 
         private int priority = 10;
@@ -53,9 +56,6 @@ public record RandomMovementGoalDefinition(int priority, double speed, double mi
         private boolean avoidHazards = true;
         private Set<Material> allowedSupportBlocks = Set.of();
         private Set<Material> deniedSupportBlocks = Set.of();
-
-        private Builder() {
-        }
 
         /** Sets the goal priority. */
         public Builder priority(final int value) {

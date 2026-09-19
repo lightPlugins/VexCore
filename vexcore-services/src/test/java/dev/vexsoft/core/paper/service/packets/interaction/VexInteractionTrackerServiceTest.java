@@ -13,6 +13,9 @@ import dev.vexsoft.core.paper.packets.interaction.FakeInteractionHandle;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 
 /** Verifies viewer isolation, ownership and lifecycle cleanup in the interaction tracker. */
@@ -98,18 +101,11 @@ final class VexInteractionTrackerServiceTest {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestServices implements VexServiceRegistry {
 
+        @Getter(onMethod_ = @Override)
         private final ServiceOwner owner;
-
-        private TestServices(final ServiceOwner owner) {
-            this.owner = owner;
-        }
-
-        @Override
-        public ServiceOwner getOwner() {
-            return owner;
-        }
 
         @Override
         public VexServiceRegistry scoped(final ServiceOwner childOwner) {

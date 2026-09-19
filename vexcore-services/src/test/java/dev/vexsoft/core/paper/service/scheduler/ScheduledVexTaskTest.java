@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.paper.scheduler.VexTask;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.Test;
 
@@ -33,14 +35,11 @@ class ScheduledVexTaskTest {
         assertTrue(new ScheduledVexTask(scheduled).isFinished());
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestScheduledTask implements ScheduledTask {
 
         private final boolean repeating;
         private ExecutionState state = ExecutionState.IDLE;
-
-        private TestScheduledTask(boolean repeating) {
-            this.repeating = repeating;
-        }
 
         @Override
         public Plugin getOwningPlugin() {

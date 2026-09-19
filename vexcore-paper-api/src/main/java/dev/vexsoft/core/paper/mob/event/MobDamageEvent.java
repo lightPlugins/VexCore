@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.mob.event;
 import dev.vexsoft.core.paper.mob.MobSnapshot;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -12,10 +14,17 @@ import org.bukkit.event.HandlerList;
 public final class MobDamageEvent extends Event implements Cancellable {
 
     private static final HandlerList HANDLERS = new HandlerList();
+    /** Mob snapshot captured before damage is applied. */
+    @Getter
     private final MobSnapshot mob;
     private final Entity attacker;
+    /** Pre-reset melee charge; non-melee and programmatic hits use one. */
+    @Getter
     private final double attackCharge;
+    @Getter
     private double damage;
+    @Getter(onMethod_ = @Override)
+    @Setter(onMethod_ = @Override)
     private boolean cancelled;
 
     /** Creates an event with the resolved causing entity, or null for environmental damage. */
@@ -41,29 +50,14 @@ public final class MobDamageEvent extends Event implements Cancellable {
         setDamage(damage);
     }
 
-    /** Returns the pre-reset melee charge; non-melee and programmatic hits use one. */
-    public double getAttackCharge() {
-        return attackCharge;
-    }
-
     /** Returns vanilla melee charge scaling for a replacement custom base damage value. */
     public double getAttackChargeMultiplier() {
         return 0.2D + 0.8D * attackCharge * attackCharge;
     }
 
-    /** Returns the mob snapshot captured before damage is applied. */
-    public MobSnapshot getMob() {
-        return mob;
-    }
-
     /** Returns the causing entity (projectile shooters are resolved by the runtime). */
     public Optional<Entity> getAttacker() {
         return Optional.ofNullable(attacker);
-    }
-
-    /** Returns the mutable custom damage amount. */
-    public double getDamage() {
-        return damage;
     }
 
     /** Changes damage; zero is allowed and produces no health mutation. */
@@ -73,16 +67,6 @@ public final class MobDamageEvent extends Event implements Cancellable {
         }
 
         this.damage = damage;
-    }
-
-    @Override
-    public boolean isCancelled() {
-        return cancelled;
-    }
-
-    @Override
-    public void setCancelled(final boolean cancelled) {
-        this.cancelled = cancelled;
     }
 
     @Override

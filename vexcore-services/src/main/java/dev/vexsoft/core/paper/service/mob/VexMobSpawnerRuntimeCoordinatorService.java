@@ -25,6 +25,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -634,6 +636,7 @@ public final class VexMobSpawnerRuntimeCoordinatorService implements MobSpawnerR
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class Population {
 
         private final UUID playerId;
@@ -642,8 +645,5 @@ public final class VexMobSpawnerRuntimeCoordinatorService implements MobSpawnerR
         private final AtomicBoolean deactivating = new AtomicBoolean();
         private long nextSpawnTick;
 
-        private Population(final UUID playerId) {
-            this.playerId = playerId;
-        }
     }
 }

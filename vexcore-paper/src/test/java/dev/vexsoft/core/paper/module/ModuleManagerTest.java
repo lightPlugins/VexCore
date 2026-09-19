@@ -7,6 +7,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 
 public final class ModuleManagerTest {
@@ -38,17 +40,12 @@ public final class ModuleManagerTest {
         assertEquals(List.of("third", "second", "first"), disabled);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestModule implements VexModule {
 
         private final String name;
         private final List<String> disabled;
         private final boolean fail;
-
-        private TestModule(String name, List<String> disabled, boolean fail) {
-            this.name = name;
-            this.disabled = disabled;
-            this.fail = fail;
-        }
 
         @Override
         public void enable(VexServiceRegistry services) {
@@ -69,15 +66,11 @@ public final class ModuleManagerTest {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class StartingModule implements VexModule {
 
         private final String name;
         private final List<String> started;
-
-        private StartingModule(final String name, final List<String> started) {
-            this.name = name;
-            this.started = started;
-        }
 
         @Override
         public void enable(final VexServiceRegistry services) {

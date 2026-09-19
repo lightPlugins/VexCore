@@ -8,6 +8,8 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -19,14 +21,11 @@ import org.bukkit.inventory.PlayerInventory;
 /**
  * Shared item movement for opt-in slot views; persistent ownership stays in the plugin callback.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class VexSlotInventoryInteractions {
 
     private final ScheduleService schedules;
     private final Map<UUID, Object> pendingDrags = new ConcurrentHashMap<>();
-
-    VexSlotInventoryInteractions(ScheduleService schedules) {
-        this.schedules = schedules;
-    }
 
     void click(
         InventoryContext context,

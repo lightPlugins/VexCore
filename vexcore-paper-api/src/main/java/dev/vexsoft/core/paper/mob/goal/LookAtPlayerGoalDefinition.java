@@ -1,5 +1,8 @@
 package dev.vexsoft.core.paper.mob.goal;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 /** Scope-aware smooth player tracking for a custom mob. */
 public record LookAtPlayerGoalDefinition(int priority, double acquireRadius, double releaseRadius,
                                          int reacquireIntervalTicks, int minimumTargetLockTicks,
@@ -21,6 +24,7 @@ public record LookAtPlayerGoalDefinition(int priority, double acquireRadius, dou
     }
 
     /** Builder for a look-at-player goal. */
+    @NoArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Builder {
 
         private int priority = 20;
@@ -32,9 +36,6 @@ public record LookAtPlayerGoalDefinition(int priority, double acquireRadius, dou
         private boolean requireLineOfSight = true;
         private boolean whileMoving = true;
         private boolean yawOnly = true;
-
-        private Builder() {
-        }
 
         /** Sets the goal priority. */
         public Builder priority(final int value) {

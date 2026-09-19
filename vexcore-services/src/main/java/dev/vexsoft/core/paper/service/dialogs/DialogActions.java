@@ -3,16 +3,16 @@ package dev.vexsoft.core.paper.service.dialogs;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("UnstableApiUsage")
 public final class DialogActions {
 
     private static final int DEFAULT_BUTTON_WIDTH = 150;
-
-    private DialogActions() {
-    }
 
     public static ActionButton button(
         final Component label,

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.vexsoft.core.paper.screenui.*;
 import java.util.*;
+import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.junit.jupiter.api.Test;
@@ -117,6 +118,7 @@ public class UiToastStackTest {
     public static final class RecordingScreen implements ScreenUi {
 
         private final Map<String, TextBlockLayout> text = new HashMap<>();
+        @Getter(onMethod_ = @Override)
         private boolean closed;
         private int writes;
         private double textureScale;
@@ -141,11 +143,6 @@ public class UiToastStackTest {
         @Override
         public void remove(String id) {
             text.remove(id);
-        }
-
-        @Override
-        public boolean isClosed() {
-            return closed;
         }
 
         @Override

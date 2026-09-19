@@ -6,6 +6,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 
 /** Default owner-scoped facade for the shared sidebar coordinator. */
@@ -74,18 +76,13 @@ public final class VexSidebarService implements SidebarService, AutoCloseable {
         coordinator.clearOwner(owner);
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private final class TriggerHandle implements SidebarHandle {
 
         private final Player player;
         private final String channel;
         private final int priority;
         private final AtomicBoolean closed = new AtomicBoolean();
-
-        private TriggerHandle(final Player player, final String channel, final int priority) {
-            this.player = player;
-            this.channel = channel;
-            this.priority = priority;
-        }
 
         @Override
         public void update(final SidebarFrame frame) {

@@ -16,6 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.key.Key;
 import org.junit.jupiter.api.Test;
 
@@ -151,20 +154,12 @@ class VexSignalRegistryServiceTest {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class TestServices implements VexServiceRegistry {
 
+        @Getter(onMethod_ = @Override)
         private final ServiceOwner owner;
         private final SignalRegistryService registry;
-
-        private TestServices(final ServiceOwner owner, final SignalRegistryService registry) {
-            this.owner = owner;
-            this.registry = registry;
-        }
-
-        @Override
-        public ServiceOwner getOwner() {
-            return owner;
-        }
 
         @Override
         public VexServiceRegistry scoped(final ServiceOwner childOwner) {

@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** Default global coordinator for dynamic stat registrations. */
 @Dependencies
@@ -213,14 +215,12 @@ public final class VexStatRegistryCoordinatorService implements StatRegistryCoor
         return normalized;
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class Slot {
 
         private final int runtimeId;
         private long generation;
         private RegisteredStat active;
 
-        private Slot(final int runtimeId) {
-            this.runtimeId = runtimeId;
-        }
     }
 }

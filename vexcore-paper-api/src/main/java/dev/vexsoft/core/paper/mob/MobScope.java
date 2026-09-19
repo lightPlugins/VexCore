@@ -3,16 +3,15 @@ package dev.vexsoft.core.paper.mob;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /** Controls which players may see and interact with one mob instance. */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class MobScope {
 
     private static final MobScope GLOBAL = new MobScope(null);
     private final UUID playerId;
-
-    private MobScope(final UUID playerId) {
-        this.playerId = playerId;
-    }
 
     /** Creates the shared scope visible to every eligible viewer. */
     public static MobScope global() {

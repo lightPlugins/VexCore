@@ -4,6 +4,7 @@ import dev.vexsoft.core.paper.mob.MobRemovalReason;
 import dev.vexsoft.core.paper.mob.MobSnapshot;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.Getter;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -12,7 +13,10 @@ import org.bukkit.event.HandlerList;
 public final class MobRemovedEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();
+    /** Last snapshot captured for the removed mob. */
+    @Getter
     private final MobSnapshot mob;
+    @Getter
     private final MobRemovalReason reason;
     private final Entity attacker;
 
@@ -31,16 +35,6 @@ public final class MobRemovedEvent extends Event {
     /** Returns the attacker responsible for a lethal hit, excluding administrative removal. */
     public Optional<Entity> getAttacker() {
         return Optional.ofNullable(attacker);
-    }
-
-    /** Returns the last snapshot captured for the removed mob. */
-    public MobSnapshot getMob() {
-        return mob;
-    }
-
-    /** Returns why the runtime removed the mob. */
-    public MobRemovalReason getReason() {
-        return reason;
     }
 
     @Override

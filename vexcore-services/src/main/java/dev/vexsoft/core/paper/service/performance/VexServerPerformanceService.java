@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.service.platform.PlatformService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 
@@ -20,6 +21,7 @@ public final class VexServerPerformanceService implements ServerPerformanceServi
     private final PlatformService platform;
     private final ScheduleService schedules;
     private final AtomicBoolean started = new AtomicBoolean();
+    @Getter(onMethod_ = @Override)
     private volatile ServerPerformanceSnapshot snapshot =
         PerformanceSnapshotCalculator.unavailable(System.currentTimeMillis());
     private VexTask samplingTask;
@@ -46,11 +48,6 @@ public final class VexServerPerformanceService implements ServerPerformanceServi
 
         sample();
         samplingTask = schedules.runGlobalTimer(SAMPLE_INTERVAL_TICKS, SAMPLE_INTERVAL_TICKS, this::sample);
-    }
-
-    @Override
-    public ServerPerformanceSnapshot getSnapshot() {
-        return snapshot;
     }
 
     @Override

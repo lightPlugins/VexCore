@@ -4,13 +4,20 @@ import dev.vexsoft.core.stats.Stat;
 import dev.vexsoft.core.stats.StatDefinition;
 import dev.vexsoft.core.stats.StatKey;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
 
 final class RegisteredStat implements Stat {
 
+    @Getter(AccessLevel.PACKAGE)
     private final String owner;
+    @Getter(onMethod_ = @Override)
     private final int runtimeId;
+    @Getter(AccessLevel.PACKAGE)
     private final long generation;
+    @Getter(onMethod_ = @Override)
     private volatile StatDefinition definition;
+    @Getter(onMethod_ = @Override)
     private volatile boolean registered = true;
 
     RegisteredStat(final String owner, final int runtimeId, final long generation, final StatDefinition definition) {
@@ -23,29 +30,6 @@ final class RegisteredStat implements Stat {
     @Override
     public StatKey getKey() {
         return definition.getKey();
-    }
-
-    @Override
-    public StatDefinition getDefinition() {
-        return definition;
-    }
-
-    @Override
-    public int getRuntimeId() {
-        return runtimeId;
-    }
-
-    @Override
-    public boolean isRegistered() {
-        return registered;
-    }
-
-    String getOwner() {
-        return owner;
-    }
-
-    long getGeneration() {
-        return generation;
     }
 
     void update(final StatDefinition updatedDefinition) {
