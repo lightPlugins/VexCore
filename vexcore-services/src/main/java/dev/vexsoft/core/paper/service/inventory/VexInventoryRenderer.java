@@ -3,8 +3,13 @@ package dev.vexsoft.core.paper.service.inventory;
 import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryView;
+import io.papermc.paper.datacomponent.DataComponentType;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.TooltipDisplay;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.Inventory;
@@ -45,6 +50,7 @@ final class VexInventoryRenderer {
             ItemStack item = rendered == null ? null : rendered.clone();
 
             applyDefaultTooltipStyle(item, defaultTooltipStyle);
+            hideVanillaTooltipDetails(item);
             // Keep unchanged stacks in place; clearing and refilling creates needless slot updates.
             if (!Objects.equals(inventory.getItem(slot), item)) {
                 inventory.setItem(slot, item);
@@ -66,6 +72,29 @@ final class VexInventoryRenderer {
 
         meta.setTooltipStyle(tooltipStyle);
         item.setItemMeta(meta);
+    }
+
+    private static void hideVanillaTooltipDetails(final ItemStack item) {
+        if (item == null || item.getDataTypes().isEmpty()) {
+            return;
+        }
+
+        TooltipDisplay existing = item.getData(DataComponentTypes.TOOLTIP_DISPLAY);
+        Set<DataComponentType> hidden = new HashSet<>(item.getDataTypes());
+
+        hidden.remove(DataComponentTypes.CUSTOM_NAME);
+        hidden.remove(DataComponentTypes.ITEM_NAME);
+        hidden.remove(DataComponentTypes.LORE);
+        hidden.remove(DataComponentTypes.TOOLTIP_DISPLAY);
+        if (existing != null) {
+            hidden.addAll(existing.hiddenComponents());
+        }
+
+        // Include material defaults such as weapon attributes without changing the source item.
+        item.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
+            .hideTooltip(existing != null && existing.hideTooltip())
+            .hiddenComponents(hidden)
+            .build());
     }
 
     static NamespacedKey tooltipStyle(

@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
+import io.papermc.paper.datacomponent.DataComponentType;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -65,6 +67,11 @@ class VexInventoryRendererTest {
         @Override
         public ItemStack clone() {
             return new TestStack(count);
+        }
+
+        @Override
+        public Set<DataComponentType> getDataTypes() {
+            return Set.of();
         }
 
         @Override

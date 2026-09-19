@@ -28,7 +28,6 @@ import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import dev.vexsoft.core.paper.packets.display.DisplayLifecycle;
 import dev.vexsoft.core.paper.packets.display.DisplayTransformation;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
-import dev.vexsoft.core.paper.packets.display.FakePassengerMount;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
 import dev.vexsoft.core.paper.packets.service.DisplayPassengerPacketService;
@@ -677,9 +676,11 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
 
         if (existing == null) {
+            Location hologramLocation = MobHologramAttachment.uprightLocation(runtime.entity.getLocation());
+
             FakeTextDisplayRequest.FakeTextDisplayRequestBuilder requestBuilder =
                 FakeTextDisplayRequest.builder(
-                        runtime.entity.getLocation(),
+                        hologramLocation,
                         hologram.get().renderer().render(viewer, snapshot(runtime))
                     )
                     .billboard(hologram.get().billboard())
@@ -698,20 +699,18 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             FakeDisplayHandle created = textDisplays.spawn(viewer, request);
 
             runtime.holograms.put(viewer.getUniqueId(), new HologramSession(created, epoch));
-            passengers.addFakePassenger(
+            MobHologramAttachment.attach(
                 viewer,
                 runtime.entity,
-                new FakePassengerMount(created, 0.0F, hologramOffset(runtime, hologram.get()), 0.0F)
+                created,
+                hologramOffset(runtime, hologram.get()),
+                passengers,
+                textDisplays
             );
         } else {
             textDisplays.update(
                 existing.handle,
                 FakeTextDisplayUpdate.text(hologram.get().renderer().render(viewer, snapshot(runtime)))
-            );
-            passengers.addFakePassenger(
-                viewer,
-                runtime.entity,
-                new FakePassengerMount(existing.handle, 0.0F, hologramOffset(runtime, hologram.get()), 0.0F)
             );
         }
     }
