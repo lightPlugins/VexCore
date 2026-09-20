@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
@@ -15,6 +16,7 @@ import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexDisplayPacketAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexEntityEffectPacketAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexHologramInteractionAdapterService;
+import dev.vexsoft.core.paper.service.packets.v26_2.VexInteractiveUiPacketAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexPacketConnectionAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexPacketTransportAdapterService;
@@ -85,5 +87,10 @@ public class V26_2PacketVersionDefinition implements PacketVersionDefinition {
     @Override
     public Class<? extends HologramInteractionAdapterService> getHologramInteractionAdapter() {
         return VexHologramInteractionAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends InteractiveUiPacketAdapterService> getInteractiveUiAdapter() {
+        return VexInteractiveUiPacketAdapterService.class;
     }
 }

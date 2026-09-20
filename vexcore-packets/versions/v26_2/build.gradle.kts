@@ -14,3 +14,12 @@ dependencies {
 
 paperweight.reobfArtifactConfiguration =
     io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
+
+tasks.test {
+    // Native bootstrap logs belong with generated test output, not beside module sources.
+    val runtimeDirectory = layout.buildDirectory.dir("test-runtime")
+    doFirst {
+        runtimeDirectory.get().asFile.mkdirs()
+        workingDir(runtimeDirectory)
+    }
+}

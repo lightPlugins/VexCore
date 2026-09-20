@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.packets.version;
 import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
@@ -43,4 +44,7 @@ public interface PacketVersionDefinition {
 
     /** Returns the selected hologram interaction decoder */
     Class<? extends HologramInteractionAdapterService> getHologramInteractionAdapter();
+
+    /** Returns the selected interactive canvas camera and input adapter. */
+    Class<? extends InteractiveUiPacketAdapterService> getInteractiveUiAdapter();
 }

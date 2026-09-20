@@ -7,6 +7,8 @@ sourceSets.main {
 }
 tasks.processResources { dependsOn(":vexcore-paper:generateScreenUiPack") }
 tasks.test {
+    dependsOn(":vexcore-paper:generateInteractiveUiPack")
+    systemProperty("interactiveUiPackDirectory", project(":vexcore-paper").layout.buildDirectory.dir("generated/interactive-ui-pack").get().asFile.absolutePath)
     systemProperty("screenUiPackDirectory", project(":vexcore-paper").layout.buildDirectory.dir("generated/screen-ui-pack").get().asFile.absolutePath)
 }
 

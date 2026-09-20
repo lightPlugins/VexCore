@@ -42,6 +42,12 @@ import dev.vexsoft.core.paper.commands.VexCoreLanguageCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
 import dev.vexsoft.core.paper.commands.VexCoreResetCommand;
 import dev.vexsoft.core.paper.commands.VexCoreUiCommand;
+import dev.vexsoft.core.paper.commands.VexCoreInteractiveUiCommand;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiDemoService;
+import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiService;
+import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiDemoService;
 import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
@@ -235,6 +241,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
         coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
         coreServices.register(ScreenUiService.class, VexScreenUiService.class);
+        coreServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
+        coreServices.register(InteractiveUiDemoService.class, VexInteractiveUiDemoService.class);
         coreServices.register(DialogService.class, VexDialogService.class);
         coreServices.register(InventoryService.class, VexInventoryService.class);
         coreServices.register(LocalizationEditorUiService.class, VexLocalizationEditorUiService.class);
@@ -268,6 +276,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
         coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
         coreServices.require(CommandService.class).register(VexCoreUiCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreInteractiveUiCommand.class);
         coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
         coreServices.require(CommandService.class).register(VexCoreLocalizationCommand.class);
         initialized = true;
@@ -320,6 +329,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
 
     @Override
     public void onDisable() {
+        if (coreServices != null) {
+            coreServices.find(InteractiveUiCoordinatorService.class).ifPresent(InteractiveUiCoordinatorService::close);
+        }
         if (playerAutosaveTask != null) {
             playerAutosaveTask.cancel();
         }

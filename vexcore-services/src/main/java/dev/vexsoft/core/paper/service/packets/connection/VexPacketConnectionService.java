@@ -12,6 +12,7 @@ import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerServ
 import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -22,7 +23,15 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 /** Coordinates player packet interception, virtual interactions, and item-presentation rewriting. */
-@Dependencies({PacketConnectionAdapterService.class, HologramInteractionAdapterService.class, ItemMetaPacketAdapterService.class, InteractionTrackerService.class, FakeItemMetaStoreService.class, ScheduleService.class})
+@Dependencies({
+    PacketConnectionAdapterService.class,
+    HologramInteractionAdapterService.class,
+    ItemMetaPacketAdapterService.class,
+    InteractionTrackerService.class,
+    FakeItemMetaStoreService.class,
+    ScheduleService.class,
+    InteractiveUiCoordinatorService.class
+})
 public final class VexPacketConnectionService implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
 
     private final PacketConnectionAdapterService connection;
@@ -31,6 +40,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
     private final InteractionTrackerService interactionsTracker;
     private final FakeItemMetaStoreService itemMetaStore;
     private final ScheduleService scheduler;
+    private final InteractiveUiCoordinatorService interactiveUi;
     private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
 
     public VexPacketConnectionService(final VexServiceRegistry services) {
@@ -40,6 +50,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
         this.interactionsTracker = services.require(InteractionTrackerService.class);
         this.itemMetaStore = services.require(FakeItemMetaStoreService.class);
         this.scheduler = services.require(ScheduleService.class);
+        this.interactiveUi = services.require(InteractiveUiCoordinatorService.class);
     }
 
     @Override
@@ -55,12 +66,16 @@ public final class VexPacketConnectionService implements PacketConnectionService
 
     @Override
     public Object write(final UUID viewerId, final Object packet) {
-        return itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore);
+        return interactiveUi.preserveTarget(viewerId, itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore));
     }
 
     @Override
     public Object read(final UUID viewerId, final Object packet) {
         Object sanitized = itemMeta.sanitizeInbound(viewerId, packet, itemMetaStore);
+
+        if (interactiveUi.consume(viewerId, sanitized)) {
+            return null;
+        }
         Optional<PacketInteractionInput> input = interactions.decode(sanitized);
 
         if (input.isEmpty()) {

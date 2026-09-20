@@ -106,6 +106,8 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
 import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiService;
+import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiService;
 import dev.vexsoft.core.paper.service.sidebar.SidebarService;
 import dev.vexsoft.core.paper.service.sidebar.VexSidebarService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
@@ -128,6 +130,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
 
         checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
         checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
+        checkedServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
         checkedServices.register(ScheduleService.class, VexScheduleService.class);
         checkedServices.register(ActionBarService.class, VexActionBarService.class);
         checkedServices.register(SidebarService.class, VexSidebarService.class);

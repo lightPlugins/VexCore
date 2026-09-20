@@ -72,3 +72,36 @@ val screenUiResourcePack = tasks.register<Zip>("screenUiResourcePack") {
     isReproducibleFileOrder = true
 }
 tasks.assemble { dependsOn(screenUiResourcePack) }
+
+val interactiveUiPackDirectory = layout.buildDirectory.dir("generated/interactive-ui-pack")
+val interactiveUiPackGenerator = rootProject.layout.projectDirectory.file("resource-pack-tools/GenerateInteractiveUiPack.java")
+val interactiveUiPackSource = rootProject.layout.projectDirectory.dir("vexcore-interactive-ui/pack")
+val generateInteractiveUiPack = tasks.register<Exec>("generateInteractiveUiPack") {
+    group = "build"
+    description = "Generates the separate interactive UI pack with compatible screen UI shader dispatch."
+    dependsOn(generateScreenUiPack)
+    inputs.file(interactiveUiPackGenerator)
+    inputs.dir(interactiveUiPackSource)
+    inputs.dir(screenUiFontDirectory)
+    inputs.dir(screenUiPackDirectory)
+    outputs.dir(interactiveUiPackDirectory)
+    val launcher = javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }
+    doFirst {
+        project.delete(interactiveUiPackDirectory.get().asFile)
+        commandLine(launcher.get().executablePath.asFile.absolutePath, "-Djava.awt.headless=true",
+            interactiveUiPackGenerator.asFile.absolutePath, interactiveUiPackDirectory.get().asFile.absolutePath,
+            interactiveUiPackSource.asFile.absolutePath, screenUiFontDirectory.asFile.absolutePath,
+            screenUiPackDirectory.get().asFile.absolutePath)
+    }
+}
+val interactiveUiResourcePack = tasks.register<Zip>("interactiveUiResourcePack") {
+    group = "build"
+    description = "Packages the independent Minecraft 26.2 interactive UI resource pack."
+    dependsOn(generateInteractiveUiPack)
+    from(interactiveUiPackDirectory)
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    archiveFileName.set("VexCore-InteractiveUI-26.2.zip")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+tasks.assemble { dependsOn(interactiveUiResourcePack) }
