@@ -1,5 +1,8 @@
 root = true
 
+[*.{yml,yaml,json,properties,md}]
+charset = utf-8
+
 [*.java]
 charset = utf-8
 indent_style = space

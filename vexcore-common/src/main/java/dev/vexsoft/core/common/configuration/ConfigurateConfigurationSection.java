@@ -2,6 +2,7 @@ package dev.vexsoft.core.common.configuration;
 
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -105,7 +106,7 @@ public class ConfigurateConfigurationSection implements ConfigurationSection {
 
             collectKeys(node, "", deep, result);
 
-            return Set.copyOf(result);
+            return Collections.unmodifiableSet(result);
         });
     }
 
@@ -116,7 +117,7 @@ public class ConfigurateConfigurationSection implements ConfigurationSection {
 
             collectValues(node, "", deep, result);
 
-            return Map.copyOf(result);
+            return Collections.unmodifiableMap(result);
         });
     }
 

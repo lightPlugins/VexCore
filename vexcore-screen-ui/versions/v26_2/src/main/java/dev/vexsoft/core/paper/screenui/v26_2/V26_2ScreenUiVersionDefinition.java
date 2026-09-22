@@ -14,17 +14,34 @@ import java.util.Set;
 import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 
-/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 8. */
+/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 9. */
 @NoArgsConstructor
 @Dependencies
 public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefinition {
 
     @Override
+    public Key panelFont(ScreenAnchor anchor, int y, double scale, int radius) {
+        UiScale.validate(scale);
+        if (radius < 0 || radius > 8) {
+            throw new IllegalArgumentException("Panel radius must be between zero and eight");
+        }
+        return font("rounded_" + Math.round(scale * 100), anchor, y);
+    }
+
+    @Override
+    public Key pixelFont(ScreenAnchor anchor, int y, double scale) {
+        UiScale.validate(scale);
+        return font("pixel_" + Math.round(scale * 100), anchor, y);
+    }
+
+    @Override
     public Key transitionTextFont(ScreenAnchor anchor, int y, double scale, UiTransition transition) {
         UiScale.validate(scale);
         String kind = transition.kind() == UiTransition.Kind.MOVE_X ? "move" : "fade";
-        return font("transition_" + kind + "_" + transition.durationTicks() + "_"
-            + Math.round(scale * 100), anchor, y);
+        return font(
+            "transition_" + kind + "_" + transition.durationTicks() + "_"
+                + Math.round(scale * 100), anchor, y
+        );
     }
 
     @Override
@@ -195,8 +212,10 @@ public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefi
             || texture.glyphOffsetX() != 0 || texture.glyphAdvance() != texture.width() + 1) {
             throw new IllegalArgumentException("Invalid contributed sprite metrics or animation");
         }
-        return Key.key(texture.fontPrefix().namespace(), "ui/v26_2/" + texture.fontPrefix().value()
-            + "/" + Math.round(scale * 100) + "/" + anchor.name().toLowerCase(Locale.ROOT));
+        return Key.key(
+            texture.fontPrefix().namespace(), "ui/v26_2/" + texture.fontPrefix().value()
+                + "/" + Math.round(scale * 100) + "/" + anchor.name().toLowerCase(Locale.ROOT)
+        );
     }
 
     private static Key font(String kind, ScreenAnchor anchor, int y) {

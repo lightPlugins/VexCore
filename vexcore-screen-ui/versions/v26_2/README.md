@@ -1,29 +1,23 @@
 # Screen UI backend: Minecraft 26.2
 
-Owns resource-pack format 88.0 and shader protocol 4. The backend requires the matching client pack.
-No BetterHud dependency and no client mod are used.
+Owns resource-pack format 88.0 and shader protocol 9. Deploy its matching client pack.
+The shared API, layout and lifecycle are described in the root `SCREEN_UI.md`.
 
-`pack/protocol.properties` registers one zero-origin font per kind and anchor (18 total).
-Each row transports its runtime Y in horizontal advances of `Y * 4096`, then cancels the advance
-after its final glyph. The carrier retains zero total width. The shader extracts Y from the
-horizontal bucket relative to the carrier center and restores the original local X.
-All integer Y origins in -256..256 work without additional bitmap providers or pack rebuilds.
-The public enum order matches `anchors` in the manifest and is part of the version's encoding.
+Font ascent encodes a kind and one of nine anchors. Zero-net horizontal advances transport
+runtime Y as `Y * 4096`; the shader restores local coordinates relative to the chosen anchor.
+All Y origins -256..256 use the same generated font per kind/anchor. The enum order is contractual.
+Two marked pixels distinguish owned glyphs from ordinary Minecraft text.
 
-Font encoding: `ascent = 8 - ((base + (kind * 9 + anchor) * yCount - minY) * stride + bias)`.
-Visible X, including quad width, must remain inside (-2048, 2048); the public layout bounds
-keep it in this range. Transport advances remain exactly representable at the supported range.
-kind 0 is the 16x14 text cell, including two metadata rows before its visible content.
-kind 1 uses a 256x256 alpha canvas with 140x48 artwork at (58,104), scaled 2x by font height 512.
-The visible panel remains 280x96. Two signature pixels sit at (0,0) and (0,1) inside the canvas;
-no extra rows are added. Its measured font advance is 397, X padding is -116, and the shader
-subtracts 208 from panel Y to align the visible content. The GPU reconstructs corner Y.
-The bias keeps ordinary carrier positions within the same encoding bucket. Very tall carrier stacks
-outside the bucket, or a carrier omitted by vanilla's bossbar cutoff, are outside this prototype.
+Kinds 0..78 retain text, texture, animation, transition and contributed sprite primitives.
+Kinds 79..84 are procedural rounded panels at scales 0.5..1.0. Their nine 16x14 glyph cells
+encode radii 0..8 in metadata. RGB carries `(width - 1) << 15 | (height - 1) << 7 | opacityPercent`.
+Each quad expands to its measured size; fragment evaluation clips the rounded corners.
+The glyph advance is always 17 and is cancelled, independent of its visible dimensions.
+Kinds 85..90 render opaque 3x3 avatar pixels at the same scales with advance 4.
 
-Original 26.2 text shader reference: the official Mojang client JAR (assets/minecraft/shaders/core/text.vsh).
-Changes: guarded VexCore include and position transform before the original projection.
-Mojang release notes: https://www.minecraft.net/en-us/article/minecraft-java-edition-26-2
+Top anchors cap scale to `(guiWidth / 3 - 8) / 272`, shared by every primitive. This keeps the
+default three-lane layout separated on narrow windows without client viewport messages.
+All shader changes are guarded by the owned-glyph marker; ordinary text retains vanilla behavior.
 
-Adding another version requires its adapter, manifest/assets, build wiring and explicit selector
-entry, followed by client acceptance tests. Keep shared lifecycle/layout logic in VexCore services.
+Generated-font tests verify kind/anchor recovery after integer-to-float conversion, marker
+pixels, measured dimensions and opacity payloads. Client acceptance testing is separate.

@@ -19,6 +19,10 @@ in vec2 texCoord0;
 out vec4 fragColor;
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)
 flat in float vexUi;
+in vec2 vexPanelPoint;
+flat in vec2 vexPanelSize;
+flat in float vexPanelRadius;
+flat in float vexSolidPixel;
 #endif
 
 void main() {
@@ -32,6 +36,15 @@ void main() {
     vec4 color = texColor * vertexColor;
 #else
     vec4 color = texColor * vertexColor * ColorModulator;
+#endif
+#if defined(IS_GUI) && !defined(IS_GRAYSCALE)
+    if (vexPanelSize.x > 0.0) {
+        vec2 distance = abs(vexPanelPoint - vexPanelSize * 0.5)
+            - (vexPanelSize * 0.5 - vec2(vexPanelRadius));
+        if (length(max(distance, vec2(0.0))) + min(max(distance.x, distance.y), 0.0) > vexPanelRadius) discard;
+        color = vertexColor * ColorModulator;
+    }
+    if (vexSolidPixel > 0.5) color = vertexColor * ColorModulator;
 #endif
     float cutoff = 0.1;
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)

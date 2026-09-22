@@ -14,6 +14,7 @@ public final class GenerateScreenUiPack {
 
     public static void main(String[] args) throws Exception {
         Path root = Path.of(args[0]);
+
         Path fontDirectory = Path.of(args[1]);
         Path metricsRoot = Path.of(args[2]);
         Path versionPack = Path.of(args[3]);
@@ -86,7 +87,11 @@ public final class GenerateScreenUiPack {
                 }
 
                 graphics.setClip(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
-                graphics.drawString(Character.toString(point), col * cellWidth + offsetX, row * cellHeight + 10 + offsetY);
+                graphics.drawString(
+                    Character.toString(point),
+                    col * cellWidth + offsetX,
+                    row * cellHeight + 10 + offsetY
+                );
                 int inkWidth = 0;
 
                 for (int x = 0; x < cellWidth; x++) {
@@ -412,11 +417,50 @@ public final class GenerateScreenUiPack {
                         + "_" + (tenth * 10);
 
                     for (int anchor = 0; anchor < anchors.length; anchor++) {
-                        extraFont(root, protocol, name, anchors[anchor],
+                        extraFont(
+                            root, protocol, name, anchors[anchor],
                             base + (kind * 9 + anchor) * count - minY,
-                            "anchored_text", 14, String.join(",", rows), true);
+                            "anchored_text", 14, String.join(",", rows), true
+                        );
                     }
                 }
+            }
+        }
+
+        // Procedural panels carry dimensions and opacity in RGB; each glyph stores its corner radius.
+        BufferedImage rounded = new BufferedImage(16 * 9, 14, BufferedImage.TYPE_INT_ARGB);
+        for (int radius = 0; radius <= 8; radius++) {
+            for (int y = 0; y < 14; y++) {
+                for (int x = 0; x < 16; x++) {
+                    rounded.setRGB(radius * 16 + x, y, 0xFFFFFFFF);
+                }
+            }
+            rounded.setRGB(radius * 16, 0, 0x01565831);
+            rounded.setRGB(radius * 16, 1, 0x01434F52);
+            rounded.setRGB(radius * 16 + 1, 0, 0xFF000000 | (radius << 16));
+        }
+        png(root, "assets/vexcore/textures/ui/rounded.png", rounded);
+        BufferedImage pixel = new BufferedImage(3, 5, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 5; y++) {
+            for (int x = 0; x < 3; x++) {
+                pixel.setRGB(x, y, 0xFFFFFFFF);
+            }
+        }
+        pixel.setRGB(0, 0, 0x01565831);
+        pixel.setRGB(0, 1, 0x01434F52);
+        png(root, "assets/vexcore/textures/ui/pixel.png", pixel);
+        for (int tenth = 5; tenth <= 10; tenth++) {
+            for (int anchor = 0; anchor < anchors.length; anchor++) {
+                extraFont(
+                    root, protocol, "rounded_" + tenth * 10, anchors[anchor],
+                    base + ((79 + tenth - 5) * 9 + anchor) * count - minY,
+                    "rounded", 14, "\"\\ue100\\ue101\\ue102\\ue103\\ue104\\ue105\\ue106\\ue107\\ue108\"", false
+                );
+                extraFont(
+                    root, protocol, "pixel_" + tenth * 10, anchors[anchor],
+                    base + ((85 + tenth - 5) * 9 + anchor) * count - minY,
+                    "pixel", 5, "\"\\ue100\"", false
+                );
             }
         }
 

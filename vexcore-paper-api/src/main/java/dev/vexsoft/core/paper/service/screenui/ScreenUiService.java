@@ -2,17 +2,23 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.screenui.DialoguePanel;
-import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.UiNode;
+import dev.vexsoft.core.paper.screenui.UiPanelStyle;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
 /** Shared bossbar-backed UI. Resolve from the requesting plugin's scoped registry. */
 public interface ScreenUiService extends VexService {
+
+    /** Loads the viewer's skin face asynchronously using the shared bounded cache. */
+    CompletableFuture<UiNode.Avatar> avatar(Player player);
 
     /** Opens a named viewer-specific screen. */
     ScreenUi open(Player player, String id);
@@ -28,6 +34,13 @@ public interface ScreenUiService extends VexService {
 
     /** Opens the prepared dialogue for the viewer. */
     DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue);
+
+    /** Opens a dialogue using the same configured background as other plugin panels. */
+    DialoguePanel openDialogue(
+        Player player, String id, PreparedDialogue dialogue,
+        UiPanelStyle style
+    );
+
     /** Opens the prepared dialogue with plugin-owned frame textures and reserved hint space. */
     DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue, DialoguePanelSkin skin);
 }

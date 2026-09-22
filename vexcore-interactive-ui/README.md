@@ -10,6 +10,11 @@ both features can render when both packs are installed. Load the interactive pac
 existing pack. Other packs that replace `minecraft:shaders/core/text.vsh` or `text.fsh` need an
 explicit shader merge; arbitrary shader-pack compatibility is not assumed.
 
+ArcaneMonolith's combined resource pack already includes the current Interactive UI assets and
+composed shaders. When using that combined archive, remove separate VexCore UI pack imports from
+Nexo or other pack mergers. An older interactive archive includes an older screen dispatcher and
+can hide new screen glyphs even when their font files and protocol manifest are up to date.
+
 The 320 by 180 logical canvas is centered and uniformly reduced when the client's GUI resolution
 is smaller. Scene and cursor use separate zero-width purple bossbar title carriers. Purple bossbar
 textures are transparent in this pack, as in the existing screen UI pack. Ordinary purple bossbars

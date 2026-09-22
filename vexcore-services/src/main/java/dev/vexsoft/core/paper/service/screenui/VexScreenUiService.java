@@ -1,29 +1,43 @@
 package dev.vexsoft.core.paper.service.screenui;
 
+import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.screenui.DialoguePanel;
-import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.UiNode;
+import dev.vexsoft.core.paper.screenui.UiPanelStyle;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
 /** Automatically removes a plugin's UI handles when its scope closes. */
-@Dependencies(ScreenUiCoordinatorService.class)
+@Dependencies({ScreenUiCoordinatorService.class, CacheService.class})
 public final class VexScreenUiService implements ScreenUiService, AutoCloseable {
 
     private final ServiceOwner owner;
     private final ScreenUiCoordinatorService coordinator;
+    private final ScreenUiAvatarLoader avatars;
     private boolean closed;
 
     public VexScreenUiService(VexServiceRegistry services) {
+        avatars = new ScreenUiAvatarLoader(services.require(CacheService.class));
         owner = services.getOwner();
         coordinator = services.require(ScreenUiCoordinatorService.class);
+    }
+
+    @Override
+    public synchronized CompletableFuture<UiNode.Avatar> avatar(Player player) {
+        if (closed) {
+            throw new IllegalStateException("UI owner is closed");
+        }
+        return avatars.avatar(player);
     }
 
     @Override
@@ -52,7 +66,7 @@ public final class VexScreenUiService implements ScreenUiService, AutoCloseable 
 
     @Override
     public DialoguePanel openDialogue(Player player, String id, PreparedDialogue dialogue) {
-        return openDialogue(player, id, dialogue, null);
+        return openDialogue(player, id, dialogue, UiPanelStyle.DEFAULT);
     }
 
     @Override
@@ -68,8 +82,23 @@ public final class VexScreenUiService implements ScreenUiService, AutoCloseable 
     }
 
     @Override
+    public DialoguePanel openDialogue(
+        Player player, String id, PreparedDialogue dialogue,
+        UiPanelStyle style
+    ) {
+        ScreenUi screen = open(player, id);
+        try {
+            return new VexDialoguePanel(screen, dialogue, null, style);
+        } catch (RuntimeException exception) {
+            screen.close();
+            throw exception;
+        }
+    }
+
+    @Override
     public synchronized void close() {
         closed = true;
+        avatars.close();
         coordinator.closeOwner(owner);
     }
 }

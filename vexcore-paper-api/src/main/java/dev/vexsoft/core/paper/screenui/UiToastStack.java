@@ -10,9 +10,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 
 /**
- * Bounded, owner-thread notification queue. Call tick from an existing player task. Fade and
- * horizontal entrance run at client frame rate; server work is confined to content, admissions,
- * expiry and short stack rearrangements. Never stores Player or schedules tasks.
+ * Bounded, owner-thread notification queue using measured panels. Call tick from an existing
+ * player task; updates are confined to changed content, admissions, expiry and stack reflow.
+ * Never stores Player or schedules tasks.
  */
 public final class UiToastStack<T> implements AutoCloseable {
 
@@ -20,6 +20,7 @@ public final class UiToastStack<T> implements AutoCloseable {
     private final ScreenAnchor anchor;
     private final int x, y, gap, maximum;
     private final double scale;
+    private final UiPanelStyle style;
     private final BinaryOperator<T> merge;
     private final Function<T, Component> line;
     private final Function<T, TextColor> color;
@@ -71,6 +72,16 @@ public final class UiToastStack<T> implements AutoCloseable {
         Function<T, Component> line,
         Function<T, TextColor> color
     ) {
+        this(screen, anchor, x, y, gap, maximum, scale, UiPanelStyle.DEFAULT, merge, line, color);
+    }
+
+    /** Creates notifications sharing a plugin's configured panel style. */
+    public UiToastStack(
+        ScreenUi screen, ScreenAnchor anchor, int x, int y, int gap, int maximum,
+        double scale, UiPanelStyle style, BinaryOperator<T> merge,
+        Function<T, Component> line, Function<T, TextColor> color
+    ) {
+        this.style = Objects.requireNonNull(style);
         this.screen = Objects.requireNonNull(screen);
         this.anchor = Objects.requireNonNull(anchor);
 
@@ -128,7 +139,7 @@ public final class UiToastStack<T> implements AutoCloseable {
 
         visible.removeIf(entry -> {
             if (gameTime < entry.started - 4 || gameTime - entry.started >= UiAnimation.TOTAL_TICKS) {
-                screen.removeBox(entry.id);
+                screen.remove(entry.id);
 
                 return true;
             }
@@ -144,41 +155,31 @@ public final class UiToastStack<T> implements AutoCloseable {
             visible.add(entry);
         }
 
-        for (int index = 0; index < visible.size(); index++) {
-            Entry<T> entry = visible.get(index);
-            int target = y - 20 - index * (20 + gap);
-            // Oldest lives at the bottom; a new entry is placed directly above the stack.
-            if (Double.isNaN(entry.position)) {
-                entry.position = target;
-            }
-
-            double next =
-                Math.abs(target - entry.position) < 0.5 ? target : entry.position + (target - entry.position) * 0.45;
-            int pixel = (int) Math.round(next);
-
-            entry.position = next;
-
-            if (entry.dirty || entry.lastY != pixel) {
-                screen.box(
-                    entry.id,
-                    List.of(line.apply(entry.value)),
-                    UiBoxLayout.builder()
-                        .anchor(anchor)
-                        .x(x)
-                        .y(pixel)
-                        .height(20)
-                        .padding(4)
-                        .lineSpacing(0)
-                        .background(true)
-                        .tint(color.apply(entry.value))
-                        .layer(20)
-                        .scale(scale)
-                        .animation(UiAnimation.startingAt(entry.started))
-                        .build()
+        int edge = y;
+        var entries = visible.iterator();
+        while (entries.hasNext()) {
+            Entry<T> entry = entries.next();
+            if (entry.dirty || entry.lastY != edge) {
+                UiNode content = new UiNode.Text(
+                    "message",
+                    line.apply(entry.value).colorIfAbsent(color.apply(entry.value))
                 );
-                entry.lastY = pixel;
+                UiPanelLayout layout = UiPanelLayout.builder().anchor(anchor).x(x).y(y)
+                    .maxWidth(224).scale(scale).layer(20).style(style).build();
+                int height = screen.measurePanel(content, layout).height();
+                if (edge - height < -256) {
+                    // Keep accepted notifications pending until the older measured panels have expired.
+                    waiting.merge(entry.key, entry.value, merge);
+                    screen.remove(entry.id);
+                    entries.remove();
+                    continue;
+                }
+                UiPanelBounds bounds = screen.panel(entry.id, content, layout.toBuilder().y(edge).build());
+                entry.height = bounds.height();
+                entry.lastY = edge;
                 entry.dirty = false;
             }
+            edge -= entry.height + gap;
         }
     }
 
@@ -193,14 +194,14 @@ public final class UiToastStack<T> implements AutoCloseable {
         screen.close();
     }
 
-    /** Tracks a toast value, identity, lifetime and current animated position. */
+    /** Tracks a toast value, identity, lifetime and measured stack position. */
     public static final class Entry<T> {
 
         private final String key, id;
         private final long started;
         private T value;
         private boolean dirty = true;
-        private double position = Double.NaN;
+        private int height;
         private int lastY = Integer.MIN_VALUE;
 
         private Entry(String key, String id, T value, long started) {

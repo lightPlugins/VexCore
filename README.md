@@ -254,13 +254,10 @@ player.update(
 
 Neither experience nor claimed levels may be mutated through a retained container reference.
 
-Paper plugins can use the generic 16-entry snake menu layout. Its default slot order is
-`10, 19, 28, 29, 30, 21, 12, 13, 14, 23, 32, 33, 34, 25, 16, 17`, and every plugin may replace that
-ordered list in its technical settings. Menu variants are named `states`. Every displayed entry is
-physically a `NAME_TAG`; settings choose only a namespaced item model such as `minecraft:book` or
-`nexo:my_item`. Visible titles, names, lore, and type lines belong exclusively in language files,
-with English bundled as the default. State lore must contain dedicated `%rewards%`, `%costs%`, and
-`%requirements%` lines so localized multiline blocks are expanded uniformly.
+Level menus, layouts, item models, and localized lore belong to the consuming plugin.
+VexCore supplies the progression engine and general inventory APIs without prescribing a level menu.
+`dev.vexsoft.core.paper.ui.ProgressBar` renders configurable text progress bars for any UI;
+it has no dependency on level progression.
 
 ### Command Framework
 

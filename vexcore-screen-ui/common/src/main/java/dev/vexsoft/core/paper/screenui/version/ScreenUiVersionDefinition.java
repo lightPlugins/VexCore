@@ -10,6 +10,16 @@ import net.kyori.adventure.key.Key;
 /** Selects the font/shader protocol matching a client resource-pack revision. */
 public interface ScreenUiVersionDefinition extends VexService {
 
+    /** Resolves the procedural rounded-panel carrier font. */
+    default Key panelFont(ScreenAnchor anchor, int y, double scale, int radius) {
+        throw new UnsupportedOperationException("Panel font unavailable");
+    }
+
+    /** Resolves an opaque three-pixel avatar cell font. */
+    default Key pixelFont(ScreenAnchor anchor, int y, double scale) {
+        throw new UnsupportedOperationException("Avatar font unavailable");
+    }
+
     /** Resolves a short-transition font, or fails when this adapter does not support it. */
     default Key transitionTextFont(ScreenAnchor anchor, int y, double scale, UiTransition transition) {
         throw new UnsupportedOperationException("This UI version does not support short transitions");

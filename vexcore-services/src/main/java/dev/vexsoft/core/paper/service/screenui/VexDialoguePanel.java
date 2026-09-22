@@ -7,7 +7,8 @@ import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.TextOverflow;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
-import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiPanelLayout;
+import dev.vexsoft.core.paper.screenui.UiPanelStyle;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
@@ -27,6 +28,13 @@ public final class VexDialoguePanel implements DialoguePanel {
     }
 
     public VexDialoguePanel(ScreenUi screen, PreparedDialogue dialogue, DialoguePanelSkin skin) {
+        this(screen, dialogue, skin, UiPanelStyle.DEFAULT);
+    }
+
+    public VexDialoguePanel(
+        ScreenUi screen, PreparedDialogue dialogue, DialoguePanelSkin skin,
+        UiPanelStyle style
+    ) {
         this.screen = screen;
         hintInset = skin == null ? 0 : skin.hintInset();
         this.dialogue = dialogue;
@@ -42,14 +50,24 @@ public final class VexDialoguePanel implements DialoguePanel {
             screen.remove("skin-" + index);
         }
         if (skin == null) {
-            screen.textureBlock("panel", UiTexture.PANEL, TextureLayout.builder()
-                .anchor(layout.anchor()).x(layout.panelX()).y(layout.panelY()).layer(0).build());
+            screen.panelBackground(
+                "panel", 280, 96, UiPanelLayout.builder()
+                    .anchor(layout.anchor())
+                    .x(layout.panelX())
+                    .y(layout.panelY())
+                    .scale(1.0)
+                    .layer(0)
+                    .style(style)
+                    .build()
+            );
         } else {
             for (int index = 0; index < skin.parts().size(); index++) {
                 var part = skin.parts().get(index);
-                screen.textureBlock("skin-" + index, part.texture(), TextureLayout.builder()
-                    .anchor(layout.anchor()).x(layout.panelX() + part.x()).y(layout.panelY() + part.y())
-                    .layer(index).build());
+                screen.textureBlock(
+                    "skin-" + index, part.texture(), TextureLayout.builder()
+                        .anchor(layout.anchor()).x(layout.panelX() + part.x()).y(layout.panelY() + part.y())
+                        .layer(index).build()
+                );
             }
         }
         screen.textBlock(

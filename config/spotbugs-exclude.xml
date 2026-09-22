@@ -14,10 +14,6 @@
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
     <Class name="dev.vexsoft.core.paper.service.items.VexItemStackBuilder"/>
   </Match>
-  <Match>
-    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
-    <Class name="dev.vexsoft.core.paper.level.menu.LevelMenuItems"/>
-  </Match>
 
   <!-- Adventure Components are immutable values despite not being annotated for SpotBugs. -->
   <Match>
@@ -70,5 +66,14 @@
   <Match>
     <Bug pattern="HE_INHERITS_EQUALS_USE_HASHCODE"/>
     <Class name="dev.vexsoft.core.paper.placeholder.VexPlaceholderExpansion"/>
+  </Match>
+  <!-- These owner-thread views deliberately retain the same managed screen handle; copying it breaks ownership. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+    <Or>
+      <Class name="dev.vexsoft.core.paper.screenui.UiPanelSet"/>
+      <Class name="dev.vexsoft.core.paper.screenui.UiToastStack"/>
+    </Or>
+    <Field name="screen"/>
   </Match>
 </FindBugsFilter>

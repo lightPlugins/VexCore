@@ -1,4 +1,4 @@
-// VexCore shader protocol 8. Constants are filled from protocol.properties at build time.
+// VexCore shader protocol 9. Constants are filled from protocol.properties at build time.
 // 26.2 BakedSheetGlyph emits TL, BL, BR, TR. Every quad starts on a multiple of four.
 #define VEX_BASE @base@
 #define VEX_STRIDE @stride@
@@ -10,14 +10,19 @@ float vexOwned = 0.0;
 
 vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
     int encoded = int(floor(position.y / float(VEX_STRIDE))) - VEX_BASE;
-    if (encoded < 0 || encoded >= 711 * VEX_Y_COUNT) return position;
+    if (encoded < 0 || encoded >= 819 * VEX_Y_COUNT) return position;
 
     int group = encoded / VEX_Y_COUNT;
     int kind = group / 9;
     int transition = -1;
     float scale = 1.0;
-    bool sprite = kind >= 73;
-    if (sprite) {
+    bool rounded = kind >= 79 && kind < 85;
+    bool pixel = kind >= 85;
+    bool sprite = kind >= 73 && kind < 79;
+    if (rounded || pixel) {
+        scale = float(5 + kind - (rounded ? 79 : 85)) / 10.0;
+        kind = 0;
+    } else if (sprite) {
         scale = float(5 + kind - 73) / 10.0;
         kind = 0;
     } else if (kind >= 25) {
@@ -32,7 +37,7 @@ vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
     bool card = kind == 2 || kind == 4 || kind == 6 || kind == 8;
     int anchor = group % 9;
     int localY = encoded % VEX_Y_COUNT + VEX_MIN_Y;
-    ivec2 cell = (panel || card || sprite) ? ivec2(256, 256) : ivec2(16, 14);
+    ivec2 cell = pixel ? ivec2(3, 5) : (panel || card || sprite) ? ivec2(256, 256) : ivec2(16, 14);
     int corner = vertexId % 4;
     bool bottom = corner == 1 || corner == 2;
     bool right = corner == 2 || corner == 3;
@@ -88,6 +93,26 @@ vec4 vex_screen_ui_position(vec4 position, vec2 uv, int vertexId) {
         else opacity = 1.0 - smoothstep(0.0, 1.0, progress);
         vexAnimatedColor = vec4(vec3((rgb >> 6) & 7, (rgb >> 3) & 7, rgb & 7) / 7.0, opacity);
     }
+    if (rounded) {
+        ivec3 bytes = ivec3(round(Color.rgb * 255.0));
+        int payload = (bytes.r << 16) | (bytes.g << 8) | bytes.b;
+        vec2 size = vec2(float((payload >> 15) + 1), float(((payload >> 7) & 255) + 1));
+        float radius = round(texelFetch(Sampler0, origin + ivec2(1, 0), 0).r * 255.0);
+        vexPanelSize = size;
+        vexPanelRadius = min(radius, min(size.x, size.y) * 0.5);
+        vexPanelPoint = vec2(right ? size.x : 0.0, bottom ? size.y : 0.0);
+        position.x += right ? size.x - 16.0 : 0.0;
+        position.y = reference.y + float(localY) + (bottom ? size.y : 0.0);
+        vexAnimatedColor = vec4(vec3(0.0), float(payload & 127) / 100.0);
+    }
+    if (pixel) {
+        position.y = reference.y + float(localY) + (bottom ? 3.0 : 0.0);
+        vexAnimatedColor = vec4(Color.rgb, 1.0);
+        vexSolidPixel = 1.0;
+    }
+    // Three top lanes reserve 256 logical pixels plus a 16-pixel margin each.
+    // The same transform applies to text, icons, avatar pixels and panel backgrounds.
+    if (anchor < 3) scale = min(scale, max(0.1, (guiSize.x / 3.0 - 8.0) / 272.0));
     // Explicit scale is independent of window width; all local geometry shares its anchor pivot.
     position.xy = reference + (position.xy - reference) * scale;
     return position;

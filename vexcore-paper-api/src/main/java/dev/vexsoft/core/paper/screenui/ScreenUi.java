@@ -6,6 +6,21 @@ import net.kyori.adventure.text.Component;
 /** Owner-scoped screen handle. Updates are copied, validated and coalesced before display. */
 public interface ScreenUi extends AutoCloseable {
 
+    /** Measures a panel without changing screen contents, for admission and placement decisions. */
+    default UiPanelBounds measurePanel(UiNode content, UiPanelLayout layout) {
+        throw new UnsupportedOperationException("Panel measurement is not implemented by this screen");
+    }
+
+    /** Atomically measures and replaces a content-sized panel, returning its final slot coordinates. */
+    default UiPanelBounds panel(String id, UiNode content, UiPanelLayout layout) {
+        throw new UnsupportedOperationException("Panel rendering is not implemented by this screen");
+    }
+
+    /** Draws a rounded background using the same renderer as content-sized panels. */
+    default void panelBackground(String id, int width, int height, UiPanelLayout layout) {
+        throw new UnsupportedOperationException("Panel rendering is not implemented by this screen");
+    }
+
     /** Creates or replaces a text block with the supplied lines and layout. */
     void textBlock(String id, List<Component> lines, TextBlockLayout layout);
 

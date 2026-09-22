@@ -2,8 +2,18 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.vexsoft.core.paper.screenui.*;
-import java.util.*;
+import dev.vexsoft.core.paper.screenui.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.TextBlockLayout;
+import dev.vexsoft.core.paper.screenui.TextureLayout;
+import dev.vexsoft.core.paper.screenui.UiNode;
+import dev.vexsoft.core.paper.screenui.UiPanelBounds;
+import dev.vexsoft.core.paper.screenui.UiPanelLayout;
+import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiToastStack;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -61,7 +71,6 @@ public class UiToastStackTest {
 
         assertEquals(5, screen.text.size());
         assertTrue(screen.text.get("toast-0.text").y() > screen.text.get("toast-4.text").y());
-        assertEquals(0, screen.text.get("toast-0.text").animation().startTick());
 
         for (int toastIndex = 5; toastIndex < 69; toastIndex++) {
             assertTrue(stack.push("item" + toastIndex, 1L, 23999));
@@ -115,6 +124,26 @@ public class UiToastStackTest {
         assertTrue(stack.isEmpty());
     }
 
+    @Test
+    void wrappedNotificationsWaitForSpaceInsteadOfOverlappingOrBeingLost() {
+        var screen = new RecordingScreen();
+        var stack = new UiToastStack<Long>(
+            screen, ScreenAnchor.BOTTOM_RIGHT, -8, -8, 4, 5, 0.7,
+            Long::sum, amount -> Component.text("Long notification with several words ".repeat(4)),
+            ignored -> NamedTextColor.WHITE
+        );
+        for (int index = 0; index < 5; index++) {
+            assertTrue(stack.push("item" + index, 1L, 0));
+        }
+        stack.tick(0);
+        assertTrue(screen.text.size() < 5);
+        assertFalse(screen.text.isEmpty());
+        for (int tick = 1; tick < 1000; tick++) {
+            stack.tick(tick);
+        }
+        assertTrue(stack.isEmpty());
+    }
+
     public static final class RecordingScreen implements ScreenUi {
 
         private final Map<String, TextBlockLayout> text = new HashMap<>();
@@ -122,6 +151,23 @@ public class UiToastStackTest {
         private boolean closed;
         private int writes;
         private double textureScale;
+
+        @Override
+        public UiPanelBounds measurePanel(UiNode content, UiPanelLayout layout) {
+            return ScreenUiPanelRenderer.measure(content, layout);
+        }
+
+        @Override
+        public UiPanelBounds panel(String id, UiNode content, UiPanelLayout layout) {
+            var measured = ScreenUiPanelRenderer.measure(content, layout);
+            text.put(
+                id + ".text", TextBlockLayout.builder().anchor(layout.anchor()).x(measured.x())
+                    .y(measured.y()).scale(layout.scale()).build()
+            );
+            textureScale = layout.scale();
+            writes++;
+            return measured;
+        }
 
         @Override
         public void textBlock(String id, List<Component> lines, TextBlockLayout layout) {
@@ -142,7 +188,7 @@ public class UiToastStackTest {
 
         @Override
         public void remove(String id) {
-            text.remove(id);
+            text.remove(id + ".text");
         }
 
         @Override

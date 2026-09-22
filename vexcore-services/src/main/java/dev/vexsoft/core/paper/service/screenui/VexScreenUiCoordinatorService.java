@@ -9,6 +9,9 @@ import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
+import dev.vexsoft.core.paper.screenui.UiNode;
+import dev.vexsoft.core.paper.screenui.UiPanelBounds;
+import dev.vexsoft.core.paper.screenui.UiPanelLayout;
 import dev.vexsoft.core.paper.screenui.UiTexture;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
@@ -256,7 +259,6 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         private boolean pending;
         private VexTask task;
         private boolean shown;
-
     }
 
     /** Updates one screen's elements and schedules rendering through its player session. */
@@ -299,6 +301,26 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
                     request(session);
                 }
             }
+        }
+
+        @Override
+        public UiPanelBounds measurePanel(UiNode content, UiPanelLayout layout) {
+            return ScreenUiPanelRenderer.measure(content, layout);
+        }
+
+        @Override
+        public UiPanelBounds panel(String id, UiNode content, UiPanelLayout layout) {
+            var prepared = ScreenUiPanelRenderer.prepare(content, layout, version);
+            put(id, new Element(layout.layer(), prepared.component(), null));
+            return prepared.bounds();
+        }
+
+        @Override
+        public void panelBackground(String id, int width, int height, UiPanelLayout layout) {
+            put(
+                id,
+                new Element(layout.layer(), ScreenUiPanelRenderer.background(width, height, layout, version), null)
+            );
         }
 
         @Override

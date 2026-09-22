@@ -2,12 +2,18 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.vexsoft.core.paper.screenui.*;
+import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
+import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
+import dev.vexsoft.core.paper.screenui.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.TextBlockLayout;
+import dev.vexsoft.core.paper.screenui.UiTexture;
 import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -22,7 +28,8 @@ public final class ScreenUiDialogueTest {
         Map<String, UiTexture> textures = new HashMap<>();
         Map<String, TextBlockLayout> layouts = new HashMap<>();
         int[] writes = {0};
-        ScreenUi screen = (ScreenUi) Proxy.newProxyInstance(ScreenUi.class.getClassLoader(),
+        ScreenUi screen = (ScreenUi) Proxy.newProxyInstance(
+            ScreenUi.class.getClassLoader(),
             new Class<?>[]{ScreenUi.class}, (proxy, method, args) -> {
                 switch (method.getName()) {
                     case "isClosed" -> {
@@ -32,18 +39,30 @@ public final class ScreenUiDialogueTest {
                         textures.put((String) args[0], (UiTexture) args[1]);
                         writes[0]++;
                     }
+                    case "panelBackground" -> {
+                        textures.put((String) args[0], UiTexture.PANEL);
+                        writes[0]++;
+                    }
                     case "textBlock" -> layouts.put((String) args[0], (TextBlockLayout) args[2]);
                     case "remove" -> textures.remove(args[0]);
-                    case "setLines", "close" -> { }
+                    case "setLines", "close" -> {
+                    }
                     default -> throw new AssertionError(method.getName());
                 }
                 return null;
-            });
-        var prepared = ScreenUiDialogueLayout.prepare(Component.text("NPC"), List.of(Component.text("Hello")),
-            DialoguePanelLayout.defaults(), new V26_2ScreenUiVersionDefinition());
-        var texture = UiTexture.sprite(net.kyori.adventure.key.Key.key("test:frame"), 140, 96);
-        var skin = new DialoguePanelSkin(List.of(new DialoguePanelSkin.Part(texture, 0, 0),
-            new DialoguePanelSkin.Part(texture, 140, 0)), 16);
+            }
+        );
+        var prepared = ScreenUiDialogueLayout.prepare(
+            Component.text("NPC"), List.of(Component.text("Hello")),
+            DialoguePanelLayout.defaults(), new V26_2ScreenUiVersionDefinition()
+        );
+        var texture = UiTexture.sprite(Key.key("test:frame"), 140, 96);
+        var skin = new DialoguePanelSkin(
+            List.of(
+                new DialoguePanelSkin.Part(texture, 0, 0),
+                new DialoguePanelSkin.Part(texture, 140, 0)
+            ), 16
+        );
         var panel = new VexDialoguePanel(screen, prepared, skin);
         panel.setHint(Component.text("Continue"));
         assertEquals(244, layouts.get("hint").maxWidth());

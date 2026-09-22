@@ -28,12 +28,20 @@ out vec2 texCoord0;
 uniform sampler2D Sampler0;
 #moj_import <minecraft:globals.glsl>
 flat out float vexUi;
+out vec2 vexPanelPoint;
+flat out vec2 vexPanelSize;
+flat out float vexPanelRadius;
+flat out float vexSolidPixel;
 #moj_import <vexcore:screen_ui/v26_2.glsl>
 #endif
 
 void main() {
     vec4 position = ModelViewMat * vec4(Position, 1.0);
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)
+    vexPanelPoint = vec2(0.0);
+    vexPanelSize = vec2(0.0);
+    vexPanelRadius = 0.0;
+    vexSolidPixel = 0.0;
     position = vex_screen_ui_position(position, UV0, gl_VertexID);
 #endif
     gl_Position = ProjMat * position;

@@ -2,15 +2,27 @@ package dev.vexsoft.core.paper.service.screenui;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.vexsoft.core.paper.screenui.*;
+import dev.vexsoft.core.paper.screenui.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.TextBlockLayout;
+import dev.vexsoft.core.paper.screenui.TextureLayout;
+import dev.vexsoft.core.paper.screenui.UiScale;
+import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.UiTransition;
+import dev.vexsoft.core.paper.screenui.VerticalAlignment;
 import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.junit.jupiter.api.Test;
 
 final class ScreenUiShaderContractTest {
@@ -20,22 +32,32 @@ final class ScreenUiShaderContractTest {
 
     @Test
     void contributedSpritesResolveNamespacedFontsAndRejectInvalidContracts() {
-        var sprite = UiTexture.sprite(net.kyori.adventure.key.Key.key("demo:hud/frame"), 180, 56);
+        var sprite = UiTexture.sprite(Key.key("demo:hud/frame"), 180, 56);
         for (int tenth = 5; tenth <= 10; tenth++) {
             for (ScreenAnchor anchor : ScreenAnchor.values()) {
-                assertEquals("demo:ui/v26_2/sprite/hud/frame/" + tenth * 10 + "/"
-                    + anchor.name().toLowerCase(Locale.ROOT),
-                    version.textureFont(sprite, anchor, 8, false, tenth / 10.0).asString());
+                assertEquals(
+                    "demo:ui/v26_2/sprite/hud/frame/" + tenth * 10 + "/"
+                        + anchor.name().toLowerCase(Locale.ROOT),
+                    version.textureFont(sprite, anchor, 8, false, tenth / 10.0).asString()
+                );
             }
         }
-        assertThrows(IllegalArgumentException.class,
-            () -> UiTexture.sprite(net.kyori.adventure.key.Key.key("demo:wide"), 256, 56));
-        assertThrows(IllegalArgumentException.class,
-            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 8, true, 0.7));
-        assertThrows(IllegalArgumentException.class,
-            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 257, false, 0.7));
-        assertNotNull(ScreenUiRenderer.texture(sprite, TextureLayout.builder()
-            .anchor(ScreenAnchor.TOP_CENTER).x(-180).y(8).scale(0.7).build(), version));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> UiTexture.sprite(Key.key("demo:wide"), 256, 56)
+        );
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 8, true, 0.7)
+        );
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> version.textureFont(sprite, ScreenAnchor.TOP_CENTER, 257, false, 0.7)
+        );
+        assertNotNull(ScreenUiRenderer.texture(
+            sprite, TextureLayout.builder()
+                .anchor(ScreenAnchor.TOP_CENTER).x(-180).y(8).scale(0.7).build(), version
+        ));
     }
 
     @Test
@@ -44,7 +66,7 @@ final class ScreenUiShaderContractTest {
         try (var input = Files.newInputStream(pack.resolve("vexcore-screen-ui.properties"))) {
             protocol.load(input);
         }
-        assertEquals("8", protocol.getProperty("protocol"));
+        assertEquals("9", protocol.getProperty("protocol"));
         int stride = Integer.parseInt(protocol.getProperty("stride"));
         int base = Integer.parseInt(protocol.getProperty("base"));
         int count = Integer.parseInt(protocol.getProperty("maxY")) - Integer.parseInt(protocol.getProperty("minY")) + 1;
@@ -79,9 +101,10 @@ final class ScreenUiShaderContractTest {
             for (int offset : new int[]{-32, -1, 0, 31}) {
                 var transition = UiTransition.move(clock + 2, 4, offset);
                 var layout = TextBlockLayout.builder().anchor(ScreenAnchor.CENTER).transition(transition).build();
-                var rendered = ScreenUiRenderer.text(List.of(Component.text("A", TextColor.color(0xFF0000))), layout, version);
+                var rendered =
+                    ScreenUiRenderer.text(List.of(Component.text("A", TextColor.color(0xFF0000))), layout, version);
                 var glyph = rendered.children().stream()
-                    .filter(c -> c instanceof net.kyori.adventure.text.TextComponent t && t.content().equals("A"))
+                    .filter(c -> c instanceof TextComponent t && t.content().equals("A"))
                     .findFirst().orElseThrow();
                 int payload = Objects.requireNonNull(glyph.color()).value();
                 assertEquals(offset, (payload & 63) - 32);
@@ -96,8 +119,10 @@ final class ScreenUiShaderContractTest {
         }
         assertThrows(IllegalArgumentException.class, () -> UiTransition.move(0, 3, 0));
         assertThrows(IllegalArgumentException.class, () -> UiTransition.move(0, 2, 32));
-        assertThrows(IllegalArgumentException.class,
-            () -> TextBlockLayout.builder().transition(UiTransition.fadeOut(0, 4)).build());
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> TextBlockLayout.builder().transition(UiTransition.fadeOut(0, 4)).build()
+        );
     }
 
     @Test
@@ -150,7 +175,7 @@ final class ScreenUiShaderContractTest {
         }
 
         try (var files = Files.walk(pack.resolve("assets/vexcore/font/ui/v26_2"))) {
-            assertEquals(927, files.filter(Files::isRegularFile).count(), "Scale and transition presets stay bounded");
+            assertEquals(1035, files.filter(Files::isRegularFile).count(), "Scale and transition presets stay bounded");
         }
     }
 

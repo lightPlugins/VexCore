@@ -7,6 +7,7 @@ import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
 import java.util.Map;
 import java.util.Set;
 
@@ -47,4 +48,6 @@ public interface PacketVersionDefinition {
 
     /** Returns the selected interactive canvas camera and input adapter. */
     Class<? extends InteractiveUiPacketAdapterService> getInteractiveUiAdapter();
+    /** Returns the adapter for recipe-book visibility synchronization. */
+    Class<? extends RecipeBookPacketAdapterService> getRecipeBookAdapter();
 }

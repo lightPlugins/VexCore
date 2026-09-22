@@ -28,4 +28,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
+    testRuntimeOnly("com.fasterxml.jackson.core:jackson-databind:2.21.2")
+    testRuntimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.2")
 }

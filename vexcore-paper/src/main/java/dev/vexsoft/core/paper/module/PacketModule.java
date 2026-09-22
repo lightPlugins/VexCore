@@ -11,10 +11,11 @@ import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketVersionService;
+import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
 import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
-import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiCoordinatorService;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
 import dev.vexsoft.core.paper.service.packets.connection.PacketConnectionService;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionListener;
@@ -47,6 +48,7 @@ public final class PacketModule implements VexModule {
         PacketVersionDefinition definition = PacketVersions.select(services);
 
         services.register(PacketTransportAdapterService.class, definition.getTransportAdapter());
+        services.register(RecipeBookPacketAdapterService.class, definition.getRecipeBookAdapter());
         services.register(DisplayPacketAdapterService.class, definition.getDisplayAdapter());
         services.register(EntityEffectPacketAdapterService.class, definition.getEntityEffectAdapter());
         services.register(PacketConnectionAdapterService.class, definition.getConnectionAdapter());

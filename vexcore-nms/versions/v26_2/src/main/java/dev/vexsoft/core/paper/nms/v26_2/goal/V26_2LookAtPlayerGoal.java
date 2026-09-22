@@ -153,13 +153,24 @@ public final class V26_2LookAtPlayerGoal extends Goal {
         float desiredYaw = (float) Math.toDegrees(Math.atan2(-deltaX, deltaZ));
         float desiredPitch = spec.yawOnly() ? 0.0F : (float) -Math.toDegrees(Math.atan2(deltaY, horizontal));
         float maximumStep = (float) (spec.rotationSpeed() / 20.0D);
-        float yaw = Mth.rotateIfNecessary(handle.getYRot(), desiredYaw, maximumStep);
-        float pitch = Mth.rotateIfNecessary(handle.getXRot(), desiredPitch, maximumStep);
+        float yaw = Mth.approachDegrees(handle.getYRot(), desiredYaw, maximumStep);
+        float pitch = Mth.approachDegrees(handle.getXRot(), desiredPitch, maximumStep);
 
         handle.setYRot(yaw);
         handle.setYHeadRot(yaw);
         handle.setYBodyRot(yaw);
         handle.setXRot(pitch);
+
+        // LookControl ticks after goals and otherwise resets pitch or recenters the head.
+        // Give it the already smoothed direction so rotation is advanced only once per tick.
+        double yawRadians = Math.toRadians(yaw);
+        handle.getLookControl().setLookAt(
+            source.getX() - Math.sin(yawRadians) * horizontal,
+            handle.getEyeY() - Math.tan(Math.toRadians(pitch)) * horizontal,
+            source.getZ() + Math.cos(yawRadians) * horizontal,
+            0.0F,
+            180.0F
+        );
     }
 
     private static double distanceSquared(final Player player, final LivingEntity mob) {
