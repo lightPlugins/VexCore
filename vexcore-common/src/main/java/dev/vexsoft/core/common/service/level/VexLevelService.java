@@ -62,7 +62,8 @@ public final class VexLevelService implements LevelService {
 
             if (!Double.isFinite(amount) || amount <= 0.0D) {
                 throw new IllegalArgumentException(
-                    "Required experience for level " + targetLevel + " must be finite and greater than zero");
+                    "Required experience for level " + targetLevel + " must be finite and greater than zero"
+                        + " (expression: '" + definition.requiredExperience() + "', result: " + amount + ')');
             }
 
             thresholds[index] = thresholds[index - 1] + amount;

@@ -200,12 +200,6 @@ final class PluginLocalizationCache {
                 lines.add(value);
             }
 
-            if (lines.isEmpty()) {
-                owner.reportLocalizationWarning("Ignoring empty localization list at " + path + " in " + source, null);
-
-                return;
-            }
-
             target.put(path, new MessageTemplate(List.copyOf(lines), true));
 
             return;

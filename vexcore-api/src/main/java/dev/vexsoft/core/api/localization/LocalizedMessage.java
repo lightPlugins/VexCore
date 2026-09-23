@@ -14,7 +14,7 @@ public final class LocalizedMessage {
     private final boolean list;
 
     private LocalizedMessage(final List<Component> lines, final boolean list) {
-        if (lines.isEmpty()) {
+        if (!list && lines.isEmpty()) {
             throw new IllegalArgumentException("Localized message must contain at least one line");
         }
 
@@ -27,7 +27,7 @@ public final class LocalizedMessage {
         return new LocalizedMessage(List.of(Objects.requireNonNull(component, "component")), false);
     }
 
-    /** Creates a localized message containing a component list */
+    /** Creates a localized message containing a component list, which may be empty. */
     public static LocalizedMessage list(final List<Component> components) {
         return new LocalizedMessage(Objects.requireNonNull(components, "components"), true);
     }

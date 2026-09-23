@@ -216,6 +216,7 @@ public final class ScreenUiPanelTest {
             }
         );
         var panels = new UiPanelSet(screen, definitions);
+        assertTrue(panels.bounds("first").isEmpty());
         var content = new HashMap<String, Component>();
         content.put("first", Component.text("Short"));
         content.put("second", Component.text("Next"));
@@ -227,6 +228,9 @@ public final class ScreenUiPanelTest {
         panels.render(key -> List.of(content.get(key.substring(0, key.indexOf('.')))), Map.of(), Map.of());
         var first = positions.get("panel.first");
         var second = positions.get("panel.second");
+        assertEquals(first, panels.bounds("first").orElseThrow());
+        assertEquals(second, panels.bounds("second").orElseThrow());
+        assertTrue(panels.bounds("missing").isEmpty());
         assertTrue(second.y() > originalY);
         assertTrue(second.y() >= first.y() + first.height() + 3);
     }

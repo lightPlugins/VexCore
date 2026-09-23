@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import net.kyori.adventure.text.Component;
 
@@ -46,6 +47,11 @@ public final class UiPanelSet {
             result.put(id, UiPanelDefinition.parse(config.getSection(id), style, localizationPrefix + "." + id));
         }
         return Collections.unmodifiableMap(result);
+    }
+
+    /** Returns the last measured bounds for a panel after it has been rendered. */
+    public Optional<UiPanelBounds> bounds(String panelId) {
+        return Optional.ofNullable(bounds.get(panelId));
     }
 
     /** Resolves visible content and updates only changed panels; following panels use measured height. */

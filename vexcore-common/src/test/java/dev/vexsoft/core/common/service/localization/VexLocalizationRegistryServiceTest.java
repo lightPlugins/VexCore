@@ -101,6 +101,25 @@ class VexLocalizationRegistryServiceTest {
     }
 
     @Test
+    void emptyExternalListsOverrideBundledLoreWithoutWarnings() throws Exception {
+        TestOwner owner = new TestOwner(
+            directory, Map.of("languages/en_EN/messages.yml", "lore: [Bundled]\nempty: []\n")
+        );
+        Path external = directory.resolve("en_EN/messages.yml");
+        java.nio.file.Files.createDirectories(java.util.Objects.requireNonNull(external.getParent()));
+        java.nio.file.Files.writeString(external, "lore: []\n");
+        var registry = new VexLocalizationRegistryService(new TestServices(owner));
+        registry.register(owner);
+
+        for (String key : List.of("messages.lore", "messages.empty")) {
+            LocalizedMessage message = registry.resolve(owner, LanguageKey.EN_EN, key, Map.of());
+            assertTrue(message.isList());
+            assertTrue(message.getComponents().isEmpty());
+        }
+        assertTrue(owner.warnings.isEmpty());
+    }
+
+    @Test
     void ignoresInvalidExternalLanguageFoldersWithOneReadableWarning() throws Exception {
         TestOwner owner = new TestOwner(directory, Map.of("languages/en_EN/messages.yml", "message: \"Valid\"\n"));
         Path invalid = directory.resolve("some_language");

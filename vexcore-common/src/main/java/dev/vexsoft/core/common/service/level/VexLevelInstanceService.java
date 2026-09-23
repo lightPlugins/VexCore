@@ -83,10 +83,15 @@ public final class VexLevelInstanceService implements LevelInstanceService {
         try {
             var replacement = new ArrayList<LevelInstance>();
             for (ConfigurationSection section : configurations) {
-                replacement.add(new LevelInstance(
-                    section.getString("id"), section.getString("name-key"),
-                    levels.compile(section)
-                ));
+                try {
+                    replacement.add(new LevelInstance(
+                        section.getString("id"), section.getString("name-key"),
+                        levels.compile(section)
+                    ));
+                } catch (IllegalArgumentException failure) {
+                    throw new IllegalArgumentException(
+                        "Invalid level instance '" + section.getString("id") + "': " + failure.getMessage(), failure);
+                }
             }
             replace(replacement);
         } finally {
