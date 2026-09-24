@@ -3,6 +3,7 @@ package dev.vexsoft.core.api.service.level;
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
+import dev.vexsoft.core.level.LevelExperienceGain;
 import dev.vexsoft.core.level.LevelInstance;
 import dev.vexsoft.core.level.LevelInstanceSnapshot;
 import dev.vexsoft.core.level.LevelRequirementDefinition;
@@ -11,6 +12,7 @@ import dev.vexsoft.core.level.claim.LevelClaimBatchResult;
 import dev.vexsoft.core.reward.RewardContributions;
 import java.util.Collection;
 import java.util.Map;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 
 /** Owns independent XP and manual reward progression for configured level instances. */
@@ -49,6 +51,18 @@ public interface LevelInstanceService extends VexService {
     /** Adds finite positive XP and immediately derives the new level, independently of claims. */
     LevelSnapshot addExperience(VexPlayer player, String id, double amount);
 
+    /** Subscribes to credited XP notifications delivered after the owning player transaction commits. */
+    ExperienceSubscription subscribeExperience(Consumer<LevelExperienceGain> listener);
+
     /** Claims the next reward-bearing level, or all currently available rewards when requested. */
     LevelClaimBatchResult claim(VexPlayer player, String id, boolean all);
+
+    /** Cancels one experience notification registration without a checked exception. */
+    @FunctionalInterface
+    interface ExperienceSubscription extends AutoCloseable {
+
+        /** Stops delivering notifications to this registration. */
+        @Override
+        void close();
+    }
 }

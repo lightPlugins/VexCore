@@ -18,6 +18,7 @@ import dev.vexsoft.core.common.reward.level.LevelExperienceReward;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.level.ClaimedLevelOverflowPolicy;
 import dev.vexsoft.core.level.LevelClaimMode;
+import dev.vexsoft.core.level.LevelExperienceGain;
 import dev.vexsoft.core.level.LevelInstance;
 import dev.vexsoft.core.level.LevelInstanceSnapshot;
 import dev.vexsoft.core.level.LevelPlayerData;
@@ -35,17 +36,23 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 
 /** Owner-scoped instance runtime using VexCore player transactions and sequential claims. */
 @Dependencies({LevelClaimService.class, LevelService.class, PlayerRewardTransactionService.class})
 public final class VexLevelInstanceService implements LevelInstanceService {
 
+    private static final System.Logger LOGGER = System.getLogger(VexLevelInstanceService.class.getName());
+
     private final LevelClaimService claims;
     private final VexServiceRegistry services;
     private volatile boolean registered;
     private final PlayerRewardTransactionService transactions;
     private final LevelService levels;
+    private final CopyOnWriteArrayList<ExperienceRegistration> experienceListeners = new CopyOnWriteArrayList<>();
     private final ThreadLocal<Map<String, Integer>> compiling = new ThreadLocal<>();
     private volatile Map<String, LevelInstance> instances = Map.of();
 
@@ -206,7 +213,8 @@ public final class VexLevelInstanceService implements LevelInstanceService {
             throw new IllegalArgumentException("Experience must be finite and positive");
         }
         synchronized (player) {
-            double total = access(instance).read(player).getExperience() + amount;
+            double previous = access(instance).read(player).getExperience();
+            double total = previous + amount;
             if (!Double.isFinite(total)) {
                 throw new IllegalArgumentException("Experience overflow");
             }
@@ -215,8 +223,26 @@ public final class VexLevelInstanceService implements LevelInstanceService {
                     progress(data, instance).setExperience(total);
                 }
             );
-            return instance.definition().curve().calculate(total);
+
+            // Skip comparison and notification allocation when no consumer observes XP gains.
+            if (experienceListeners.isEmpty() || total <= previous) {
+                return instance.definition().curve().calculate(total);
+            }
+
+            var change = instance.definition().curve().compare(previous, total);
+            var gain = new LevelExperienceGain(player.getUniqueId(), id, total - previous, change);
+            player.afterCommit(() -> notifyExperience(gain));
+
+            return change.current();
         }
+    }
+
+    @Override
+    public ExperienceSubscription subscribeExperience(final Consumer<LevelExperienceGain> listener) {
+        var registration = new ExperienceRegistration(Objects.requireNonNull(listener, "listener"));
+        experienceListeners.add(registration);
+
+        return registration;
     }
 
     @Override
@@ -276,6 +302,20 @@ public final class VexLevelInstanceService implements LevelInstanceService {
         return new LevelInstanceSnapshot(level, progress.getClaimedLevel(), next, count);
     }
 
+    private void notifyExperience(final LevelExperienceGain gain) {
+        for (ExperienceRegistration registration : experienceListeners) {
+            try {
+                registration.listener.accept(gain);
+            } catch (RuntimeException failure) {
+                LOGGER.log(
+                    System.Logger.Level.ERROR,
+                    "Level experience listener failed for " + gain.playerId() + '/' + gain.instanceId(),
+                    failure
+                );
+            }
+        }
+    }
+
     private static LevelPlayerData.Progress progress(final LevelPlayerData data, final LevelInstance instance) {
         return data.getInstances().computeIfAbsent(
             instance.id(), ignored -> {
@@ -311,6 +351,20 @@ public final class VexLevelInstanceService implements LevelInstanceService {
         @Override
         public int getClaimedLevel() {
             return claimedLevel;
+        }
+    }
+
+    private final class ExperienceRegistration implements ExperienceSubscription {
+
+        private final Consumer<LevelExperienceGain> listener;
+
+        private ExperienceRegistration(final Consumer<LevelExperienceGain> listener) {
+            this.listener = listener;
+        }
+
+        @Override
+        public void close() {
+            experienceListeners.remove(this);
         }
     }
 }

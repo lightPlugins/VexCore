@@ -39,6 +39,13 @@ final class VexCompiledLevelCurveTest {
         LevelChange lost = curve.compare(500.0D, 150.0D);
 
         assertEquals(java.util.List.of(3, 2), lost.lostLevels());
+
+        LevelChange unchanged = curve.compare(20.0D, 50.0D);
+
+        assertEquals(20.0D, unchanged.previous().experience());
+        assertEquals(50.0D, unchanged.current().experience());
+        assertTrue(unchanged.gainedLevels().isEmpty());
+        assertTrue(unchanged.lostLevels().isEmpty());
     }
 
     @Test

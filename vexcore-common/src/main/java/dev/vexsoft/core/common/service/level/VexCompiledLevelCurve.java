@@ -61,6 +61,10 @@ final class VexCompiledLevelCurve implements CompiledLevelCurve {
     public LevelChange compare(final double previousExperience, final double currentExperience) {
         LevelSnapshot previous = calculate(previousExperience);
         LevelSnapshot current = calculate(currentExperience);
+        if (previous.level() == current.level()) {
+            return new LevelChange(previous, current, List.of(), List.of());
+        }
+
         List<Integer> gained = new ArrayList<>();
         List<Integer> lost = new ArrayList<>();
 

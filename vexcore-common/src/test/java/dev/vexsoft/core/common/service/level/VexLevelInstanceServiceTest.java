@@ -41,6 +41,7 @@ import dev.vexsoft.core.level.ClaimedLevelOverflowPolicy;
 import dev.vexsoft.core.level.CompiledLevelDefinition;
 import dev.vexsoft.core.level.CompiledLevelRule;
 import dev.vexsoft.core.level.LevelClaimMode;
+import dev.vexsoft.core.level.LevelExperienceGain;
 import dev.vexsoft.core.level.LevelInstance;
 import dev.vexsoft.core.level.LevelInterval;
 import dev.vexsoft.core.level.LevelPlayerData;
@@ -55,6 +56,7 @@ import dev.vexsoft.core.stats.StatKey;
 import dev.vexsoft.core.stats.StatModifier;
 import dev.vexsoft.core.stats.contribution.StatRewardContribution;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +69,72 @@ import org.junit.jupiter.api.Test;
 
 /** Exercises real level compilation, reward transactions and manual claims together. */
 public final class VexLevelInstanceServiceTest {
+
+    @Test
+    void experienceNotificationsIncludeTheLevelChangeAndCanBeCancelled() {
+        Fixture fixture = new Fixture();
+        fixture.install(reward(context -> RewardResult.success()), 2, 1);
+        List<LevelExperienceGain> gains = new ArrayList<>();
+
+        try (var subscription = fixture.levels.subscribeExperience(gains::add)) {
+            fixture.levels.addExperience(fixture.player, "player", 250);
+
+            assertEquals(1, gains.size());
+            LevelExperienceGain gain = gains.getFirst();
+            assertEquals(fixture.player.getUniqueId(), gain.playerId());
+            assertEquals("player", gain.instanceId());
+            assertEquals(250, gain.amount());
+            assertEquals(1, gain.change().previous().level());
+            assertEquals(3, gain.change().current().level());
+            assertEquals(List.of(2, 3), gain.change().gainedLevels());
+            assertTrue(gain.change().lostLevels().isEmpty());
+        }
+
+        fixture.levels.addExperience(fixture.player, "player", 25);
+        assertEquals(1, gains.size());
+    }
+
+    @Test
+    void experienceNotificationsWaitForSuccessfulRewardCommit() {
+        Fixture fixture = new Fixture();
+        List<LevelExperienceGain> gains = new ArrayList<>();
+        fixture.install(
+            reward(context -> {
+                fixture.levels.addExperience(context.player(), "mining", 150);
+                assertTrue(gains.isEmpty());
+                return RewardResult.success();
+            }), 2, 1
+        );
+        fixture.levels.addExperience(fixture.player, "player", 100);
+
+        try (var subscription = fixture.levels.subscribeExperience(gains::add)) {
+            assertEquals(1, fixture.levels.claim(fixture.player, "player", false).getClaimedCount());
+        }
+
+        assertEquals(1, gains.size());
+        assertEquals("mining", gains.getFirst().instanceId());
+        assertEquals(2, gains.getFirst().change().current().level());
+        assertEquals(150, fixture.levels.snapshot(fixture.player, "mining").progress().experience());
+    }
+
+    @Test
+    void failingExperienceListenerDoesNotStopOtherListenersOrXpGrant() {
+        Fixture fixture = new Fixture();
+        fixture.install(reward(context -> RewardResult.success()), 2, 1);
+        List<LevelExperienceGain> gains = new ArrayList<>();
+
+        try (
+            var failing = fixture.levels.subscribeExperience(gain -> {
+                throw new IllegalStateException("listener failed");
+            });
+            var collecting = fixture.levels.subscribeExperience(gains::add)
+        ) {
+            fixture.levels.addExperience(fixture.player, "player", 100);
+        }
+
+        assertEquals(1, gains.size());
+        assertEquals(100, fixture.levels.snapshot(fixture.player, "player").progress().experience());
+    }
 
     @Test
     void reachedLevelsAndRequirementsDoNotWaitForRewardClaims() {
@@ -120,12 +188,16 @@ public final class VexLevelInstanceServiceTest {
         ));
         fixture.levels.addExperience(fixture.player, "player", 400);
 
-        for (int attempt = 0; attempt < 3; attempt++) {
-            assertEquals(0, fixture.levels.claim(fixture.player, "player", true).getClaimedCount());
-            assertEquals(0, fixture.levels.snapshot(fixture.player, "mining").progress().experience());
-            assertEquals(1, fixture.levels.snapshot(fixture.player, "player").claimedLevel());
-            assertEquals(3, fixture.levels.snapshot(fixture.player, "player").nextRewardLevel());
+        List<LevelExperienceGain> gains = new ArrayList<>();
+        try (var subscription = fixture.levels.subscribeExperience(gains::add)) {
+            for (int attempt = 0; attempt < 3; attempt++) {
+                assertEquals(0, fixture.levels.claim(fixture.player, "player", true).getClaimedCount());
+                assertEquals(0, fixture.levels.snapshot(fixture.player, "mining").progress().experience());
+                assertEquals(1, fixture.levels.snapshot(fixture.player, "player").claimedLevel());
+                assertEquals(3, fixture.levels.snapshot(fixture.player, "player").nextRewardLevel());
+            }
         }
+        assertTrue(gains.isEmpty());
     }
 
     @Test
