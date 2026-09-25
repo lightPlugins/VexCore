@@ -165,6 +165,11 @@ public final class VexMobService implements MobService, Listener, AutoCloseable 
     }
 
     @Override
+    public void setGoalsPaused(final MobHandle handle, final boolean paused) {
+        runtime.setGoalsPaused(owner, handle, paused);
+    }
+
+    @Override
     public MobSnapshot setScale(final MobHandle handle, final double scale) {
         return runtime.setScale(owner, handle, scale);
     }

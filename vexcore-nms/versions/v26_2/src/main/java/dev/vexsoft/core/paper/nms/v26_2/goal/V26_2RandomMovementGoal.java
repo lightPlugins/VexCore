@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import com.destroystokyo.paper.entity.Pathfinder;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.position.GroundPositionSafety;
 import java.util.EnumSet;
 import java.util.concurrent.ThreadLocalRandom;
@@ -44,7 +45,7 @@ public final class V26_2RandomMovementGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!mob.isValid() || mob.isDead() || pathfinder.hasPath()) {
+        if (NmsMobGoalControl.isPaused(mob) || !mob.isValid() || mob.isDead() || pathfinder.hasPath()) {
             return false;
         }
 
@@ -65,7 +66,7 @@ public final class V26_2RandomMovementGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return mob.isValid() && !mob.isDead() && pathfinder.hasPath()
+        return !NmsMobGoalControl.isPaused(mob) && mob.isValid() && !mob.isDead() && pathfinder.hasPath()
             && horizontalDistanceSquared(mob.getLocation(), origin) <= spec.leashRadius() * spec.leashRadius() * 1.10D;
     }
 

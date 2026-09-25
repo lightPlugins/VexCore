@@ -36,6 +36,9 @@ public interface MobRuntimeCoordinatorService extends VexService {
     /** Sets bounded custom health and removes the mob when health reaches zero. */
     MobSnapshot setHealth(ServiceOwner owner, MobHandle handle, double health);
 
+    /** Pauses or resumes the owner's runtime mob goals. */
+    void setGoalsPaused(ServiceOwner owner, MobHandle handle, boolean paused);
+
     /** Updates native scale and all dependent viewer presentation. */
     MobSnapshot setScale(ServiceOwner owner, MobHandle handle, double scale);
 

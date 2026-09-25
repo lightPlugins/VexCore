@@ -49,6 +49,9 @@ public interface MobService extends VexService {
     /** Sets custom health within zero and maximum health. */
     MobSnapshot setHealth(MobHandle handle, double health);
 
+    /** Pauses or resumes VexCore goals while another system controls movement. */
+    void setGoalsPaused(MobHandle handle, boolean paused);
+
     /** Updates the native scale and refreshes dependent presentation. */
     MobSnapshot setScale(MobHandle handle, double scale);
 

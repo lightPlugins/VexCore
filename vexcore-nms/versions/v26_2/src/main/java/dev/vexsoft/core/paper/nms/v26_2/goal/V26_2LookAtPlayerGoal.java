@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import com.destroystokyo.paper.entity.Pathfinder;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.UUID;
@@ -126,7 +127,7 @@ public final class V26_2LookAtPlayerGoal extends Goal {
     }
 
     private boolean validMobState() {
-        return mob.isValid() && !mob.isDead();
+        return !NmsMobGoalControl.isPaused(mob) && mob.isValid() && !mob.isDead();
     }
 
     private boolean validTarget(final Player player, final double radius) {

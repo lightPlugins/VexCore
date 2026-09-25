@@ -19,6 +19,7 @@ import dev.vexsoft.core.paper.mob.goal.MobGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.OwnerMeleeGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeLeapSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeRangedSpec;
@@ -68,7 +69,6 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.plugin.Plugin;
@@ -78,6 +78,8 @@ import org.bukkit.util.Vector;
 /** Default custom mob runtime with opt-in native goals and viewer-specific presentation. */
 @Dependencies({NmsMobAdapterService.class, TextDisplayPacketService.class, DisplayPassengerPacketService.class, MobGlowPacketService.class, MobHitPacketService.class, ScheduleService.class})
 public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordinatorService, Listener, AutoCloseable {
+
+    private static final double DEFAULT_ATTACK_KNOCKBACK = 0.4D;
 
     private final Plugin plugin;
     private final NmsMobAdapterService nms;
@@ -222,6 +224,17 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
 
         return snapshot(runtime);
+    }
+
+    @Override
+    public void setGoalsPaused(final ServiceOwner owner, final MobHandle handle, final boolean paused) {
+        RuntimeMob runtime = requireOwned(owner, handle);
+        NmsMobGoalControl.setPaused(runtime.entity, paused);
+
+        if (paused) {
+            runtime.entity.setTarget(null);
+            runtime.entity.getPathfinder().stopPathfinding();
+        }
     }
 
     @Override
@@ -384,7 +397,41 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             runtime.attackCharge = null;
         }
 
-        damage(runtime, event.getFinalDamage(), event.getDamageSource().getCausingEntity(), charge);
+        Entity attacker = event.getDamageSource().getCausingEntity();
+        MobDamageResult result = damage(runtime, event.getFinalDamage(), attacker, charge);
+
+        if (result.applied() && !result.killed() && event instanceof EntityDamageByEntityEvent attack) {
+            applyKnockback(runtime.entity, attacker == null ? attack.getDamager() : attacker,
+                attack.getDamager());
+        }
+    }
+
+    private static void applyKnockback(final Mob victim, final Entity source, final Entity directSource) {
+        if (!source.getWorld().equals(victim.getWorld())) {
+            return;
+        }
+
+        Location victimLocation = victim.getLocation();
+        Location sourceLocation = source.getLocation();
+        double directionX = sourceLocation.getX() - victimLocation.getX();
+        double directionZ = sourceLocation.getZ() - victimLocation.getZ();
+
+        if (directionX * directionX + directionZ * directionZ < 0.000001D
+            && directSource instanceof Projectile projectile) {
+            Vector velocity = projectile.getVelocity();
+            directionX = -velocity.getX();
+            directionZ = -velocity.getZ();
+        }
+
+        if (directionX * directionX + directionZ * directionZ < 0.000001D) {
+            Vector facing = sourceLocation.getDirection();
+            directionX = -facing.getX();
+            directionZ = -facing.getZ();
+        }
+
+        if (directionX * directionX + directionZ * directionZ >= 0.000001D) {
+            victim.knockback(DEFAULT_ATTACK_KNOCKBACK, directionX, directionZ);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -469,15 +516,6 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
 
     @EventHandler(priority = EventPriority.MONITOR)
     private void onWorldChange(final PlayerChangedWorldEvent event) {
-        transitionViewer(event.getPlayer());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    private void onTeleport(final PlayerTeleportEvent event) {
-        if (!MobViewerTeleport.changesPosition(event)) {
-            return;
-        }
-
         transitionViewer(event.getPlayer());
     }
 
@@ -627,7 +665,9 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                             melee.leap().waterEnabled(), melee.leap().waterVerticalSpeed(),
                             melee.leap().waterHorizontalMultiplier(), melee.leap().swimSpeedMultiplier()),
                         new NmsMeleeRangedSpec(melee.ranged().enabled(), melee.ranged().stuckTicks(),
-                            melee.ranged().intervalTicks(), melee.ranged().speed(), melee.ranged().lifetimeTicks())
+                            melee.ranged().intervalTicks(), melee.ranged().speed(), melee.ranged().lifetimeTicks()),
+                        melee.pursuitSpreadRadius(),
+                        melee.aggroRadius()
                     )
                 );
             } else {
@@ -839,6 +879,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
 
         runtime.removing = true;
+        NmsMobGoalControl.setPaused(runtime.entity, false);
         byEntity.remove(runtime.entity.getUniqueId(), runtime.handle.instanceId());
         nms.deactivateGoals(runtime.entity);
         Bukkit.getOnlinePlayers().forEach(player -> clearPresentation(runtime, player));

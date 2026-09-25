@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.destroystokyo.paper.entity.Pathfinder;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeLeapSpec;
 import org.bukkit.util.Vector;
 import java.lang.reflect.InvocationHandler;
@@ -24,6 +25,74 @@ import org.junit.jupiter.api.Test;
 
 /** Exercises the native melee goal's target ownership, path retries, and diagnostic behavior. */
 public final class V26_2OwnerMeleeGoalTest {
+
+    @Test
+    void globalScopeSelectsNearestEligiblePlayer() {
+        Player[] candidates = new Player[2];
+        World world = proxy(World.class, (proxy, method, args) -> switch (method.getName()) {
+            case "getPlayers" -> List.of(candidates);
+            case "equals" -> proxy == args[0];
+            case "hashCode" -> System.identityHashCode(proxy);
+            default -> throw new AssertionError(method.getName());
+        });
+        candidates[0] = eligiblePlayer(new Location(world, 8, 64, 0));
+        candidates[1] = eligiblePlayer(new Location(world, 3, 64, 0));
+        LivingEntity[] selected = new LivingEntity[1];
+        UUID mobId = UUID.randomUUID();
+        Mob mob = proxy(Mob.class, (proxy, method, args) -> switch (method.getName()) {
+            case "getUniqueId" -> mobId;
+            case "getWorld" -> world;
+            case "getLocation" -> new Location(world, 0, 64, 0);
+            case "isValid" -> true;
+            case "isDead" -> false;
+            case "getTarget" -> selected[0];
+            case "setTarget" -> {
+                selected[0] = (LivingEntity) args[0];
+                yield null;
+            }
+            default -> throw new AssertionError(method.getName());
+        });
+        V26_2OwnerMeleeGoal goal = new V26_2OwnerMeleeGoal(
+            mob, new NmsOwnerMeleeSpec(2, 1, 32, 2, 15, 30, 10, null), id -> null,
+            ignored -> { }, () -> 0.25D
+        );
+
+        assertTrue(goal.canUse());
+        goal.start();
+        assertSame(candidates[1], selected[0]);
+        NmsMobGoalControl.setPaused(mob, true);
+        assertFalse(goal.canContinueToUse());
+        assertFalse(goal.canUse());
+        NmsMobGoalControl.setPaused(mob, false);
+    }
+
+    @Test
+    void scopedMobAcquiresWithinAggroRadiusAndPursuesWithinFullRadius() {
+        Fixture fixture = new Fixture(false, false, false, 0, 12);
+        fixture.playerLocation.setX(20);
+        assertFalse(fixture.goal.canUse());
+
+        fixture.playerLocation.setX(10);
+        assertTrue(fixture.goal.canUse());
+        fixture.goal.start();
+
+        fixture.playerLocation.setX(20);
+        assertTrue(fixture.goal.canContinueToUse());
+
+        fixture.playerLocation.setX(33);
+        assertFalse(fixture.goal.canContinueToUse());
+    }
+
+    private static Player eligiblePlayer(final Location location) {
+        return proxy(Player.class, (proxy, method, args) -> switch (method.getName()) {
+            case "isOnline" -> true;
+            case "isDead" -> false;
+            case "getGameMode" -> GameMode.SURVIVAL;
+            case "getLocation" -> location.clone();
+            case "getWorld" -> location.getWorld();
+            default -> throw new AssertionError(method.getName());
+        });
+    }
 
     @Test
     void waterPursuitIsFasterAndLaunchesHigherTowardNearbyShore() {
@@ -282,6 +351,27 @@ public final class V26_2OwnerMeleeGoalTest {
     }
 
     @Test
+    void pursuitSpreadUsesDistinctApproachPointsWithoutDelayingMelee() {
+        World world = world();
+        Location target = new Location(world, 8, 64, 0);
+        Location first = V26_2OwnerMeleeGoal.pursuitLocation(target, new UUID(0, 1), 1.25);
+        Location second = V26_2OwnerMeleeGoal.pursuitLocation(target, new UUID(0, 2), 1.25);
+
+        assertEquals(1.25, first.distance(target), 0.00001);
+        assertTrue(first.distanceSquared(second) > 0.01);
+
+        Fixture fixture = new Fixture(false, false, false, 1.25);
+        fixture.start();
+        fixture.tick(1);
+        assertEquals(1, fixture.pathRequests.size());
+        assertEquals(1.25, fixture.pathRequests.getFirst().distance(fixture.playerLocation), 0.00001);
+
+        fixture.playerLocation.setX(1);
+        fixture.tick(60);
+        assertEquals(List.of(15.0D, 15.0D), fixture.damage);
+    }
+
+    @Test
     void anObstructedPlayerInsideAttackReachStillNeedsAPath() {
         Fixture fixture = new Fixture();
 
@@ -355,6 +445,7 @@ public final class V26_2OwnerMeleeGoalTest {
 
     private static World world() {
         return proxy(World.class, (proxy, method, args) -> switch (method.getName()) {
+            case "isChunkLoaded" -> true;
             case "equals" -> proxy == args[0];
             case "hashCode" -> System.identityHashCode(proxy);
             default -> throw new AssertionError(method.getName());
@@ -411,6 +502,16 @@ public final class V26_2OwnerMeleeGoalTest {
         }
 
         private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled) {
+            this(leapEnabled, rangedEnabled, waterEnabled, 0);
+        }
+
+        private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled,
+                        final double pursuitSpreadRadius) {
+            this(leapEnabled, rangedEnabled, waterEnabled, pursuitSpreadRadius, 32);
+        }
+
+        private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled,
+                        final double pursuitSpreadRadius, final double aggroRadius) {
             player = proxy(Player.class, (proxy, method, args) -> switch (method.getName()) {
                 case "getUniqueId" -> playerId;
                 case "isOnline" -> online;
@@ -474,7 +575,7 @@ public final class V26_2OwnerMeleeGoalTest {
 
             goal = new V26_2OwnerMeleeGoal(mob, new NmsOwnerMeleeSpec(2, 1, 32, 2, 15, 30, 10, playerId,
                 new NmsMeleeLeapSpec(leapEnabled, 6, 60, 0.8, 1.3, 0.45, waterEnabled, 1.2, 1.4, 1.5),
-                new NmsMeleeRangedSpec(rangedEnabled, 60, 40, 0.6, 100)),
+                new NmsMeleeRangedSpec(rangedEnabled, 60, 40, 0.6, 100), pursuitSpreadRadius, aggroRadius),
                 id -> id.equals(playerId) ? player : null, diagnostics::add, () -> 0.25D, impulse -> clearLeap,
                 owner -> {
                     assertSame(player, owner);

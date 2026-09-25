@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 
-/** Personal melee AI using native goal scheduling and throttled Paper pathfinding. */
+/** Scoped melee AI using native goal scheduling and throttled Paper pathfinding. */
 public final class V26_2OwnerMeleeGoal extends Goal {
 
     private static final int PROGRESS_INTERVAL_TICKS = 40;
@@ -95,9 +96,32 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        target = spec.playerId() == null ? null : players.apply(spec.playerId());
+        target = spec.playerId() == null ? nearestPlayer() : players.apply(spec.playerId());
 
-        return valid();
+        return valid() && target.getLocation().distanceSquared(mob.getLocation())
+            <= spec.aggroRadius() * spec.aggroRadius();
+    }
+
+    private Player nearestPlayer() {
+        Location origin = mob.getLocation();
+        double maximumDistance = spec.aggroRadius() * spec.aggroRadius();
+        Player nearest = null;
+
+        for (Player candidate : mob.getWorld().getPlayers()) {
+            if (!candidate.isOnline() || candidate.isDead() || candidate.getGameMode() == GameMode.CREATIVE
+                || candidate.getGameMode() == GameMode.SPECTATOR) {
+                continue;
+            }
+
+            double distance = candidate.getLocation().distanceSquared(origin);
+
+            if (distance <= maximumDistance) {
+                maximumDistance = distance;
+                nearest = candidate;
+            }
+        }
+
+        return nearest;
     }
 
     @Override
@@ -153,7 +177,7 @@ public final class V26_2OwnerMeleeGoal extends Goal {
             if (bindTarget() && !canAttack) {
                 double swimMultiplier = spec.leap().waterEnabled() && mob.isInWater()
                     ? spec.leap().swimSpeedMultiplier() : 1.0D;
-                pathAccepted = mob.getPathfinder().moveTo(target, spec.speed() * swimMultiplier);
+                pathAccepted = pursue(spec.speed() * swimMultiplier);
                 pathReachesTarget = pathAccepted;
                 if (mob instanceof CraftMob craftMob) {
                     var path = craftMob.getHandle().getNavigation().getPath();
@@ -198,6 +222,38 @@ public final class V26_2OwnerMeleeGoal extends Goal {
             mob.swingMainHand();
             target.damage(spec.damage(), mob);
         }
+    }
+
+    private boolean pursue(final double speed) {
+        if (spec.pursuitSpreadRadius() > 0) {
+            Location approach = pursuitLocation(target.getLocation(), mob.getUniqueId(), spec.pursuitSpreadRadius());
+
+            if (approach.getWorld().isChunkLoaded(approach.getBlockX() >> 4, approach.getBlockZ() >> 4)
+                && mob.getPathfinder().moveTo(approach, speed)) {
+                if (!(mob instanceof CraftMob craftMob)) {
+                    return true;
+                }
+
+                var path = craftMob.getHandle().getNavigation().getPath();
+
+                if (path != null && path.canReach()) {
+                    return true;
+                }
+            }
+        }
+
+        return mob.getPathfinder().moveTo(target, speed);
+    }
+
+    static Location pursuitLocation(final Location target, final UUID mobId, final double radius) {
+        long mixed = mobId.getMostSignificantBits() ^ mobId.getLeastSignificantBits();
+        mixed ^= mixed >>> 33;
+        mixed *= 0xff51afd7ed558ccdL;
+        mixed ^= mixed >>> 33;
+        mixed *= 0xc4ceb9fe1a85ec53L;
+        mixed ^= mixed >>> 33;
+        double angle = (mixed >>> 11) * 0x1.0p-53 * Math.PI * 2;
+        return target.clone().add(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
     }
 
     private boolean tryLeap() {
@@ -352,7 +408,8 @@ public final class V26_2OwnerMeleeGoal extends Goal {
     }
 
     private boolean valid() {
-        return target != null && target.isOnline() && !target.isDead() && mob.isValid() && !mob.isDead()
+        return !NmsMobGoalControl.isPaused(mob) && target != null && target.isOnline() && !target.isDead()
+            && mob.isValid() && !mob.isDead()
             && target.getGameMode() != GameMode.CREATIVE && target.getGameMode() != GameMode.SPECTATOR
             && target.getWorld().equals(mob.getWorld())
             && target.getLocation().distanceSquared(mob.getLocation()) <= spec.radius() * spec.radius();
