@@ -61,6 +61,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
@@ -216,6 +217,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         if (runtime.health == 0.0D) {
             removeRuntime(runtime, MobRemovalReason.DEATH);
         } else {
+            synchronizeCarrierHealth(runtime);
             refreshPresentation(runtime);
         }
 
@@ -385,6 +387,13 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         damage(runtime, event.getFinalDamage(), event.getDamageSource().getCausingEntity(), charge);
     }
 
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    private void onRegainHealth(final EntityRegainHealthEvent event) {
+        if (findRuntime(event.getEntity()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void onAttackCharge(final PrePlayerAttackEntityEvent event) {
         RuntimeMob runtime = findRuntime(event.getAttacked());
@@ -535,7 +544,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             throw new IllegalArgumentException("Carrier has no maximum-health attribute");
         }
 
-        maxHealth.setBaseValue(Math.max(1.0D, definition.maxHealth()));
+        maxHealth.setBaseValue(20.0D);
         setAttribute(mob, Attribute.SCALE, definition.scale());
         setAttribute(mob, Attribute.KNOCKBACK_RESISTANCE, definition.knockbackResistance());
 
@@ -543,8 +552,19 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             setAttribute(mob, Attribute.MOVEMENT_SPEED, definition.movementSpeed());
         }
 
-        mob.setHealth(Math.min(maxHealth.getValue(), 20.0D));
+        mob.setHealth(maxHealth.getValue());
         nms.neutralize(mob);
+    }
+
+    private void synchronizeCarrierHealth(final RuntimeMob runtime) {
+        AttributeInstance maximum = runtime.entity.getAttribute(Attribute.MAX_HEALTH);
+
+        if (maximum == null || runtime.health <= 0.0D || runtime.entity.isDead()) {
+            return;
+        }
+
+        double displayed = maximum.getValue() * runtime.health / runtime.definition.maxHealth();
+        runtime.entity.setHealth(Math.clamp(displayed, 0.01D, maximum.getValue()));
     }
 
     private void installGoals(final RuntimeMob runtime, final Location origin) {
@@ -788,6 +808,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             runtime.deathAttacker = attacker;
             runtime.entity.setHealth(0.0D);
         } else {
+            synchronizeCarrierHealth(runtime);
             Bukkit.getOnlinePlayers()
                 .stream()
                 .filter(player -> runtime.scope.includes(player.getUniqueId()))

@@ -9,6 +9,7 @@ import lombok.Value;
 public class LanguageKey implements Comparable<LanguageKey> {
 
     public static final LanguageKey EN_EN = LanguageKey.of("en_EN");
+    public static final LanguageKey DE_DE = LanguageKey.of("de_DE");
 
     String value;
 

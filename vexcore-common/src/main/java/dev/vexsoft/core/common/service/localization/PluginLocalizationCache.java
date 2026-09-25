@@ -2,6 +2,8 @@ package dev.vexsoft.core.common.service.localization;
 
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.localization.PublishedLocalizationCatalog;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,14 +30,33 @@ final class PluginLocalizationCache {
     private static final String RESOURCE_ROOT = "languages/";
 
     private final LocalizationOwner owner;
+    private final PublishedConfigurationService published;
+    private final Runnable onChange;
     private volatile Map<LanguageKey, Map<String, MessageTemplate>> messages = Map.of();
+    private AutoCloseable publishedSubscription;
 
     PluginLocalizationCache(final LocalizationOwner owner) {
+        this(owner, null, () -> { });
+    }
+
+    PluginLocalizationCache(
+        final LocalizationOwner owner,
+        final PublishedConfigurationService published,
+        final Runnable onChange
+    ) {
         this.owner = Objects.requireNonNull(owner, "owner");
+        this.published = published;
+        this.onChange = Objects.requireNonNull(onChange, "onChange");
         reload();
     }
 
     public synchronized void reload() {
+        if (owner.usesPublishedLocalizations()) {
+            reloadPublished();
+
+            return;
+        }
+
         Map<LanguageKey, Map<String, MessageTemplate>> loaded = new LinkedHashMap<>();
 
         loadBundled(loaded);
@@ -55,7 +76,13 @@ final class PluginLocalizationCache {
         Map<String, MessageTemplate> selected = messages.get(language);
         MessageTemplate value = selected == null ? null : selected.get(key);
 
-        if (value != null || language.equals(LanguageKey.EN_EN)) {
+        if (value != null) {
+            return value;
+        }
+
+        value = messages.getOrDefault(LanguageKey.DE_DE, Map.of()).get(key);
+
+        if (value != null) {
             return value;
         }
 
@@ -66,6 +93,50 @@ final class PluginLocalizationCache {
         return messages.keySet().stream().sorted().toList();
     }
 
+    public synchronized void close() throws Exception {
+        if (publishedSubscription != null) {
+            publishedSubscription.close();
+            publishedSubscription = null;
+        }
+    }
+
+    private void reloadPublished() {
+        if (published == null || !published.isRegistered(PublishedLocalizationCatalog.class)) {
+            messages = Map.of();
+
+            return;
+        }
+
+        published.find(PublishedLocalizationCatalog.class).ifPresentOrElse(
+            this::installPublished,
+            () -> messages = Map.of()
+        );
+
+        if (publishedSubscription == null) {
+            publishedSubscription = published.subscribe(PublishedLocalizationCatalog.class, this::installPublished);
+        }
+    }
+
+    private void installPublished(final PublishedLocalizationCatalog catalog) {
+        Map<LanguageKey, Map<String, MessageTemplate>> loaded = new LinkedHashMap<>();
+
+        catalog.languages().forEach((language, values) -> {
+            Map<String, MessageTemplate> templates = new LinkedHashMap<>();
+            values.forEach((key, template) -> templates.put(
+                key,
+                new MessageTemplate(template.lines(), template.list())
+            ));
+            loaded.put(LanguageKey.of(language), Map.copyOf(templates));
+        });
+
+        if (!loaded.containsKey(LanguageKey.DE_DE)) {
+            throw new IllegalStateException("Published localization must contain de_DE for " + owner.getServiceOwnerName());
+        }
+
+        messages = Map.copyOf(loaded);
+        onChange.run();
+    }
+
     private void loadBundled(final Map<LanguageKey, Map<String, MessageTemplate>> target) {
         owner.getLocalizationResources()
             .stream()
@@ -74,7 +145,9 @@ final class PluginLocalizationCache {
             .forEach(resource -> {
                 ResourceLocation location = location(resource.substring(RESOURCE_ROOT.length()));
 
-                copyIfMissing(resource, location);
+                if (owner.usesExternalLocalizationFiles()) {
+                    copyIfMissing(resource, location);
+                }
 
                 try (InputStream input = owner.getLocalizationResource(resource)
                     .orElseThrow(() -> new IllegalStateException("Missing bundled language resource " + resource))) {
@@ -86,6 +159,10 @@ final class PluginLocalizationCache {
     }
 
     private void loadExternal(final Map<LanguageKey, Map<String, MessageTemplate>> target) {
+        if (!owner.usesExternalLocalizationFiles()) {
+            return;
+        }
+
         Path directory = owner.getLocalizationDirectory().toAbsolutePath().normalize();
 
         if (Files.notExists(directory)) {

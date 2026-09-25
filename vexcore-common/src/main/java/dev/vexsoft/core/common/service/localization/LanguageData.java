@@ -11,5 +11,5 @@ import lombok.Setter;
 @NoArgsConstructor
 final class LanguageData {
 
-    private String language = LanguageKey.EN_EN.getValue();
+    private String language = LanguageKey.DE_DE.getValue();
 }

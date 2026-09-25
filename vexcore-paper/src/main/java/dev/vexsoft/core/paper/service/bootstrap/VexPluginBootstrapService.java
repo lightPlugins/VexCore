@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.service.bootstrap;
 
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
 import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
@@ -29,6 +30,7 @@ import dev.vexsoft.core.api.service.stats.StatRegistry;
 import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
+import dev.vexsoft.core.common.service.configuration.VexPublishedConfigurationService;
 import dev.vexsoft.core.common.service.cost.VexCostRegistry;
 import dev.vexsoft.core.common.service.cost.VexCostService;
 import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
@@ -136,6 +138,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
         checkedServices.register(ConfigurationService.class, VexConfigurationService.class);
+        checkedServices.register(PublishedConfigurationService.class, VexPublishedConfigurationService.class);
         checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
         checkedServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
         checkedServices.register(ScheduleService.class, VexScheduleService.class);

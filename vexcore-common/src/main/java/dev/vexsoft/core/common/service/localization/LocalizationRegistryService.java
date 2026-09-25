@@ -2,6 +2,7 @@ package dev.vexsoft.core.common.service.localization;
 
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.service.registry.VexService;
 import java.util.Collection;
@@ -14,6 +15,11 @@ public interface LocalizationRegistryService extends VexService {
 
     /** Loads and registers every localization supplied by an owner */
     void register(LocalizationOwner owner);
+
+    /** Registers an owner with access to its optional published localization catalog. */
+    default void register(final LocalizationOwner owner, final PublishedConfigurationService publishedConfigurations) {
+        register(owner);
+    }
 
     /** Removes the localization cache registered by an owner */
     void unregister(LocalizationOwner owner);

@@ -11,6 +11,16 @@ import java.util.Optional;
  */
 public interface LocalizationOwner extends ServiceOwner {
 
+    /** Selects database-published localization instead of bundled and external files. */
+    default boolean usesPublishedLocalizations() {
+        return false;
+    }
+
+    /** Controls whether bundled language resources are copied to the server filesystem. */
+    default boolean usesExternalLocalizationFiles() {
+        return true;
+    }
+
     /** Returns the directory containing this owner's external language files */
     Path getLocalizationDirectory();
 

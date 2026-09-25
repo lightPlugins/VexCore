@@ -4,13 +4,14 @@ import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.Map;
 import java.util.Objects;
 
 /** Resolves and reloads one owner's localized messages through the shared localization registry. */
-@Dependencies({LocalizationRegistryService.class})
+@Dependencies({LocalizationRegistryService.class, PublishedConfigurationService.class})
 public final class VexLocalizationService implements LocalizationService, AutoCloseable {
 
     private final LocalizationOwner owner;
@@ -25,7 +26,7 @@ public final class VexLocalizationService implements LocalizationService, AutoCl
 
         owner = localizationOwner;
         registry = services.require(LocalizationRegistryService.class);
-        registry.register(owner);
+        registry.register(owner, services.require(PublishedConfigurationService.class));
     }
 
     @Override

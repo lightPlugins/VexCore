@@ -1,7 +1,9 @@
 package dev.vexsoft.core.paper.plugin;
 
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.player.DataService;
@@ -59,6 +61,10 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
             bootstrap.initialize(services);
             registerServices();
             services.registerQueuedServices();
+            registerPublishedConfigurations(services.require(PublishedConfigurationService.class));
+            if (usesPublishedLocalizations()) {
+                services.require(LocalizationService.class).reload();
+            }
             dataService = services.require(DataService.class);
             registerData(dataService);
             registerContainers(services.require(PlayerContainerService.class));
@@ -108,6 +114,20 @@ public abstract class VexPlugin extends JavaPlugin implements ConfigurationOwner
 
     /** Queues services provided by this plugin before data and feature registration begins. */
     protected void registerServices() {
+    }
+
+    /** Registers optional database-backed configuration types before feature load hooks run. */
+    protected void registerPublishedConfigurations(final PublishedConfigurationService configurations) {
+    }
+
+    @Override
+    public boolean usesPublishedLocalizations() {
+        return false;
+    }
+
+    @Override
+    public boolean usesExternalLocalizationFiles() {
+        return true;
     }
 
     /** Registers command classes through this plugin's scoped command service. */

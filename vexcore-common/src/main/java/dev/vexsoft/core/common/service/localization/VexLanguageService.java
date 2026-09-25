@@ -66,6 +66,6 @@ public final class VexLanguageService implements LanguageService {
         LocalizedMessage name = localizations.resolve(CORE_OWNER, key, "language.name", Map.of());
         Component displayName = name.getLines().getFirst();
 
-        return new Language(key, displayName, key.equals(LanguageKey.EN_EN));
+        return new Language(key, displayName, key.equals(LanguageKey.DE_DE));
     }
 }

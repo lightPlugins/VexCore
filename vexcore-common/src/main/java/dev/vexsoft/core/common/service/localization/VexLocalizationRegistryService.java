@@ -3,6 +3,7 @@ package dev.vexsoft.core.common.service.localization;
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
+import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.localization.ThemeColorService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
@@ -46,9 +47,20 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
 
     @Override
     public void register(final LocalizationOwner owner) {
+        register(owner, null);
+    }
+
+    @Override
+    public void register(
+        final LocalizationOwner owner,
+        final PublishedConfigurationService publishedConfigurations
+    ) {
         Objects.requireNonNull(owner, "owner");
         String ownerName = normalizeOwner(owner.getServiceOwnerName());
-        Registration registration = new Registration(owner, new PluginLocalizationCache(owner));
+        Registration registration = new Registration(
+            owner,
+            new PluginLocalizationCache(owner, publishedConfigurations, staticMessages::invalidateAll)
+        );
         Registration existing = registrations.putIfAbsent(ownerName, registration);
 
         if (existing != null && existing.owner != owner) {
@@ -61,10 +73,19 @@ public final class VexLocalizationRegistryService implements LocalizationRegistr
     @Override
     public void unregister(final LocalizationOwner owner) {
         Objects.requireNonNull(owner, "owner");
+        Registration removed = registrations.get(normalizeOwner(owner.getServiceOwnerName()));
         registrations.computeIfPresent(
             normalizeOwner(owner.getServiceOwnerName()),
             (key, registration) -> registration.owner == owner ? null : registration
         );
+
+        if (removed != null && removed.owner == owner) {
+            try {
+                removed.cache.close();
+            } catch (Exception exception) {
+                throw new IllegalStateException("Unable to close localization cache", exception);
+            }
+        }
         staticMessages.invalidateAll();
     }
 

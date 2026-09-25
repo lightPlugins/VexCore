@@ -23,8 +23,8 @@ class VexLanguageContainerTest {
         VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
 
         player.install(VexCorePlayerData.LANGUAGE, new LanguageData());
-        Language english = language(LanguageKey.EN_EN, true);
-        Language german = language(LanguageKey.of("de_DE"), false);
+        Language english = language(LanguageKey.EN_EN, false);
+        Language german = language(LanguageKey.DE_DE, true);
         LanguageService languages = new TestLanguages(english, german);
         AtomicReference<Language> previous = new AtomicReference<>();
         AtomicReference<Language> selected = new AtomicReference<>();
@@ -36,11 +36,11 @@ class VexLanguageContainerTest {
         };
         VexLanguageContainer container = new VexLanguageContainer(player, languages, changes);
 
-        container.setLanguage(german.getKey());
+        container.setLanguage(english.getKey());
 
-        assertEquals(german, container.getLanguage());
-        assertEquals(english, previous.get());
-        assertEquals(german, selected.get());
+        assertEquals(english, container.getLanguage());
+        assertEquals(german, previous.get());
+        assertEquals(english, selected.get());
         assertTrue(player.getDirtyKeys().contains(VexCorePlayerData.LANGUAGE));
     }
 

@@ -29,7 +29,7 @@ final class VexLanguageContainer implements LanguageContainer {
     public Language getLanguage() {
         String selected = player.read(VexCorePlayerData.LANGUAGE, LanguageData::getLanguage);
 
-        return languages.findLanguage(selected).orElseGet(() -> requireLanguage(LanguageKey.EN_EN));
+        return languages.findLanguage(selected).orElseGet(() -> requireLanguage(LanguageKey.DE_DE));
     }
 
     @Override
