@@ -387,10 +387,16 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             return;
         }
 
+        boolean entityHit = event instanceof EntityDamageByEntityEvent;
+        int tick = Bukkit.getCurrentTick();
+        if (entityHit && tick < runtime.nextAcceptedHitTick) {
+            return;
+        }
+
         double charge = 1.0D;
         AttackCharge sample = runtime.attackCharge;
 
-        if (sample != null && sample.tick() == Bukkit.getCurrentTick()
+        if (sample != null && sample.tick() == tick
             && event instanceof EntityDamageByEntityEvent attack && attack.getDamager() instanceof Player player
             && sample.player().equals(player.getUniqueId())) {
             charge = sample.value();
@@ -399,6 +405,10 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
 
         Entity attacker = event.getDamageSource().getCausingEntity();
         MobDamageResult result = damage(runtime, event.getFinalDamage(), attacker, charge);
+
+        if (entityHit && result.applied()) {
+            runtime.nextAcceptedHitTick = (long) tick + runtime.definition.damageCooldownTicks();
+        }
 
         if (result.applied() && !result.killed() && event instanceof EntityDamageByEntityEvent attack) {
             applyKnockback(runtime.entity, attacker == null ? attack.getDamager() : attacker,
@@ -667,7 +677,10 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                         new NmsMeleeRangedSpec(melee.ranged().enabled(), melee.ranged().stuckTicks(),
                             melee.ranged().intervalTicks(), melee.ranged().speed(), melee.ranged().lifetimeTicks()),
                         melee.pursuitSpreadRadius(),
-                        melee.aggroRadius()
+                        melee.aggroRadius(),
+                        melee.attackSequence(),
+                        melee.passive(),
+                        melee.angerTarget()
                     )
                 );
             } else {
@@ -970,6 +983,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         private final Map<UUID, HologramSession> holograms = new ConcurrentHashMap<>();
         private final MobPresentationGate presentationGate = new MobPresentationGate();
         private double health;
+        private long nextAcceptedHitTick;
         private double scale;
         private DisplayGlowColor glow;
         private boolean removing;

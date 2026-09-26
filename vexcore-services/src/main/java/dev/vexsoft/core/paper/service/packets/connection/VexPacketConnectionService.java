@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
 import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
@@ -30,7 +31,8 @@ import org.bukkit.entity.Player;
     InteractionTrackerService.class,
     FakeItemMetaStoreService.class,
     ScheduleService.class,
-    InteractiveUiCoordinatorService.class
+    InteractiveUiCoordinatorService.class,
+    VirtualPassengerOverlayService.class
 })
 public final class VexPacketConnectionService implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
 
@@ -41,6 +43,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
     private final FakeItemMetaStoreService itemMetaStore;
     private final ScheduleService scheduler;
     private final InteractiveUiCoordinatorService interactiveUi;
+    private final VirtualPassengerOverlayService virtualPassengers;
     private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
 
     public VexPacketConnectionService(final VexServiceRegistry services) {
@@ -51,6 +54,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
         this.itemMetaStore = services.require(FakeItemMetaStoreService.class);
         this.scheduler = services.require(ScheduleService.class);
         this.interactiveUi = services.require(InteractiveUiCoordinatorService.class);
+        this.virtualPassengers = services.require(VirtualPassengerOverlayService.class);
     }
 
     @Override
@@ -61,12 +65,15 @@ public final class VexPacketConnectionService implements PacketConnectionService
     @Override
     public void uninject(final Player player) {
         pending.remove(player.getUniqueId());
+        virtualPassengers.removeViewer(player.getUniqueId());
         connection.uninject(player);
     }
 
     @Override
     public Object write(final UUID viewerId, final Object packet) {
-        return interactiveUi.preserveTarget(viewerId, itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore));
+        Object rewritten = interactiveUi.preserveTarget(viewerId,
+            itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore));
+        return virtualPassengers.rewriteOutbound(viewerId, rewritten);
     }
 
     @Override

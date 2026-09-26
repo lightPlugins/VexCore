@@ -3,15 +3,18 @@ package dev.vexsoft.core.paper.nms.v26_2.goal;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.destroystokyo.paper.entity.Pathfinder;
+import dev.vexsoft.core.api.mob.MobMeleeAttackSequence;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeLeapSpec;
 import org.bukkit.util.Vector;
+import org.bukkit.util.BoundingBox;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import org.bukkit.entity.Projectile;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeRangedSpec;
 import org.bukkit.GameMode;
@@ -99,7 +102,7 @@ public final class V26_2OwnerMeleeGoalTest {
         Fixture fixture = new Fixture(true, true, true);
         fixture.inWater = true;
         fixture.onGround = false;
-        fixture.playerLocation.setX(2);
+        fixture.playerLocation.setX(3);
         fixture.playerLocation.setY(66);
         fixture.start();
         fixture.tick(1);
@@ -307,8 +310,7 @@ public final class V26_2OwnerMeleeGoalTest {
 
         fixture.start();
         fixture.tick(40);
-        assertTrue(fixture.diagnostics.getFirst().contains("path was accepted but the mob made no progress"));
-        assertTrue(fixture.diagnostics.getFirst().contains("pathAccepted=true; hasPath=true"));
+        assertTrue(fixture.diagnostics.isEmpty());
         assertFalse(fixture.hasPath);
         fixture.tick(1);
         assertTrue(fixture.hasPath);
@@ -348,6 +350,155 @@ public final class V26_2OwnerMeleeGoalTest {
         fixture.playerLocation.setX(8);
         fixture.tick(1);
         assertEquals(1, fixture.pathRequests.size());
+    }
+
+    @Test
+    void scaledMobAttacksWhenHitboxesAreWithinReachDespiteDistantEntityOrigins() {
+        Fixture fixture = new Fixture();
+        fixture.mobWidth = 2.0D;
+        fixture.playerLocation.setX(2.58D);
+        fixture.start();
+        fixture.tick(40);
+
+        assertEquals(List.of(15.0D, 15.0D), fixture.damage);
+        assertTrue(fixture.pathRequests.isEmpty());
+        assertTrue(fixture.diagnostics.isEmpty());
+    }
+
+    @Test
+    void passiveMobWaitsForProvocationAndStopsWhenAngerIsCleared() {
+        UUID[] angerTarget = {null};
+        Fixture fixture = new Fixture(true, angerTarget);
+        fixture.playerLocation.setX(1);
+
+        assertFalse(fixture.goal.canUse());
+        angerTarget[0] = fixture.playerId;
+        assertTrue(fixture.goal.canUse());
+        fixture.goal.start();
+        fixture.tick(1);
+        assertEquals(List.of(15.0D), fixture.damage);
+
+        angerTarget[0] = null;
+        assertFalse(fixture.goal.canContinueToUse());
+    }
+
+    @Test
+    void animatedAttackStopsMovementUntilFinishedAndHitsAfterDelay() {
+        boolean[] finished = {false};
+        boolean[] cancelled = {false};
+        MobMeleeAttackSequence sequence = (mobId, targetId) -> new MobMeleeAttackSequence.Attack() {
+
+            @Override
+            public int damageDelayTicks() {
+                return 20;
+            }
+
+            @Override
+            public boolean isFinished() {
+                return finished[0];
+            }
+
+            @Override
+            public void cancel() {
+                cancelled[0] = true;
+            }
+        };
+        Fixture fixture = new Fixture(sequence);
+        fixture.playerLocation.setX(1);
+        fixture.velocity = new Vector(0.2D, -0.1D, 0.3D);
+        fixture.start();
+        fixture.tick(1);
+
+        assertEquals(0.0D, fixture.velocity.getX());
+        assertEquals(-0.1D, fixture.velocity.getY());
+        assertEquals(0.0D, fixture.velocity.getZ());
+        assertTrue(fixture.damage.isEmpty());
+
+        fixture.tick(19);
+        assertTrue(fixture.damage.isEmpty());
+        fixture.tick(1);
+        assertEquals(List.of(15.0D), fixture.damage);
+        assertTrue(fixture.pathRequests.isEmpty());
+
+        fixture.playerLocation.setX(8);
+        fixture.tick(1);
+        assertTrue(fixture.pathRequests.isEmpty());
+        finished[0] = true;
+        fixture.tick(1);
+        fixture.tick(1);
+        assertEquals(1, fixture.pathRequests.size());
+        assertFalse(cancelled[0]);
+    }
+
+    @Test
+    void animatedAttackMissesWhenTargetLeavesReachBeforeHit() {
+        boolean[] finished = {false};
+        Fixture fixture = new Fixture((mobId, targetId) -> new MobMeleeAttackSequence.Attack() {
+
+            @Override
+            public int damageDelayTicks() {
+                return 5;
+            }
+
+            @Override
+            public boolean isFinished() {
+                return finished[0];
+            }
+
+            @Override
+            public void cancel() {
+            }
+        });
+        fixture.playerLocation.setX(1);
+        fixture.start();
+        fixture.tick(1);
+        fixture.playerLocation.setX(40);
+        assertTrue(fixture.goal.canContinueToUse());
+        fixture.tick(5);
+        assertTrue(fixture.damage.isEmpty());
+        finished[0] = true;
+        fixture.tick(1);
+        assertFalse(fixture.goal.canContinueToUse());
+    }
+
+    @Test
+    void interruptedAnimatedAttackCancelsItsAnimation() {
+        boolean[] cancelled = {false};
+        Fixture fixture = new Fixture((mobId, targetId) -> new MobMeleeAttackSequence.Attack() {
+
+            @Override
+            public int damageDelayTicks() {
+                return 20;
+            }
+
+            @Override
+            public boolean isFinished() {
+                return false;
+            }
+
+            @Override
+            public void cancel() {
+                cancelled[0] = true;
+            }
+        });
+        fixture.playerLocation.setX(1);
+        fixture.start();
+        fixture.tick(1);
+        fixture.goal.stop();
+
+        assertTrue(cancelled[0]);
+        assertTrue(fixture.damage.isEmpty());
+    }
+
+    @Test
+    void failedAnimatedAttackDoesNotFallBackToImmediateDamage() {
+        Fixture fixture = new Fixture((mobId, targetId) -> null);
+        fixture.playerLocation.setX(1);
+        fixture.start();
+        fixture.tick(1);
+
+        assertTrue(fixture.damage.isEmpty());
+        assertEquals(0, fixture.swings);
     }
 
     @Test
@@ -488,9 +639,18 @@ public final class V26_2OwnerMeleeGoalTest {
         private int removedProjectiles;
         private boolean mobValid = true;
         private boolean mobDead;
+        private double mobWidth = 0.6D;
 
         private Fixture() {
             this(false);
+        }
+
+        private Fixture(final MobMeleeAttackSequence sequence) {
+            this(false, false, false, 0, 32, sequence);
+        }
+
+        private Fixture(final boolean passive, final UUID[] angerTarget) {
+            this(false, false, false, 0, 32, null, passive, ignored -> angerTarget[0]);
         }
 
         private Fixture(final boolean leapEnabled) {
@@ -512,6 +672,20 @@ public final class V26_2OwnerMeleeGoalTest {
 
         private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled,
                         final double pursuitSpreadRadius, final double aggroRadius) {
+            this(leapEnabled, rangedEnabled, waterEnabled, pursuitSpreadRadius, aggroRadius, null);
+        }
+
+        private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled,
+                        final double pursuitSpreadRadius, final double aggroRadius,
+                        final MobMeleeAttackSequence sequence) {
+            this(leapEnabled, rangedEnabled, waterEnabled, pursuitSpreadRadius, aggroRadius,
+                sequence, false, null);
+        }
+
+        private Fixture(final boolean leapEnabled, final boolean rangedEnabled, final boolean waterEnabled,
+                        final double pursuitSpreadRadius, final double aggroRadius,
+                        final MobMeleeAttackSequence sequence, final boolean passive,
+                        final Function<UUID, UUID> angerTarget) {
             player = proxy(Player.class, (proxy, method, args) -> switch (method.getName()) {
                 case "getUniqueId" -> playerId;
                 case "isOnline" -> online;
@@ -520,6 +694,7 @@ public final class V26_2OwnerMeleeGoalTest {
                 case "getGameMode" -> mode;
                 case "getWorld" -> playerLocation.getWorld();
                 case "getLocation" -> playerLocation.clone();
+                case "getBoundingBox" -> boundingBox(playerLocation, 0.6D, 1.8D);
                 case "damage" -> {
                     damage.add((Double) args[0]);
                     yield null;
@@ -555,6 +730,7 @@ public final class V26_2OwnerMeleeGoalTest {
                 }
                 case "isOnGround" -> onGround;
                 case "getLocation" -> mobLocation.clone();
+                case "getBoundingBox" -> boundingBox(mobLocation, mobWidth, 1.8D);
                 case "getWorld" -> world;
                 case "getTarget" -> nativeTarget;
                 case "setTarget" -> {
@@ -575,7 +751,8 @@ public final class V26_2OwnerMeleeGoalTest {
 
             goal = new V26_2OwnerMeleeGoal(mob, new NmsOwnerMeleeSpec(2, 1, 32, 2, 15, 30, 10, playerId,
                 new NmsMeleeLeapSpec(leapEnabled, 6, 60, 0.8, 1.3, 0.45, waterEnabled, 1.2, 1.4, 1.5),
-                new NmsMeleeRangedSpec(rangedEnabled, 60, 40, 0.6, 100), pursuitSpreadRadius, aggroRadius),
+                new NmsMeleeRangedSpec(rangedEnabled, 60, 40, 0.6, 100), pursuitSpreadRadius, aggroRadius,
+                sequence, passive, angerTarget),
                 id -> id.equals(playerId) ? player : null, diagnostics::add, () -> 0.25D, impulse -> clearLeap,
                 owner -> {
                     assertSame(player, owner);
@@ -590,6 +767,13 @@ public final class V26_2OwnerMeleeGoalTest {
                     });
                 });
         }
+
+        private static BoundingBox boundingBox(final Location location, final double width, final double height) {
+            double radius = width / 2.0D;
+            return new BoundingBox(location.getX() - radius, location.getY(), location.getZ() - radius,
+                location.getX() + radius, location.getY() + height, location.getZ() + radius);
+        }
+
         private void start() {
             assertTrue(goal.canUse());
             goal.start();

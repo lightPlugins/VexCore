@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packet.PacketVersions;
 import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
@@ -17,6 +18,7 @@ import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorServ
 import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
+import dev.vexsoft.core.paper.service.packets.VexVirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.service.packets.connection.PacketConnectionService;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionListener;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionService;
@@ -50,6 +52,7 @@ public final class PacketModule implements VexModule {
         services.register(PacketTransportAdapterService.class, definition.getTransportAdapter());
         services.register(RecipeBookPacketAdapterService.class, definition.getRecipeBookAdapter());
         services.register(DisplayPacketAdapterService.class, definition.getDisplayAdapter());
+        services.register(VirtualPassengerOverlayService.class, VexVirtualPassengerOverlayService.class);
         services.register(EntityEffectPacketAdapterService.class, definition.getEntityEffectAdapter());
         services.register(PacketConnectionAdapterService.class, definition.getConnectionAdapter());
         services.register(ItemMetaPacketAdapterService.class, definition.getItemMetaAdapter());

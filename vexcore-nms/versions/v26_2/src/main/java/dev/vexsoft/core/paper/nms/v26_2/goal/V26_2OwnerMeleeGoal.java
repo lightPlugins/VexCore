@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.nms.v26_2.goal;
 
+import dev.vexsoft.core.api.mob.MobMeleeAttackSequence;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import java.util.EnumSet;
@@ -22,6 +23,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.util.BoundingBox;
 
 /** Scoped melee AI using native goal scheduling and throttled Paper pathfinding. */
 public final class V26_2OwnerMeleeGoal extends Goal {
@@ -56,6 +58,9 @@ public final class V26_2OwnerMeleeGoal extends Goal {
     private int unreachableTicks;
     private int shotCooldown;
     private boolean rangedMode;
+    private MobMeleeAttackSequence.Attack activeAttack;
+    private int attackElapsedTicks;
+    private boolean attackHit;
 
     public V26_2OwnerMeleeGoal(final Mob mob, final NmsOwnerMeleeSpec specification) {
         this(mob, specification, Bukkit::getPlayer, message -> LOGGER.log(System.Logger.Level.WARNING, message),
@@ -96,10 +101,38 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
     @Override
     public boolean canUse() {
+        Player alerted = alertedPlayer();
+        if (alerted != null) {
+            target = alerted;
+            return valid();
+        }
+
+        if (spec.passive()) {
+            target = null;
+            return false;
+        }
+
         target = spec.playerId() == null ? nearestPlayer() : players.apply(spec.playerId());
 
         return valid() && target.getLocation().distanceSquared(mob.getLocation())
             <= spec.aggroRadius() * spec.aggroRadius();
+    }
+
+    private Player alertedPlayer() {
+        UUID targetId = spec.angerTarget() == null ? null : spec.angerTarget().apply(mob.getUniqueId());
+        if (targetId == null || spec.playerId() != null && !spec.playerId().equals(targetId)) {
+            return null;
+        }
+
+        Player candidate = players.apply(targetId);
+        if (candidate == null || !candidate.isOnline() || candidate.isDead()
+            || candidate.getGameMode() == GameMode.CREATIVE || candidate.getGameMode() == GameMode.SPECTATOR
+            || !candidate.getWorld().equals(mob.getWorld())
+            || candidate.getLocation().distanceSquared(mob.getLocation()) > spec.radius() * spec.radius()) {
+            return null;
+        }
+
+        return candidate;
     }
 
     private Player nearestPlayer() {
@@ -126,7 +159,16 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return valid();
+        if (activeAttack != null) {
+            return !NmsMobGoalControl.isPaused(mob) && mob.isValid() && !mob.isDead();
+        }
+
+        if (!valid()) {
+            return false;
+        }
+
+        Player alerted = alertedPlayer();
+        return alerted == null ? !spec.passive() : alerted.getUniqueId().equals(target.getUniqueId());
     }
 
     @Override
@@ -147,7 +189,8 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
     @Override
     public void tick() {
-        if (!valid()) {
+        if (activeAttack == null && !valid()
+            || activeAttack != null && (NmsMobGoalControl.isPaused(mob) || !mob.isValid() || mob.isDead())) {
             stop();
             return;
         }
@@ -159,6 +202,7 @@ public final class V26_2OwnerMeleeGoal extends Goal {
         if (attackTicks > 0) {
             attackTicks--;
         }
+
         if (leapCooldown > 0) {
             leapCooldown--;
         }
@@ -167,10 +211,15 @@ public final class V26_2OwnerMeleeGoal extends Goal {
         if (shotCooldown > 0) {
             shotCooldown--;
         }
+
+        if (activeAttack != null) {
+            tickAttack();
+            return;
+        }
+
         boolean inLeap = updateLeap();
 
-        boolean canAttack = mob.getLocation().distanceSquared(target.getLocation()) <= spec.reach() * spec.reach()
-            && mob.hasLineOfSight(target);
+        boolean canAttack = withinAttackReach() && mob.hasLineOfSight(target);
 
         if (!inLeap && --pathTicks <= 0) {
             pathTicks = spec.pathIntervalTicks();
@@ -207,7 +256,8 @@ public final class V26_2OwnerMeleeGoal extends Goal {
                 resetProgress();
                 return;
             }
-            monitorProgress(pathAccepted ? "path was accepted but the mob made no progress" : "path request failed");
+            // An accepted path can briefly stall for airborne mobs; keep recovery without a warning.
+            monitorProgress(pathAccepted ? null : "path request failed");
             return;
         }
 
@@ -219,8 +269,71 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
         if (attackTicks <= 0) {
             attackTicks = spec.attackIntervalTicks();
+            if (spec.attackSequence() != null) {
+                activeAttack = spec.attackSequence().begin(mob.getUniqueId(), target.getUniqueId());
+
+                if (activeAttack != null) {
+                    attackElapsedTicks = 0;
+                    attackHit = false;
+                    haltAttackMovement();
+                    if (activeAttack.damageDelayTicks() == 0) {
+                        applyAttackDamage();
+                    }
+                }
+                return;
+            }
+
             mob.swingMainHand();
             target.damage(spec.damage(), mob);
+        }
+    }
+
+    private void tickAttack() {
+        haltAttackMovement();
+        attackElapsedTicks++;
+
+        if (!attackHit && attackElapsedTicks >= activeAttack.damageDelayTicks()) {
+            applyAttackDamage();
+        }
+
+        if (activeAttack.isFinished()) {
+            activeAttack = null;
+            pathTicks = 0;
+        }
+    }
+
+    private void applyAttackDamage() {
+        attackHit = true;
+
+        if (valid() && mob.getTarget() == target && withinAttackReach() && mob.hasLineOfSight(target)) {
+            target.damage(spec.damage(), mob);
+        }
+    }
+
+    private boolean withinAttackReach() {
+        return attackBoxDistanceSquared() <= spec.reach() * spec.reach();
+    }
+
+    private double attackBoxDistanceSquared() {
+        BoundingBox attacker = mob.getBoundingBox();
+        BoundingBox victim = target.getBoundingBox();
+        double x = Math.max(0.0D, Math.max(attacker.getMinX() - victim.getMaxX(), victim.getMinX() - attacker.getMaxX()));
+        double y = Math.max(0.0D, Math.max(attacker.getMinY() - victim.getMaxY(), victim.getMinY() - attacker.getMaxY()));
+        double z = Math.max(0.0D, Math.max(attacker.getMinZ() - victim.getMaxZ(), victim.getMinZ() - attacker.getMaxZ()));
+        return x * x + y * y + z * z;
+    }
+
+    private void haltAttackMovement() {
+        mob.getPathfinder().stopPathfinding();
+
+        if (mob instanceof CraftMob craftMob) {
+            var entity = craftMob.getHandle();
+            entity.getMoveControl().setWantedPosition(entity.getX(), entity.getY(), entity.getZ(), 0);
+        }
+
+        Vector velocity = mob.getVelocity();
+        if (velocity.getX() != 0.0D || velocity.getZ() != 0.0D) {
+            mob.setVelocity(new Vector(0.0D, velocity.getY(), 0.0D));
         }
     }
 
@@ -380,6 +493,11 @@ public final class V26_2OwnerMeleeGoal extends Goal {
 
     @Override
     public void stop() {
+        if (activeAttack != null) {
+            activeAttack.cancel();
+            activeAttack = null;
+        }
+
         clearProjectiles();
         resetPursuit();
 
@@ -443,7 +561,7 @@ public final class V26_2OwnerMeleeGoal extends Goal {
             return;
         }
 
-        if (diagnosticTicks <= 0) {
+        if (reason != null && diagnosticTicks <= 0) {
             diagnosticTicks = DIAGNOSTIC_INTERVAL_TICKS;
             double speed = movementSpeed.getAsDouble();
 
@@ -451,6 +569,7 @@ public final class V26_2OwnerMeleeGoal extends Goal {
                 + "/" + mob.getUniqueId() + "; owner=" + spec.playerId()
                 + "; position=" + current.getX() + "," + current.getY() + "," + current.getZ()
                 + "; distance=" + current.distance(target.getLocation())
+                + "; hitboxDistance=" + Math.sqrt(attackBoxDistanceSquared()) + "; reach=" + spec.reach()
                 + "; movementSpeed=" + (Double.isFinite(speed) ? speed : "unavailable")
                 + "; pathAccepted=" + pathAccepted + "; hasPath=" + mob.getPathfinder().hasPath()
                 + "; onGround=" + mob.isOnGround() + "; inWater=" + mob.isInWater());

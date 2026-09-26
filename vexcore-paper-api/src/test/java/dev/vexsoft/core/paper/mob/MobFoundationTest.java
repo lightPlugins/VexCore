@@ -42,6 +42,20 @@ class MobFoundationTest {
         assertEquals(0.0D, definition.movementSpeed());
         assertFalse(definition.gravity());
         assertFalse(definition.collidable());
+        assertEquals(0, definition.damageCooldownTicks());
+    }
+
+    @Test
+    void damageCooldownSurvivesDefinitionCopies() {
+        MobDefinition original = MobDefinition.builder(MobKey.of("arcane_monolith", "guardian"), EntityType.BEE)
+            .damageCooldownTicks(10)
+            .build();
+
+        assertEquals(10, original.withKey(MobKey.of("arcane_monolith", "guardian/spawner"))
+            .damageCooldownTicks());
+        assertThrows(IllegalArgumentException.class, () -> MobDefinition
+            .builder(MobKey.of("arcane_monolith", "invalid"), EntityType.BEE)
+            .damageCooldownTicks(-1).build());
     }
 
     @Test

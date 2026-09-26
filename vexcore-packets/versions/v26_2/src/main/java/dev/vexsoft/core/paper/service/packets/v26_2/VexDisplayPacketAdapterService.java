@@ -29,6 +29,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import net.minecraft.network.protocol.game.ClientboundGameEventPacket;
 import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -434,6 +437,13 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
                 passengerEntityIds.stream().mapToInt(Integer::intValue).toArray()
             )
         );
+    }
+
+    @Override
+    public Object rewritePassengers(final Object packet, final IntFunction<List<Integer>> additionalPassengers,
+                                    final BiConsumer<Integer, List<Integer>> nativePassengers,
+                                    final IntConsumer removedEntities) {
+        return V26_2PassengerPackets.append(packet, additionalPassengers, nativePassengers, removedEntities);
     }
 
     @Override

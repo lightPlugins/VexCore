@@ -14,6 +14,7 @@ public final class MobDefinition {
     private final MobKey key;
     private final EntityType entityType;
     private final double maxHealth;
+    private final int damageCooldownTicks;
     private final double scale;
     private final double movementSpeed;
     private final double rotationSpeed;
@@ -36,6 +37,10 @@ public final class MobDefinition {
         }
 
         maxHealth = positiveFinite(builder.maxHealth, "maxHealth");
+        damageCooldownTicks = builder.damageCooldownTicks;
+        if (damageCooldownTicks < 0) {
+            throw new IllegalArgumentException("damageCooldownTicks must not be negative");
+        }
         scale = positiveFinite(builder.scale, "scale");
         movementSpeed = nonNegativeFinite(builder.movementSpeed, "movementSpeed");
         rotationSpeed = nonNegativeFinite(builder.rotationSpeed, "rotationSpeed");
@@ -68,6 +73,7 @@ public final class MobDefinition {
     /** Copies a catalog definition under a distinct instance/spawner definition key. */
     public MobDefinition withKey(final MobKey key) {
         Builder copy = builder(key, entityType).maxHealth(maxHealth)
+            .damageCooldownTicks(damageCooldownTicks)
             .scale(scale)
             .movementSpeed(movementSpeed)
             .rotationSpeed(rotationSpeed)
@@ -93,6 +99,11 @@ public final class MobDefinition {
     /** Returns the custom maximum health. */
     public double maxHealth() {
         return maxHealth;
+    }
+
+    /** Returns the minimum ticks between accepted entity-caused hits. */
+    public int damageCooldownTicks() {
+        return damageCooldownTicks;
     }
 
     /** Returns the initial native scale. */
@@ -177,6 +188,7 @@ public final class MobDefinition {
         private final MobKey key;
         private final EntityType entityType;
         private double maxHealth = 20.0D;
+        private int damageCooldownTicks;
         private double scale = 1.0D;
         private double movementSpeed;
         private double rotationSpeed = 180.0D;
@@ -198,6 +210,13 @@ public final class MobDefinition {
         /** Sets the custom maximum health. */
         public Builder maxHealth(final double value) {
             maxHealth = value;
+
+            return this;
+        }
+
+        /** Sets the minimum ticks between accepted entity-caused hits; zero disables the cooldown. */
+        public Builder damageCooldownTicks(final int value) {
+            damageCooldownTicks = value;
 
             return this;
         }
