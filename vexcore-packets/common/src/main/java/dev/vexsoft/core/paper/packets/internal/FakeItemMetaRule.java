@@ -13,6 +13,8 @@ public class FakeItemMetaRule {
 
     Component displayName;
     NamespacedKey itemModel;
+    NamespacedKey tooltipStyle;
     List<Component> lore;
     FakeItemLoreMode loreMode;
+    boolean hideVanillaDetails;
 }

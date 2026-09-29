@@ -5,6 +5,9 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.VexItemKeys;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
+import dev.vexsoft.core.paper.packets.item.FakeItemMetaResolver;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -19,8 +22,18 @@ import org.bukkit.persistence.PersistentDataType;
 public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreService {
 
     private final Map<FakeItemRuleKey, FakeItemMetaRule> rules = new LinkedHashMap<>();
+    private final Map<ServiceOwner, FakeItemMetaResolver> resolvers = new LinkedHashMap<>();
 
     public VexFakeItemMetaStoreService(final VexServiceRegistry services) {
+    }
+
+    @Override
+    public synchronized void setResolver(final ServiceOwner owner, final FakeItemMetaResolver resolver) {
+        if (resolver == null) {
+            resolvers.remove(owner);
+        } else {
+            resolvers.put(owner, resolver);
+        }
     }
 
     @Override
@@ -45,6 +58,7 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
     @Override
     public synchronized void clearOwned(final ServiceOwner owner) {
         rules.keySet().removeIf(key -> key.getOwner().equals(owner));
+        resolvers.remove(owner);
     }
 
     @Override
@@ -53,7 +67,7 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
     }
 
     @Override
-    public synchronized Optional<FakeItemMetaRule> find(final UUID viewerId, final ItemStack itemStack) {
+    public Optional<FakeItemMetaRule> find(final UUID viewerId, final ItemStack itemStack) {
         Byte preservePresentation =
             itemStack.getPersistentDataContainer().get(VexItemKeys.PRESERVE_PRESENTATION, PersistentDataType.BYTE);
 
@@ -61,9 +75,16 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
             return Optional.empty();
         }
 
+        List<Map.Entry<FakeItemRuleKey, FakeItemMetaRule>> staticRules;
+        List<FakeItemMetaResolver> dynamicResolvers;
+        synchronized (this) {
+            staticRules = new ArrayList<>(rules.entrySet());
+            dynamicResolvers = List.copyOf(resolvers.values());
+        }
+
         FakeItemMetaRule merged = null;
 
-        for (Map.Entry<FakeItemRuleKey, FakeItemMetaRule> entry : rules.entrySet()) {
+        for (Map.Entry<FakeItemRuleKey, FakeItemMetaRule> entry : staticRules) {
             FakeItemRuleKey key = entry.getKey();
 
             if (key.getViewerId() != null && !key.getViewerId().equals(viewerId)) {
@@ -79,12 +100,18 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
             merged = merge(merged, entry.getValue());
         }
 
+        for (FakeItemMetaResolver resolver : dynamicResolvers) {
+            FakeItemMetaRule current = merged;
+            merged = resolver.resolve(viewerId, itemStack).map(rule -> merge(current, rule)).orElse(current);
+        }
+
         return Optional.ofNullable(merged);
     }
 
     @Override
     public synchronized boolean hasAny(final UUID viewerId) {
-        return rules.keySet().stream().anyMatch(key -> key.getViewerId() == null || key.getViewerId().equals(viewerId));
+        return !resolvers.isEmpty()
+            || rules.keySet().stream().anyMatch(key -> key.getViewerId() == null || key.getViewerId().equals(viewerId));
     }
 
     private static FakeItemMetaRule merge(final FakeItemMetaRule current, final FakeItemMetaRule next) {
@@ -99,6 +126,14 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
             builder.itemModel(next.getItemModel());
         }
 
+        if (next.getTooltipStyle() != null) {
+            builder.tooltipStyle(next.getTooltipStyle());
+        }
+
+        if (next.isHideVanillaDetails()) {
+            builder.hideVanillaDetails(true);
+        }
+
         if (next.getLore() != null) {
             builder.lore(next.getLore()).loreMode(next.getLoreMode());
         }
@@ -107,6 +142,7 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
     }
 
     private static boolean isEmpty(final FakeItemMetaRule rule) {
-        return rule.getDisplayName() == null && rule.getItemModel() == null && rule.getLore() == null;
+        return rule.getDisplayName() == null && rule.getItemModel() == null && rule.getTooltipStyle() == null
+            && rule.getLore() == null && !rule.isHideVanillaDetails();
     }
 }

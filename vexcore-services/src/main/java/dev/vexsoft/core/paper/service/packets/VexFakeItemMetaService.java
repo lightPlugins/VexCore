@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
 import dev.vexsoft.core.paper.packets.item.FakeItemLoreMode;
+import dev.vexsoft.core.paper.packets.item.FakeItemMetaResolver;
 import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import java.util.List;
@@ -25,6 +26,18 @@ public final class VexFakeItemMetaService implements FakeItemMetaService, AutoCl
     public VexFakeItemMetaService(final VexServiceRegistry services) {
         this.owner = services.getOwner();
         this.store = services.require(FakeItemMetaStoreService.class);
+    }
+
+    @Override
+    public void setResolver(final FakeItemMetaResolver resolver) {
+        store.setResolver(owner, resolver);
+        refreshAll();
+    }
+
+    @Override
+    public void clearResolver() {
+        store.setResolver(owner, null);
+        refreshAll();
     }
 
     @Override

@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaLookup;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
+import dev.vexsoft.core.paper.packets.item.FakeItemMetaResolver;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import org.bukkit.NamespacedKey;
@@ -12,6 +13,9 @@ import org.bukkit.NamespacedKey;
  * Stores fake item rules from every plugin for the packet rewriter
  */
 public interface FakeItemMetaStoreService extends VexService, FakeItemMetaLookup {
+
+    /** Installs or removes an owner's dynamic presentation rule. */
+    void setResolver(ServiceOwner owner, FakeItemMetaResolver resolver);
 
     /** Updates a global or viewer-specific fake item rule */
     void update(

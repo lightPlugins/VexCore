@@ -113,8 +113,8 @@ public final class VexPlayerLifecycleListener implements Listener {
             .orElseThrow(() -> new IllegalStateException("VexPlayer was not loaded before join: " + uniqueId));
 
         player.bindPlatformPlayer(event.getPlayer());
-        signals.publish(new PlayerDataLoadedSignal(player));
         statContributions.refreshPlayer(player);
+        signals.publish(new PlayerDataLoadedSignal(player));
     }
 
     @EventHandler

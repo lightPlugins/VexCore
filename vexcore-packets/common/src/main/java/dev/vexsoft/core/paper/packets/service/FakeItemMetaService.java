@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.packets.service;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.packets.item.FakeItemLoreMode;
+import dev.vexsoft.core.paper.packets.item.FakeItemMetaResolver;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
@@ -11,6 +12,12 @@ import org.bukkit.entity.Player;
  * Rewrites item names, lore and models for selected viewers without changing server items
  */
 public interface FakeItemMetaService extends VexService {
+
+    /** Registers one owner-scoped dynamic presenter for item-specific names, lore, and tooltip appearance. */
+    void setResolver(FakeItemMetaResolver resolver);
+
+    /** Removes the dynamic presenter owned by this service. */
+    void clearResolver();
 
     /** Replaces the lore of every matching item for all viewers */
     default void setLore(final NamespacedKey itemIdKey, final String itemId, final List<Component> lore) {

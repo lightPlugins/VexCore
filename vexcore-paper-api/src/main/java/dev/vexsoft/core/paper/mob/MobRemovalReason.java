@@ -4,6 +4,7 @@ package dev.vexsoft.core.paper.mob;
 public enum MobRemovalReason {
     EXPLICIT,
     DEATH,
+    CAPTURED,
     PLAYER_DEATH,
     PLAYER_TELEPORT,
     OWNER_QUIT,
