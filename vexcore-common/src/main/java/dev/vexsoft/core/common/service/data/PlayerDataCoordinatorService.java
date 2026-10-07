@@ -63,6 +63,11 @@ public interface PlayerDataCoordinatorService extends VexService {
     /** Saves every changed container of every cached player */
     CompletableFuture<Void> saveAll();
 
+    /** Reads a detached persisted value scoped to a registered owner without creating a player session. */
+    default <T> CompletableFuture<Optional<T>> readStored(ServiceOwner owner, UUID playerId, DataContainerKey<T> key) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("Stored reads are not supported"));
+    }
+
     /** Returns all container keys registered by an owner */
     Collection<DataContainerKey<?>> getKeys(ServiceOwner owner);
 

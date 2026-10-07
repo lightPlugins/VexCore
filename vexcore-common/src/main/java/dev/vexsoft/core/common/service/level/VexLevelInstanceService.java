@@ -38,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
 
@@ -260,15 +261,20 @@ public final class VexLevelInstanceService implements LevelInstanceService {
                     break;
                 }
                 LevelProgressAccess<LevelPlayerData> access = access(instance);
-                boolean successful = transactions.execute(
-                    player, () -> {
-                        // Skip empty levels in the same transaction as the reward-bearing claim.
-                        access.updateClaimedLevel(player, next - 1);
-                        LevelClaimResult result = claims.claimNext(player, access, instance.definition(), Map.of());
-                        results.add(result);
-                        return result.isSuccessful();
-                    }
-                );
+                BooleanSupplier claim = () -> {
+                    // Skip empty levels in the same transaction as the reward-bearing claim.
+                    access.updateClaimedLevel(player, next - 1);
+                    LevelClaimResult result = claims.claimNext(player, access, instance.definition(), Map.of());
+                    results.add(result);
+                    return result.isSuccessful();
+                };
+                boolean changesInventory = instance.definition().getRules(next).stream()
+                    .flatMap(rule -> rule.rewards().entries().stream())
+                    .anyMatch(entry -> entry.reward().getBehavior() == RewardBehavior.ACTION
+                        && entry.reward().changesInventory());
+                boolean successful = changesInventory
+                    ? transactions.execute(player, claim)
+                    : transactions.execute(player, claim, new int[0]);
                 if (!successful || !all) {
                     break;
                 }

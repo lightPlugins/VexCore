@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.plugin.Plugin;
@@ -101,6 +102,37 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     @Override
     public void refresh(final Player player) {
         execute(player, () -> refreshNow(player));
+    }
+
+    @Override
+    public void suspend(final Player player) {
+        execute(player, () -> {
+            VexInventorySession session = sessions.get(player.getUniqueId());
+            if (session == null || session.getCurrentView() == null || session.isSuspended()) {
+                return;
+            }
+            session.setSuspended(true);
+            player.closeInventory();
+        });
+    }
+
+    @Override
+    public void resume(final Player player, final InventoryView expectedView) {
+        Objects.requireNonNull(expectedView, "expectedView");
+        execute(player, () -> {
+            VexInventorySession session = sessions.get(player.getUniqueId());
+            if (session == null || !session.isSuspended() || session.getCurrentView() != expectedView) {
+                return;
+            }
+            // A foreign inventory opened during the dialog also invalidates the pending return.
+            if (player.getOpenInventory().getTopInventory().getType() != InventoryType.CRAFTING) {
+                sessions.remove(player.getUniqueId(), session);
+                expectedView.onClose(createContext(player));
+                return;
+            }
+            session.setSuspended(false);
+            refreshNow(player);
+        });
     }
 
     @Override
@@ -208,6 +240,11 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
             return;
         }
 
+        if (session.isSuspended()) {
+            session.setSuppressNextClose(false);
+            return;
+        }
+
         if (session.isSuppressNextClose()) {
             session.setSuppressNextClose(false);
 
@@ -290,6 +327,8 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
             current.onClose(context);
         }
 
+        session.setSuspended(false);
+
         InventoryHolder openHolder = player.getOpenInventory().getTopInventory().getHolder();
 
         session.setSuppressNextClose(openHolder == session.getHolder());
@@ -306,7 +345,7 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     private void refreshNow(final Player player) {
         VexInventorySession session = sessions.get(player.getUniqueId());
 
-        if (session == null || session.getCurrentView() == null) {
+        if (session == null || session.getCurrentView() == null || session.isSuspended()) {
             return;
         }
 
@@ -345,6 +384,9 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
             session.getCurrentView().onClose(createContext(player));
         }
 
+        if (session != null && session.isSuspended()) {
+            return;
+        }
         player.closeInventory();
     }
 

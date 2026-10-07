@@ -170,16 +170,16 @@ public final class VexStatContributionCoordinatorService implements StatContribu
         String source = registered.source().toString();
 
         try {
-            Map<StatKey, StatModifier> calculated =
-                Map.copyOf(Objects.requireNonNull(registered.provider().calculate(player), "provider result"));
+            Map<StatKey, List<StatModifier>> calculated =
+                Map.copyOf(Objects.requireNonNull(registered.provider().calculateModifiers(player), "provider result"));
             Map<StatKey, ResolvedModifier> resolved = new LinkedHashMap<>();
 
-            for (Map.Entry<StatKey, StatModifier> entry : calculated.entrySet()) {
+            for (Map.Entry<StatKey, List<StatModifier>> entry : calculated.entrySet()) {
                 StatKey key = Objects.requireNonNull(entry.getKey(), "stat key");
                 Stat stat =
                     stats.find(key).orElseThrow(() -> new IllegalStateException("Stat is not registered: " + key));
 
-                resolved.put(key, new ResolvedModifier(stat, Objects.requireNonNull(entry.getValue())));
+                resolved.put(key, new ResolvedModifier(stat, List.copyOf(entry.getValue())));
             }
 
             replace(player, registered.source(), resolved);
@@ -205,7 +205,9 @@ public final class VexStatContributionCoordinatorService implements StatContribu
             for (ResolvedModifier value : resolved.values()) {
                 PlayerStat stat = container.getStat(value.stat());
 
-                handles.add(stat.addModifier(value.modifier()));
+                for (StatModifier modifier : value.modifiers()) {
+                    handles.add(stat.addModifier(modifier));
+                }
             }
         }
 
@@ -267,7 +269,7 @@ public final class VexStatContributionCoordinatorService implements StatContribu
 
     }
 
-    private record ResolvedModifier(Stat stat, StatModifier modifier) {
+    private record ResolvedModifier(Stat stat, List<StatModifier> modifiers) {
 
     }
 

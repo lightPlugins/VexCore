@@ -54,15 +54,23 @@ public final class V26_2ItemMetaTransformer {
             return item;
         }
 
+        return sanitize(item, result.get());
+    }
+
+    ItemStack sanitize(final ItemStack item, final FakeItemMetaRule rule) {
         ItemStack copy = item.copy();
-        FakeItemMetaRule rule = result.get();
 
         if (rule.getDisplayName() != null) {
             copy.remove(DataComponents.CUSTOM_NAME);
         }
 
         if (rule.getItemModel() != null) {
-            copy.remove(DataComponents.ITEM_MODEL);
+            // Client presentation may override a real item model; only the transient override is disposable.
+            if (rule.getPersistentItemModel() == null) {
+                copy.remove(DataComponents.ITEM_MODEL);
+            } else {
+                copy.set(DataComponents.ITEM_MODEL, Identifier.parse(rule.getPersistentItemModel().asString()));
+            }
         }
 
         if (rule.getLore() != null) {

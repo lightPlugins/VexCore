@@ -11,6 +11,7 @@ import dev.vexsoft.core.paper.items.VexEnchantments;
 import dev.vexsoft.core.paper.items.VexItemAttributes;
 import dev.vexsoft.core.paper.items.VexPlayerHeadProfile;
 import dev.vexsoft.core.paper.items.VexTooltipDisplay;
+import dev.vexsoft.core.paper.items.VexUseCooldown;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperation;
 import dev.vexsoft.core.paper.items.internal.VexComponentOperationType;
 import dev.vexsoft.core.paper.items.internal.VexComponentPatch;
@@ -24,6 +25,7 @@ import io.papermc.paper.datacomponent.item.ItemAttributeModifiers;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
+import io.papermc.paper.datacomponent.item.UseCooldown;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.key.Key;
@@ -66,6 +68,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
     protected void apply(final ItemStack itemStack, final VexComponentKey key, final VexComponentOperation operation) {
         switch (key) {
             case MAX_STACK_SIZE -> applyValue(itemStack, DataComponentTypes.MAX_STACK_SIZE, operation, Integer.class);
+            case USE_COOLDOWN -> applyUseCooldown(itemStack, operation);
             case DAMAGE -> applyValue(itemStack, DataComponentTypes.DAMAGE, operation, Integer.class);
             case MAX_DAMAGE -> applyValue(itemStack, DataComponentTypes.MAX_DAMAGE, operation, Integer.class);
             case ENCHANTMENT_GLINT ->
@@ -123,6 +126,20 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
         }
 
         itemStack.setData(DataComponentTypes.ENCHANTMENTS, builder.build());
+    }
+
+    private void applyUseCooldown(final ItemStack itemStack, final VexComponentOperation operation) {
+        if (operation.getType() != VexComponentOperationType.SET) {
+            applyWithoutValue(itemStack, DataComponentTypes.USE_COOLDOWN, operation);
+            return;
+        }
+
+        VexUseCooldown value = (VexUseCooldown) operation.getValue();
+        var builder = UseCooldown.useCooldown(value.ticks() / 20.0F);
+        if (value.group() != null) {
+            builder.cooldownGroup(value.group());
+        }
+        itemStack.setData(DataComponentTypes.USE_COOLDOWN, builder.build());
     }
 
     private void applyCustomModelData(final ItemStack itemStack, final VexComponentOperation operation) {

@@ -35,6 +35,8 @@
       <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
       <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
       <Class name="dev.vexsoft.core.paper.service.inventory.VexInventoryHolder"/>
+      <!-- The input view must edit its managed inventory; returning a copy would detach the menu. -->
+      <Class name="dev.vexsoft.core.paper.inventory.ItemSaleSession"/>
     </Or>
   </Match>
   <Match>

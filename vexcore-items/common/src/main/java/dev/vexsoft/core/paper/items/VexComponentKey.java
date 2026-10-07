@@ -7,6 +7,7 @@ public enum VexComponentKey {
     DISPLAY_NAME,
     LORE,
     MAX_STACK_SIZE,
+    USE_COOLDOWN,
     DAMAGE,
     MAX_DAMAGE,
     ENCHANTMENTS,

@@ -45,6 +45,12 @@ public interface InventoryService extends VexService {
     /** Refreshes the view currently open for the player */
     void refresh(Player player);
 
+    /** Temporarily closes the native inventory for a dialog while retaining the current view and history. */
+    void suspend(Player player);
+
+    /** Resumes only the specified suspended view; a replaced, closed or disconnected session is ignored. */
+    void resume(Player player, InventoryView expectedView);
+
     /** Returns to the previous view or closes when no history remains */
     void back(Player player);
 

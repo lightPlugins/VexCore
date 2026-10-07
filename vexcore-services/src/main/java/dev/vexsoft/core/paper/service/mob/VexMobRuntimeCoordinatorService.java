@@ -17,6 +17,8 @@ import dev.vexsoft.core.paper.mob.event.MobRemovedEvent;
 import dev.vexsoft.core.paper.mob.goal.LookAtPlayerGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.MobGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.OwnerMeleeGoalDefinition;
+import dev.vexsoft.core.paper.mob.goal.FollowOwnerGoalDefinition;
+import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
@@ -46,6 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
@@ -69,6 +72,7 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.plugin.Plugin;
@@ -126,6 +130,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
 
         try {
             configureCarrier(mob, definition);
+            initializeRotation(mob, checkedRequest.location());
             definition.initializer().ifPresent(initializer -> initializer.initialize(mob));
         } catch (RuntimeException exception) {
             mob.remove();
@@ -373,6 +378,12 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         shutdown();
     }
 
+    static void initializeRotation(final Mob mob, final Location location) {
+        mob.setRotation(location.getYaw(), location.getPitch());
+        // Paper initializes head yaw separately; Model Engine reads body yaw when attaching the model.
+        mob.setBodyYaw(location.getYaw());
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     private void onDamage(final EntityDamageEvent event) {
         RuntimeMob runtime = findRuntime(event.getEntity());
@@ -388,8 +399,10 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
 
         boolean entityHit = event instanceof EntityDamageByEntityEvent;
+        int cooldownTicks = event instanceof EntityDamageByEntityEvent attack
+            ? runtime.definition.damageCooldownTicks(attack.getDamager(), event.getCause()) : 0;
         int tick = Bukkit.getCurrentTick();
-        if (entityHit && tick < runtime.nextAcceptedHitTick) {
+        if (entityHit && cooldownTicks > 0 && tick < runtime.nextAcceptedHitTick) {
             return;
         }
 
@@ -406,8 +419,8 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         Entity attacker = event.getDamageSource().getCausingEntity();
         MobDamageResult result = damage(runtime, event.getFinalDamage(), attacker, charge);
 
-        if (entityHit && result.applied()) {
-            runtime.nextAcceptedHitTick = (long) tick + runtime.definition.damageCooldownTicks();
+        if (entityHit && cooldownTicks > 0 && result.applied()) {
+            runtime.nextAcceptedHitTick = (long) tick + cooldownTicks;
         }
 
         if (result.applied() && !result.killed() && event instanceof EntityDamageByEntityEvent attack) {
@@ -529,6 +542,13 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         transitionViewer(event.getPlayer());
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void onTeleport(final PlayerTeleportEvent event) {
+        if (MobViewerTeleport.changesPosition(event)) {
+            transitionViewer(event.getPlayer());
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     private void onPlayerDeath(final PlayerDeathEvent event) {
         Player player = event.getPlayer();
@@ -598,10 +618,12 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
 
         if (definition.movementSpeed() > 0.0D) {
             setAttribute(mob, Attribute.MOVEMENT_SPEED, definition.movementSpeed());
+            setAttribute(mob, Attribute.FLYING_SPEED, definition.movementSpeed());
         }
 
         mob.setHealth(maxHealth.getValue());
         nms.neutralize(mob);
+        nms.configureFlight(mob, definition.minimumFlightHeight());
     }
 
     private void synchronizeCarrierHealth(final RuntimeMob runtime) {
@@ -657,6 +679,11 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                         runtime.scope.playerId().orElse(null)
                     )
                 );
+            } else if (goal instanceof FollowOwnerGoalDefinition follow) {
+                nms.addFollowOwner(runtime.entity, new NmsFollowOwnerSpec(
+                    follow.priority(), follow.ownerId(), follow.speed(), follow.startDistance(),
+                    follow.stopDistance(), follow.teleportDistance(), follow.pathIntervalTicks(), follow.stuckTicks(),
+                    follow.flightYOffset()));
             } else if (goal instanceof OwnerMeleeGoalDefinition melee) {
                 nms.addOwnerMelee(
                     runtime.entity,
@@ -688,7 +715,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             }
         }
 
-        if (!runtime.definition.goals().isEmpty()) {
+        if (!runtime.definition.goals().isEmpty() || runtime.definition.minimumFlightHeight() > 0.0D) {
             nms.activateGoals(runtime.entity);
         }
     }
@@ -751,10 +778,11 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         if (existing == null) {
             Location hologramLocation = MobHologramAttachment.uprightLocation(runtime.entity.getLocation());
 
+            Component text = hologram.get().renderer().render(viewer, snapshot(runtime));
             FakeTextDisplayRequest.FakeTextDisplayRequestBuilder requestBuilder =
                 FakeTextDisplayRequest.builder(
                         hologramLocation,
-                        hologram.get().renderer().render(viewer, snapshot(runtime))
+                        text
                     )
                     .billboard(hologram.get().billboard())
                     .backgroundColor(hologram.get().backgroundColor())
@@ -771,7 +799,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             FakeTextDisplayRequest request = requestBuilder.build();
             FakeDisplayHandle created = textDisplays.spawn(viewer, request);
 
-            runtime.holograms.put(viewer.getUniqueId(), new HologramSession(created, epoch));
+            runtime.holograms.put(viewer.getUniqueId(), new HologramSession(created, epoch, text));
             MobHologramAttachment.attach(
                 viewer,
                 runtime.entity,
@@ -781,10 +809,11 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
                 textDisplays
             );
         } else {
-            textDisplays.update(
-                existing.handle,
-                FakeTextDisplayUpdate.text(hologram.get().renderer().render(viewer, snapshot(runtime)))
-            );
+            Component text = hologram.get().renderer().render(viewer, snapshot(runtime));
+            if (!text.equals(existing.text)) {
+                textDisplays.update(existing.handle, FakeTextDisplayUpdate.text(text));
+                runtime.holograms.put(viewer.getUniqueId(), new HologramSession(existing.handle, epoch, text));
+            }
         }
     }
 
@@ -1009,7 +1038,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         }
     }
 
-    private record HologramSession(FakeDisplayHandle handle, long epoch) {
+    private record HologramSession(FakeDisplayHandle handle, long epoch, Component text) {
 
     }
 

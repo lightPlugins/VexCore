@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executors;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import net.kyori.adventure.text.Component;
 import org.junit.jupiter.api.Test;
@@ -395,8 +396,50 @@ public final class VexLevelInstanceServiceTest {
         };
     }
 
+    @Test
+    void dataOnlyLevelClaimsSkipInventoryProtectionAndUnknownRewardsKeepIt() {
+        Fixture fixture = new Fixture();
+        fixture.install(new CompiledReward() {
+            @Override
+            public RewardBehavior getBehavior() {
+                return RewardBehavior.ACTION;
+            }
+
+            @Override
+            public boolean supportsPlayerRollback() {
+                return true;
+            }
+
+            @Override
+            public boolean changesInventory() {
+                return false;
+            }
+
+            @Override
+            public RewardResult grant(final PlayerExecutionContext context) {
+                return RewardResult.success();
+            }
+
+            @Override
+            public Component describe(final PlayerExecutionContext context) {
+                return Component.empty();
+            }
+        }, 2, 1);
+        fixture.levels.addExperience(fixture.player, "player", 100);
+        assertEquals(1, fixture.levels.claim(fixture.player, "player", false).getClaimedCount());
+        assertEquals(1, fixture.dataOnlyClaims);
+        assertEquals(0, fixture.inventoryClaims);
+        fixture.install(reward(context -> RewardResult.success()), 2, 1);
+        fixture.levels.addExperience(fixture.player, "player", 100);
+        assertEquals(1, fixture.levels.claim(fixture.player, "player", false).getClaimedCount());
+        assertEquals(1, fixture.dataOnlyClaims);
+        assertEquals(1, fixture.inventoryClaims);
+    }
+
     private static final class Fixture {
 
+        private int dataOnlyClaims;
+        private int inventoryClaims;
         private final Map<Class<?>, Object> services = new HashMap<>();
         private final VexServiceRegistry registry = (VexServiceRegistry) Proxy.newProxyInstance(
             VexServiceRegistry.class.getClassLoader(), new Class<?>[]{VexServiceRegistry.class},
@@ -424,11 +467,26 @@ public final class VexLevelInstanceServiceTest {
             services.put(ExpressionService.class, new VexExpressionService(registry));
             services.put(LevelService.class, new VexLevelService(registry));
             services.put(LevelClaimService.class, new VexLevelClaimService(registry));
-            services.put(
-                PlayerRewardTransactionService.class, (PlayerRewardTransactionService) (owner, operation) ->
-                    ((RewardService) services.get(RewardService.class))
-                        .executeAtomically(new PlayerExecutionContext(owner, Map.of()), operation)
-            );
+            services.put(PlayerRewardTransactionService.class, new PlayerRewardTransactionService() {
+                @Override
+                public boolean execute(final VexPlayer owner, final BooleanSupplier operation) {
+                    inventoryClaims++;
+                    return ((RewardService) services.get(RewardService.class)).executeAtomically(
+                        new PlayerExecutionContext(owner, Map.of()), operation);
+                }
+
+                @Override
+                public boolean execute(
+                    final VexPlayer owner,
+                    final BooleanSupplier operation,
+                    final int... slots
+                ) {
+                    assertEquals(0, slots.length);
+                    dataOnlyClaims++;
+                    return ((RewardService) services.get(RewardService.class)).executeAtomically(
+                        new PlayerExecutionContext(owner, Map.of()), operation);
+                }
+            });
             services.put(
                 LocalizationService.class, Proxy.newProxyInstance(
                     LocalizationService.class.getClassLoader(),

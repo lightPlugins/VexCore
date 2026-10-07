@@ -60,16 +60,56 @@ public final class PlayerRewardTransactionTest {
         assertEquals(10, fixture.inventory[0].getAmount());
     }
 
+    @Test
+    void scopedFailureCopiesOnlyTheSpecifiedSlotAndPreservesOtherSlots() {
+        Fixture fixture = new Fixture();
+        assertFalse(fixture.transactions.execute(fixture.player, () -> {
+            fixture.inventory[0].setAmount(64);
+            return false;
+        }, 0, 0));
+        assertEquals(2, fixture.inventory[0].getAmount());
+        assertEquals(5, fixture.inventory[1].getAmount());
+        assertEquals(1, fixture.inventoryCopies);
+        assertEquals(0, fixture.cursorCopies);
+        assertEquals(1, fixture.restoredSlots);
+    }
+
+    @Test
+    void dataOnlyRewardsDoNotReadOrCopyTheNativeInventory() {
+        Fixture fixture = new Fixture();
+        fixture.player.unbindPlatformPlayer();
+        assertTrue(fixture.transactions.execute(fixture.player, () -> true, new int[0]));
+        assertFalse(fixture.transactions.execute(fixture.player, () -> false, new int[0]));
+        assertEquals(0, fixture.inventoryCopies);
+        assertEquals(0, fixture.cursorCopies);
+    }
+
+    @Test
+    void invalidSlotIsRejectedBeforeTheOperationRuns() {
+        Fixture fixture = new Fixture();
+        assertThrows(IllegalArgumentException.class, () -> fixture.transactions.execute(fixture.player, () -> {
+            throw new AssertionError("Invalid scope must not execute rewards");
+        }, 99));
+    }
+
     private static final class Fixture {
 
-        private ItemStack[] inventory = {new Stack(2)};
-        private ItemStack cursor = new Stack(1);
+        private int inventoryCopies;
+        private int cursorCopies;
+        private int restoredSlots;
+        private ItemStack[] inventory = {
+            new Stack(2, () -> inventoryCopies++),
+            new Stack(5, () -> inventoryCopies++)
+        };
+        private ItemStack cursor = new Stack(1, () -> cursorCopies++);
         private final PlayerInventory platformInventory = proxy(
             PlayerInventory.class, (object, method, arguments) ->
                 switch (method.getName()) {
-                    case "getContents" -> inventory;
-                    case "setContents" -> {
-                        inventory = (ItemStack[]) arguments[0];
+                    case "getSize" -> inventory.length;
+                    case "getItem" -> inventory[(int) arguments[0]];
+                    case "setItem" -> {
+                        inventory[(int) arguments[0]] = (ItemStack) arguments[1];
+                        restoredSlots++;
                         yield null;
                     }
                     default -> null;
@@ -110,10 +150,12 @@ public final class PlayerRewardTransactionTest {
         @Getter(onMethod_ = @Override)
         @Setter(onMethod_ = @Override)
         private int amount;
+        private final Runnable copied;
 
         @Override
         public ItemStack clone() {
-            return new Stack(amount);
+            copied.run();
+            return new Stack(amount, copied);
         }
     }
 

@@ -16,6 +16,9 @@ public interface VirtualPassengerOverlayService extends VexService {
     /** Removes all registrations for a disconnected viewer. */
     void removeViewer(UUID viewerId);
 
-    /** Records native mount packets and merges viewer-local passengers into them. */
+    /** Returns whether this entity has been spawned and not removed on the viewer's current client. */
+    boolean isSpawned(UUID viewerId, int entityId);
+
+    /** Tracks client spawns and removals, hides orphan displays, and preserves viewer-local mounts. */
     Object rewriteOutbound(UUID viewerId, Object packet);
 }

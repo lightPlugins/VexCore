@@ -39,9 +39,13 @@ public class V26_2GlowPackets {
     }
 
     public static Object removeTeam(final Entity entity) {
+        return removeTeam(entity.getId());
+    }
+
+    public static Object removeTeam(final int entityId) {
         return ClientboundSetPlayerTeamPacket.createRemovePacket(new PlayerTeam(
             new Scoreboard(),
-            teamName(entity.getId())
+            teamName(entityId)
         ));
     }
 

@@ -27,6 +27,29 @@ import org.junit.jupiter.api.Test;
 public final class VexPlayerDataCoordinatorServiceTest {
 
     @Test
+    public void storedReadIgnoresDirtyLiveValuesAndDoesNotCreateOfflineSessions() {
+        var store = new MemoryPlayerDataStore();
+        var services = new TestServices(store);
+        var coordinator = new VexPlayerDataCoordinatorService(services);
+        var key = DataContainerKey.of("durable", StoredReadData.class, StoredReadData::new);
+        coordinator.register(services.getOwner(), registry -> registry.register(key));
+        UUID id = UUID.randomUUID();
+        var player = coordinator.create(id, "Alex");
+        player.update(key, value -> {
+            value.value = "saved";
+        });
+        coordinator.save(id).join();
+        player.update(key, value -> {
+            value.value = "unsaved";
+        });
+        assertEquals("saved", coordinator.readStored(services.getOwner(), id, key).join().orElseThrow().value);
+        UUID offline = UUID.randomUUID();
+        assertTrue(coordinator.readStored(services.getOwner(), offline, key).join().isEmpty());
+        assertTrue(coordinator.find(offline).isEmpty());
+        coordinator.close();
+    }
+
+    @Test
     public void unloadedOwnerCanStillBeSavedAndRecovered(
         @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory
     ) throws Exception {
@@ -63,6 +86,11 @@ public final class VexPlayerDataCoordinatorServiceTest {
         } finally {
             coordinator.close();
         }
+    }
+
+    public static final class StoredReadData {
+
+        public String value = "default";
     }
 
     public static final class UnloadSensitiveData {

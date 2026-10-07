@@ -1,9 +1,11 @@
 package dev.vexsoft.core.paper.inventory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import dev.vexsoft.core.api.player.VexPlayer;
-import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -15,12 +17,9 @@ import dev.vexsoft.core.number.WholeAmount;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -28,180 +27,140 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.junit.jupiter.api.Test;
 
-/** Exercises native-checkpoint/database interruption boundaries without a running server. */
+/** Exercises immediate sales, asynchronous storage and ordinary input returns without a running server. */
 final class ItemSaleSessionTest {
     private static final Function<ItemStack, WholeAmount> PRICE = item -> WholeAmount.of(100);
 
     @Test
-    void staleQuoteNeverRemovesItemsOrCreditsCurrency() {
-        Fixture fixture = new Fixture();
-        fixture.storage.slots[0] = new Stack(3);
-        ItemSaleSession session = fixture.session();
-        assertFalse(session.sell(fixture.storage.inventory, fixture.currency, PRICE,
-            new ItemSaleQuote(2, WholeAmount.of(200))));
-        assertEquals(3, fixture.storage.count());
-        assertEquals(0, fixture.balance);
-    }
-
-    @Test
-    void failedTransferRestoresInventoryEscrowAndCursor() {
-        Fixture fixture = new Fixture();
-        fixture.storage.slots[0] = new Stack(3);
-        ItemSaleSession session = fixture.session();
-        assertThrows(IllegalStateException.class, () -> session.transfer(() -> {
-            fixture.storage.inventory.setItem(0, null);
-            session.inventory().setItem(0, new Stack(2));
-            fixture.cursor = new Stack(1);
-            throw new IllegalStateException("Transfer failed");
-        }));
-        assertEquals(3, fixture.storage.count());
-        assertTrue(session.inventory().isEmpty());
-        assertTrue(fixture.cursor.isEmpty());
-    }
-
-    @Test
-    void successCheckpointsRemovalAndDurablePayout() {
-        Fixture fixture = new Fixture();
-        fixture.storage.slots[0] = new Stack(3);
-        ItemSaleSession session = fixture.session();
-        assertTrue(session.sell(fixture.storage.inventory, fixture.currency, PRICE,
-            new ItemSaleQuote(3, WholeAmount.of(300))));
-        assertEquals(0, fixture.storage.count());
-        assertEquals(300, fixture.durableBalance);
-        assertTrue(fixture.pdc.isEmpty());
-    }
-
-    @Test
-    void failedDatabaseSaveRetainsReplayableSaleAcrossRestart() {
+    void saleFinishesWithoutNativeSavesOrWaitingForTheDatabase() {
         Fixture fixture = new Fixture();
         fixture.storage.slots[0] = new Stack(2);
-        fixture.failDatabase = true;
+        fixture.database = new CompletableFuture<>();
         ItemSaleSession session = fixture.session();
-        assertThrows(RuntimeException.class, () -> session.sell(fixture.storage.inventory, fixture.currency, PRICE,
-            new ItemSaleQuote(2, WholeAmount.of(200))));
-        fixture.restart();
-        assertTrue(fixture.session().settle());
-        assertEquals(200, fixture.durableBalance);
-        assertEquals(0, fixture.storage.count());
-    }
-
-    @Test
-    void crashAfterDatabaseAcknowledgementDoesNotPayTwice() {
-        Fixture fixture = new Fixture();
-        fixture.storage.slots[0] = new Stack(2);
-        fixture.failNativeAt = 2;
-        ItemSaleSession session = fixture.session();
-        assertThrows(IllegalStateException.class, () -> session.sell(fixture.storage.inventory, fixture.currency, PRICE,
-            new ItemSaleQuote(2, WholeAmount.of(200))));
-        fixture.restart();
-        assertTrue(fixture.session().settle());
+        assertTrue(assertTimeoutPreemptively(Duration.ofSeconds(2), () ->
+            session.sell(fixture.storage.inventory, fixture.currency, PRICE,
+                new ItemSaleQuote(2, WholeAmount.of(200)))));
         assertEquals(200, fixture.balance);
-        assertEquals(1, fixture.receipts.size());
+        assertEquals(0, fixture.storage.count());
+        assertFalse(fixture.database.isDone());
+        assertEquals(0, fixture.nativeSaves);
+        fixture.storage.slots[0] = new Stack(5);
+        fixture.database.complete(null);
+        assertEquals(5, fixture.storage.count());
+        assertEquals(200, fixture.balance);
     }
 
     @Test
-    void rejectedCreditReturnsTheOriginalItems() {
+    void failedAsyncSaveDoesNotReplayThePayoutOrRestoreSoldItems() {
+        Fixture fixture = new Fixture();
+        fixture.storage.slots[0] = new Stack(2);
+        fixture.database = new CompletableFuture<>();
+        assertTrue(fixture.session().sell(fixture.storage.inventory, fixture.currency, PRICE,
+            new ItemSaleQuote(2, WholeAmount.of(200))));
+        fixture.database.completeExceptionally(new IllegalStateException("Database unavailable"));
+        assertEquals(200, fixture.balance);
+        assertEquals(0, fixture.storage.count());
+        assertEquals(0, fixture.nativeSaves);
+    }
+
+    @Test
+    void failedEnqueueDoesNotInvalidateACompletedSale() {
+        Fixture fixture = new Fixture();
+        fixture.storage.slots[0] = new Stack(2);
+        fixture.rejectSave = true;
+        assertTrue(fixture.session().sell(fixture.storage.inventory, fixture.currency, PRICE,
+            new ItemSaleQuote(2, WholeAmount.of(200))));
+        assertEquals(200, fixture.balance);
+        assertEquals(0, fixture.storage.count());
+    }
+
+    @Test
+    void rejectedCreditKeepsTheOriginalSelectionAndChangedQuotesDoNotSell() {
         Fixture fixture = new Fixture();
         fixture.rejectCredit = true;
         ItemSaleSession session = fixture.session();
         session.inventory().setItem(0, new Stack(4));
         assertFalse(session.sell(session.inventory(), fixture.currency, PRICE,
             new ItemSaleQuote(4, WholeAmount.of(400))));
-        assertEquals(4, fixture.storage.count());
+        assertEquals(4, session.inventory().getItem(0).getAmount());
+        assertEquals(0, fixture.balance);
+        fixture.rejectCredit = false;
+        assertFalse(session.sell(session.inventory(), fixture.currency, PRICE,
+            new ItemSaleQuote(3, WholeAmount.of(300))));
+        assertEquals(4, session.inventory().getItem(0).getAmount());
         assertEquals(0, fixture.balance);
     }
 
     @Test
-    void closePreservesOverflowAndRecoversItWhenSpaceIsAvailable() {
+    void closeReturnsInputAndCursorOnlyOnceAndDropsOverflow() {
         Fixture fixture = new Fixture();
         for (int index = 0; index < fixture.storage.slots.length; index++) {
             fixture.storage.slots[index] = new Stack(64);
         }
         ItemSaleSession session = fixture.session();
         session.inventory().setItem(0, new Stack(5));
+        fixture.cursor = new Stack(7);
         session.close();
-        assertFalse(fixture.savedPdc.isEmpty());
-        fixture.restart();
-        fixture.storage.slots[0] = null;
-        fixture.session().close();
-        assertEquals(5, fixture.storage.slots[0].getAmount());
-        assertTrue(fixture.savedPdc.isEmpty());
+        session.close();
+        assertEquals(12, fixture.dropped);
+        assertEquals(0, fixture.cursor.getAmount());
+        assertTrue(session.inventory().isEmpty());
+        assertTrue(session.isLocked());
+        assertEquals(0, fixture.nativeSaves);
+        assertFalse(session.sell(fixture.storage.inventory, fixture.currency, PRICE,
+            ItemSaleSession.quote(fixture.storage.inventory, PRICE)));
     }
 
     @Test
-    void deathDefersReturnAndCloseIsIdempotent() {
+    void ordinaryCloseReturnsItemsAndDeathUsesWorldDrops() {
         Fixture fixture = new Fixture();
         ItemSaleSession session = fixture.session();
         session.inventory().setItem(0, new Stack(5));
+        session.close();
+        assertEquals(5, fixture.storage.count());
+        assertEquals(0, fixture.dropped);
         fixture.dead = true;
-        session.close();
-        session.close();
-        assertEquals(0, fixture.storage.count());
-        fixture.restart();
-        fixture.session().close();
+        ItemSaleSession death = fixture.session();
+        death.inventory().setItem(0, new Stack(3));
+        death.close();
+        death.close();
+        assertEquals(3, fixture.dropped);
         assertEquals(5, fixture.storage.count());
     }
 
-    @Test
-    void cursorCheckpointSurvivesNativeCursorLoss() {
-        Fixture fixture = new Fixture();
-        ItemSaleSession session = fixture.session();
-        fixture.cursor = new Stack(7);
-        session.checkpoint();
-        fixture.restart();
-        fixture.session().close();
-        assertEquals(7, fixture.storage.count());
-    }
-
     static final class Fixture {
-        final Map<NamespacedKey, byte[]> pdc = new HashMap<>();
-        Map<NamespacedKey, byte[]> savedPdc = new HashMap<>();
         final Slots storage = new Slots(36, true);
-        ItemStack[] savedStorage = new ItemStack[36];
         ItemStack cursor = new Stack(0);
         int nativeSaves;
-        int failNativeAt = -1;
-        boolean failDatabase;
+        boolean rejectSave;
         boolean rejectCredit;
         boolean dead;
         int balance;
-        int durableBalance;
-        Set<String> receipts = new HashSet<>();
-        Set<String> durableReceipts = new HashSet<>();
+        int dropped;
+        CompletableFuture<Void> database = CompletableFuture.completedFuture(null);
+        final World world = proxy(World.class, (ignored, method, args) -> {
+            assertEquals("dropItemNaturally", method.getName());
+            dropped += ((ItemStack) args[1]).getAmount();
+            return null;
+        });
         final Currency currency = proxy(Currency.class, (ignored, method, args) -> switch (method.getName()) {
             case "getKey" -> CurrencyKey.of("test", "coins");
             case "isRegistered" -> true;
             default -> throw new UnsupportedOperationException(method.getName());
         });
-        final PersistentDataContainer container = proxy(PersistentDataContainer.class, (ignored, method, args) -> {
-            switch (method.getName()) {
-                case "get":
-                    return pdc.get(args[0]);
-                case "has":
-                    return pdc.containsKey(args[0]);
-                case "set":
-                    pdc.put((NamespacedKey) args[0], ((byte[]) args[2]).clone());
-                    return null;
-                case "remove":
-                    pdc.remove(args[0]);
-                    return null;
-                default:
-                    throw new UnsupportedOperationException(method.getName());
-            }
-        });
         final UUID id = UUID.randomUUID();
         final Player player = proxy(Player.class, (ignored, method, args) -> switch (method.getName()) {
             case "getUniqueId" -> id;
-            case "getPersistentDataContainer" -> container;
             case "getInventory" -> storage.inventory;
+            case "getWorld" -> world;
+            case "getLocation" -> null;
             case "getItemOnCursor" -> cursor;
             case "isDead" -> dead;
             case "setItemOnCursor" -> {
@@ -209,19 +168,15 @@ final class ItemSaleSessionTest {
                 yield null;
             }
             case "saveData" -> {
-                if (++nativeSaves == failNativeAt) {
-                    throw new IllegalStateException("Native storage unavailable");
-                }
-                savedPdc = new HashMap<>(pdc);
-                savedStorage = copy(storage.slots);
+                nativeSaves++;
                 yield null;
             }
             default -> throw new UnsupportedOperationException(method.getName());
         });
         final CurrencyContainer wallet = proxy(CurrencyContainer.class, (ignored, method, args) -> {
-            if (method.getName().equals("depositOnce")) {
+            if (method.getName().equals("deposit")) {
                 int previous = balance;
-                if (!rejectCredit && receipts.add((String) args[2])) {
+                if (!rejectCredit) {
                     balance += ((WholeAmount) args[1]).toBigInteger().intValueExact();
                 }
                 return new CurrencyTransaction(rejectCredit ? CurrencyTransaction.Status.MAXIMUM_EXCEEDED
@@ -235,36 +190,19 @@ final class ItemSaleSessionTest {
         Fixture() {
             vexPlayer.installContainer(0, CurrencyContainer.class, wallet);
             PlayerService players = proxy(PlayerService.class, (ignored, method, args) -> vexPlayer);
-            CurrencyRegistry currencies = proxy(CurrencyRegistry.class,
-                (ignored, method, args) -> Optional.of(currency));
             DataService data = proxy(DataService.class, (ignored, method, args) -> {
-                if (failDatabase) {
-                    return CompletableFuture.failedFuture(new IllegalStateException("Database unavailable"));
+                assertEquals("save", method.getName());
+                if (rejectSave) {
+                    throw new IllegalStateException("Save queue unavailable");
                 }
-                durableBalance = balance;
-                durableReceipts = new HashSet<>(receipts);
-                return CompletableFuture.completedFuture(null);
+                return database;
             });
-            Map<Class<?>, Object> implementations = Map.of(PlayerService.class, players,
-                CurrencyRegistry.class, currencies, DataService.class, data);
+            Map<Class<?>, Object> implementations = Map.of(PlayerService.class, players, DataService.class, data);
             services = proxy(VexServiceRegistry.class, (ignored, method, args) -> implementations.get(args[0]));
         }
 
         ItemSaleSession session() {
-            return new ItemSaleSession(services, player, new Slots(36, false).inventory,
-                bytes -> new Stack(ByteBuffer.wrap(bytes).getInt()));
-        }
-
-        void restart() {
-            pdc.clear();
-            pdc.putAll(savedPdc);
-            storage.slots = copy(savedStorage);
-            cursor = new Stack(0);
-            balance = durableBalance;
-            receipts = new HashSet<>(durableReceipts);
-            failDatabase = false;
-            failNativeAt = -1;
-            dead = false;
+            return new ItemSaleSession(services, player, new Slots(36, false).inventory);
         }
     }
 

@@ -507,6 +507,29 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     @Override
+    public <T> CompletableFuture<Optional<T>> readStored(
+        final ServiceOwner owner,
+        final UUID playerId,
+        final DataContainerKey<T> key
+    ) {
+        if (getKeys(owner).stream().noneMatch(registered -> registered == key)) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Unregistered owner container"));
+        }
+        String ownerName = normalizeOwner(owner.getServiceOwnerName());
+        return store.load(ownerName, Objects.requireNonNull(playerId, "playerId"), List.of(key)).thenApply(values -> {
+            String json = values.get(key.getName());
+            if (json == null) {
+                return Optional.empty();
+            }
+            try {
+                return Optional.of(objectMapper.readValue(json, key.getType()));
+            } catch (JsonProcessingException failure) {
+                throw new IllegalStateException("Unable to read persisted player container: " + key.getName(), failure);
+            }
+        });
+    }
+
+    @Override
     public synchronized Collection<DataContainerKey<?>> getKeys(final ServiceOwner owner) {
         String ownerName = normalizeOwner(Objects.requireNonNull(owner, "owner").getServiceOwnerName());
         OwnerContainers ownerContainers = containersByOwner.get(ownerName);

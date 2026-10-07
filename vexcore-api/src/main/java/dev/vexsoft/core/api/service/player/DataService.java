@@ -1,7 +1,9 @@
 package dev.vexsoft.core.api.service.player;
 
+import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
 import dev.vexsoft.core.api.service.registry.VexService;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -16,6 +18,11 @@ public interface DataService extends VexService {
     /** Persists the loaded player's current dirty data; completion acknowledges the storage write. */
     default CompletableFuture<Void> save(UUID playerId) {
         return CompletableFuture.failedFuture(new UnsupportedOperationException("Explicit saves are not supported"));
+    }
+
+    /** Reads a detached durable container without loading a session or including unsaved live changes. */
+    default <T> CompletableFuture<Optional<T>> readStored(UUID playerId, DataContainerKey<T> key) {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("Stored reads are not supported"));
     }
 
     /** Freezes this owner's loaded data after feature cleanup, before its classloader closes. */

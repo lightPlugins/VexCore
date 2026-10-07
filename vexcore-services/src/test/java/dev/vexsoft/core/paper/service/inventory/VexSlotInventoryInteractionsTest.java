@@ -90,6 +90,9 @@ public final class VexSlotInventoryInteractionsTest {
         assertEquals("helmet", ((Stack) fixture.cursor).id);
         assertTrue(fixture.menu.stored.isEmpty());
         assertEquals(2, fixture.menu.transfers);
+        assertEquals(2, fixture.refreshedItems.size());
+        assertEquals("helmet", ((Stack) fixture.refreshedItems.getFirst()).id);
+        assertTrue(fixture.refreshedItems.getLast().isEmpty());
     }
 
     @Test
@@ -248,10 +251,18 @@ public final class VexSlotInventoryInteractionsTest {
         final VexServiceRegistry registry =
             proxy(VexServiceRegistry.class, (proxyObject, invokedMethod, arguments) -> schedules);
         final Menu menu = new Menu(registry);
+        final List<ItemStack> refreshedItems = new ArrayList<>();
         final InventoryService service = proxy(
             InventoryService.class,
-            (proxyObject, invokedMethod, arguments) -> invokedMethod.getName().equals("getCurrentView") ? Optional.of(
-                menu) : null
+            (proxyObject, invokedMethod, arguments) -> {
+                if (invokedMethod.getName().equals("getCurrentView")) {
+                    return Optional.of(menu);
+                }
+                if (invokedMethod.getName().equals("refresh")) {
+                    refreshedItems.add(menu.stored.clone());
+                }
+                return null;
+            }
         );
         final InventoryContext context = new InventoryContext(registry, player, service);
         final VexSlotInventoryInteractions handler = new VexSlotInventoryInteractions(schedules);

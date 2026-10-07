@@ -3,13 +3,18 @@ package dev.vexsoft.core.paper.nms.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FollowOwnerGoal;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2MobLookControl;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerAmphibiousNavigation;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightMoveControl;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightNavigation;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +30,8 @@ import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
+import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
+import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
@@ -38,6 +45,8 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
     private static final Field GOAL_SELECTOR = selectorField("goalSelector");
     private static final Field TARGET_SELECTOR = selectorField("targetSelector");
     private static final Field NAVIGATION = selectorField("navigation");
+    private static final Field MOVE_CONTROL = selectorField("moveControl");
+    private static final Field LOOK_CONTROL = selectorField("lookControl");
 
     public VexNmsMobAdapterService(final VexServiceRegistry services) {
         Objects.requireNonNull(services, "services");
@@ -78,6 +87,7 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
         selector(craftMob, GOAL_SELECTOR).removeAllGoals(goal -> true);
         selector(craftMob, TARGET_SELECTOR).removeAllGoals(goal -> true);
         clearVanillaBrain(craftMob);
+        preserveIdlePitch(craftMob);
         craftMob.getHandle().setTarget(null);
         craftMob.getHandle().setNoAi(true);
         mob.setAware(false);
@@ -92,6 +102,31 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
             Objects.requireNonNull(spec, "spec").priority(),
             new V26_2RandomMovementGoal(craftMob.getHandle(), mob, mob.getPathfinder(), spec)
         );
+    }
+
+    @Override
+    public void configureFlight(final Mob mob, final double minimumHeight) {
+        var entity = handle(mob).getHandle();
+        if (!(entity.getMoveControl() instanceof FlyingMoveControl<?>
+            || entity.getNavigation() instanceof FlyingPathNavigation)) {
+            return;
+        }
+        try {
+            MOVE_CONTROL.set(entity, new V26_2FlightMoveControl(entity, minimumHeight));
+            if (minimumHeight > 0.0D && entity.getNavigation() instanceof FlyingPathNavigation previous) {
+                var navigation = new V26_2FlightNavigation(entity, entity.level(), minimumHeight);
+                var original = previous.getNodeEvaluator();
+                var replacement = navigation.getNodeEvaluator();
+                replacement.setCanPassDoors(original.canPassDoors());
+                replacement.setCanOpenDoors(original.canOpenDoors());
+                replacement.setCanFloat(original.canFloat());
+                replacement.setCanWalkOverFences(original.canWalkOverFences());
+                previous.stop();
+                NAVIGATION.set(entity, navigation);
+            }
+        } catch (IllegalAccessException exception) {
+            throw new IllegalStateException("Unable to configure native flight clearance", exception);
+        }
     }
 
     @Override
@@ -146,12 +181,31 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
         neutralize(mob);
     }
 
+    @Override
+    public void addFollowOwner(final Mob mob, final NmsFollowOwnerSpec specification) {
+        selector(handle(mob), GOAL_SELECTOR).addGoal(specification.priority(),
+            new V26_2FollowOwnerGoal(mob, specification));
+    }
+
     private static CraftMob handle(final Mob mob) {
         if (!(Objects.requireNonNull(mob, "mob") instanceof CraftMob craftMob)) {
             throw new IllegalArgumentException("Unsupported mob implementation: " + mob.getClass());
         }
 
         return craftMob;
+    }
+
+    private static void preserveIdlePitch(final CraftMob mob) {
+        var entity = mob.getHandle();
+        var control = entity.getLookControl();
+        if (control instanceof V26_2MobLookControl) {
+            return;
+        }
+        try {
+            LOOK_CONTROL.set(entity, new V26_2MobLookControl(entity, control));
+        } catch (IllegalAccessException exception) {
+            throw new IllegalStateException("Unable to preserve custom mob idle pitch", exception);
+        }
     }
 
     @SuppressWarnings("unchecked") // The brain belongs to this exact entity; Bukkit erases its subtype.

@@ -20,7 +20,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-/** Reusable checkpointed input area with protected controls and explicit native item transfers. */
+/** Reusable transient input area with protected controls and explicit native item transfers. */
 public abstract class ItemDepositView extends AbstractInventoryView implements MutableInventoryView {
     private final Player player;
     private final ItemSaleSession session;
@@ -93,9 +93,7 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         boolean top = raw < getSize();
         if (!top && (click == ClickType.LEFT || click == ClickType.RIGHT)) {
             // Let the server apply ordinary storage clicks without a cancel/cursor correction.
-            // Persist afterwards, when the native inventory and cursor contain the result.
             if (defer(context, () -> {
-                session.checkpoint();
                 onItemInteraction(!event.isCancelled() && event.getAction() != InventoryAction.NOTHING);
             }, false)) {
                 event.setCancelled(false);
@@ -136,7 +134,6 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         if (!event.getRawSlots().isEmpty()
             && event.getRawSlots().stream().allMatch(slot -> slot >= getSize() && slot < getSize() + 36)) {
             if (defer(context, () -> {
-                session.checkpoint();
                 onItemInteraction(!event.isCancelled());
             }, false)) {
                 event.setCancelled(false);
@@ -191,7 +188,7 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         if (blockInteractions) {
             pending = true;
         }
-        // A cancelled drag restores its cursor after dispatch; mutate and save only on the next tick.
+        // A cancelled drag restores its cursor after dispatch; apply its transfer on the next tick.
         boolean scheduled = schedules.runForLater(player, 1L, () -> {
             if (blockInteractions) {
                 pending = false;

@@ -20,6 +20,9 @@ final class WholeAmountTest {
 
     @Test
     void parsesAlphabeticSuffixesWithoutPrecisionLoss() {
+        assertEquals(new BigInteger("5000000"), WholeAmountFormatter.parse("5m").toBigInteger());
+        assertEquals(new BigInteger("15000000000000000"), WholeAmountFormatter.parse("15aa").toBigInteger());
+        assertEquals("15aa", WholeAmountFormatter.format(WholeAmountFormatter.parse("15AA")));
         assertEquals(new BigInteger("35000000000000000000"), WholeAmountFormatter.parse("35ab").toBigInteger());
         assertEquals(new BigInteger("1250000000000000000000"), WholeAmountFormatter.parse("1.25ac").toBigInteger());
         assertEquals("1aaa", WholeAmountFormatter.format(WholeAmountFormatter.parse("1aaa")));

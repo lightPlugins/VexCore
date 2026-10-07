@@ -1,6 +1,7 @@
 package dev.vexsoft.core.common.service.currency;
 
 import dev.vexsoft.core.api.localization.LanguageContainer;
+import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.localization.LocalizedMessage;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
@@ -42,6 +43,12 @@ public final class VexCurrencyLocalizationService implements CurrencyLocalizatio
     }
 
     @Override
+    public Component getName(final LanguageKey language, final CurrencyKey currency) {
+        Currency registered = require(currency);
+        return resolve(language, registered, registered.getDefinition().getNameKey(), Map.of());
+    }
+
+    @Override
     public Component format(final VexPlayer player, final CurrencyKey currency, final WholeAmount amount) {
         VexPlayer checkedPlayer = Objects.requireNonNull(player, "player");
         Currency registered = require(currency);
@@ -59,6 +66,13 @@ public final class VexCurrencyLocalizationService implements CurrencyLocalizatio
         return WholeAmountFormatter.format(amount);
     }
 
+    @Override
+    public Component format(final LanguageKey language, final CurrencyKey currency, final WholeAmount amount) {
+        Currency registered = require(currency);
+        return resolve(language, registered, registered.getDefinition().getFormatKey(),
+            Map.of("amount", amount.toString(), "formatted_amount", formatCompact(amount)));
+    }
+
     private Currency require(final CurrencyKey key) {
         return currencies.find(Objects.requireNonNull(key, "currency"))
             .orElseThrow(() -> new IllegalStateException("Currency is not registered: " + key));
@@ -70,13 +84,18 @@ public final class VexCurrencyLocalizationService implements CurrencyLocalizatio
         final String key,
         final Map<String, String> replacements
     ) {
-        LocalizedMessage message = localizations.resolve(
-            currency.getKey().namespace(),
-            player.getContainer(LanguageContainer.class).getLanguage().getKey(),
-            key,
-            replacements
-        );
+        return placeholders.resolve(player, resolve(player.getContainer(LanguageContainer.class).getLanguage().getKey(),
+            currency, key, replacements));
+    }
 
-        return placeholders.resolve(player, message.getLines().getFirst());
+    private Component resolve(
+        final LanguageKey language,
+        final Currency currency,
+        final String key,
+        final Map<String, String> replacements
+    ) {
+        LocalizedMessage message = localizations.resolve(currency.getKey().namespace(),
+            Objects.requireNonNull(language, "language"), key, replacements);
+        return message.getLines().getFirst();
     }
 }

@@ -28,6 +28,8 @@ final class VexInventorySession {
     private Map<Integer, InventoryElement> renderedElements = Collections.emptyMap();
     @Setter
     private boolean suppressNextClose;
+    @Setter
+    private boolean suspended;
 
     VexInventorySession(final UUID viewerId, final VexInventoryHolder holder) {
         this.viewerId = Objects.requireNonNull(viewerId, "viewerId");

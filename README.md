@@ -138,6 +138,23 @@ flowchart TD
 - Built-in Stats support, Vault-backed Coins support, and online Permission requirements
 - Shared expression variables such as `%level%` without coupling VexCore to a skill system
 
+### Trading and Reward Transactions
+
+`ItemSaleSession` completes sales on the owning player thread and queues player-data saves asynchronously.
+It uses no native crash journal, forced `Player.saveData()` calls or database waits. Closing a menu returns
+its input items and cursor to the player; inventory overflow and death returns become ordinary world drops.
+The legacy `checkpoint()` and `recover()` hooks remain as deprecated no-ops for existing callers.
+
+`VexPlayer.atomic` snapshots a persistent container only before its first write in the operation. Failed
+operations restore those touched containers and discard deferred notifications. Data must be changed
+through `update`, `updateIfChanged` or `reset`, rather than mutating values obtained from a read.
+
+`PlayerRewardTransactionService.execute(player, operation, slots)` copies only the declared inventory slots.
+Slot `-1` includes the cursor; an empty array executes a data-only transaction without native inventory access.
+Core currency and XP rewards declare `changesInventory() == false`, so their level claims skip inventory snapshots.
+The original unrestricted overload preserves rollback for callbacks that may mutate any native slot.
+Custom rewards default to changing inventory until their implementation declares otherwise.
+
 ### Rewards, Costs, and Requirements
 
 Progression remains owned by external plugins. VexCore does not know what a skill level or

@@ -39,8 +39,10 @@ public final class VexPlayer {
     private volatile PlayerContainer[] featureContainers = EMPTY_FEATURE_CONTAINERS;
     private volatile Object platformPlayer;
     private List<Runnable> committedEffects;
+    private Map<DataContainerKey<?>, ContainerSnapshot<Object>> transactionSnapshots;
+    private Function<Object, Object> transactionCopier;
 
-    /** Runs a bounded economic operation with rollback of persistent container values on failure. */
+    /** Copies containers on their first write and restores those values when the economic operation fails. */
     public boolean atomic(final Function<Object, Object> copier, final BooleanSupplier operation) {
         boolean success = false;
         List<Runnable> effects;
@@ -52,7 +54,8 @@ public final class VexPlayer {
 
             Map<DataContainerKey<?>, ContainerSnapshot<Object>> before = new LinkedHashMap<>();
 
-            containers.forEach((key, state) -> before.put(key, state.snapshot(copier)));
+            transactionCopier = Objects.requireNonNull(copier, "copier");
+            transactionSnapshots = before;
             committedEffects = new ArrayList<>();
 
             try {
@@ -60,6 +63,8 @@ public final class VexPlayer {
             } finally {
                 effects = committedEffects;
                 committedEffects = null;
+                transactionSnapshots = null;
+                transactionCopier = null;
 
                 if (!success) {
                     before.forEach((key, snapshot) -> {
@@ -274,6 +279,7 @@ public final class VexPlayer {
     /** Updates a container atomically and marks it for persistence */
     public synchronized <T> void update(final DataContainerKey<T> key, final Consumer<T> update) {
         Objects.requireNonNull(update, "update");
+        snapshotBeforeWrite(key);
         state(key).update(value -> {
             update.accept(value);
 
@@ -283,12 +289,16 @@ public final class VexPlayer {
 
     /** Updates a container atomically and returns a value from the same operation */
     public synchronized <T, R> R update(final DataContainerKey<T> key, final Function<T, R> update) {
-        return state(key).update(Objects.requireNonNull(update, "update"));
+        Objects.requireNonNull(update, "update");
+        snapshotBeforeWrite(key);
+        return state(key).update(update);
     }
 
     /** Mutates a container, marking it dirty only when the callback reports a change. */
     public synchronized <T> boolean updateIfChanged(final DataContainerKey<T> key, final Predicate<T> update) {
-        return state(key).updateIfChanged(Objects.requireNonNull(update, "update"));
+        Objects.requireNonNull(update, "update");
+        snapshotBeforeWrite(key);
+        return state(key).updateIfChanged(update);
     }
 
     /** Checks whether the requested container is available on this player */
@@ -350,15 +360,22 @@ public final class VexPlayer {
 
     /** Replaces one persistent value with a fresh default and informs feature containers. */
     @ApiStatus.Internal
-    public void reset(final DataContainerKey<?> key) {
+    public synchronized void reset(final DataContainerKey<?> key) {
         DataContainerKey<?> checkedKey = Objects.requireNonNull(key, "key");
 
+        snapshotBeforeWrite(checkedKey);
         resetUnchecked(checkedKey);
 
         for (PlayerContainer container : featureContainers) {
             if (container != null) {
                 container.onDataReset(checkedKey);
             }
+        }
+    }
+
+    private void snapshotBeforeWrite(final DataContainerKey<?> key) {
+        if (transactionSnapshots != null && !transactionSnapshots.containsKey(key)) {
+            transactionSnapshots.put(key, stateUnchecked(key).snapshot(transactionCopier));
         }
     }
 

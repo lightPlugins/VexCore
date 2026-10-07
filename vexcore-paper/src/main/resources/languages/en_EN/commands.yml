@@ -2,6 +2,17 @@ vexcore:
   reload:
     success: "<tailwind:zinc:4>VexCore was reloaded <tailwind:lime>successfully"
     failed: "<tailwind:red>VexCore could not be reloaded, <tailwind:red:7>check the console for details"
+  currency:
+    given: '<tailwind:lime>Credit successful:<tailwind:zinc:4> %value% <tailwind:zinc:4>for <tailwind:violet:5>%player%<tailwind:zinc:4>.'
+    received: '<tailwind:zinc:4>You have <tailwind:lime>received<tailwind:zinc:4> %value%<tailwind:zinc:4>.'
+    balance: '<tailwind:zinc:4>Balance of <tailwind:violet:5>%player%<tailwind:zinc:4>: %value%'
+    unknown: '<tailwind:red>The currency <tailwind:red:7>%currency%<tailwind:red> is not registered.'
+    ambiguous: '<tailwind:red>The currency <tailwind:red:7>%currency%<tailwind:red> is ambiguous. Use the full ID with a dot from tab completion.'
+    invalid-amount: '<tailwind:red>Enter a positive whole amount, for example <tailwind:red:7>250, 5m or 15aa<tailwind:red>.'
+    player-only: '<tailwind:red>Specify a target player when running this command from the console.'
+    player-offline: '<tailwind:red>The player <tailwind:red:7>%player%<tailwind:red> is offline or their data is not loaded yet.'
+    maximum-exceeded: '<tailwind:red>The credit would exceed the balance limit.'
+    unavailable: '<tailwind:red>The currency or player data is currently unavailable.'
   language:
     set: "<tailwind:zinc:4>Your language was changed to <tailwind:sky>%language%"
     not-found: "<tailwind:red>The language <tailwind:red:7>%language%<tailwind:red> is not available"

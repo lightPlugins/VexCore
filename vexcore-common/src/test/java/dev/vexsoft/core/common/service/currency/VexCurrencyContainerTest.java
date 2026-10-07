@@ -6,15 +6,46 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.vexsoft.core.api.player.VexPlayer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.currency.Currency;
 import dev.vexsoft.core.currency.CurrencyDefinition;
 import dev.vexsoft.core.currency.CurrencyKey;
 import dev.vexsoft.core.number.WholeAmount;
+import dev.vexsoft.core.number.WholeAmountFormatter;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 final class VexCurrencyContainerTest {
+
+    @Test
+    void largeIndependentBalancesRoundTripAsExactStringsAndSurviveReregistration() throws Exception {
+        VexPlayer original = player();
+        var currency = currency("essence", 0, Long.MAX_VALUE);
+        var unlimited = new RegisteredCurrency("test", CurrencyDefinition.builder(
+            CurrencyKey.of("test", "unlimited")).build());
+        var container = new VexCurrencyContainer(original);
+        var huge = WholeAmountFormatter.parse("35ab");
+        assertTrue(container.deposit(unlimited, huge).successful());
+        assertTrue(container.deposit(currency, WholeAmountFormatter.parse("5m")).successful());
+        var mapper = new ObjectMapper();
+        String json = original.read(CurrencyPlayerData.CURRENCIES, data -> {
+            try {
+                return mapper.writeValueAsString(data);
+            } catch (Exception failure) {
+                throw new IllegalStateException(failure);
+            }
+        });
+        assertTrue(json.contains("\"35000000000000000000\""));
+        VexPlayer restored = new VexPlayer(UUID.randomUUID(), "Restored");
+        restored.install(CurrencyPlayerData.CURRENCIES, mapper.readValue(json, CurrencyData.class));
+        var restoredContainer = new VexCurrencyContainer(restored);
+        unlimited.unregister();
+        var registeredAgain = new RegisteredCurrency("test", unlimited.getDefinition());
+        assertEquals(huge, restoredContainer.getBalance(registeredAgain));
+        assertEquals(WholeAmount.of(5_000_000), restoredContainer.getBalance(currency));
+        assertEquals(WholeAmount.ZERO, new VexCurrencyContainer(player()).getBalance(registeredAgain));
+    }
 
     @Test
     void receiptSurvivesContainerRecreationAndRejectsMismatchedReplay() {

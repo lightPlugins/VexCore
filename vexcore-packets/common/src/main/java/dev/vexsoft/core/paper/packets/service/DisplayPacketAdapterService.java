@@ -12,6 +12,7 @@ import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
 import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
 import dev.vexsoft.core.paper.packets.dummy.SkinTexture;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
@@ -71,6 +72,16 @@ public interface DisplayPacketAdapterService extends VexService {
     /** Appends viewer-local passengers to native mount packets without changing their original passengers. */
     Object rewritePassengers(Object packet, IntFunction<List<Integer>> additionalPassengers,
                              BiConsumer<Integer, List<Integer>> nativePassengers, IntConsumer removedEntities);
+
+    /** Hides orphan passengers and restores mounts after client spawns in the same ordered packet stream. */
+    Object rewritePassengers(
+        Object packet,
+        IntFunction<List<Integer>> additionalPassengers,
+        BiConsumer<Integer, List<Integer>> nativePassengers,
+        IntFunction<List<Integer>> removedEntities,
+        IntFunction<Map<Integer, List<Integer>>> spawnedEntities,
+        Runnable resetEntities
+    );
 
     /** Applies a local passenger translation to a virtual display */
     void setTranslation(Player viewer, FakeDisplayHandle handle, float offsetX, float offsetY, float offsetZ);

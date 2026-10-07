@@ -91,6 +91,73 @@ class VexPlayerTest {
         assertEquals(42, observed.get());
     }
 
+    @Test
+    void transactionsCopyOnlyWrittenContainersOnceAndRestoreTheirInitialValue() {
+        VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
+        var untouched = DataContainerKey.of("untouched", SkillData.class, SkillData::new);
+        player.install(SKILLS, new SkillData());
+        player.install(untouched, new SkillData());
+        var copies = new java.util.concurrent.atomic.AtomicInteger();
+        assertFalse(player.atomic(value -> {
+            copies.incrementAndGet();
+            SkillData copy = new SkillData();
+            copy.experience = ((SkillData) value).experience;
+            return copy;
+        }, () -> {
+            player.read(untouched, SkillData::getExperience);
+            player.update(SKILLS, data -> {
+                data.experience = 10;
+            });
+            player.update(SKILLS, data -> {
+                data.experience = 20;
+            });
+            return false;
+        }));
+        assertEquals(1, copies.get());
+        assertEquals(0, player.read(SKILLS, SkillData::getExperience));
+        assertFalse(player.getDirtyKeys().contains(untouched));
+        assertTrue(player.atomic(value -> {
+            throw new AssertionError("Read-only transactions must not copy data");
+        }, () -> player.read(SKILLS, data -> data.experience == 0)));
+    }
+
+    @Test
+    void conditionalUpdatesAndResetAlsoRestoreOnFailure() {
+        VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
+        SkillData original = new SkillData();
+        original.experience = 42;
+        player.install(SKILLS, original);
+        assertThrows(IllegalStateException.class, () -> player.atomic(value -> {
+            SkillData copy = new SkillData();
+            copy.experience = ((SkillData) value).experience;
+            return copy;
+        }, () -> {
+            player.updateIfChanged(SKILLS, data -> {
+                data.experience = 100;
+                return true;
+            });
+            player.reset(SKILLS);
+            throw new IllegalStateException("Reward failed");
+        }));
+        assertEquals(42, player.read(SKILLS, SkillData::getExperience));
+    }
+
+    @Test
+    void failedCopyDoesNotMutateDataOrLeaveTheTransactionActive() {
+        VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
+        player.install(SKILLS, new SkillData());
+        assertThrows(IllegalStateException.class, () -> player.atomic(value -> {
+            throw new IllegalStateException("Cannot copy this value");
+        }, () -> {
+            player.update(SKILLS, data -> {
+                data.experience = 100;
+            });
+            return true;
+        }));
+        assertEquals(0, player.read(SKILLS, SkillData::getExperience));
+        assertTrue(player.atomic(value -> new SkillData(), () -> true));
+    }
+
     private static final DataContainerKey<SkillData> SKILLS =
         DataContainerKey.of("skills", SkillData.class, SkillData::new);
 

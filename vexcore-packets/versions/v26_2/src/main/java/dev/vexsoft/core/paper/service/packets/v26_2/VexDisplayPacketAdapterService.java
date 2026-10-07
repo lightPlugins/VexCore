@@ -447,6 +447,19 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
     }
 
     @Override
+    public Object rewritePassengers(
+        final Object packet,
+        final IntFunction<List<Integer>> additionalPassengers,
+        final BiConsumer<Integer, List<Integer>> nativePassengers,
+        final IntFunction<List<Integer>> removedEntities,
+        final IntFunction<Map<Integer, List<Integer>>> spawnedEntities,
+        final Runnable resetEntities
+    ) {
+        return V26_2PassengerPackets.append(packet, additionalPassengers, nativePassengers, removedEntities,
+            spawnedEntities, resetEntities);
+    }
+
+    @Override
     public void setTranslation(
         final Player viewer,
         final FakeDisplayHandle handle,

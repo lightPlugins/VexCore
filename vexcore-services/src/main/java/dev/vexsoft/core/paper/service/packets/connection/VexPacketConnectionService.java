@@ -45,6 +45,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
     private final InteractiveUiCoordinatorService interactiveUi;
     private final VirtualPassengerOverlayService virtualPassengers;
     private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<UUID, Object> sessions = new ConcurrentHashMap<>();
 
     public VexPacketConnectionService(final VexServiceRegistry services) {
         this.connection = services.require(PacketConnectionAdapterService.class);
@@ -59,11 +60,28 @@ public final class VexPacketConnectionService implements PacketConnectionService
 
     @Override
     public void inject(final Player player) {
-        connection.inject(player, this);
+        UUID viewerId = player.getUniqueId();
+        Object session = new Object();
+        if (sessions.putIfAbsent(viewerId, session) != null) {
+            return;
+        }
+        virtualPassengers.removeViewer(viewerId);
+        connection.inject(player, new PacketDuplexHandler() {
+            @Override
+            public Object write(final UUID viewer, final Object packet) {
+                return sessions.get(viewer) == session ? VexPacketConnectionService.this.write(viewer, packet) : packet;
+            }
+
+            @Override
+            public Object read(final UUID viewer, final Object packet) {
+                return sessions.get(viewer) == session ? VexPacketConnectionService.this.read(viewer, packet) : packet;
+            }
+        });
     }
 
     @Override
     public void uninject(final Player player) {
+        sessions.remove(player.getUniqueId());
         pending.remove(player.getUniqueId());
         virtualPassengers.removeViewer(player.getUniqueId());
         connection.uninject(player);
@@ -158,6 +176,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
     public void close() {
         pending.clear();
         Bukkit.getOnlinePlayers().forEach(this::uninject);
+        sessions.clear();
     }
 
     private void dispatch(final Player player, final PacketInteractionInput input) {

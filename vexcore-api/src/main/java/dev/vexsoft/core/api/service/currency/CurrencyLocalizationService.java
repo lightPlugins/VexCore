@@ -1,5 +1,6 @@
 package dev.vexsoft.core.api.service.currency;
 
+import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.currency.CurrencyKey;
@@ -12,6 +13,9 @@ public interface CurrencyLocalizationService extends VexService {
     /** Returns the localized display name for the player's selected language. */
     Component getName(VexPlayer player, CurrencyKey currency);
 
+    /** Returns a localized name for an explicit language, including console and offline presentation. */
+    Component getName(LanguageKey language, CurrencyKey currency);
+
     /** Returns a compact gaming representation such as {@code 10k}, {@code 1.5m}, or {@code 2b}. */
     String formatCompact(WholeAmount amount);
 
@@ -22,4 +26,7 @@ public interface CurrencyLocalizationService extends VexService {
      * {@code %formatted_amount%} as a compact gaming value such as {@code 10k} or {@code 1.5m}.</p>
      */
     Component format(VexPlayer player, CurrencyKey currency, WholeAmount amount);
+
+    /** Formats an amount in an explicit language without requiring a loaded player. */
+    Component format(LanguageKey language, CurrencyKey currency, WholeAmount amount);
 }

@@ -101,6 +101,11 @@ public final class CurrencyReward implements Reward {
         }
 
         @Override
+        public boolean changesInventory() {
+            return false;
+        }
+
+        @Override
         public RewardResult grant(final PlayerExecutionContext context) {
             CurrencyBatchTransaction result =
                 context.player().getContainer(CurrencyContainer.class).depositAll(evaluate(context));

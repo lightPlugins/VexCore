@@ -1,7 +1,10 @@
 package dev.vexsoft.core.paper.inventory;
 
 import static dev.vexsoft.core.paper.inventory.ItemSaleSessionTest.proxy;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.inventory.element.RefreshableInventoryElement;
@@ -69,8 +72,8 @@ final class ItemDepositViewTest {
         assertTrue(fixture.session.inventory().isEmpty());
         assertEquals(2, fixture.refreshes);
         fixture.run();
-        fixture.data.restart();
-        fixture.data.session().close();
+        fixture.menu.onClose(fixture.context);
+        assertEquals(0, fixture.data.nativeSaves);
         assertEquals(8, fixture.data.storage.count());
     }
 
@@ -92,8 +95,8 @@ final class ItemDepositViewTest {
         assertEquals(4, fixture.session.inventory().getItem(1).getAmount());
         assertTrue(fixture.tasks.isEmpty());
         assertEquals(4, fixture.refreshes);
-        fixture.data.restart();
-        fixture.data.session().close();
+        fixture.menu.onClose(fixture.context);
+        assertEquals(0, fixture.data.nativeSaves);
         assertEquals(9, fixture.data.storage.count());
     }
 
@@ -130,18 +133,17 @@ final class ItemDepositViewTest {
     }
 
     @Test
-    void failedImmediateClickRollsBackCursorAndDeposit() {
+    void immediateClickDoesNotWriteNativePlayerData() {
         Fixture fixture = new Fixture();
         fixture.session.inventory().setItem(0, new ItemSaleSessionTest.Stack(9));
-        fixture.data.failNativeAt = fixture.data.nativeSaves + 1;
-        assertThrows(IllegalStateException.class,
-            () -> fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.LEFT)));
-        assertTrue(fixture.data.cursor.isEmpty());
-        assertEquals(9, fixture.session.inventory().getItem(0).getAmount());
+        fixture.menu.onInventoryClick(fixture.context, fixture.event(0, ClickType.LEFT));
+        assertEquals(9, fixture.data.cursor.getAmount());
+        assertTrue(fixture.session.inventory().isEmpty());
+        assertEquals(0, fixture.data.nativeSaves);
     }
 
     @Test
-    void storageOnlyDragRemainsNativeAndCheckpointsWithoutReplay() {
+    void storageOnlyDragRemainsNativeWithoutReplay() {
         Fixture fixture = new Fixture();
         fixture.data.cursor = new ItemSaleSessionTest.Stack(4);
         InventoryDragEvent event = fixture.drag(Map.of(54, new ItemSaleSessionTest.Stack(2),
@@ -154,8 +156,8 @@ final class ItemDepositViewTest {
         fixture.data.cursor = new ItemSaleSessionTest.Stack(0);
         fixture.run();
         assertEquals(4, fixture.data.storage.count());
-        fixture.data.restart();
-        fixture.data.session().close();
+        fixture.menu.onClose(fixture.context);
+        assertEquals(0, fixture.data.nativeSaves);
         assertEquals(4, fixture.data.storage.count());
     }
 
@@ -174,7 +176,7 @@ final class ItemDepositViewTest {
     }
 
     @Test
-    void nativeStorageClicksAreNotReplayedAndCheckpointTheResult() {
+    void nativeStorageClicksAreNotReplayed() {
         for (ClickType click : List.of(ClickType.LEFT, ClickType.RIGHT)) {
             Fixture fixture = new Fixture();
             fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
@@ -191,8 +193,8 @@ final class ItemDepositViewTest {
             fixture.run();
             assertEquals(picked, fixture.data.cursor.getAmount());
             assertEquals(9 - picked, fixture.data.storage.count());
-            fixture.data.restart();
-            fixture.data.session().close();
+            fixture.menu.onClose(fixture.context);
+            assertEquals(0, fixture.data.nativeSaves);
             assertEquals(9, fixture.data.storage.count());
         }
     }
@@ -214,13 +216,13 @@ final class ItemDepositViewTest {
         fixture.run();
         assertTrue(fixture.data.cursor.isEmpty());
         assertEquals(9, fixture.data.storage.slots[1].getAmount());
-        fixture.data.restart();
-        fixture.data.session().close();
+        fixture.menu.onClose(fixture.context);
+        assertEquals(0, fixture.data.nativeSaves);
         assertEquals(9, fixture.data.storage.count());
     }
 
     @Test
-    void closingAfterNativePickupPersistsItemsBeforeTheDeferredCheckpoint() {
+    void closingAfterNativePickupReturnsItemsBeforeDeferredFeedback() {
         Fixture fixture = new Fixture();
         fixture.data.storage.slots[0] = new ItemSaleSessionTest.Stack(9);
         InventoryClickEvent event = fixture.event(54, ClickType.LEFT);
@@ -232,8 +234,8 @@ final class ItemDepositViewTest {
         int saves = fixture.data.nativeSaves;
         fixture.run();
         assertEquals(saves, fixture.data.nativeSaves);
-        fixture.data.restart();
-        fixture.data.session().close();
+        fixture.menu.onClose(fixture.context);
+        assertEquals(0, fixture.data.nativeSaves);
         assertEquals(9, fixture.data.storage.count());
     }
 

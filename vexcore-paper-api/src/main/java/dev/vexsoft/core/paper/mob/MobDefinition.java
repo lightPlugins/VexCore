@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 
 /** Immutable defaults used to create non-persistent custom mob instances. */
 public final class MobDefinition {
@@ -15,8 +17,10 @@ public final class MobDefinition {
     private final EntityType entityType;
     private final double maxHealth;
     private final int damageCooldownTicks;
+    private final MobDamageCooldownResolver damageCooldownResolver;
     private final double scale;
     private final double movementSpeed;
+    private final double minimumFlightHeight;
     private final double rotationSpeed;
     private final double knockbackResistance;
     private final boolean baby;
@@ -38,11 +42,13 @@ public final class MobDefinition {
 
         maxHealth = positiveFinite(builder.maxHealth, "maxHealth");
         damageCooldownTicks = builder.damageCooldownTicks;
+        damageCooldownResolver = builder.damageCooldownResolver;
         if (damageCooldownTicks < 0) {
             throw new IllegalArgumentException("damageCooldownTicks must not be negative");
         }
         scale = positiveFinite(builder.scale, "scale");
         movementSpeed = nonNegativeFinite(builder.movementSpeed, "movementSpeed");
+        minimumFlightHeight = nonNegativeFinite(builder.minimumFlightHeight, "minimumFlightHeight");
         rotationSpeed = nonNegativeFinite(builder.rotationSpeed, "rotationSpeed");
         knockbackResistance = builder.knockbackResistance;
 
@@ -76,6 +82,7 @@ public final class MobDefinition {
             .damageCooldownTicks(damageCooldownTicks)
             .scale(scale)
             .movementSpeed(movementSpeed)
+            .minimumFlightHeight(minimumFlightHeight)
             .rotationSpeed(rotationSpeed)
             .knockbackResistance(knockbackResistance)
             .baby(baby)
@@ -86,6 +93,9 @@ public final class MobDefinition {
         glow().ifPresent(copy::glow);
         hologram().ifPresent(copy::hologram);
         initializer().ifPresent(copy::initializer);
+        if (damageCooldownResolver != null) {
+            copy.damageCooldownResolver(damageCooldownResolver);
+        }
         goals.forEach(copy::goal);
 
         return copy.build();
@@ -106,6 +116,16 @@ public final class MobDefinition {
         return damageCooldownTicks;
     }
 
+    /** Resolves an entity-hit cooldown for its direct source; zero delegates timing to the caller. */
+    public int damageCooldownTicks(final Entity directSource, final DamageCause cause) {
+        int ticks = damageCooldownResolver == null ? damageCooldownTicks
+            : damageCooldownResolver.resolve(directSource, cause);
+        if (ticks < 0) {
+            throw new IllegalArgumentException("Resolved damage cooldown must not be negative");
+        }
+        return ticks;
+    }
+
     /** Returns the initial native scale. */
     public double scale() {
         return scale;
@@ -114,6 +134,11 @@ public final class MobDefinition {
     /** Returns the logical movement speed consumed by navigation goals. */
     public double movementSpeed() {
         return movementSpeed;
+    }
+
+    /** Returns the minimum clearance above terrain for flying carriers; zero retains native height behavior. */
+    public double minimumFlightHeight() {
+        return minimumFlightHeight;
     }
 
     /** Returns the maximum rotation speed in degrees per second. */
@@ -189,8 +214,10 @@ public final class MobDefinition {
         private final EntityType entityType;
         private double maxHealth = 20.0D;
         private int damageCooldownTicks;
+        private MobDamageCooldownResolver damageCooldownResolver;
         private double scale = 1.0D;
         private double movementSpeed;
+        private double minimumFlightHeight;
         private double rotationSpeed = 180.0D;
         private double knockbackResistance = 1.0D;
         private boolean baby;
@@ -221,6 +248,12 @@ public final class MobDefinition {
             return this;
         }
 
+        /** Overrides entity-hit cooldowns by direct source while retaining the configured default. */
+        public Builder damageCooldownResolver(final MobDamageCooldownResolver resolver) {
+            damageCooldownResolver = Objects.requireNonNull(resolver, "resolver");
+            return this;
+        }
+
         /** Sets the native entity scale. */
         public Builder scale(final double value) {
             scale = value;
@@ -232,6 +265,12 @@ public final class MobDefinition {
         public Builder movementSpeed(final double value) {
             movementSpeed = value;
 
+            return this;
+        }
+
+        /** Sets the minimum clearance above terrain, applied only to flying carriers. */
+        public Builder minimumFlightHeight(final double value) {
+            minimumFlightHeight = value;
             return this;
         }
 

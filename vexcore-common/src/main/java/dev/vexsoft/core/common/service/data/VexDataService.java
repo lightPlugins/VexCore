@@ -1,11 +1,13 @@
 package dev.vexsoft.core.common.service.data;
 
+import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexClassFactory;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -29,6 +31,11 @@ public final class VexDataService implements DataService {
     @Override
     public CompletableFuture<Void> save(final UUID playerId) {
         return coordinator.save(playerId);
+    }
+
+    @Override
+    public <T> CompletableFuture<Optional<T>> readStored(final UUID playerId, final DataContainerKey<T> key) {
+        return coordinator.readStored(services.getOwner(), playerId, key);
     }
 
     @Override

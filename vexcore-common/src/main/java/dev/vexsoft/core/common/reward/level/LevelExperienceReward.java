@@ -54,6 +54,11 @@ public final class LevelExperienceReward implements Reward {
         }
 
         @Override
+        public boolean changesInventory() {
+            return false;
+        }
+
+        @Override
         public RewardResult grant(final PlayerExecutionContext context) {
             levels.addExperience(context.player(), id, evaluate(context));
             return RewardResult.success();

@@ -31,6 +31,18 @@ public final class VexComponentDataTest {
     }
 
     @Test
+    public void validatesNativeCooldownsInTicksWithAnOptionalSharedGroup() {
+        var group = new NamespacedKey("isles", "arkie-capsule");
+        var cooldown = new VexUseCooldown(200, group);
+
+        assertEquals(cooldown, VexComponentData.USE_COOLDOWN.normalize(cooldown));
+        assertEquals(VexComponentTarget.ITEM, VexComponentData.USE_COOLDOWN.getTarget());
+        assertEquals(1, new VexUseCooldown(1, null).ticks());
+        assertThrows(IllegalArgumentException.class, () -> new VexUseCooldown(0, group));
+        assertThrows(IllegalArgumentException.class, () -> new VexUseCooldown(-1, group));
+    }
+
+    @Test
     public void marksPresentationComponentsForPackets() {
         assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.DISPLAY_NAME.getTarget());
         assertEquals(VexComponentTarget.PACKET_PRESENTATION, VexComponentData.LORE.getTarget());

@@ -126,6 +126,10 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
             builder.itemModel(next.getItemModel());
         }
 
+        if (next.getPersistentItemModel() != null) {
+            builder.persistentItemModel(next.getPersistentItemModel());
+        }
+
         if (next.getTooltipStyle() != null) {
             builder.tooltipStyle(next.getTooltipStyle());
         }

@@ -17,6 +17,11 @@ public interface CompiledReward {
         return false;
     }
 
+    /** Returns whether granting this action may change native inventory slots or the cursor. */
+    default boolean changesInventory() {
+        return true;
+    }
+
     /** Executes an action reward. */
     default RewardResult grant(final PlayerExecutionContext context) {
         return RewardResult.skipped("Reward is a runtime contribution");

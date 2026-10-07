@@ -62,12 +62,17 @@ public final class VexEntityEffectPacketAdapterService implements EntityEffectPa
 
     @Override
     public void clearGlow(final Player viewer, final LivingEntity target) {
-        net.minecraft.world.entity.LivingEntity entity = requireTarget(viewer, target);
-
-        if (!glowTeams.remove(key(viewer.getUniqueId(), entity.getId()))) {
+        if (!glowTeams.remove(key(viewer.getUniqueId(), target.getEntityId()))) {
             return;
         }
 
+        // Scoreboard teams survive a world change, but the old world's entity metadata must not be sent.
+        if (!viewer.getWorld().equals(target.getWorld())) {
+            transport.send(viewer, V26_2GlowPackets.removeTeam(target.getEntityId()));
+            return;
+        }
+
+        net.minecraft.world.entity.LivingEntity entity = requireTarget(viewer, target);
         transport.sendBundle(
             viewer,
             List.of(V26_2GlowPackets.metadata(entity, entity.hasGlowingTag()), V26_2GlowPackets.removeTeam(entity))

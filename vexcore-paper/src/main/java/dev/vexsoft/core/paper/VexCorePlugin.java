@@ -38,7 +38,12 @@ import dev.vexsoft.core.common.service.messaging.VexMessagingService;
 import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
+import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
+import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
+import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.paper.commands.VexCoreCommand;
+import dev.vexsoft.core.paper.commands.VexCoreCurrencyCommand;
 import dev.vexsoft.core.paper.commands.VexCoreDebugCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLanguageCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
@@ -223,6 +228,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.registerQueuedServices();
         modules.enable(new LocalizationModule());
         modules.enable(new GameplayModule());
+        // Commands are bound after dependent plugins install their own owner-scoped currency facades.
+        coreServices.register(CurrencyRegistry.class, VexCurrencyRegistry.class);
+        coreServices.register(CurrencyLocalizationService.class, VexCurrencyLocalizationService.class);
         modules.enable(new PacketModule(this));
         modules.enable(new NmsModule(this));
         modules.enable(new DialogModule());
@@ -276,6 +284,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(MessagingService.class).register(VexPlayerDirectoryListResponseHandler.class);
         coreServices.require(DataService.class).register(VexCorePlayerData.class);
         coreServices.require(CommandService.class).register(VexCoreCommand.class);
+        coreServices.require(CommandService.class).register(VexCoreCurrencyCommand.class);
         coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
         coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
         coreServices.require(CommandService.class).register(VexCoreUiCommand.class);

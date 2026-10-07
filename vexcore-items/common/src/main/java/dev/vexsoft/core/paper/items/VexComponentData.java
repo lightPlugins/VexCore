@@ -23,6 +23,8 @@ public class VexComponentData<T> {
         VexComponentData::copyLore
     );
     public static final VexComponentData<Integer> MAX_STACK_SIZE = integer(VexComponentKey.MAX_STACK_SIZE, 1, 99);
+    public static final VexComponentData<VexUseCooldown> USE_COOLDOWN =
+        value(VexComponentKey.USE_COOLDOWN, VexComponentTarget.ITEM, VexUseCooldown.class);
     public static final VexComponentData<Integer> DAMAGE = integer(VexComponentKey.DAMAGE, 0, Integer.MAX_VALUE);
     public static final VexComponentData<Integer> MAX_DAMAGE =
         integer(VexComponentKey.MAX_DAMAGE, 1, Integer.MAX_VALUE);

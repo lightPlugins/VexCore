@@ -1,0 +1,12 @@
+vexcore:
+  currency:
+    given: '<tailwind:lime>Gutschrift erfolgreich:<tailwind:zinc:4> %value% <tailwind:zinc:4>für <tailwind:violet:5>%player%<tailwind:zinc:4>.'
+    received: '<tailwind:zinc:4>Du hast %value% <tailwind:lime>erhalten<tailwind:zinc:4>.'
+    balance: '<tailwind:zinc:4>Guthaben von <tailwind:violet:5>%player%<tailwind:zinc:4>: %value%'
+    unknown: '<tailwind:red>Die Währung <tailwind:red:7>%currency%<tailwind:red> ist nicht registriert.'
+    ambiguous: '<tailwind:red>Die Währung <tailwind:red:7>%currency%<tailwind:red> ist mehrdeutig. Verwende die vollständige ID mit Punkt aus der Tab-Vervollständigung.'
+    invalid-amount: '<tailwind:red>Gib eine positive ganze Menge ein, beispielsweise <tailwind:red:7>250, 5m oder 15aa<tailwind:red>.'
+    player-only: '<tailwind:red>Gib einen Zielspieler an, wenn du diesen Befehl über die Konsole ausführst.'
+    player-offline: '<tailwind:red>Der Spieler <tailwind:red:7>%player%<tailwind:red> ist nicht online oder seine Daten sind noch nicht geladen.'
+    maximum-exceeded: '<tailwind:red>Die Gutschrift würde das Guthabenlimit überschreiten.'
+    unavailable: '<tailwind:red>Die Währung oder die Spielerdaten sind derzeit nicht verfügbar.'

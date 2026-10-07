@@ -4,6 +4,7 @@ import com.destroystokyo.paper.entity.Pathfinder;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.position.GroundPositionSafety;
+import dev.vexsoft.core.paper.nms.position.FlightPositionSafety;
 import java.util.EnumSet;
 import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.world.entity.Mob;
@@ -139,6 +140,14 @@ public final class V26_2RandomMovementGoal extends Goal {
 
             Location candidate = findGround(world, x, z, current.getBlockY());
 
+            if (candidate != null && handle.getNavigation() instanceof V26_2FlightNavigation navigation) {
+                double minimum = FlightPositionSafety.minimumY(candidate, navigation.minimumHeight());
+                if (!Double.isFinite(minimum)) {
+                    continue;
+                }
+                candidate.setY(Math.max(candidate.getY(), Math.ceil(minimum)));
+            }
+
             if (candidate == null || candidate.distanceSquared(current) < 1.0D) {
                 continue;
             }
@@ -218,6 +227,9 @@ public final class V26_2RandomMovementGoal extends Goal {
 
         int minimumY = origin.getBlockY() + spec.minimumYOffset();
         int maximumY = origin.getBlockY() + spec.maximumYOffset();
+        double flightHeight = handle.getNavigation() instanceof V26_2FlightNavigation navigation
+            ? navigation.minimumHeight() : 0.0D;
+        maximumY += (int) Math.ceil(flightHeight);
 
         for (Location point : path.getPoints()) {
             if (point.getBlockY() < minimumY || point.getBlockY() > maximumY) {
@@ -225,6 +237,16 @@ public final class V26_2RandomMovementGoal extends Goal {
             }
 
             Material support = point.getBlock().getRelative(0, -1, 0).getType();
+            if (flightHeight > 0.0D) {
+                for (int depth = 1; depth <= (int) Math.ceil(flightHeight) + 2; depth++) {
+                    var block = point.getWorld().getBlockAt(point.getBlockX(), point.getBlockY() - depth,
+                        point.getBlockZ());
+                    if (!block.isPassable() || block.isLiquid()) {
+                        support = block.getType();
+                        break;
+                    }
+                }
+            }
 
             if (spec.deniedSupportBlocks().contains(support) || (!spec.allowedSupportBlocks().isEmpty()
                 && !spec.allowedSupportBlocks().contains(support))) {
