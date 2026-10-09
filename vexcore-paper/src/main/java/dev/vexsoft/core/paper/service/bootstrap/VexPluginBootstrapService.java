@@ -113,6 +113,8 @@ import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
 import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService;
 import dev.vexsoft.core.paper.service.reward.VexPlayerRewardTransactionService;
+import dev.vexsoft.core.paper.service.reward.RewardAnnouncementService;
+import dev.vexsoft.core.paper.service.reward.VexRewardAnnouncementService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
@@ -175,6 +177,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         checkedServices.register(LevelService.class, VexLevelService.class);
         checkedServices.register(LevelClaimService.class, VexLevelClaimService.class);
         checkedServices.register(PlayerRewardTransactionService.class, VexPlayerRewardTransactionService.class);
+        checkedServices.register(RewardAnnouncementService.class, VexRewardAnnouncementService.class);
         checkedServices.register(LevelInstanceService.class, VexLevelInstanceService.class);
         checkedServices.register(CraftingShortcutService.class, VexCraftingShortcutService.class);
         checkedServices.register(StatContributionRegistry.class, VexStatContributionRegistry.class);

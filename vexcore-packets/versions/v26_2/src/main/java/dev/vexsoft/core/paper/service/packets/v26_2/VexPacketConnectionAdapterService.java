@@ -3,13 +3,16 @@ package dev.vexsoft.core.paper.service.packets.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
+import dev.vexsoft.core.paper.packets.internal.OutboundPacketBatch;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.ChannelPromise;
+import io.netty.util.concurrent.PromiseCombiner;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -44,6 +47,18 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
         });
     }
 
+    @Override
+    public Set<Long> getSentChunkKeys(final Player player) {
+        var loader = ((CraftPlayer) player).getHandle().moonrise$getChunkLoader();
+        return loader == null ? Set.of() : Set.copyOf(loader.getSentChunksRaw());
+    }
+
+    @Override
+    public boolean isChunkSent(final Player player, final long key) {
+        var loader = ((CraftPlayer) player).getHandle().moonrise$getChunkLoader();
+        return loader != null && loader.getSentChunksRaw().contains(key);
+    }
+
     private static void addHandler(
         final ChannelPipeline pipeline,
         final UUID viewerId,
@@ -62,7 +77,15 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
             ) throws Exception {
                 Object result = handler.write(viewerId, message);
 
-                if (result != null) {
+                if (result instanceof OutboundPacketBatch batch) {
+                    PromiseCombiner writes = new PromiseCombiner(context.executor());
+                    for (Object packet : batch.packets()) {
+                        ChannelPromise part = context.newPromise();
+                        writes.add((io.netty.util.concurrent.Future<?>) part);
+                        super.write(context, packet, part);
+                    }
+                    writes.finish(promise);
+                } else if (result != null) {
                     super.write(context, result, promise);
                 } else {
                     promise.setSuccess();

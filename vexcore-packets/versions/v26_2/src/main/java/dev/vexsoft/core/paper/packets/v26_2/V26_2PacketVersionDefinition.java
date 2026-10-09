@@ -10,6 +10,7 @@ import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
 import dev.vexsoft.core.paper.packets.version.MinecraftVersion;
 import dev.vexsoft.core.paper.packets.version.PacketCapability;
 import dev.vexsoft.core.paper.packets.version.PacketComponent;
@@ -22,6 +23,7 @@ import dev.vexsoft.core.paper.service.packets.v26_2.VexItemMetaPacketAdapterServ
 import dev.vexsoft.core.paper.service.packets.v26_2.VexPacketConnectionAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexPacketTransportAdapterService;
 import dev.vexsoft.core.paper.service.packets.v26_2.VexRecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.service.packets.v26_2.VexVirtualBlockPacketAdapterService;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
@@ -98,5 +100,10 @@ public class V26_2PacketVersionDefinition implements PacketVersionDefinition {
     @Override
     public Class<? extends RecipeBookPacketAdapterService> getRecipeBookAdapter() {
         return VexRecipeBookPacketAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends VirtualBlockPacketAdapterService> getVirtualBlockAdapter() {
+        return VexVirtualBlockPacketAdapterService.class;
     }
 }

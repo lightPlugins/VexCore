@@ -13,6 +13,7 @@ import dev.vexsoft.core.currency.CurrencyKey;
 import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
+import dev.vexsoft.core.expression.ConstantExpression;
 import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.QuantifiedReward;
@@ -103,6 +104,14 @@ public final class CurrencyReward implements Reward {
         @Override
         public boolean changesInventory() {
             return false;
+        }
+
+        @Override
+        public CompiledReward prepare(final PlayerExecutionContext context) {
+            Map<Currency, CompiledExpression> fixed = new LinkedHashMap<>();
+            evaluate(context).forEach((currency, value) -> fixed.put(currency,
+                new ConstantExpression(new BigDecimal(value.toString()))));
+            return new Compiled(Map.copyOf(fixed), localizations);
         }
 
         @Override

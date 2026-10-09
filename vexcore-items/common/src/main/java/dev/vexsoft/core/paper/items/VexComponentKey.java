@@ -8,6 +8,7 @@ public enum VexComponentKey {
     LORE,
     MAX_STACK_SIZE,
     USE_COOLDOWN,
+    CAN_BREAK,
     DAMAGE,
     MAX_DAMAGE,
     ENCHANTMENTS,

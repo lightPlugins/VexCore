@@ -7,6 +7,7 @@ import dev.vexsoft.core.execution.TypedExecutionDescription;
 import dev.vexsoft.core.reward.CompiledRewards;
 import dev.vexsoft.core.reward.RewardContributions;
 import dev.vexsoft.core.reward.RewardExecutionReport;
+import dev.vexsoft.core.reward.PreparedRewards;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -17,6 +18,12 @@ public interface RewardService extends VexService {
 
     /** Compiles every direct key in a reward section. */
     CompiledRewards compile(ConfigurationSection section);
+
+    /** Selects action rewards once and freezes their randomly generated values. */
+    PreparedRewards prepareActions(CompiledRewards rewards, PlayerExecutionContext context);
+
+    /** Grants a prepared selection without evaluating its chances again. */
+    RewardExecutionReport grantPrepared(PreparedRewards rewards, PlayerExecutionContext context);
 
     /** Executes only action rewards and leaves reconstructable contributions untouched. */
     RewardExecutionReport grantActions(CompiledRewards rewards, PlayerExecutionContext context);

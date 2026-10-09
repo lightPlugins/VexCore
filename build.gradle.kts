@@ -44,6 +44,10 @@ subprojects {
             withSourcesJar()
         }
 
+        tasks.withType<JavaCompile>().configureEach {
+            options.encoding = "UTF-8"
+        }
+
         if (project.name !in setOf("vexcore-paper", "vexcore-velocity")) {
             pluginManager.apply("maven-publish")
             extensions.configure<PublishingExtension> {

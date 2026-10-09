@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.packets.version;
 /** Feature that a selected packet-version definition can provide. */
 public enum PacketCapability {
     BUNDLE_PACKETS,
+    VIRTUAL_BLOCKS,
     BLOCK_DISPLAYS,
     DISPLAY_ENTITIES,
     DISPLAY_PASSENGERS,

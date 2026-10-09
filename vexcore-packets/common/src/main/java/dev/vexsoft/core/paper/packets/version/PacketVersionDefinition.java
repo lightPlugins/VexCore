@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
 import java.util.Map;
 import java.util.Set;
 
@@ -50,4 +51,7 @@ public interface PacketVersionDefinition {
     Class<? extends InteractiveUiPacketAdapterService> getInteractiveUiAdapter();
     /** Returns the adapter for recipe-book visibility synchronization. */
     Class<? extends RecipeBookPacketAdapterService> getRecipeBookAdapter();
+
+    /** Returns the adapter for virtual blocks and prediction acknowledgements. */
+    Class<? extends VirtualBlockPacketAdapterService> getVirtualBlockAdapter();
 }

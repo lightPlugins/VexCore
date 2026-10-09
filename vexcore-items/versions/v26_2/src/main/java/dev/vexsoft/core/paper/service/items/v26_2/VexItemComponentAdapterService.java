@@ -4,6 +4,8 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.VexArmorTrim;
+import dev.vexsoft.core.paper.items.VexAdventureBlocks;
+import dev.vexsoft.core.paper.items.VexMiningTool;
 import dev.vexsoft.core.paper.items.VexComponentKey;
 import dev.vexsoft.core.paper.items.VexComponentTarget;
 import dev.vexsoft.core.paper.items.VexCustomModelData;
@@ -25,10 +27,22 @@ import io.papermc.paper.datacomponent.item.ItemAttributeModifiers;
 import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
+import io.papermc.paper.datacomponent.item.Tool;
 import io.papermc.paper.datacomponent.item.UseCooldown;
 import java.util.Map;
 import java.util.Objects;
+import java.util.List;
+import java.util.HashSet;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import io.papermc.paper.block.BlockPredicate;
+import io.papermc.paper.datacomponent.item.ItemAdventurePredicate;
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.TypedKey;
+import io.papermc.paper.registry.set.RegistrySet;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.util.TriState;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -41,6 +55,9 @@ import org.bukkit.inventory.meta.trim.ArmorTrim;
 @Dependencies
 @SuppressWarnings("UnstableApiUsage")
 public class VexItemComponentAdapterService implements ItemComponentAdapterService {
+
+    private final Map<VexAdventureBlocks, ItemAdventurePredicate> adventurePredicates = new ConcurrentHashMap<>();
+    private final Map<VexMiningTool, Tool> miningTools = new ConcurrentHashMap<>();
 
     public VexItemComponentAdapterService(final VexServiceRegistry services) {
         Objects.requireNonNull(services, "services");
@@ -69,6 +86,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
         switch (key) {
             case MAX_STACK_SIZE -> applyValue(itemStack, DataComponentTypes.MAX_STACK_SIZE, operation, Integer.class);
             case USE_COOLDOWN -> applyUseCooldown(itemStack, operation);
+            case CAN_BREAK -> applyAdventureBreaks(itemStack, operation);
             case DAMAGE -> applyValue(itemStack, DataComponentTypes.DAMAGE, operation, Integer.class);
             case MAX_DAMAGE -> applyValue(itemStack, DataComponentTypes.MAX_DAMAGE, operation, Integer.class);
             case ENCHANTMENT_GLINT ->
@@ -142,6 +160,73 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
         itemStack.setData(DataComponentTypes.USE_COOLDOWN, builder.build());
     }
 
+    private void applyAdventureBreaks(final ItemStack stack, final VexComponentOperation operation) {
+        if (operation.getType() != VexComponentOperationType.SET) {
+            applyWithoutValue(stack, DataComponentTypes.CAN_BREAK, operation);
+            return;
+        }
+        synchronizeAdventureBreaks(stack, (VexAdventureBlocks) operation.getValue());
+    }
+
+    @Override
+    public boolean synchronizeAdventureBreaks(final ItemStack stack, final VexAdventureBlocks value) {
+        if (adventurePredicates.size() >= 256 && !adventurePredicates.containsKey(value)) {
+            adventurePredicates.clear();
+        }
+        var expected = value.blocks().isEmpty() ? null : adventurePredicates.computeIfAbsent(value, allowed -> {
+            var keys = allowed.blocks().stream().sorted(Comparator.comparing(NamespacedKey::asString))
+                .map(key -> TypedKey.create(RegistryKey.BLOCK, Key.key(key.asString()))).toList();
+            return ItemAdventurePredicate.itemAdventurePredicate(List.of(
+                BlockPredicate.predicate().blocks(RegistrySet.keySet(RegistryKey.BLOCK, keys)).build()));
+        });
+        boolean changed = !Objects.equals(stack.getData(DataComponentTypes.CAN_BREAK), expected);
+        if (changed) {
+            if (expected == null) {
+                stack.unsetData(DataComponentTypes.CAN_BREAK);
+            } else {
+                stack.setData(DataComponentTypes.CAN_BREAK, expected);
+            }
+        }
+        var display = stack.getData(DataComponentTypes.TOOLTIP_DISPLAY);
+        if (expected != null && (display == null || !display.hiddenComponents().contains(DataComponentTypes.CAN_BREAK))) {
+            var hidden = new HashSet<DataComponentType>(display == null ? Set.of() : display.hiddenComponents());
+            hidden.add(DataComponentTypes.CAN_BREAK);
+            stack.setData(DataComponentTypes.TOOLTIP_DISPLAY, TooltipDisplay.tooltipDisplay()
+                .hideTooltip(display != null && display.hideTooltip())
+                .addHiddenComponents(hidden.toArray(DataComponentType[]::new)).build());
+            changed = true;
+        }
+        return changed;
+    }
+
+    @Override
+    public boolean synchronizeMiningTool(final ItemStack stack, final VexMiningTool value) {
+        if (miningTools.size() >= 256 && !miningTools.containsKey(value)) {
+            miningTools.clear();
+        }
+        Tool expected = miningTools.computeIfAbsent(value, plan -> {
+            var builder = Tool.tool().defaultMiningSpeed(1).damagePerBlock(0);
+            var entries = plan.ticks().entrySet().stream()
+                .sorted(Comparator.comparing(entry -> entry.getKey().asString())).toList();
+            for (var entry : entries) {
+                var key = TypedKey.create(RegistryKey.BLOCK, Key.key(entry.getKey().asString()));
+                float hardness = Registry.BLOCK.getOrThrow(entry.getKey()).getHardness();
+                if (!Float.isFinite(hardness) || hardness < 0) {
+                    throw new IllegalArgumentException("Mining rule requires a breakable block: " + entry.getKey());
+                }
+                // Correct-tool progress is speed / hardness / 30. Vanilla handles air/water penalties on both sides.
+                float speed = hardness == 0 ? 1 : (float) (hardness * 30.0D / entry.getValue());
+                builder.addRule(Tool.rule(RegistrySet.keySet(RegistryKey.BLOCK, List.of(key)), speed, TriState.TRUE));
+            }
+            return builder.build();
+        });
+        if (Objects.equals(stack.getData(DataComponentTypes.TOOL), expected)) {
+            return false;
+        }
+        stack.setData(DataComponentTypes.TOOL, expected);
+        return true;
+    }
+
     private void applyCustomModelData(final ItemStack itemStack, final VexComponentOperation operation) {
         if (operation.getType() != VexComponentOperationType.SET) {
             applyWithoutValue(itemStack, DataComponentTypes.CUSTOM_MODEL_DATA, operation);
@@ -211,6 +296,7 @@ public class VexItemComponentAdapterService implements ItemComponentAdapterServi
             case UNBREAKABLE -> DataComponentTypes.UNBREAKABLE;
             case ENCHANTMENTS -> DataComponentTypes.ENCHANTMENTS;
             case DAMAGE -> DataComponentTypes.DAMAGE;
+            case CAN_BREAK -> DataComponentTypes.CAN_BREAK;
             default -> throw new IllegalArgumentException("Unsupported appearance component: " + key);
         };
     }

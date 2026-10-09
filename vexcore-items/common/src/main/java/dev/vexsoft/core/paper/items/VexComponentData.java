@@ -25,6 +25,8 @@ public class VexComponentData<T> {
     public static final VexComponentData<Integer> MAX_STACK_SIZE = integer(VexComponentKey.MAX_STACK_SIZE, 1, 99);
     public static final VexComponentData<VexUseCooldown> USE_COOLDOWN =
         value(VexComponentKey.USE_COOLDOWN, VexComponentTarget.ITEM, VexUseCooldown.class);
+    public static final VexComponentData<VexAdventureBlocks> CAN_BREAK =
+        value(VexComponentKey.CAN_BREAK, VexComponentTarget.ITEM, VexAdventureBlocks.class);
     public static final VexComponentData<Integer> DAMAGE = integer(VexComponentKey.DAMAGE, 0, Integer.MAX_VALUE);
     public static final VexComponentData<Integer> MAX_DAMAGE =
         integer(VexComponentKey.MAX_DAMAGE, 1, Integer.MAX_VALUE);

@@ -6,6 +6,8 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
+import dev.vexsoft.core.expression.ConstantExpression;
+import java.math.BigDecimal;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
@@ -43,9 +45,33 @@ public final class VaultCoinReward implements Reward {
         }
 
         @Override
+        public boolean supportsPlayerRollback() {
+            return true;
+        }
+
+        @Override
+        public boolean changesInventory() {
+            return false;
+        }
+
+        @Override
+        public CompiledReward prepare(final PlayerExecutionContext context) {
+            return new Compiled(new ConstantExpression(BigDecimal.valueOf(evaluate(context))), economy);
+        }
+
+        @Override
         public RewardResult grant(final PlayerExecutionContext context) {
             double evaluated = evaluate(context);
             EconomyService.EconomyTransaction result = economy.deposit(context.player(), evaluated);
+
+            if (result.successful()) {
+                context.player().afterRollback(() -> {
+                    var compensation = economy.withdraw(context.player(), evaluated);
+                    if (!compensation.successful()) {
+                        throw new IllegalStateException("Cannot compensate Vault coin reward: " + compensation.message());
+                    }
+                });
+            }
 
             return result.successful() ? RewardResult.success() : RewardResult.failed(result.message());
         }

@@ -5,11 +5,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.junit.jupiter.api.Test;
 
 public final class VexComponentDataTest {
+
+    @Test
+    public void adventureBreakingUsesImmutablePhysicalCarrierKeysAndCanHideItsNativeTooltip() {
+        var source = new HashSet<>(Set.of(NamespacedKey.minecraft("coal_ore")));
+        var value = VexComponentData.CAN_BREAK.normalize(new VexAdventureBlocks(source));
+        source.clear();
+        assertEquals(Set.of(NamespacedKey.minecraft("coal_ore")), value.blocks());
+        assertEquals(VexComponentTarget.ITEM, VexComponentData.CAN_BREAK.getTarget());
+        assertThrows(IllegalArgumentException.class, () -> new VexAdventureBlocks(Set.of(new NamespacedKey("nexo", "ore"))));
+        assertEquals(Set.of(VexComponentKey.CAN_BREAK),
+            new VexTooltipDisplay(false, Set.of(VexComponentKey.CAN_BREAK)).hiddenComponents());
+        assertEquals(Set.of(), new VexAdventureBlocks(Set.of()).blocks());
+    }
 
     @Test
     public void copiesLoreBeforeStoringIt() {

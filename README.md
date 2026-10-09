@@ -572,3 +572,9 @@ Call spawn(viewer, center, BobRotation), armor(handle, bootsToHelmet), and anima
 viewer thread from the feature's existing visual loop. The position is the body's center; the adapter
 converts to feet. Equipment packets are sent only on changes. Call remove on range exit; owner shutdown,
 quit, respawn, and world changes also retire handles. isActive lets feature runtimes detect retirement.
+
+### Shared rewards and resource providers
+
+Named rewards support independent chances, upgraded item bundles, frozen preparation for retries, transactional inventory
+delivery, private overflow and grouped announcements. Namespace adapters expose existing plugin item and block factories.
+See [shared rewards and resource providers](docs/rewards.md) for the API contracts and reusable YAML format.

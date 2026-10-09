@@ -4,7 +4,6 @@ import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packet.PacketVersions;
 import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
@@ -13,12 +12,13 @@ import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketVersionService;
 import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockService;
+import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
 import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
-import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
-import dev.vexsoft.core.paper.service.packets.VexVirtualPassengerOverlayService;
 import dev.vexsoft.core.paper.service.packets.connection.PacketConnectionService;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionListener;
 import dev.vexsoft.core.paper.service.packets.connection.VexPacketConnectionService;
@@ -26,6 +26,9 @@ import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerServ
 import dev.vexsoft.core.paper.service.packets.interaction.VexInteractionTrackerService;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.packets.item.VexFakeItemMetaStoreService;
+import dev.vexsoft.core.paper.service.packets.VexPacketVersionService;
+import dev.vexsoft.core.paper.service.packets.VexVirtualBlockService;
+import dev.vexsoft.core.paper.service.packets.VexVirtualPassengerOverlayService;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -50,6 +53,8 @@ public final class PacketModule implements VexModule {
         PacketVersionDefinition definition = PacketVersions.select(services);
 
         services.register(PacketTransportAdapterService.class, definition.getTransportAdapter());
+        services.register(VirtualBlockService.class, VexVirtualBlockService.class);
+        services.register(VirtualBlockPacketAdapterService.class, definition.getVirtualBlockAdapter());
         services.register(RecipeBookPacketAdapterService.class, definition.getRecipeBookAdapter());
         services.register(DisplayPacketAdapterService.class, definition.getDisplayAdapter());
         services.register(VirtualPassengerOverlayService.class, VexVirtualPassengerOverlayService.class);

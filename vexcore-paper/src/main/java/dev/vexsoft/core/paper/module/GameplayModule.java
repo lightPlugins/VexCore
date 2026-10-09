@@ -54,6 +54,13 @@ import dev.vexsoft.core.paper.cost.coin.VaultCoinCost;
 import dev.vexsoft.core.paper.requirement.coin.VaultCoinRequirement;
 import dev.vexsoft.core.paper.requirement.permission.PermissionRequirement;
 import dev.vexsoft.core.paper.reward.coin.VaultCoinReward;
+import dev.vexsoft.core.paper.reward.item.ItemReward;
+import dev.vexsoft.core.paper.service.reward.RewardItemService;
+import dev.vexsoft.core.paper.service.reward.VexRewardItemService;
+import dev.vexsoft.core.paper.service.reward.PrivateRewardItemListener;
+import dev.vexsoft.core.paper.service.block.ResourceBlockService;
+import dev.vexsoft.core.paper.service.block.VexResourceBlockService;
+import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.economy.EconomyService;
 import dev.vexsoft.core.paper.service.economy.VexVaultEconomyService;
 import dev.vexsoft.core.stats.StatContainer;
@@ -80,6 +87,8 @@ public final class GameplayModule implements VexModule {
         services.register(ExpressionService.class, VexExpressionService.class);
         services.register(RewardRegistry.class, VexRewardRegistry.class);
         services.register(RewardService.class, VexRewardService.class);
+        services.register(RewardItemService.class, VexRewardItemService.class);
+        services.register(ResourceBlockService.class, VexResourceBlockService.class);
         services.register(CostRegistry.class, VexCostRegistry.class);
         services.register(CostService.class, VexCostService.class);
         services.register(RequirementRegistry.class, VexRequirementRegistry.class);
@@ -108,6 +117,15 @@ public final class GameplayModule implements VexModule {
     }
 
     @Override
+    public void start() {
+        if (services == null) {
+            throw new IllegalStateException("GameplayModule has not been loaded yet");
+        }
+
+        services.require(ListenerService.class).register(PrivateRewardItemListener.class, services);
+    }
+
+    @Override
     public void disable() {
         if (services != null) {
             services.unregisterOwnedServices();
@@ -122,6 +140,7 @@ public final class GameplayModule implements VexModule {
     private void registerBuiltInTypes() {
         services.require(RewardRegistry.class).register("stats", StatReward.class);
         services.require(RewardRegistry.class).register("currencies", CurrencyReward.class);
+        services.require(RewardRegistry.class).register("items", ItemReward.class);
         services.require(CostRegistry.class).register("currencies", CurrencyCost.class);
         RequirementRegistry requirements = services.require(RequirementRegistry.class);
 

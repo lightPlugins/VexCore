@@ -8,18 +8,20 @@ import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.VirtualBlockService;
 import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.service.packets.interaction.InteractionTrackerService;
 import dev.vexsoft.core.paper.service.packets.interaction.TrackedInteraction;
 import dev.vexsoft.core.paper.service.packets.item.FakeItemMetaStoreService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
-import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
 import java.util.ArrayDeque;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -32,7 +34,9 @@ import org.bukkit.entity.Player;
     FakeItemMetaStoreService.class,
     ScheduleService.class,
     InteractiveUiCoordinatorService.class,
-    VirtualPassengerOverlayService.class
+    VirtualPassengerOverlayService.class,
+    VirtualBlockService.class,
+    VirtualBlockPacketAdapterService.class
 })
 public final class VexPacketConnectionService implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
 
@@ -44,6 +48,8 @@ public final class VexPacketConnectionService implements PacketConnectionService
     private final ScheduleService scheduler;
     private final InteractiveUiCoordinatorService interactiveUi;
     private final VirtualPassengerOverlayService virtualPassengers;
+    private final VirtualBlockService virtualBlocks;
+    private final VirtualBlockPacketAdapterService virtualBlockPackets;
     private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Object> sessions = new ConcurrentHashMap<>();
 
@@ -56,6 +62,8 @@ public final class VexPacketConnectionService implements PacketConnectionService
         this.scheduler = services.require(ScheduleService.class);
         this.interactiveUi = services.require(InteractiveUiCoordinatorService.class);
         this.virtualPassengers = services.require(VirtualPassengerOverlayService.class);
+        this.virtualBlocks = services.require(VirtualBlockService.class);
+        this.virtualBlockPackets = services.require(VirtualBlockPacketAdapterService.class);
     }
 
     @Override
@@ -66,6 +74,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
             return;
         }
         virtualPassengers.removeViewer(viewerId);
+        virtualBlocks.bind(viewerId, player.getWorld().getKey().asString());
         connection.inject(player, new PacketDuplexHandler() {
             @Override
             public Object write(final UUID viewer, final Object packet) {
@@ -84,6 +93,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
         sessions.remove(player.getUniqueId());
         pending.remove(player.getUniqueId());
         virtualPassengers.removeViewer(player.getUniqueId());
+        virtualBlocks.disconnect(player.getUniqueId());
         connection.uninject(player);
     }
 
@@ -91,12 +101,13 @@ public final class VexPacketConnectionService implements PacketConnectionService
     public Object write(final UUID viewerId, final Object packet) {
         Object rewritten = interactiveUi.preserveTarget(viewerId,
             itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore));
-        return virtualPassengers.rewriteOutbound(viewerId, rewritten);
+        return virtualBlockPackets.rewrite(viewerId, virtualPassengers.rewriteOutbound(viewerId, rewritten));
     }
 
     @Override
     public Object read(final UUID viewerId, final Object packet) {
         Object sanitized = itemMeta.sanitizeInbound(viewerId, packet, itemMetaStore);
+        virtualBlockPackets.predict(viewerId, sanitized);
 
         if (interactiveUi.consume(viewerId, sanitized)) {
             return null;

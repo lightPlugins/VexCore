@@ -8,6 +8,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.level.LevelExecutionText;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
+import dev.vexsoft.core.expression.ConstantExpression;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
@@ -56,6 +57,11 @@ public final class LevelExperienceReward implements Reward {
         @Override
         public boolean changesInventory() {
             return false;
+        }
+
+        @Override
+        public CompiledReward prepare(final PlayerExecutionContext context) {
+            return new Compiled(id, new ConstantExpression(BigDecimal.valueOf(evaluate(context))), levels, localizations);
         }
 
         @Override

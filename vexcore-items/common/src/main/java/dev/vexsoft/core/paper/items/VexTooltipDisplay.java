@@ -16,7 +16,8 @@ public record VexTooltipDisplay(boolean hideTooltip, Set<VexComponentKey> hidden
                 VexComponentKey.UNBREAKABLE,
                 VexComponentKey.ATTRIBUTE_MODIFIERS,
                 VexComponentKey.ENCHANTMENTS,
-                VexComponentKey.DAMAGE
+                VexComponentKey.DAMAGE,
+                VexComponentKey.CAN_BREAK
             ).contains(key)) {
                 throw new IllegalArgumentException("Unsupported hidden tooltip component: " + key);
             }

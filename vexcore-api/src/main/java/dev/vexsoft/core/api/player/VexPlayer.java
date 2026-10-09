@@ -39,6 +39,7 @@ public final class VexPlayer {
     private volatile PlayerContainer[] featureContainers = EMPTY_FEATURE_CONTAINERS;
     private volatile Object platformPlayer;
     private List<Runnable> committedEffects;
+    private List<Runnable> rollbackEffects;
     private Map<DataContainerKey<?>, ContainerSnapshot<Object>> transactionSnapshots;
     private Function<Object, Object> transactionCopier;
 
@@ -57,16 +58,27 @@ public final class VexPlayer {
             transactionCopier = Objects.requireNonNull(copier, "copier");
             transactionSnapshots = before;
             committedEffects = new ArrayList<>();
+            rollbackEffects = new ArrayList<>();
 
             try {
                 success = operation.getAsBoolean();
             } finally {
                 effects = committedEffects;
                 committedEffects = null;
+                List<Runnable> compensations = rollbackEffects;
+                rollbackEffects = null;
                 transactionSnapshots = null;
                 transactionCopier = null;
 
                 if (!success) {
+                    for (Runnable compensation : compensations.reversed()) {
+                        try {
+                            compensation.run();
+                        } catch (RuntimeException failure) {
+                            System.getLogger(VexPlayer.class.getName()).log(System.Logger.Level.ERROR,
+                                "Player transaction compensation failed for " + uniqueId, failure);
+                        }
+                    }
                     before.forEach((key, snapshot) -> {
                         if (stateUnchecked(key).snapshot(ignored -> null).getRevision() != snapshot.getRevision()) {
                             restoreValue(key, snapshot.getValue());
@@ -107,6 +119,14 @@ public final class VexPlayer {
         }
 
         effect.run();
+    }
+
+    /** Registers an external compensation for the active transaction; standalone successful actions need no undo. */
+    public synchronized void afterRollback(final Runnable effect) {
+        Objects.requireNonNull(effect, "effect");
+        if (rollbackEffects != null) {
+            rollbackEffects.add(effect);
+        }
     }
 
     private <T> void restoreValue(final DataContainerKey<T> key, final Object value) {

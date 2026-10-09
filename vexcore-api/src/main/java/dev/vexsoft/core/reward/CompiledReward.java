@@ -9,10 +9,20 @@ import net.kyori.adventure.text.Component;
 /** Runtime representation of one compiled reward entry. */
 public interface CompiledReward {
 
+    /** Returns the shared chance and announcement settings for this entry. */
+    default RewardOptions getOptions() {
+        return RewardOptions.guaranteed();
+    }
+
+    /** Freezes any randomly generated amounts or item identities before an action is granted. */
+    default CompiledReward prepare(final PlayerExecutionContext context) {
+        return this;
+    }
+
     /** Returns whether this reward is an action or a reconstructable contribution. */
     RewardBehavior getBehavior();
 
-    /** True only for actions confined to player data/inventory with deferred external notifications. */
+    /** True for actions with player rollback or registered external compensations and deferred notifications. */
     default boolean supportsPlayerRollback() {
         return false;
     }

@@ -31,6 +31,7 @@ import dev.vexsoft.core.paper.command.suggestion.SuggestionProvider;
 import dev.vexsoft.core.paper.service.world.WorldService;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,6 +52,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -84,7 +86,8 @@ public final class VexCommandService implements CommandService {
         Map.entry(float.class, Float::parseFloat),
         Map.entry(Float.class, Float::parseFloat),
         Map.entry(UUID.class, UUID::fromString),
-        Map.entry(Duration.class, VexCommandService::parseDuration)
+        Map.entry(Duration.class, VexCommandService::parseDuration),
+        Map.entry(NamespacedKey.class, VexCommandService::parseKey)
     );
 
     private final VexServiceRegistry services;
@@ -305,6 +308,8 @@ public final class VexCommandService implements CommandService {
 
         if (customArgument != null) {
             builder = argument(name, customArgument);
+        } else if (type == NamespacedKey.class) {
+            builder = argument(name, ArgumentTypes.namespacedKey());
         } else if (type == int.class || type == Integer.class) {
             builder = argument(name, IntegerArgumentType.integer());
         } else if (type == long.class || type == Long.class) {
@@ -471,6 +476,10 @@ public final class VexCommandService implements CommandService {
             return customArgument.read(context, name);
         }
 
+        if (type == NamespacedKey.class) {
+            return context.getArgument(name, NamespacedKey.class);
+        }
+
         String raw = StringArgumentType.getString(context, name);
 
         if (type == Player.class) {
@@ -544,6 +553,14 @@ public final class VexCommandService implements CommandService {
         }
 
         return null;
+    }
+
+    private static NamespacedKey parseKey(final String input) {
+        NamespacedKey key = NamespacedKey.fromString(input);
+        if (key == null) {
+            throw new IllegalArgumentException("Invalid namespaced key: " + input);
+        }
+        return key;
     }
 
     private static Duration parseDuration(final String input) {
