@@ -11,10 +11,10 @@ import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
 import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.bukkit.entity.Player;
@@ -118,7 +118,12 @@ public final class ItemReward implements Reward {
     }
 
     private record Prepared(List<ItemStack> stacks, List<Component> descriptions,
-                            RewardItemService items) implements CompiledReward {
+                            RewardItemService items) implements PreparedItemReward {
+
+        @Override
+        public List<ItemStack> preparedItems() {
+            return stacks.stream().map(ItemStack::clone).toList();
+        }
 
         @Override
         public RewardBehavior getBehavior() {
