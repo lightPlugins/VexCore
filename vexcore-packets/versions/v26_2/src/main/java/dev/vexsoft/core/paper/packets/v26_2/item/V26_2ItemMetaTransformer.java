@@ -60,29 +60,30 @@ public final class V26_2ItemMetaTransformer {
     ItemStack sanitize(final ItemStack item, final FakeItemMetaRule rule) {
         ItemStack copy = item.copy();
 
+        // Removing default components creates negative patches that prevent stacking with ordinary items.
         if (rule.getDisplayName() != null) {
-            copy.remove(DataComponents.CUSTOM_NAME);
+            copy.set(DataComponents.CUSTOM_NAME, copy.getPrototype().get(DataComponents.CUSTOM_NAME));
         }
 
         if (rule.getItemModel() != null) {
             // Client presentation may override a real item model; only the transient override is disposable.
             if (rule.getPersistentItemModel() == null) {
-                copy.remove(DataComponents.ITEM_MODEL);
+                copy.set(DataComponents.ITEM_MODEL, copy.getPrototype().get(DataComponents.ITEM_MODEL));
             } else {
                 copy.set(DataComponents.ITEM_MODEL, Identifier.parse(rule.getPersistentItemModel().asString()));
             }
         }
 
         if (rule.getLore() != null) {
-            copy.remove(DataComponents.LORE);
+            copy.set(DataComponents.LORE, copy.getPrototype().get(DataComponents.LORE));
         }
 
         if (rule.getTooltipStyle() != null) {
-            copy.remove(DataComponents.TOOLTIP_STYLE);
+            copy.set(DataComponents.TOOLTIP_STYLE, copy.getPrototype().get(DataComponents.TOOLTIP_STYLE));
         }
 
         if (rule.isHideVanillaDetails()) {
-            copy.remove(DataComponents.TOOLTIP_DISPLAY);
+            copy.set(DataComponents.TOOLTIP_DISPLAY, copy.getPrototype().get(DataComponents.TOOLTIP_DISPLAY));
         }
 
         return copy;

@@ -1,16 +1,22 @@
 package dev.vexsoft.core.paper.packets.v26_2.item;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
 import dev.vexsoft.core.paper.packets.item.FakeItemLoreMode;
+import java.util.LinkedHashSet;
 import java.util.List;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentInitializers;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
@@ -18,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.TooltipDisplay;
 import org.bukkit.NamespacedKey;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -31,6 +38,46 @@ public final class V26_2ItemMetaTransformerTest {
     static void bootstrap() {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup())
+            .forEach(DataComponentInitializers.PendingComponents::apply);
+    }
+
+    @Test
+    void creativeVanillaItemsStackWithNormalItemsAfterPresentationIsSanitized() {
+        var preview = new NamespacedKey("isles", "preview");
+        var tooltip = new NamespacedKey("isles", "tooltip");
+        var rule = FakeItemMetaRule.builder()
+            .displayName(net.kyori.adventure.text.Component.text("Rendered item"))
+            .lore(List.of(net.kyori.adventure.text.Component.text("Selling price")))
+            .loreMode(FakeItemLoreMode.REPLACE)
+            .itemModel(preview)
+            .tooltipStyle(tooltip)
+            .hideVanillaDetails(true)
+            .build();
+
+        for (var material : List.of(Items.IRON_INGOT, Items.STONE, Items.PAPER)) {
+            var normal = new ItemStack(material, 16);
+            var rendered = new ItemStack(material, 8);
+            rendered.set(DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Rendered item"));
+            rendered.set(DataComponents.LORE,
+                new ItemLore(List.of(net.minecraft.network.chat.Component.literal("Selling price"))));
+            rendered.set(DataComponents.ITEM_MODEL, Identifier.parse(preview.asString()));
+            rendered.set(DataComponents.TOOLTIP_STYLE, Identifier.parse(tooltip.asString()));
+            rendered.set(DataComponents.TOOLTIP_DISPLAY,
+                new TooltipDisplay(false, new LinkedHashSet<>(List.of(DataComponents.ENCHANTMENTS))));
+
+            assertEquals(ItemLore.EMPTY, normal.get(DataComponents.LORE));
+            assertEquals(TooltipDisplay.DEFAULT, normal.get(DataComponents.TOOLTIP_DISPLAY));
+            assertFalse(ItemStack.isSameItemSameComponents(normal, rendered));
+
+            var restored = transformer.sanitize(rendered, rule);
+
+            assertTrue(ItemStack.isSameItemSameComponents(normal, restored), material.toString());
+            assertEquals(normal.getComponentsPatch(), restored.getComponentsPatch());
+            assertEquals(8, restored.getCount());
+            assertEquals(16, normal.getCount());
+            assertEquals("Rendered item", rendered.get(DataComponents.CUSTOM_NAME).getString());
+        }
     }
 
     @Test
