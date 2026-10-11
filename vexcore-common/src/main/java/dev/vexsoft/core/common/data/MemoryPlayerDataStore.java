@@ -2,25 +2,30 @@ package dev.vexsoft.core.common.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.identity.PlayerIdentity;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
+import dev.vexsoft.core.api.player.profile.storage.StoredProfileDocument;
 import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
+import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
-public final class MemoryPlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore {
+public final class MemoryPlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore, ProfileDocumentStore {
 
     private final Map<String, Map<UUID, Map<String, String>>> values = new ConcurrentHashMap<>();
     private final Map<String, Map<UUID, String>> names = new ConcurrentHashMap<>();
@@ -29,6 +34,55 @@ public final class MemoryPlayerDataStore implements PlayerDataStore, GlobalDataS
     private final AtomicLong globalRevision = new AtomicLong();
     private final Map<UUID, PlayerIdentity> identities = new ConcurrentHashMap<>();
     private final Map<String, UUID> identityNames = new ConcurrentHashMap<>();
+    private final Map<ProfileDocumentKey, StoredProfileDocument> profileDocuments = new LinkedHashMap<>();
+
+    @Override
+    public CompletableFuture<Void> reconcileProfileDocuments() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public synchronized CompletableFuture<Map<ProfileDocumentKey, StoredProfileDocument>> loadProfileDocuments(
+        final Collection<ProfileDocumentKey> keys
+    ) {
+        if (keys.size() > 1024) {
+            throw new IllegalArgumentException("Profile read exceeds 1024 documents");
+        }
+        Map<ProfileDocumentKey, StoredProfileDocument> result = new LinkedHashMap<>();
+        for (ProfileDocumentKey key : keys) {
+            StoredProfileDocument document = profileDocuments.get(key);
+            if (document != null) {
+                result.put(key, document);
+            }
+        }
+        return CompletableFuture.completedFuture(Map.copyOf(result));
+    }
+
+    @Override
+    public synchronized CompletableFuture<Boolean> commitProfileDocuments(final Collection<ProfileDocumentChange> changes) {
+        var captured = List.copyOf(changes);
+        if (captured.size() > 1024 || captured.stream().map(ProfileDocumentChange::key).distinct().count() != captured.size()) {
+            throw new IllegalArgumentException("Invalid profile transaction size or duplicate key");
+        }
+        for (ProfileDocumentChange change : captured) {
+            StoredProfileDocument previous = profileDocuments.get(change.key());
+            if ((previous == null ? 0 : previous.revision()) != change.expectedRevision()
+                || change.notAfterEpochMillis() > 0 && System.currentTimeMillis() >= change.notAfterEpochMillis()) {
+                return CompletableFuture.completedFuture(false);
+            }
+        }
+        for (ProfileDocumentChange change : captured) {
+            if (change.value() != null) {
+                profileDocuments.put(change.key(), new StoredProfileDocument(change.value(), change.expectedRevision() + 1));
+            }
+        }
+        return CompletableFuture.completedFuture(true);
+    }
+
+    @Override
+    public CompletableFuture<Long> profileDatabaseTime() {
+        return CompletableFuture.completedFuture(System.currentTimeMillis());
+    }
 
     @Override
     public CompletableFuture<Void> reconcile(final String owner, final Collection<DataContainerKey<?>> keys) {
@@ -75,9 +129,9 @@ public final class MemoryPlayerDataStore implements PlayerDataStore, GlobalDataS
         Map<String, Map<String, String>> checked = new LinkedHashMap<>();
 
         owners.forEach((owner, values) -> checked.put(Objects.requireNonNull(owner), Map.copyOf(values)));
-        checked.forEach((owner, values) -> save(owner, uniqueId, playerName, values).join());
-
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.allOf(checked.entrySet().stream()
+            .map(entry -> save(entry.getKey(), uniqueId, playerName, entry.getValue()))
+            .toArray(CompletableFuture[]::new));
     }
 
     @Override

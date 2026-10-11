@@ -2,6 +2,8 @@ package dev.vexsoft.core.common.service.level;
 
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import dev.vexsoft.core.api.localization.LanguageContainer;
+import dev.vexsoft.core.api.player.profile.PlayerDataScope;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.level.LevelClaimService;
 import dev.vexsoft.core.api.service.level.LevelInstanceService;
@@ -15,7 +17,11 @@ import dev.vexsoft.core.api.service.reward.RewardRegistry;
 import dev.vexsoft.core.api.service.stats.contribution.StatContributionRegistry;
 import dev.vexsoft.core.common.requirement.level.LevelRequirement;
 import dev.vexsoft.core.common.reward.level.LevelExperienceReward;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.ScopedPlayerDataKeys;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.level.claim.LevelClaimBatchResult;
+import dev.vexsoft.core.level.claim.LevelClaimResult;
 import dev.vexsoft.core.level.ClaimedLevelOverflowPolicy;
 import dev.vexsoft.core.level.LevelClaimMode;
 import dev.vexsoft.core.level.LevelExperienceGain;
@@ -26,20 +32,18 @@ import dev.vexsoft.core.level.LevelProgress;
 import dev.vexsoft.core.level.LevelProgressAccess;
 import dev.vexsoft.core.level.LevelRequirementDefinition;
 import dev.vexsoft.core.level.LevelSnapshot;
-import dev.vexsoft.core.level.claim.LevelClaimBatchResult;
-import dev.vexsoft.core.level.claim.LevelClaimResult;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardContribution;
 import dev.vexsoft.core.reward.RewardContributions;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import net.kyori.adventure.text.Component;
 
 /** Owner-scoped instance runtime using VexCore player transactions and sequential claims. */
@@ -47,6 +51,8 @@ import net.kyori.adventure.text.Component;
 public final class VexLevelInstanceService implements LevelInstanceService {
 
     private static final System.Logger LOGGER = System.getLogger(VexLevelInstanceService.class.getName());
+    private static final ScopedPlayerDataKeys<LevelPlayerData> DATA_KEYS =
+        new ScopedPlayerDataKeys<>(LevelPlayerData.KEY, LevelPlayerData::new);
 
     private final LevelClaimService claims;
     private final VexServiceRegistry services;
@@ -94,7 +100,8 @@ public final class VexLevelInstanceService implements LevelInstanceService {
                 try {
                     replacement.add(new LevelInstance(
                         section.getString("id"), section.getString("name-key"),
-                        levels.compile(section)
+                        levels.compile(section), section.getString("profile-domain") == null ? PlayerDataScope.ACCOUNT
+                            : PlayerDataScope.profile(new ProfileDomain(section.getString("profile-domain")))
                     ));
                 } catch (IllegalArgumentException failure) {
                     throw new IllegalArgumentException(
@@ -150,6 +157,10 @@ public final class VexLevelInstanceService implements LevelInstanceService {
         Map<String, LevelInstance> replacement = new LinkedHashMap<>();
 
         for (LevelInstance instance : definitions) {
+            LevelInstance previous = instances.get(instance.id());
+            if (previous != null && !previous.dataScope().equals(instance.dataScope())) {
+                throw new IllegalArgumentException("Changing level scope requires an offline migration");
+            }
             if (instance.definition().claimMode() != LevelClaimMode.MANUAL
                 || instance.definition().overflowPolicy() != ClaimedLevelOverflowPolicy.KEEP) {
                 throw new IllegalArgumentException("Level instances require MANUAL claims and KEEP overflow policy");
@@ -171,6 +182,9 @@ public final class VexLevelInstanceService implements LevelInstanceService {
             }
         }
 
+        replacement.values().stream().map(LevelInstance::dataScope).filter(scope -> !scope.isAccount()).distinct()
+            .forEach(scope -> services.require(PlayerDataCoordinatorService.class).register(services.getOwner(),
+                registry -> registry.register(DATA_KEYS.key(scope))));
         instances = Collections.unmodifiableMap(replacement);
         if (registered) {
             services.find(StatContributionRegistry.class).ifPresent(registry ->
@@ -220,7 +234,7 @@ public final class VexLevelInstanceService implements LevelInstanceService {
                 throw new IllegalArgumentException("Experience overflow");
             }
             player.update(
-                LevelPlayerData.KEY, data -> {
+                DATA_KEYS.key(instance.dataScope()), data -> {
                     progress(data, instance).setExperience(total);
                 }
             );
@@ -334,7 +348,7 @@ public final class VexLevelInstanceService implements LevelInstanceService {
 
     private static LevelProgressAccess<LevelPlayerData> access(final LevelInstance instance) {
         return new LevelProgressAccess<>(
-            LevelPlayerData.KEY,
+            DATA_KEYS.key(instance.dataScope()),
             data -> {
                 LevelPlayerData.Progress stored = data.getInstances().get(instance.id());
                 int minimum = instance.definition().curve().getMinimumLevel();

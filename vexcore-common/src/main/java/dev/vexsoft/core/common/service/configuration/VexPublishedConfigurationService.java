@@ -11,13 +11,13 @@ import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 /** Database-backed published configuration service scoped to one plugin owner. */
 @Dependencies(PlayerDataStoreService.class)
@@ -60,8 +60,28 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
         }
 
         Registration<T> registration = new Registration<>(checkedType, key);
-        store.loadGlobalData(owner, key).join().ifPresent(stored -> registration.install(read(registration, stored), stored.revision()));
         registrations.put(checkedType, registration);
+        store.loadGlobalData(owner, key).thenAccept(stored -> {
+            if (registrations.get(checkedType) == registration) {
+                stored.ifPresent(value -> registration.install(read(registration, value), value.revision()));
+            }
+        }).whenComplete((ignored, failure) -> {
+            if (failure == null) {
+                registration.initialization.complete(null);
+            } else {
+                registration.initialization.completeExceptionally(failure);
+                if (configurationOwner != null) {
+                    configurationOwner.reportConfigurationWarning("Unable to initialize published configuration " + key,
+                        failure);
+                }
+            }
+        });
+    }
+
+    @Override
+    public CompletableFuture<Void> readiness() {
+        return CompletableFuture.allOf(registrations.values().stream().map(registration -> registration.initialization)
+            .toArray(CompletableFuture[]::new));
     }
 
     @Override
@@ -213,6 +233,7 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
         private final Class<T> type;
         private final String key;
         private final CopyOnWriteArrayList<Consumer<T>> listeners = new CopyOnWriteArrayList<>();
+        private final CompletableFuture<Void> initialization = new CompletableFuture<>();
         private volatile T value;
         private volatile long revision;
 
@@ -222,7 +243,7 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
         }
 
         private synchronized void install(final Payload payload, final long newRevision) {
-            if (newRevision <= revision) {
+            if (registrations.get(type) != this || newRevision <= revision) {
                 return;
             }
 

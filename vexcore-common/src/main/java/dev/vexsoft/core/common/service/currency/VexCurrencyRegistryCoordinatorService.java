@@ -3,6 +3,7 @@ package dev.vexsoft.core.common.service.currency;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.currency.Currency;
 import dev.vexsoft.core.currency.CurrencyDefinition;
 import dev.vexsoft.core.currency.CurrencyKey;
@@ -21,17 +22,26 @@ import java.util.Set;
 @Dependencies
 public final class VexCurrencyRegistryCoordinatorService implements CurrencyRegistryCoordinatorService {
 
+    private final VexServiceRegistry services;
+    private final ServiceOwner storageOwner;
+
     private final Map<CurrencyKey, RegisteredCurrency> currencies = new LinkedHashMap<>();
 
     /** Creates an empty service-managed currency registry. */
     public VexCurrencyRegistryCoordinatorService(final VexServiceRegistry services) {
-        Objects.requireNonNull(services, "services");
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
+        this.services = checked;
+        storageOwner = checked.getOwner();
     }
 
     @Override
     public synchronized Currency register(final ServiceOwner owner, final CurrencyDefinition definition) {
         String ownerName = ownerName(owner);
         CurrencyDefinition checked = requireOwned(ownerName, definition);
+        if (checked.getDataScope().domain().isPresent()) {
+            services.require(PlayerDataCoordinatorService.class).register(storageOwner,
+                registry -> registry.register(CurrencyPlayerData.key(checked)));
+        }
         RegisteredCurrency existing = currencies.get(checked.getKey());
 
         if (existing != null) {

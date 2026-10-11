@@ -4,14 +4,15 @@ import dev.vexsoft.core.api.configuration.VexConfiguration;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.data.global.GlobalDataStore;
+import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.PostgresPlayerDataStore;
 import dev.vexsoft.core.common.data.SqlitePlayerDataStore;
-import dev.vexsoft.core.common.data.global.GlobalDataStore;
-import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.Locale;
 import java.util.Objects;
 import lombok.Getter;
@@ -28,6 +29,9 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
     private final Duration loginTimeout;
     @Getter
     private final String loginKickMessage;
+    @Getter
+    private final CompletableFuture<Void> readiness;
+    private volatile CompletableFuture<Void> shutdownDrain = CompletableFuture.completedFuture(null);
 
     public VexPlayerDataStoreService(final VexServiceRegistry services) {
         VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
@@ -72,8 +76,10 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
             );
             default -> throw new IllegalArgumentException("Unsupported player data storage: " + storageType);
         };
-        ((GlobalDataStore) store).reconcileGlobalData().join();
-        ((PlayerIdentityStore) store).reconcilePlayerIdentities().join();
+        readiness = store.readiness().thenCompose(ignored -> CompletableFuture.allOf(
+            ((GlobalDataStore) store).reconcileGlobalData(),
+            ((PlayerIdentityStore) store).reconcilePlayerIdentities()
+        ));
     }
 
     @Override
@@ -87,8 +93,17 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
     }
 
     @Override
+    public void drainBeforeClose(final CompletableFuture<Void> drain) {
+        shutdownDrain = Objects.requireNonNull(drain, "drain");
+    }
+
+    @Override
     public void close() {
-        store.close();
+        // Keep queued writes alive during shutdown without blocking the server's tick thread.
+        Thread.ofPlatform().daemon(false).name("VexCore-storage-shutdown").start(() -> {
+            shutdownDrain.handle((ignored, failure) -> null).join();
+            store.close();
+        });
     }
 
     private Path sqliteFile(final Path configurationDirectory, final String configuredFile) {

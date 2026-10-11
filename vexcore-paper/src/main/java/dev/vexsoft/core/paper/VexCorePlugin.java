@@ -5,6 +5,8 @@ import dev.vexsoft.core.api.localization.LocalizationOwner;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
+import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
+import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
@@ -15,12 +17,16 @@ import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.player.PlayerContainerService;
 import dev.vexsoft.core.api.service.player.PlayerIdentityService;
+import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.configuration.VexConfigurationService;
 import dev.vexsoft.core.common.service.configuration.VexPublishedConfigurationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
+import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
 import dev.vexsoft.core.common.service.data.VexDataService;
 import dev.vexsoft.core.common.service.data.VexPlayerContainerService;
 import dev.vexsoft.core.common.service.globaldata.GlobalDataCoordinatorService;
@@ -38,23 +44,14 @@ import dev.vexsoft.core.common.service.messaging.VexMessagingService;
 import dev.vexsoft.core.common.service.placeholder.PlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.placeholder.VexPlaceholderRegistryCoordinatorService;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
-import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
-import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
-import dev.vexsoft.core.common.service.currency.VexCurrencyLocalizationService;
-import dev.vexsoft.core.common.service.currency.VexCurrencyRegistry;
 import dev.vexsoft.core.paper.commands.VexCoreCommand;
 import dev.vexsoft.core.paper.commands.VexCoreCurrencyCommand;
 import dev.vexsoft.core.paper.commands.VexCoreDebugCommand;
+import dev.vexsoft.core.paper.commands.VexCoreInteractiveUiCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLanguageCommand;
 import dev.vexsoft.core.paper.commands.VexCoreLocalizationCommand;
 import dev.vexsoft.core.paper.commands.VexCoreResetCommand;
 import dev.vexsoft.core.paper.commands.VexCoreUiCommand;
-import dev.vexsoft.core.paper.commands.VexCoreInteractiveUiCommand;
-import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
-import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiService;
-import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiDemoService;
-import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiService;
-import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiDemoService;
 import dev.vexsoft.core.paper.items.service.ItemService;
 import dev.vexsoft.core.paper.listener.VexPlayerLifecycleListener;
 import dev.vexsoft.core.paper.localization.LocalizationResourceScanner;
@@ -96,11 +93,16 @@ import dev.vexsoft.core.paper.service.commands.CommandService;
 import dev.vexsoft.core.paper.service.commands.VexCommandService;
 import dev.vexsoft.core.paper.service.dialogs.DialogService;
 import dev.vexsoft.core.paper.service.dialogs.VexDialogService;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryListResponseHandler;
+import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
 import dev.vexsoft.core.paper.service.directory.PlayerDirectoryCoordinatorService;
 import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryCoordinatorService;
 import dev.vexsoft.core.paper.service.directory.VexPlayerDirectoryService;
-import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryListResponseHandler;
-import dev.vexsoft.core.paper.service.directory.messaging.VexPlayerDirectoryResponseHandler;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiCoordinatorService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiDemoService;
+import dev.vexsoft.core.paper.service.interactiveui.InteractiveUiService;
+import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiDemoService;
+import dev.vexsoft.core.paper.service.interactiveui.VexInteractiveUiService;
 import dev.vexsoft.core.paper.service.inventory.InventoryService;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryListener;
 import dev.vexsoft.core.paper.service.inventory.VexInventoryService;
@@ -144,6 +146,12 @@ import dev.vexsoft.core.paper.service.placeholder.VexPlaceholderApiBridgeService
 import dev.vexsoft.core.paper.service.platform.PlatformService;
 import dev.vexsoft.core.paper.service.players.PaperPlayerService;
 import dev.vexsoft.core.paper.service.players.VexPaperPlayerService;
+import dev.vexsoft.core.paper.service.profile.ProfileItemListener;
+import dev.vexsoft.core.paper.service.profile.ProfileReadinessListener;
+import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
+import dev.vexsoft.core.paper.service.profile.ProfileWorldItemService;
+import dev.vexsoft.core.paper.service.profile.VexProfileSessionService;
+import dev.vexsoft.core.paper.service.profile.VexProfileWorldItemService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiCoordinatorService;
@@ -159,12 +167,12 @@ import dev.vexsoft.core.paper.service.signals.SignalRegistryService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.service.signals.VexSignalRegistryService;
 import dev.vexsoft.core.paper.service.signals.VexSignalService;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportArrivalHandler;
+import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportCompletionHandler;
 import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
 import dev.vexsoft.core.paper.service.teleport.TeleportCoordinatorService;
 import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
 import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
-import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportArrivalHandler;
-import dev.vexsoft.core.paper.service.teleport.messaging.VexTeleportCompletionHandler;
 import dev.vexsoft.core.paper.service.world.VexWorldService;
 import dev.vexsoft.core.paper.service.world.WorldService;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
@@ -172,11 +180,12 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import org.bukkit.plugin.ServicePriority;
+import java.util.Optional;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.ServicePriority;
 import org.jspecify.annotations.NonNull;
 
 public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwner, LocalizationOwner {
@@ -218,6 +227,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
         coreServices.registerQueuedServices();
         modules.enable(new PlayerModule(this));
+        // Gameplay rewards require native profile sessions during their own service registration phase.
+        coreServices.register(ProfileSessionService.class, VexProfileSessionService.class);
         coreServices.register(PublishedConfigurationService.class, VexPublishedConfigurationService.class);
         coreServices.register(GlobalDataCoordinatorService.class, VexGlobalDataCoordinatorService.class);
         coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
@@ -243,6 +254,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(PlayerDirectoryService.class, VexPlayerDirectoryService.class);
         coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
         coreServices.register(WorldService.class, VexWorldService.class);
+        coreServices.register(ProfileWorldItemService.class, VexProfileWorldItemService.class);
         coreServices.register(TeleportCoordinatorService.class, VexTeleportCoordinatorService.class);
         coreServices.register(PlayerTeleportService.class, VexPlayerTeleportService.class);
         coreServices.register(ProxyPingService.class, VexProxyPingService.class);
@@ -321,11 +333,16 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         PlayerDataCoordinatorService players = services.require(PlayerDataCoordinatorService.class);
 
         coreServices.require(ListenerService.class).register(VexPlayerLifecycleListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(ProfileReadinessListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(ProfileItemListener.class, coreServices);
         coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
         coreServices.require(ListenerService.class).register(VexPlayerDummyListener.class, coreServices);
         playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
             this,
-            task -> players.saveAll().exceptionally(throwable -> {
+            task -> CompletableFuture.allOf(players.getLoadedPlayers().stream()
+                .filter(player -> coreServices.require(ProfileSessionService.class).isReady(player))
+                .map(player -> coreServices.require(ProfileSessionService.class).save(player))
+                .toArray(CompletableFuture[]::new)).exceptionally(throwable -> {
                 getLogger().log(Level.SEVERE, "Unable to autosave Vex players", throwable);
 
                 return null;
@@ -350,22 +367,30 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
 
         if (services != null) {
             services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
-                try {
-                    players.saveAll().orTimeout(30L, TimeUnit.SECONDS).join();
-                } catch (RuntimeException exception) {
-                    getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
-                    Path recovery = getDataFolder().toPath()
-                        .resolve("player-recovery")
-                        .resolve(Instant.now().toString().replace(':', '-'));
+                ProfileSessionService profiles = coreServices.require(ProfileSessionService.class);
+                CompletableFuture<Void> drain = CompletableFuture.allOf(players.getLoadedPlayers().stream()
+                    .map(profiles::retire).toArray(CompletableFuture[]::new))
+                    .thenCompose(ignored -> players.saveAll()).orTimeout(30L, TimeUnit.SECONDS);
+                CompletableFuture<Void> recovered = drain.handleAsync((ignored, exception) -> {
+                    if (exception != null) {
+                        getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
+                        Path recovery = getDataFolder().toPath()
+                            .resolve("player-recovery")
+                            .resolve(Instant.now().toString().replace(':', '-'));
 
-                    try {
-                        players.exportRecovery(recovery);
-                        getLogger().severe("Dirty player recovery snapshots written to " + recovery
-                            + ". Review these files before allowing affected players to" + " reconnect.");
-                    } catch (RuntimeException recoveryFailure) {
-                        getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
+                        try {
+                            players.exportRecovery(recovery);
+                            getLogger().severe("Dirty player recovery snapshots written to " + recovery
+                                + ". Review these files before allowing affected players to" + " reconnect.");
+                        } catch (RuntimeException recoveryFailure) {
+                            getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
+                        }
                     }
-                }
+                    return null;
+                });
+                services.require(PlayerDataStoreService.class).drainBeforeClose(recovered);
+                services.require(ProfileLeaseService.class).drainBeforeClose(drain);
+                players.drainBeforeClose(recovered);
             });
         }
 

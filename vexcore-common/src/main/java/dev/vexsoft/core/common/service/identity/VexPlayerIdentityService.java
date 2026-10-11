@@ -10,30 +10,35 @@ import dev.vexsoft.core.cache.VexCacheOptions;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /** Default cached network-wide player identity index. */
 @Dependencies({PlayerDataStoreService.class, CacheService.class})
 public final class VexPlayerIdentityService implements PlayerIdentityService, AutoCloseable {
 
     private final PlayerIdentityStore store;
+    private final CompletableFuture<Void> ready;
     private final VexAsyncCache<UUID, Optional<PlayerIdentity>> identitiesById;
     private final VexAsyncCache<String, Optional<PlayerIdentity>> identitiesByName;
 
     public VexPlayerIdentityService(final VexServiceRegistry services) {
         VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
 
-        store = checkedServices.require(PlayerDataStoreService.class).getPlayerIdentityStore();
+        PlayerDataStoreService storage = checkedServices.require(PlayerDataStoreService.class);
+        store = storage.getPlayerIdentityStore();
+        ready = storage.getReadiness();
         CacheService caches = checkedServices.require(CacheService.class);
         VexCacheOptions options =
             VexCacheOptions.builder().maximumSize(50_000L).expireAfterAccess(Duration.ofMinutes(30)).build();
 
-        identitiesById = caches.createAsync("player-identities-by-id", options, store::findPlayerIdentity);
-        identitiesByName = caches.createAsync("player-identities-by-name", options, store::findPlayerIdentity);
+        identitiesById = caches.createAsync("player-identities-by-id", options,
+            id -> ready.thenCompose(ignored -> store.findPlayerIdentity(id)));
+        identitiesByName = caches.createAsync("player-identities-by-name", options,
+            name -> ready.thenCompose(ignored -> store.findPlayerIdentity(name)));
     }
 
     @Override
@@ -41,7 +46,7 @@ public final class VexPlayerIdentityService implements PlayerIdentityService, Au
         UUID checkedUniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
         String checkedName = validateName(name);
 
-        return store.recordPlayerIdentity(checkedUniqueId, checkedName).thenApply(identity -> {
+        return ready.thenCompose(ignored -> store.recordPlayerIdentity(checkedUniqueId, checkedName)).thenApply(identity -> {
             identitiesById.put(checkedUniqueId, Optional.of(identity));
             identitiesByName.put(normalizeName(checkedName), Optional.of(identity));
 

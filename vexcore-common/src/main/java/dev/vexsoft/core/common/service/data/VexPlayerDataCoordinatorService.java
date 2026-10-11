@@ -9,14 +9,22 @@ import dev.vexsoft.core.api.player.DataContainerRegistry;
 import dev.vexsoft.core.api.player.PlayerContainer;
 import dev.vexsoft.core.api.player.PlayerContainerFactory;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDataSnapshot;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
+import dev.vexsoft.core.api.player.profile.storage.StoredProfileDocument;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.cache.CacheService;
+import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.cache.VexAsyncCache;
 import dev.vexsoft.core.cache.VexCacheOptions;
 import dev.vexsoft.core.common.data.PlayerDataStore;
+import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -27,6 +35,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -38,57 +53,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 /** Coordinates player-data definitions, online containers, asynchronous saves, and recovery snapshots. */
-@Dependencies({PlayerDataStoreService.class, CacheService.class})
+@Dependencies({PlayerDataStoreService.class, CacheService.class, ProfileLeaseService.class})
 public final class VexPlayerDataCoordinatorService implements PlayerDataCoordinatorService, AutoCloseable {
 
     private final Map<UUID, VexPlayer> players = new ConcurrentHashMap<>();
     private final Map<VexPlayer, Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<JsonNode>>> unloadedSnapshots =
         Collections.synchronizedMap(new WeakHashMap<>());
 
-    @Override
-    public void prepareUnload(final ServiceOwner owner) {
-        Collection<DataContainerKey<?>> keys = getKeys(owner);
-
-        for (VexPlayer player : List.copyOf(players.values())) {
-            synchronized (player) {
-                var frozen = unloadedSnapshots.computeIfAbsent(player, ignored -> new LinkedHashMap<>());
-
-                for (DataContainerKey<?> key : keys) {
-                    frozen.put(key, player.snapshot(key, objectMapper::valueToTree));
-                }
-            }
-        }
-    }
-
-    /** Called under the player lock, including recovery, so frozen data cannot race a save. */
-    private VexPlayer.ContainerSnapshot<JsonNode> snapshotData(final VexPlayer player, final DataContainerKey<?> key) {
-        var frozen = unloadedSnapshots.get(player);
-        var snapshot = frozen == null ? null : frozen.get(key);
-
-        if (snapshot == null) {
-            return player.snapshot(key, objectMapper::valueToTree);
-        }
-
-        if (player.snapshot(key, ignored -> null).getRevision() != snapshot.getRevision()) {
-            throw new IllegalStateException("Player data changed after owner unload: " + key.getName());
-        }
-
-        return snapshot;
-    }
-
     private final Map<UUID, CompletableFuture<Void>> saveChains = new ConcurrentHashMap<>();
-    private final Map<UUID, CompletableFuture<Void>> pendingSaves = new HashMap<>();
+    private final Map<UUID, SaveRequest> pendingSaves = new HashMap<>();
+    private final Map<UUID, CompletableFuture<Void>> retirements = new HashMap<>();
     private final Set<UUID> removalRequested = new HashSet<>();
     private final ExecutorService saveExecutor = new ThreadPoolExecutor(
         2,
@@ -100,9 +79,76 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         new ThreadPoolExecutor.AbortPolicy()
     );
 
+    private volatile CompletableFuture<Void> shutdownDrain = CompletableFuture.completedFuture(null);
+
+    private final Map<String, OwnerContainers> containersByOwner = new LinkedHashMap<>();
+    private final Map<Class<? extends PlayerContainer>, RegisteredContainer<?>> featureContainers =
+        new LinkedHashMap<>();
+    private volatile Map<Class<? extends PlayerContainer>, Integer> featureContainerSlotSnapshot = Map.of();
+    private final ClassValue<Integer> featureContainerSlots = new ClassValue<>() {
+        @Override
+        protected Integer computeValue(final Class<?> type) {
+            if (!PlayerContainer.class.isAssignableFrom(type)) {
+                return -1;
+            }
+
+            return featureContainerSlotSnapshot.getOrDefault(type, -1);
+        }
+    };
+    private int nextFeatureContainerSlot;
+    private final Object saveLock = new Object();
+    private final PlayerDataStore store;
+    private final ProfileLeaseService leases;
+    private volatile CompletableFuture<Void> readiness;
+    private final Map<PlayerProfileContext, Map<ProfileDocumentKey, Long>> profileRevisions = new ConcurrentHashMap<>();
+    private final Map<PlayerProfileContext, List<ProfileDocumentChange>> profileWriteGuards = new ConcurrentHashMap<>();
+    private volatile BiFunction<VexPlayer, PlayerProfileContext, CompletableFuture<Void>> platformCapture;
+    private final VexAsyncCache<PlayerLoadRequest, VexPlayer> playerLoads;
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
+    public VexPlayerDataCoordinatorService(final VexServiceRegistry services) {
+        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
+
+        PlayerDataStoreService storage = checkedServices.require(PlayerDataStoreService.class);
+        store = storage.getStore();
+        leases = checkedServices.find(ProfileLeaseService.class).orElse(null);
+        readiness = storage.getReadiness();
+        if (store instanceof ProfileDocumentStore profiles) {
+            readiness = readiness.thenCompose(ignored -> profiles.reconcileProfileDocuments());
+        }
+        playerLoads = checkedServices.require(CacheService.class).createAsync(
+            "player-loads",
+            VexCacheOptions.builder().maximumSize(1_000L).expireAfterWrite(Duration.ofMinutes(1)).build(),
+            this::loadFromStore
+        );
+    }
+
+    @Override
+    public void prepareUnload(final ServiceOwner owner) {
+        Collection<DataContainerKey<?>> keys = getKeys(owner);
+
+        for (VexPlayer player : List.copyOf(players.values())) {
+            synchronized (player) {
+                var frozen = unloadedSnapshots.computeIfAbsent(player, ignored -> new LinkedHashMap<>());
+
+                for (DataContainerKey<?> key : keys) {
+                    if (!player.has(key)) {
+                        continue;
+                    }
+                    frozen.put(key, player.recoverySnapshot(key, objectMapper::valueToTree));
+                }
+            }
+        }
+    }
+
+    @Override
+    public void drainBeforeClose(final CompletableFuture<Void> drain) {
+        shutdownDrain = Objects.requireNonNull(drain, "drain");
+    }
+
     @Override
     public void close() {
-        saveExecutor.shutdown();
+        shutdownDrain.handle((ignored, failure) -> null).thenRun(saveExecutor::shutdown);
     }
 
     @Override
@@ -111,7 +157,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         Map<String, OwnerContainers> owners;
 
         synchronized (this) {
-            owners = new LinkedHashMap<>(containersByOwner);
+            owners = ownerSnapshot();
         }
 
         try {
@@ -130,13 +176,18 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
                     document.put("playerId", player.getUniqueId().toString());
                     document.put("name", player.getName());
                     document.put("capturedAt", Instant.now().toString());
+                    document.set("profileContexts", objectMapper.valueToTree(player.profileContexts().values()));
                     var data = document.putObject("owners");
 
                     owners.forEach((ownerName, owner) -> {
                         var ownerData = data.putObject(ownerName);
 
                         for (DataContainerKey<?> key : owner.keys.values()) {
-                            ownerData.set(key.getName(), snapshotData(player, key).getValue());
+                            if (player.has(key)) {
+                                ownerData.set(key.getName(), snapshotData(player, key).getValue());
+                                document.withObject("/addresses").withObject("/" + ownerName)
+                                    .set(key.getName(), objectMapper.valueToTree(player.addressOf(key)));
+                            }
                         }
                     });
                 }
@@ -158,37 +209,6 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         } catch (IOException failure) {
             throw new IllegalStateException("Unable to export player recovery data to " + target, failure);
         }
-    }
-
-    private final Map<String, OwnerContainers> containersByOwner = new LinkedHashMap<>();
-    private final Map<Class<? extends PlayerContainer>, RegisteredContainer<?>> featureContainers =
-        new LinkedHashMap<>();
-    private volatile Map<Class<? extends PlayerContainer>, Integer> featureContainerSlotSnapshot = Map.of();
-    private final ClassValue<Integer> featureContainerSlots = new ClassValue<>() {
-        @Override
-        protected Integer computeValue(final Class<?> type) {
-            if (!PlayerContainer.class.isAssignableFrom(type)) {
-                return -1;
-            }
-
-            return featureContainerSlotSnapshot.getOrDefault(type, -1);
-        }
-    };
-    private int nextFeatureContainerSlot;
-    private final Object saveLock = new Object();
-    private final PlayerDataStore store;
-    private final VexAsyncCache<PlayerLoadRequest, VexPlayer> playerLoads;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-
-    public VexPlayerDataCoordinatorService(final VexServiceRegistry services) {
-        VexServiceRegistry checkedServices = Objects.requireNonNull(services, "services");
-
-        store = checkedServices.require(PlayerDataStoreService.class).getStore();
-        playerLoads = checkedServices.require(CacheService.class).createAsync(
-            "player-loads",
-            VexCacheOptions.builder().maximumSize(1_000L).expireAfterWrite(Duration.ofMinutes(1)).build(),
-            this::loadFromStore
-        );
     }
 
     @Override
@@ -220,8 +240,10 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         try {
             definition.register(registry);
-            // Schema reconciliation belongs to startup so logins never see a partial schema
-            store.reconcile(ownerName, ownerContainers.keys.values()).join();
+            List<DataContainerKey<?>> accountKeys = ownerContainers.keys.values().stream()
+                .filter(key -> key.getScope().domain().isEmpty()).toList();
+            // Logins await this chain; registration itself never performs database work on the server thread.
+            readiness = readiness.thenCompose(ignored -> store.reconcile(ownerName, accountKeys));
         } catch (RuntimeException exception) {
             for (DataContainerKey<?> key : added) {
                 ownerContainers.keys.remove(key.getName(), key);
@@ -306,6 +328,9 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             players.computeIfAbsent(uniqueId, ignored -> new VexPlayer(uniqueId, name, this::findContainerSlot));
 
         player.setName(name);
+        if (leases != null) {
+            player.setProfileAccessGuard(leases::isWritable);
+        }
 
         for (OwnerContainers owner : containersByOwner.values()) {
             for (DataContainerKey<?> key : owner.keys.values()) {
@@ -357,7 +382,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         PlayerLoadRequest request = new PlayerLoadRequest(uniqueId, name);
 
-        return playerLoads.get(request).thenApply(player -> {
+        return readiness.thenCompose(ignored -> playerLoads.get(request)).thenApply(player -> {
             player.setName(name);
 
             return player;
@@ -374,21 +399,28 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         Map<String, OwnerContainers> owners;
 
         synchronized (this) {
-            owners = new LinkedHashMap<>(containersByOwner);
+            owners = ownerSnapshot();
         }
 
         Map<DataContainerKey<?>, Object> loaded = new ConcurrentHashMap<>();
         CompletableFuture<?>[] loads = owners.entrySet()
             .stream()
-            .map(entry -> store.load(entry.getKey(), request.getUniqueId(), entry.getValue().keys.values())
+            .map(entry -> store.load(entry.getKey(), request.getUniqueId(), entry.getValue().keys.values().stream()
+                    .filter(key -> key.getScope().domain().isEmpty()).toList())
                 .thenAccept(values -> readOwnerValues(entry.getValue(), values, loaded)))
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(loads).thenApply(ignored -> {
             VexPlayer player = new VexPlayer(request.getUniqueId(), request.getName(), this::findContainerSlot);
+            if (leases != null) {
+                player.setProfileAccessGuard(leases::isWritable);
+            }
 
             for (OwnerContainers owner : owners.values()) {
                 for (DataContainerKey<?> key : owner.keys.values()) {
+                    if (key.getScope().domain().isPresent()) {
+                        continue;
+                    }
                     Object value = loaded.get(key);
 
                     if (value == null) {
@@ -418,6 +450,83 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     @Override
+    public CompletableFuture<ProfileDataSnapshot> loadProfile(final PlayerProfileContext context) {
+        Objects.requireNonNull(context, "context");
+        if (!(store instanceof ProfileDocumentStore profiles)) {
+            return CompletableFuture.failedFuture(new UnsupportedOperationException("Profile storage unavailable"));
+        }
+        Map<ProfileDocumentKey, DataContainerKey<?>> keys = new LinkedHashMap<>();
+        ownerSnapshot().forEach((ownerName, owner) -> owner.keys.values().forEach(key -> {
+            if (key.getScope().domain().filter(context.domain()::equals).isPresent()) {
+                keys.put(new ProfileDocumentKey(context.address(), ownerName, key.getName()), key);
+            }
+        }));
+        return readiness.thenCompose(ignored -> profiles.loadProfileDocuments(keys.keySet())).thenApply(stored -> {
+            Map<DataContainerKey<?>, Object> values = new LinkedHashMap<>();
+            Map<ProfileDocumentKey, Long> revisions = new LinkedHashMap<>();
+            keys.forEach((document, key) -> {
+                StoredProfileDocument value = stored.get(document);
+                try {
+                    values.put(key, value == null ? key.createDefaultValue()
+                        : objectMapper.readValue(value.value(), key.getType()));
+                } catch (JsonProcessingException failure) {
+                    throw new IllegalStateException("Invalid profile data: " + document, failure);
+                }
+                revisions.put(document, value == null ? 0L : value.revision());
+            });
+            return new ProfileDataSnapshot(context, values, revisions);
+        });
+    }
+
+    @Override
+    public List<ProfileDocumentChange> profileChanges(
+        final ProfileDataSnapshot snapshot, final Map<DataContainerKey<?>, Object> replacements
+    ) {
+        List<ProfileDocumentChange> changes = new ArrayList<>();
+        ownerSnapshot().forEach((ownerName, owner) -> owner.keys.values().forEach(key -> {
+            if (replacements.containsKey(key)) {
+                ProfileDocumentKey document = new ProfileDocumentKey(snapshot.context().address(), ownerName,
+                    key.getName());
+                Long revision = snapshot.revisions().get(document);
+                Object value = replacements.get(key);
+                if (revision == null || !key.getType().isInstance(value)) {
+                    throw new IllegalArgumentException("Replacement is not part of the addressed snapshot");
+                }
+                try {
+                    changes.add(new ProfileDocumentChange(document, revision, objectMapper.writeValueAsString(value)));
+                } catch (JsonProcessingException failure) {
+                    throw new IllegalStateException("Unable to serialize profile replacement", failure);
+                }
+            }
+        }));
+        if (changes.size() != replacements.size()) {
+            throw new IllegalArgumentException("Unknown profile replacement key");
+        }
+        return List.copyOf(changes);
+    }
+
+    @Override
+    public void installProfile(final VexPlayer player, final ProfileDataSnapshot snapshot) {
+        installProfile(player, snapshot, List.of());
+    }
+
+    @Override
+    public void installProfile(
+        final VexPlayer player, final ProfileDataSnapshot snapshot, final List<ProfileDocumentChange> guards
+    ) {
+        synchronized (player) {
+            PlayerProfileContext previous = player.findProfileContext(snapshot.context().domain()).orElse(null);
+            player.installProfile(snapshot.context(), snapshot.values());
+            profileRevisions.put(snapshot.context(), new ConcurrentHashMap<>(snapshot.revisions()));
+            profileWriteGuards.put(snapshot.context(), List.copyOf(guards));
+            if (previous != null && !previous.equals(snapshot.context())) {
+                profileRevisions.remove(previous);
+                profileWriteGuards.remove(previous);
+            }
+        }
+    }
+
+    @Override
     public Collection<VexPlayer> getLoadedPlayers() {
         return List.copyOf(players.values());
     }
@@ -427,6 +536,10 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         VexPlayer removed = players.remove(Objects.requireNonNull(uniqueId, "uniqueId"));
 
         if (removed != null) {
+            removed.profileContexts().values().forEach(context -> {
+                profileRevisions.remove(context);
+                profileWriteGuards.remove(context);
+            });
             removed.closeContainers();
         }
 
@@ -461,6 +574,10 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
                             removalRequested.remove(uniqueId);
 
                             if (players.remove(uniqueId, player)) {
+                                player.profileContexts().values().forEach(context -> {
+                                    profileRevisions.remove(context);
+                                    profileWriteGuards.remove(context);
+                                });
                                 player.closeContainers();
                             }
                         }
@@ -485,13 +602,80 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         }
     }
 
-    private final Map<UUID, CompletableFuture<Void>> retirements = new HashMap<>();
+    @Override
+    public synchronized AutoCloseable onCapture(
+        final BiFunction<VexPlayer, PlayerProfileContext, CompletableFuture<Void>> capture
+    ) {
+        if (platformCapture != null) {
+            throw new IllegalStateException("Platform capture already registered");
+        }
+        platformCapture = Objects.requireNonNull(capture, "capture");
+        return () -> platformCapture = null;
+    }
+
+    @Override
+    public CompletableFuture<Void> saveCaptured(final UUID playerId, final PlayerProfileContext expected) {
+        VexPlayer player = players.get(playerId);
+        var capture = platformCapture;
+        if (player != null && capture != null && !player.profileContexts().isEmpty()
+            && player.findPlatformPlayer(Object.class).isPresent()) {
+            return capture.apply(player, expected);
+        }
+        return expected == null ? save(playerId) : save(expected);
+    }
 
     @Override
     public CompletableFuture<Void> save(final UUID uniqueId) {
         VexPlayer player = players.get(Objects.requireNonNull(uniqueId, "uniqueId"));
 
         return player == null ? CompletableFuture.completedFuture(null) : queueSave(player);
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final UUID uniqueId, final List<ProfileDocumentChange> changes) {
+        VexPlayer player = players.get(uniqueId);
+        if (player == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Profile session is not loaded"));
+        }
+        return queueSave(player, List.copyOf(changes));
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final PlayerProfileContext context) {
+        VexPlayer player = players.get(context.playerId());
+        if (player == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Captured session is not loaded"));
+        }
+        synchronized (player) {
+            if (!player.isCurrentContext(context)) {
+                return CompletableFuture.failedFuture(new IllegalStateException("Captured profile session retired"));
+            }
+            return queueSave(player);
+        }
+    }
+
+    @Override
+    public <T> CompletableFuture<Optional<T>> readStored(
+        final ServiceOwner owner, final PlayerProfileContext context, final DataContainerKey<T> key
+    ) {
+        if (getKeys(owner).stream().noneMatch(registered -> registered == key)
+            || !key.getScope().domain().filter(context.domain()::equals).isPresent()) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Unregistered or mismatched profile key"));
+        }
+        ProfileDocumentKey document = new ProfileDocumentKey(context.address(),
+            normalizeOwner(owner.getServiceOwnerName()), key.getName());
+        return readiness.thenCompose(ignored -> ((ProfileDocumentStore) store).loadProfileDocuments(List.of(document)))
+            .thenApply(values -> {
+                StoredProfileDocument stored = values.get(document);
+                if (stored == null) {
+                    return Optional.empty();
+                }
+                try {
+                    return Optional.of(objectMapper.readValue(stored.value(), key.getType()));
+                } catch (JsonProcessingException failure) {
+                    throw new IllegalStateException("Invalid stored profile value: " + key.getName(), failure);
+                }
+            });
     }
 
     @Override
@@ -512,6 +696,10 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         final UUID playerId,
         final DataContainerKey<T> key
     ) {
+        if (key.getScope().domain().isPresent()) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException(
+                "Profile reads require an explicit profile address"));
+        }
         if (getKeys(owner).stream().noneMatch(registered -> registered == key)) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Unregistered owner container"));
         }
@@ -560,6 +748,9 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     public CompletableFuture<Void> resetPlayerContainer(final UUID uniqueId, final String containerId) {
         UUID checkedUniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
         ContainerSelection selection = requireContainer(containerId);
+        if (!selection.key.getScope().isAccount()) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("An explicit profile address is required"));
+        }
         VexPlayer loaded = players.get(checkedUniqueId);
 
         if (loaded != null) {
@@ -583,7 +774,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         CompletableFuture<?>[] resets = owners.entrySet()
             .stream()
-            .map(entry -> store.reset(entry.getKey(), checkedUniqueId, entry.getValue().keys.keySet()))
+            .map(entry -> store.reset(entry.getKey(), checkedUniqueId, accountKeys(entry.getValue())))
             .toArray(CompletableFuture[]::new);
         CompletableFuture<Void> stored = CompletableFuture.allOf(resets);
 
@@ -593,6 +784,9 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     @Override
     public CompletableFuture<Void> resetGlobalContainer(final String containerId) {
         ContainerSelection selection = requireContainer(containerId);
+        if (!selection.key.getScope().isAccount()) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("An explicit profile address is required"));
+        }
         List<VexPlayer> loaded = List.copyOf(players.values());
 
         for (VexPlayer player : loaded) {
@@ -615,7 +809,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         CompletableFuture<?>[] resets = owners.entrySet()
             .stream()
-            .map(entry -> store.resetAll(entry.getKey(), entry.getValue().keys.keySet()))
+            .map(entry -> store.resetAll(entry.getKey(), accountKeys(entry.getValue())))
             .toArray(CompletableFuture[]::new);
 
         return CompletableFuture.allOf(CompletableFuture.allOf(resets), savePlayers(loaded));
@@ -655,6 +849,22 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         return result;
     }
 
+    /** Called under the player lock, including recovery, so frozen data cannot race a save. */
+    private VexPlayer.ContainerSnapshot<JsonNode> snapshotData(final VexPlayer player, final DataContainerKey<?> key) {
+        var frozen = unloadedSnapshots.get(player);
+        var snapshot = frozen == null ? null : frozen.get(key);
+
+        if (snapshot == null) {
+            return player.recoverySnapshot(key, objectMapper::valueToTree);
+        }
+
+        if (player.recoverySnapshot(key, ignored -> null).getRevision() != snapshot.getRevision()) {
+            throw new IllegalStateException("Player data changed after owner unload: " + key.getName());
+        }
+
+        return snapshot;
+    }
+
     private synchronized ContainerSelection requireContainer(final String containerId) {
         String checkedName = Objects.requireNonNull(containerId, "containerId").trim().toLowerCase(Locale.ROOT);
         ContainerSelection found = null;
@@ -681,13 +891,26 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     private synchronized Map<String, OwnerContainers> ownerSnapshot() {
-        return new LinkedHashMap<>(containersByOwner);
+        Map<String, OwnerContainers> snapshot = new LinkedHashMap<>();
+        containersByOwner.forEach((name, owner) -> {
+            OwnerContainers copy = new OwnerContainers(owner.owner);
+            copy.keys.putAll(owner.keys);
+            snapshot.put(name, copy);
+        });
+        return snapshot;
+    }
+
+    private static List<String> accountKeys(final OwnerContainers owner) {
+        return owner.keys.values().stream().filter(key -> key.getScope().isAccount())
+            .map(DataContainerKey::getName).toList();
     }
 
     private static void resetPlayer(final VexPlayer player, final Map<String, OwnerContainers> owners) {
         for (OwnerContainers owner : owners.values()) {
             for (DataContainerKey<?> key : owner.keys.values()) {
-                player.reset(key);
+                if (key.getScope().isAccount()) {
+                    player.reset(key);
+                }
             }
         }
     }
@@ -747,18 +970,30 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     /** Serialized container values and the revisions captured for one owner's save. */
     public record SerializedOwner(Map<String, String> values, Map<DataContainerKey<?>, Long> revisions) {
 
+        /** Freezes the captured owner values and revisions independently of the caller. */
+        public SerializedOwner {
+            values = Map.copyOf(values);
+            revisions = Map.copyOf(revisions);
+        }
     }
 
-    private CompletableFuture<Void> saveNow(final VexPlayer player) {
+    private CompletableFuture<Void> saveNow(
+        final VexPlayer player,
+        final Map<ProfileDomain, PlayerProfileContext> contexts,
+        final List<ProfileDocumentChange> additional
+    ) {
         Map<String, OwnerContainers> owners;
 
         synchronized (this) {
-            owners = new LinkedHashMap<>(containersByOwner);
+            owners = ownerSnapshot();
         }
 
         Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<JsonNode>> snapshots = new LinkedHashMap<>();
 
         synchronized (player) {
+            if (!player.profileContexts().equals(contexts)) {
+                return CompletableFuture.failedFuture(new IllegalStateException("Captured profile session retired"));
+            }
             for (DataContainerKey<?> key : player.getDirtyKeys()) {
                 snapshots.put(key, snapshotData(player, key));
             }
@@ -766,32 +1001,75 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         Map<String, Map<String, String>> values = new LinkedHashMap<>();
         Map<DataContainerKey<?>, Long> revisions = new LinkedHashMap<>();
+        List<ProfileDocumentChange> profileChanges = new ArrayList<>(additional);
 
         owners.forEach((name, owner) -> {
             SerializedOwner serialized = serializeOwner(owner, snapshots);
 
-            if (!serialized.values().isEmpty()) {
-                values.put(name, serialized.values());
+            Map<String, String> accountValues = new LinkedHashMap<>();
+            serialized.values().forEach((keyName, json) -> {
+                DataContainerKey<?> key = owner.keys.get(keyName);
+                ProfileDomain domain = key.getScope().domain().orElse(null);
+                if (domain == null) {
+                    accountValues.put(keyName, json);
+                    return;
+                }
+                PlayerProfileContext context = contexts.get(domain);
+                ProfileDocumentKey document = new ProfileDocumentKey(context.address(), name, keyName);
+                Long expected = profileRevisions.getOrDefault(context, Map.of()).get(document);
+                if (expected == null) {
+                    throw new IllegalStateException("Profile document was not loaded: " + document);
+                }
+                profileChanges.add(new ProfileDocumentChange(document, expected, json));
+            });
+            if (!accountValues.isEmpty()) {
+                values.put(name, accountValues);
             }
 
             revisions.putAll(serialized.revisions());
         });
 
-        return store.saveAllOwners(player.getUniqueId(), player.getName(), values)
-            .thenRun(() -> revisions.forEach(player::markClean));
+        CompletableFuture<Void> saved = store.saveAllOwners(player.getUniqueId(), player.getName(), values);
+        if (!profileChanges.isEmpty()) {
+            if (leases != null) {
+                contexts.values().forEach(context -> profileChanges.add(leases.writeGuard(context)));
+            }
+            contexts.values().forEach(context -> profileChanges.addAll(profileWriteGuards.getOrDefault(context, List.of())));
+            saved = saved.thenCompose(ignored -> ((ProfileDocumentStore) store)
+                .commitProfileDocuments(profileChanges).thenAccept(committed -> {
+                    if (!committed) {
+                        throw new IllegalStateException("Profile save revision conflict; refusing to overwrite");
+                    }
+                    for (PlayerProfileContext context : contexts.values()) {
+                        Map<ProfileDocumentKey, Long> durable = profileRevisions.get(context);
+                        if (durable != null) {
+                            profileChanges.stream().filter(change -> change.value() != null
+                                    && durable.containsKey(change.key())
+                                    && change.key().address().equals(context.address()))
+                                .forEach(change -> durable.put(change.key(), change.expectedRevision() + 1));
+                        }
+                    }
+                }));
+        }
+        return saved.thenRun(() -> revisions.forEach((key, revision) -> player.markClean(
+            key, key.getScope().domain().map(contexts::get).orElse(null), revision)));
     }
 
     private CompletableFuture<Void> queueSave(final VexPlayer player) {
+        return queueSave(player, List.of());
+    }
+
+    private CompletableFuture<Void> queueSave(final VexPlayer player, final List<ProfileDocumentChange> additional) {
         UUID uniqueId = player.getUniqueId();
+        Map<ProfileDomain, PlayerProfileContext> contexts = player.profileContexts();
         CompletableFuture<Void> next;
+        SaveRequest request = new SaveRequest(contexts, additional.isEmpty());
 
         synchronized (saveLock) {
-            CompletableFuture<Void> pending = pendingSaves.get(uniqueId);
-
-            if (pending != null) {
-                return pending;
+            SaveRequest pending = pendingSaves.get(uniqueId);
+            if (additional.isEmpty() && pending != null && pending.coalescible && pending.contexts.equals(contexts)) {
+                return pending.future;
             }
-
             CompletableFuture<Void> previous = saveChains.get(uniqueId);
             CompletableFuture<Void> ready = previous == null ? CompletableFuture.completedFuture(null)
                 : previous.handle((ignored, throwable) -> null);
@@ -799,15 +1077,16 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             next = ready.thenComposeAsync(
                 ignored -> {
                     synchronized (saveLock) {
-                        pendingSaves.remove(uniqueId);
+                        pendingSaves.remove(uniqueId, request);
                     }
 
-                    return saveNow(player);
+                    return readiness.thenCompose(unused -> saveNow(player, contexts, additional));
                 },
                 saveExecutor
             );
             saveChains.put(uniqueId, next);
-            pendingSaves.put(uniqueId, next);
+            request.future = next;
+            pendingSaves.put(uniqueId, request);
         }
 
         CompletableFuture<Void> queued = next;
@@ -815,7 +1094,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         queued.whenComplete((ignored, throwable) -> {
             synchronized (saveLock) {
                 saveChains.remove(uniqueId, queued);
-                pendingSaves.remove(uniqueId, queued);
+                pendingSaves.remove(uniqueId, request);
 
                 if (throwable == null && !retirements.containsKey(uniqueId) && removalRequested.remove(uniqueId)) {
                     if (players.remove(uniqueId, player)) {
@@ -879,6 +1158,9 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     private static <T> void installDefault(final VexPlayer player, final DataContainerKey<T> key, final boolean dirty) {
+        if (key.getScope().domain().filter(domain -> player.findProfileContext(domain).isEmpty()).isPresent()) {
+            return;
+        }
         if (!player.has(key)) {
             player.install(key, key.createDefaultValue(), dirty);
         }
@@ -908,6 +1190,18 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
     private record ContainerSelection(String owner, DataContainerKey<?> key) {
 
+    }
+
+    private static final class SaveRequest {
+
+        private final Map<ProfileDomain, PlayerProfileContext> contexts;
+        private CompletableFuture<Void> future;
+        private final boolean coalescible;
+
+        private SaveRequest(final Map<ProfileDomain, PlayerProfileContext> contexts, final boolean coalescible) {
+            this.contexts = contexts;
+            this.coalescible = coalescible;
+        }
     }
 
     @Value

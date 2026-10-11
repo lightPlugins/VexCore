@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.vexsoft.core.paper.packets.block.VirtualBlock;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.packets.block.VirtualBlock;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.entity.Player;
 import org.junit.jupiter.api.Test;
 
 /** Verifies published projections, reconnects and prediction bookkeeping without loading any chunks. */
@@ -178,7 +178,10 @@ final class VexVirtualBlockServiceTest {
                 case "getUniqueId" -> id;
                 case "getWorld" -> world;
                 case "getSentChunkKeys" -> throw new AssertionError("Unsafe Bukkit chunk-loader access");
-                case "sendBlockChange" -> { updates.add((BlockData) arguments[1]); yield null; }
+                case "sendBlockChange" -> {
+                    updates.add((BlockData) arguments[1]);
+                    yield null;
+                }
                 default -> throw new AssertionError(method.getName());
             });
         }

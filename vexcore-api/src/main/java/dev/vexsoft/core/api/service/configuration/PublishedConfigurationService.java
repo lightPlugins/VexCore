@@ -1,15 +1,20 @@
 package dev.vexsoft.core.api.service.configuration;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.Optional;
 
 /** Stores and serves owner-scoped, immutable configuration snapshots shared through the database. */
 public interface PublishedConfigurationService extends VexService {
 
-    /** Registers one configuration type and loads its current snapshot when present. */
+    /** Registers one type and starts its asynchronous read; use readiness before requiring an initial snapshot. */
     <T> void register(Class<T> type, String system);
+
+    /** Awaits asynchronous initial reads for the currently registered types without blocking a server thread. */
+    default CompletableFuture<Void> readiness() {
+        return CompletableFuture.completedFuture(null);
+    }
 
     /** Checks whether this owner registered a configuration type. */
     boolean isRegistered(Class<?> type);

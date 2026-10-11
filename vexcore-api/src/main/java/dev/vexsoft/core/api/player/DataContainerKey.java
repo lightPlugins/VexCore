@@ -1,7 +1,8 @@
 package dev.vexsoft.core.api.player;
 
-import java.util.Objects;
+import dev.vexsoft.core.api.player.profile.PlayerDataScope;
 import java.util.function.Supplier;
+import java.util.Objects;
 import lombok.Getter;
 
 /**
@@ -16,11 +17,23 @@ public final class DataContainerKey<T> {
     @Getter
     private final Class<T> type;
     private final Supplier<? extends T> defaultValue;
+    @Getter
+    private final PlayerDataScope scope;
 
     private DataContainerKey(final String name, final Class<T> type, final Supplier<? extends T> defaultValue) {
+        this(name, type, defaultValue, PlayerDataScope.ACCOUNT);
+    }
+
+    private DataContainerKey(
+        final String name,
+        final Class<T> type,
+        final Supplier<? extends T> defaultValue,
+        final PlayerDataScope scope
+    ) {
         this.name = validateName(name);
         this.type = Objects.requireNonNull(type, "type");
         this.defaultValue = Objects.requireNonNull(defaultValue, "defaultValue");
+        this.scope = Objects.requireNonNull(scope, "scope");
     }
 
     /** Creates a typed key for a player data container */
@@ -30,6 +43,16 @@ public final class DataContainerKey<T> {
         final Supplier<? extends T> defaultValue
     ) {
         return new DataContainerKey<>(name, type, defaultValue);
+    }
+
+    /** Creates an explicitly scoped key while existing registrations remain account-scoped. */
+    public static <T> DataContainerKey<T> of(
+        final String name,
+        final Class<T> type,
+        final Supplier<? extends T> defaultValue,
+        final PlayerDataScope scope
+    ) {
+        return new DataContainerKey<>(name, type, defaultValue, scope);
     }
 
     /** Creates a fresh default value for this container */

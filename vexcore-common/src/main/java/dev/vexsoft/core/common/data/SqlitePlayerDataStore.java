@@ -2,10 +2,15 @@ package dev.vexsoft.core.common.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.identity.PlayerIdentity;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
+import dev.vexsoft.core.api.player.profile.storage.StoredProfileDocument;
 import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
+import dev.vexsoft.core.common.data.profile.JdbcProfileDocuments;
+import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,20 +21,20 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 import org.sqlite.SQLiteDataSource;
 
 /** Persistent single-process player data storage backed by a local SQLite file. */
-public final class SqlitePlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore {
+public final class SqlitePlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore, ProfileDocumentStore {
 
     private static final String GLOBAL_DATA_TABLE = "\"vex_global_data\"";
     private static final String PLAYER_IDENTITIES_TABLE = "\"vex_player_identities\"";
@@ -39,6 +44,8 @@ public final class SqlitePlayerDataStore implements PlayerDataStore, GlobalDataS
     private final ExecutorService executor =
         Executors.newSingleThreadExecutor(Thread.ofVirtual().name("VexCore-SQLite", 0).factory());
     private final CopyOnWriteArrayList<Consumer<GlobalDataReference>> globalListeners = new CopyOnWriteArrayList<>();
+    private final JdbcProfileDocuments profileDocuments = new JdbcProfileDocuments(this::connection, executor, false);
+    private final CompletableFuture<Void> initialization;
 
     public SqlitePlayerDataStore(final Path file) {
         Path databaseFile = Objects.requireNonNull(file, "file").toAbsolutePath().normalize();
@@ -48,14 +55,43 @@ public final class SqlitePlayerDataStore implements PlayerDataStore, GlobalDataS
             throw new IllegalArgumentException("SQLite database file must have a parent directory");
         }
 
-        try {
-            Files.createDirectories(parent);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to create SQLite database directory " + parent, exception);
-        }
-
         dataSource.setUrl("jdbc:sqlite:" + databaseFile);
-        initializeDatabase(databaseFile);
+        // FIFO storage execution keeps schema requests behind initialization without blocking plugin startup.
+        initialization = CompletableFuture.runAsync(() -> {
+            try {
+                Files.createDirectories(parent);
+            } catch (IOException exception) {
+                throw new IllegalStateException("Unable to create SQLite database directory " + parent, exception);
+            }
+            initializeDatabase(databaseFile);
+        }, executor);
+    }
+
+    @Override
+    public CompletableFuture<Void> readiness() {
+        return initialization.copy();
+    }
+
+    @Override
+    public CompletableFuture<Void> reconcileProfileDocuments() {
+        return profileDocuments.reconcileProfileDocuments();
+    }
+
+    @Override
+    public CompletableFuture<Map<ProfileDocumentKey, StoredProfileDocument>> loadProfileDocuments(
+        final Collection<ProfileDocumentKey> keys
+    ) {
+        return profileDocuments.loadProfileDocuments(keys);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> commitProfileDocuments(final Collection<ProfileDocumentChange> changes) {
+        return profileDocuments.commitProfileDocuments(changes);
+    }
+
+    @Override
+    public CompletableFuture<Long> profileDatabaseTime() {
+        return profileDocuments.profileDatabaseTime();
     }
 
     @Override

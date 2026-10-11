@@ -5,28 +5,31 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.reward.item.RewardItem;
 import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
+import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.persistence.PersistentDataType;
 
 /** Shared namespace resolver and transactional inventory-to-private-drop delivery. */
-@Dependencies(ScheduleService.class)
+@Dependencies({ScheduleService.class, ProfileSessionService.class})
 public final class VexRewardItemService implements RewardItemService {
 
     private final Map<String, RewardItemProvider> providers = new ConcurrentHashMap<>();
     private final ScheduleService schedules;
+    private final ProfileSessionService profiles;
 
     /** Installs the Vanilla provider and captures the Core scheduler. */
     public VexRewardItemService(final VexServiceRegistry services) {
         schedules = services.require(ScheduleService.class);
+        profiles = services.require(ProfileSessionService.class);
         providers.put("minecraft", new VanillaProvider());
     }
 
@@ -61,6 +64,9 @@ public final class VexRewardItemService implements RewardItemService {
         for (ItemStack item : items) {
             var leftovers = platform.getInventory().addItem(item.clone());
             leftovers.values().forEach(leftover -> {
+                if (profiles.deferDelivery(player, List.of(leftover))) {
+                    return;
+                }
                 var location = platform.getLocation().clone();
                 ItemStack overflow = leftover.clone();
                 player.afterCommit(() -> location.getWorld().dropItem(location, overflow, dropped -> {

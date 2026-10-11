@@ -3,6 +3,7 @@ package dev.vexsoft.core.common.service.stats;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.stats.Stat;
 import dev.vexsoft.core.stats.StatDefinition;
 import dev.vexsoft.core.stats.StatKey;
@@ -25,17 +26,25 @@ import lombok.RequiredArgsConstructor;
 public final class VexStatRegistryCoordinatorService implements StatRegistryCoordinatorService {
 
     private final Map<StatKey, Slot> slots = new LinkedHashMap<>();
+    private final VexServiceRegistry services;
+    private final ServiceOwner storageOwner;
     private final Set<VexStatContainer> containers = new LinkedHashSet<>();
     private int nextSlot;
 
     public VexStatRegistryCoordinatorService(final VexServiceRegistry services) {
-        Objects.requireNonNull(services, "services");
+        VexServiceRegistry checked = Objects.requireNonNull(services, "services");
+        this.services = checked;
+        storageOwner = checked.getOwner();
     }
 
     @Override
     public synchronized Stat register(final ServiceOwner owner, final StatDefinition definition) {
         String ownerName = ownerName(owner);
         StatDefinition checkedDefinition = requireOwned(ownerName, definition);
+        if (checkedDefinition.getDataScope().domain().isPresent()) {
+            services.require(PlayerDataCoordinatorService.class).register(storageOwner,
+                registry -> registry.register(GameplayPlayerData.key(checkedDefinition)));
+        }
         Slot slot = slots.computeIfAbsent(checkedDefinition.getKey(), ignored -> new Slot(nextSlot++));
 
         if (slot.active != null) {

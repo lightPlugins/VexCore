@@ -1,24 +1,25 @@
 package dev.vexsoft.core.common.service.stats;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.stats.PlayerStat;
 import dev.vexsoft.core.stats.Stat;
 import dev.vexsoft.core.stats.StatContainer;
 import dev.vexsoft.core.stats.StatDefinition;
-import dev.vexsoft.core.stats.StatKey;
 import dev.vexsoft.core.stats.StatModifier;
 import dev.vexsoft.core.stats.StatModifierHandle;
 import dev.vexsoft.core.stats.StatUpdateBatch;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
-/** Array-backed stat container used by one loaded player. */
+/** Array-backed stats guarded by the owning player lock, including profile installation and cached handles. */
 public final class VexStatContainer implements StatContainer {
 
     private final VexPlayer player;
@@ -31,6 +32,7 @@ public final class VexStatContainer implements StatContainer {
     private double[] totalMultipliers = new double[0];
     private volatile double[] calculatedValues = new double[0];
     private boolean[] changed = new boolean[0];
+    private long[] profileGenerations = new long[0];
     private int batchDepth;
     private boolean closed;
 
@@ -62,18 +64,20 @@ public final class VexStatContainer implements StatContainer {
     }
 
     @Override
-    public synchronized StatUpdateBatch beginUpdate() {
-        requireOpen();
-        batchDepth++;
+    public StatUpdateBatch beginUpdate() {
+        synchronized (player) {
+            requireOpen();
+            batchDepth++;
 
-        return new Batch(this);
+            return new Batch(this);
+        }
     }
 
     @Override
     public void close() {
         registry.detach(this);
 
-        synchronized (this) {
+        synchronized (player) {
             if (closed) {
                 return;
             }
@@ -91,67 +95,89 @@ public final class VexStatContainer implements StatContainer {
     }
 
     @Override
-    public synchronized void onDataReset(final DataContainerKey<?> key) {
-        if (key != GameplayPlayerData.STATS || closed) {
-            return;
-        }
-
-        RegisteredStat[] current = activeStats;
-
-        for (int slot = 0; slot < current.length; slot++) {
-            if (current[slot] == null) {
-                continue;
+    public void onDataReset(final DataContainerKey<?> key) {
+        synchronized (player) {
+            if (closed) {
+                return;
             }
 
+            RegisteredStat[] current = activeStats;
+
+            for (int slot = 0; slot < current.length; slot++) {
+                if (current[slot] == null || GameplayPlayerData.key(current[slot].getDefinition()) != key) {
+                    continue;
+                }
+
+                permanentValues[slot] = 0D;
+                markChanged(current[slot]);
+            }
+        }
+    }
+
+    @Override
+    public void onProfileChanged(final PlayerProfileContext previous, final PlayerProfileContext current) {
+        synchronized (player) {
+            if (closed) {
+                return;
+            }
+            for (RegisteredStat stat : activeStats.clone()) {
+                if (stat != null && stat.getDefinition().getDataScope().domain().filter(current.domain()::equals).isPresent()) {
+                    activate(stat);
+                }
+            }
+        }
+    }
+
+    void activate(final RegisteredStat stat) {
+        synchronized (player) {
+            requireOpen();
+            int slot = stat.getRuntimeId();
+
+            ensureCapacity(slot + 1);
+            RegisteredStat[] updatedStats = activeStats.clone();
+            VexPlayerStat[] updatedViews = views.clone();
+
+            permanentValues[slot] = readPermanent(stat);
+            flatModifiers[slot] = 0D;
+            additiveMultipliers[slot] = 0D;
+            totalMultipliers[slot] = 1D;
+            updatedViews[slot] = new VexPlayerStat(this, stat, ++profileGenerations[slot]);
+            recalculateNow(stat);
+            updatedStats[slot] = stat;
+            views = updatedViews;
+            activeStats = updatedStats;
+        }
+    }
+
+    void deactivate(final RegisteredStat stat) {
+        synchronized (player) {
+            int slot = stat.getRuntimeId();
+
+            if (!isCurrent(stat, slot)) {
+                return;
+            }
+
+            RegisteredStat[] updatedStats = activeStats.clone();
+            VexPlayerStat[] updatedViews = views.clone();
+
+            updatedStats[slot] = null;
+            updatedViews[slot] = null;
+            activeStats = updatedStats;
+            views = updatedViews;
             permanentValues[slot] = 0D;
-            markChanged(current[slot]);
+            flatModifiers[slot] = 0D;
+            additiveMultipliers[slot] = 0D;
+            totalMultipliers[slot] = 1D;
+            calculatedValues[slot] = 0D;
+            changed[slot] = false;
         }
     }
 
-    synchronized void activate(final RegisteredStat stat) {
-        requireOpen();
-        int slot = stat.getRuntimeId();
-
-        ensureCapacity(slot + 1);
-        RegisteredStat[] updatedStats = activeStats.clone();
-        VexPlayerStat[] updatedViews = views.clone();
-
-        permanentValues[slot] = readPermanent(stat.getKey());
-        flatModifiers[slot] = 0D;
-        additiveMultipliers[slot] = 0D;
-        totalMultipliers[slot] = 1D;
-        updatedViews[slot] = new VexPlayerStat(this, stat);
-        recalculateNow(stat);
-        updatedStats[slot] = stat;
-        views = updatedViews;
-        activeStats = updatedStats;
-    }
-
-    synchronized void deactivate(final RegisteredStat stat) {
-        int slot = stat.getRuntimeId();
-
-        if (!isCurrent(stat, slot)) {
-            return;
-        }
-
-        RegisteredStat[] updatedStats = activeStats.clone();
-        VexPlayerStat[] updatedViews = views.clone();
-
-        updatedStats[slot] = null;
-        updatedViews[slot] = null;
-        activeStats = updatedStats;
-        views = updatedViews;
-        permanentValues[slot] = 0D;
-        flatModifiers[slot] = 0D;
-        additiveMultipliers[slot] = 0D;
-        totalMultipliers[slot] = 1D;
-        calculatedValues[slot] = 0D;
-        changed[slot] = false;
-    }
-
-    synchronized void definitionChanged(final RegisteredStat stat) {
-        if (isCurrent(stat, stat.getRuntimeId())) {
-            markChanged(stat);
+    void definitionChanged(final RegisteredStat stat) {
+        synchronized (player) {
+            if (isCurrent(stat, stat.getRuntimeId())) {
+                markChanged(stat);
+            }
         }
     }
 
@@ -168,56 +194,68 @@ public final class VexStatContainer implements StatContainer {
         return currentValues[slot];
     }
 
-    synchronized double getPermanent(final RegisteredStat stat) {
-        requireActive(stat);
+    double getPermanent(final RegisteredStat stat) {
+        synchronized (player) {
+            requireActive(stat);
 
-        return permanentValues[stat.getRuntimeId()];
-    }
-
-    synchronized void setPermanent(final RegisteredStat stat, final double value) {
-        requireFinite(value, "value");
-        requireActive(stat);
-        int slot = stat.getRuntimeId();
-
-        permanentValues[slot] = value;
-        writePermanent(stat.getKey(), value);
-        markChanged(stat);
-    }
-
-    synchronized void addPermanent(final RegisteredStat stat, final double amount) {
-        requireFinite(amount, "amount");
-        requireActive(stat);
-        int slot = stat.getRuntimeId();
-        double updated = permanentValues[slot] + amount;
-
-        requireFinite(updated, "result");
-        permanentValues[slot] = updated;
-        writePermanent(stat.getKey(), updated);
-        markChanged(stat);
-    }
-
-    synchronized StatModifierHandle addModifier(final RegisteredStat stat, final StatModifier modifier) {
-        requireActive(stat);
-        StatModifier checkedModifier = Objects.requireNonNull(modifier, "modifier");
-        int slot = stat.getRuntimeId();
-
-        apply(slot, checkedModifier, false);
-        markChanged(stat);
-
-        return new ModifierHandle(this, stat, checkedModifier);
-    }
-
-    synchronized boolean isActive(final RegisteredStat stat) {
-        return !closed && isCurrent(stat, stat.getRuntimeId());
-    }
-
-    private synchronized void removeModifier(final RegisteredStat stat, final StatModifier modifier) {
-        if (!isCurrent(stat, stat.getRuntimeId())) {
-            return;
+            return permanentValues[stat.getRuntimeId()];
         }
+    }
 
-        apply(stat.getRuntimeId(), modifier, true);
-        markChanged(stat);
+    void setPermanent(final RegisteredStat stat, final double value) {
+        synchronized (player) {
+            requireFinite(value, "value");
+            requireActive(stat);
+            int slot = stat.getRuntimeId();
+
+            permanentValues[slot] = value;
+            writePermanent(stat, value);
+            markChanged(stat);
+        }
+    }
+
+    void addPermanent(final RegisteredStat stat, final double amount) {
+        synchronized (player) {
+            requireFinite(amount, "amount");
+            requireActive(stat);
+            int slot = stat.getRuntimeId();
+            double updated = permanentValues[slot] + amount;
+
+            requireFinite(updated, "result");
+            permanentValues[slot] = updated;
+            writePermanent(stat, updated);
+            markChanged(stat);
+        }
+    }
+
+    StatModifierHandle addModifier(final RegisteredStat stat, final StatModifier modifier) {
+        synchronized (player) {
+            requireActive(stat);
+            StatModifier checkedModifier = Objects.requireNonNull(modifier, "modifier");
+            int slot = stat.getRuntimeId();
+
+            apply(slot, checkedModifier, false);
+            markChanged(stat);
+
+            return new ModifierHandle(this, stat, checkedModifier, profileGenerations[slot]);
+        }
+    }
+
+    boolean isActive(final RegisteredStat stat) {
+        synchronized (player) {
+            return !closed && isCurrent(stat, stat.getRuntimeId());
+        }
+    }
+
+    private void removeModifier(final RegisteredStat stat, final StatModifier modifier, final long generation) {
+        synchronized (player) {
+            if (!isCurrent(stat, stat.getRuntimeId()) || profileGenerations[stat.getRuntimeId()] != generation) {
+                return;
+            }
+
+            apply(stat.getRuntimeId(), modifier, true);
+            markChanged(stat);
+        }
     }
 
     private void apply(final int slot, final StatModifier modifier, final boolean remove) {
@@ -252,43 +290,50 @@ public final class VexStatContainer implements StatContainer {
         changed[slot] = false;
     }
 
-    private synchronized void finishBatch() {
-        if (batchDepth <= 0) {
-            return;
-        }
+    private void finishBatch() {
+        synchronized (player) {
+            if (batchDepth <= 0) {
+                return;
+            }
 
-        batchDepth--;
+            batchDepth--;
 
-        if (batchDepth > 0) {
-            return;
-        }
+            if (batchDepth > 0) {
+                return;
+            }
 
-        RegisteredStat[] current = activeStats;
+            RegisteredStat[] current = activeStats;
 
-        for (int slot = 0; slot < changed.length; slot++) {
-            if (changed[slot] && slot < current.length && current[slot] != null) {
-                recalculateNow(current[slot]);
+            for (int slot = 0; slot < changed.length; slot++) {
+                if (changed[slot] && slot < current.length && current[slot] != null) {
+                    recalculateNow(current[slot]);
+                }
             }
         }
     }
 
-    private double readPermanent(final StatKey key) {
+    private double readPermanent(final RegisteredStat stat) {
+        DataContainerKey<StatData> key = GameplayPlayerData.key(stat.getDefinition());
+        if (!player.has(key) || key.getScope().domain().filter(domain -> player.findProfileContext(domain).isEmpty())
+            .isPresent()) {
+            return 0;
+        }
         return player.read(
-            GameplayPlayerData.STATS,
-            data -> data.getPermanentValues().getOrDefault(key.toString(), 0D)
+            key,
+            data -> data.getPermanentValues().getOrDefault(stat.getKey().toString(), 0D)
         );
     }
 
-    private void writePermanent(final StatKey key, final double value) {
+    private void writePermanent(final RegisteredStat stat, final double value) {
         player.update(
-            GameplayPlayerData.STATS,
+            GameplayPlayerData.key(stat.getDefinition()),
             data -> {
                 Map<String, Double> values = data.getPermanentValues();
 
                 if (value == 0D) {
-                    values.remove(key.toString());
+                    values.remove(stat.getKey().toString());
                 } else {
-                    values.put(key.toString(), value);
+                    values.put(stat.getKey().toString(), value);
                 }
             }
         );
@@ -312,6 +357,7 @@ public final class VexStatContainer implements StatContainer {
         Arrays.fill(totalMultipliers, oldLength, size, 1D);
         calculatedValues = Arrays.copyOf(calculatedValues, size);
         changed = Arrays.copyOf(changed, size);
+        profileGenerations = Arrays.copyOf(profileGenerations, size);
     }
 
     private void requireActive(final RegisteredStat stat) {
@@ -326,6 +372,29 @@ public final class VexStatContainer implements StatContainer {
         RegisteredStat[] current = activeStats;
 
         return stat.isRegistered() && slot >= 0 && slot < current.length && current[slot] == stat;
+    }
+
+    private void requireGeneration(final RegisteredStat stat, final long generation) {
+        synchronized (player) {
+            requireActive(stat);
+            if (profileGenerations[stat.getRuntimeId()] != generation) {
+                throw new IllegalStateException("Stat view belongs to a retired profile generation");
+            }
+            player.addressOf(GameplayPlayerData.key(stat.getDefinition()));
+        }
+    }
+
+    private <T> T inGeneration(final RegisteredStat stat, final long generation, final Supplier<T> operation) {
+        synchronized (player) {
+            requireGeneration(stat, generation);
+            return operation.get();
+        }
+    }
+
+    private boolean isActive(final RegisteredStat stat, final long generation) {
+        synchronized (player) {
+            return isActive(stat) && profileGenerations[stat.getRuntimeId()] == generation;
+        }
     }
 
     private void requireOpen() {
@@ -345,6 +414,7 @@ public final class VexStatContainer implements StatContainer {
 
         private final VexStatContainer container;
         private final RegisteredStat stat;
+        private final long generation;
 
         @Override
         public Stat getStat() {
@@ -353,27 +423,33 @@ public final class VexStatContainer implements StatContainer {
 
         @Override
         public double getValue() {
-            return container.getCalculated(stat);
+            return container.inGeneration(stat, generation, () -> container.getCalculated(stat));
         }
 
         @Override
         public double getPermanent() {
-            return container.getPermanent(stat);
+            return container.inGeneration(stat, generation, () -> container.getPermanent(stat));
         }
 
         @Override
         public void setPermanent(final double value) {
-            container.setPermanent(stat, value);
+            container.inGeneration(stat, generation, () -> {
+                container.setPermanent(stat, value);
+                return null;
+            });
         }
 
         @Override
         public void addPermanent(final double amount) {
-            container.addPermanent(stat, amount);
+            container.inGeneration(stat, generation, () -> {
+                container.addPermanent(stat, amount);
+                return null;
+            });
         }
 
         @Override
         public StatModifierHandle addModifier(final StatModifier modifier) {
-            return container.addModifier(stat, modifier);
+            return container.inGeneration(stat, generation, () -> container.addModifier(stat, modifier));
         }
     }
 
@@ -383,17 +459,18 @@ public final class VexStatContainer implements StatContainer {
         private final VexStatContainer container;
         private final RegisteredStat stat;
         private final StatModifier modifier;
+        private final long generation;
         private final AtomicBoolean removed = new AtomicBoolean();
 
         @Override
         public boolean isActive() {
-            return !removed.get() && container.isActive(stat);
+            return !removed.get() && container.isActive(stat, generation);
         }
 
         @Override
         public void remove() {
             if (removed.compareAndSet(false, true)) {
-                container.removeModifier(stat, modifier);
+                container.removeModifier(stat, modifier, generation);
             }
         }
     }

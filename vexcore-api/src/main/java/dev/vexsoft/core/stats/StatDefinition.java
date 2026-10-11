@@ -1,5 +1,6 @@
 package dev.vexsoft.core.stats;
 
+import dev.vexsoft.core.api.player.profile.PlayerDataScope;
 import java.util.Objects;
 import lombok.Getter;
 
@@ -19,9 +20,12 @@ public final class StatDefinition {
     private final String nameKey;
     /** Localization key used for the description in the owning plugin's language files. */
     private final String descriptionKey;
+    /** Explicit persistence participation; account data remains the default. */
+    private final PlayerDataScope dataScope;
 
     private StatDefinition(final Builder builder) {
         key = builder.key;
+        dataScope = builder.dataScope;
         defaultValue = requireFinite(builder.defaultValue, "defaultValue");
         minimum = requireBound(builder.minimum, "minimum");
         maximum = requireBound(builder.maximum, "maximum");
@@ -72,6 +76,7 @@ public final class StatDefinition {
     public static final class Builder {
 
         private final StatKey key;
+        private PlayerDataScope dataScope = PlayerDataScope.ACCOUNT;
         private double defaultValue;
         private double minimum = Double.NEGATIVE_INFINITY;
         private double maximum = Double.POSITIVE_INFINITY;
@@ -82,6 +87,12 @@ public final class StatDefinition {
             this.key = Objects.requireNonNull(key, "key");
             nameKey = "stats." + key.value() + ".name";
             descriptionKey = "stats." + key.value() + ".description";
+        }
+
+        /** Sets the base value. */
+        public Builder dataScope(final PlayerDataScope scope) {
+            dataScope = Objects.requireNonNull(scope, "scope");
+            return this;
         }
 
         /** Sets the base value. */

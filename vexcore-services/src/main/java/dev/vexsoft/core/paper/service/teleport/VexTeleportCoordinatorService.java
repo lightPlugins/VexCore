@@ -14,18 +14,20 @@ import dev.vexsoft.core.common.messaging.teleport.TeleportMessages;
 import dev.vexsoft.core.common.messaging.teleport.TeleportTransferRequest;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.world.WorldService;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.bukkit.Location;
+import java.util.Objects;
+import java.util.UUID;
 import org.bukkit.entity.Player;
+import org.bukkit.Location;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /** Default async Paper teleport and Velocity transfer coordinator. */
-@Dependencies({WorldService.class, ServerIdentityService.class, MessagingService.class, PlayerDataCoordinatorService.class})
+@Dependencies({WorldService.class, ServerIdentityService.class, MessagingService.class,
+    PlayerDataCoordinatorService.class, ProfileSessionService.class})
 public final class VexTeleportCoordinatorService implements TeleportCoordinatorService, AutoCloseable {
 
     private static final long TRANSFER_TIMEOUT_SECONDS = 30L;
@@ -35,6 +37,7 @@ public final class VexTeleportCoordinatorService implements TeleportCoordinatorS
     private final ServerIdentityService serverIdentity;
     private final MessagingService messages;
     private final PlayerDataCoordinatorService playerData;
+    private final ProfileSessionService profiles;
     private final ConcurrentHashMap<UUID, CompletableFuture<TeleportResult>> pending = new ConcurrentHashMap<>();
 
     public VexTeleportCoordinatorService(final VexServiceRegistry services) {
@@ -49,6 +52,7 @@ public final class VexTeleportCoordinatorService implements TeleportCoordinatorS
         serverIdentity = checkedServices.require(ServerIdentityService.class);
         messages = checkedServices.require(MessagingService.class);
         playerData = checkedServices.require(PlayerDataCoordinatorService.class);
+        profiles = checkedServices.require(ProfileSessionService.class);
     }
 
     @Override
@@ -57,6 +61,9 @@ public final class VexTeleportCoordinatorService implements TeleportCoordinatorS
         ServerPosition checkedDestination = Objects.requireNonNull(destination, "destination");
 
         if (checkedDestination.server().equals(serverIdentity.getServerId())) {
+            if (!profiles.isReady(checkedPlayer)) {
+                return completed(TeleportStatus.TELEPORT_REJECTED, "The profile session is not ready");
+            }
             return checkedPlayer.findPlatformPlayer(Player.class)
                 .map(platformPlayer -> teleportLocal(platformPlayer, checkedDestination))
                 .orElseGet(() -> completed(TeleportStatus.PLAYER_OFFLINE, "The player is no longer online"));
@@ -77,7 +84,9 @@ public final class VexTeleportCoordinatorService implements TeleportCoordinatorS
             return completed(TeleportStatus.SERVER_UNAVAILABLE, "The teleport arrived on the wrong server");
         }
 
-        return teleportLocal(player, destination);
+        return playerData.find(playerId).map(loaded -> profiles.readiness(loaded)
+            .thenCompose(ignored -> teleportLocal(player, destination)))
+            .orElseGet(() -> completed(TeleportStatus.PLAYER_OFFLINE, "Player data is not ready"));
     }
 
     @Override
@@ -148,12 +157,22 @@ public final class VexTeleportCoordinatorService implements TeleportCoordinatorS
     }
 
     private CompletableFuture<TeleportResult> transfer(final VexPlayer player, final ServerPosition destination) {
-        return playerData.save(player.getUniqueId()).handle((ignored, throwable) -> {
+        if (!profiles.isReady(player)) {
+            return completed(TeleportStatus.TELEPORT_REJECTED, "The profile session is not ready");
+        }
+        return profiles.retire(player).handle((ignored, throwable) -> {
             if (throwable != null) {
-                return completed(TeleportStatus.FAILED, "Player data could not be saved before the server transfer");
+                // Retry the fenced retirement before reinitializing; unsaved state must never be overwritten.
+                return profiles.resume(player).handle((restored, failure) -> new TeleportResult(
+                    TeleportStatus.FAILED, "Player data could not be saved before the server transfer"));
             }
 
-            return beginTransfer(player, destination);
+            return beginTransfer(player, destination).thenCompose(result -> {
+                if (!result.isSuccess() && player.findPlatformPlayer(Player.class).isPresent()) {
+                    return profiles.resume(player).handle((restored, failure) -> result);
+                }
+                return CompletableFuture.completedFuture(result);
+            });
         }).thenCompose(result -> result);
     }
 

@@ -1,5 +1,6 @@
 package dev.vexsoft.core.currency;
 
+import dev.vexsoft.core.api.player.profile.PlayerDataScope;
 import dev.vexsoft.core.number.WholeAmount;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,9 +18,12 @@ public final class CurrencyDefinition {
     private final String nameKey;
     @Getter
     private final String formatKey;
+    @Getter
+    private final PlayerDataScope dataScope;
 
     private CurrencyDefinition(final Builder builder) {
         key = builder.key;
+        dataScope = builder.dataScope;
         defaultBalance = Objects.requireNonNull(builder.defaultBalance, "defaultBalance");
         maximumBalance = builder.maximumBalance;
 
@@ -54,6 +58,7 @@ public final class CurrencyDefinition {
     public static final class Builder {
 
         private final CurrencyKey key;
+        private PlayerDataScope dataScope = PlayerDataScope.ACCOUNT;
         private WholeAmount defaultBalance = WholeAmount.ZERO;
         private WholeAmount maximumBalance;
         private String nameKey;
@@ -63,6 +68,12 @@ public final class CurrencyDefinition {
             this.key = Objects.requireNonNull(key, "key");
             nameKey = "currencies." + key.value() + ".name";
             formatKey = "currencies." + key.value() + ".format";
+        }
+
+        /** Sets the balance used when a player has no persisted entry yet. */
+        public Builder dataScope(final PlayerDataScope scope) {
+            dataScope = Objects.requireNonNull(scope, "scope");
+            return this;
         }
 
         /** Sets the balance used when a player has no persisted entry yet. */

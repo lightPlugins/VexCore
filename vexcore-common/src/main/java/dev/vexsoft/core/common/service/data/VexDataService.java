@@ -2,14 +2,19 @@ package dev.vexsoft.core.common.service.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.PlayerDataDefinition;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDataSnapshot;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
 import dev.vexsoft.core.api.service.player.DataService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexClassFactory;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /** Registers this owner's player-data definitions and freezes loaded data before unload. */
 @Dependencies(PlayerDataCoordinatorService.class)
@@ -24,13 +29,37 @@ public final class VexDataService implements DataService {
     }
 
     @Override
+    public CompletableFuture<ProfileDataSnapshot> readProfile(final PlayerProfileContext context) {
+        return coordinator.loadProfile(context);
+    }
+
+    @Override
+    public List<ProfileDocumentChange> profileChanges(
+        final ProfileDataSnapshot snapshot, final Map<DataContainerKey<?>, Object> replacements
+    ) {
+        return coordinator.profileChanges(snapshot, replacements);
+    }
+
+    @Override
     public void prepareUnload() {
         coordinator.prepareUnload(services.getOwner());
     }
 
     @Override
     public CompletableFuture<Void> save(final UUID playerId) {
-        return coordinator.save(playerId);
+        return coordinator.saveCaptured(playerId, null);
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final PlayerProfileContext context) {
+        return coordinator.saveCaptured(context.playerId(), context);
+    }
+
+    @Override
+    public <T> CompletableFuture<Optional<T>> readStored(
+        final PlayerProfileContext context, final DataContainerKey<T> key
+    ) {
+        return coordinator.readStored(services.getOwner(), context, key);
     }
 
     @Override

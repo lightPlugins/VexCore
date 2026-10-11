@@ -1,17 +1,17 @@
 package dev.vexsoft.core.paper.inventory.view;
 
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.inventory.element.RefreshableInventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryKey;
 import dev.vexsoft.core.paper.inventory.ItemSaleSession;
 import dev.vexsoft.core.paper.inventory.MutableInventoryView;
-import dev.vexsoft.core.paper.inventory.element.RefreshableInventoryElement;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import java.util.function.Predicate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Predicate;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
@@ -58,6 +58,12 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
 
     /** Reports a completed or rejected item interaction; controls provide their own feedback. */
     protected void onItemInteraction(final boolean successful) {
+    }
+
+    /** Executes an escrow transfer; participating games can delay completion until their durable write succeeds. */
+    protected void transferItems(final Runnable mutation, final Runnable completed) {
+        session.transfer(mutation);
+        completed.run();
     }
 
     @Override
@@ -110,15 +116,16 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         // Cancelled clicks may be applied synchronously. Only cancelled drags restore the cursor
         // after dispatch and require a deferred transfer. Render before the click correction.
         try {
-            session.transfer(() -> transfer(top, slot, click));
-            context.getInventoryService().refresh(player);
+            transferItems(() -> transfer(top, slot, click), () -> {
+                context.getInventoryService().refresh(player);
+                onItemInteraction(!Objects.equals(before, source.getItem(slot))
+                    || !cursorBefore.equals(player.getItemOnCursor()));
+            });
         } catch (RuntimeException failure) {
             onItemInteraction(false);
             defer(context, player::closeInventory);
             throw failure;
         }
-        onItemInteraction(!Objects.equals(before, source.getItem(slot))
-            || !cursorBefore.equals(player.getItemOnCursor()));
     }
 
     @Override
@@ -158,7 +165,8 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
             before.put(encoded, previous == null ? null : previous.clone());
         }
         ItemStack oldCursor = event.getOldCursor().clone();
-        ItemStack newCursor = event.getCursor() == null ? null : event.getCursor().clone();
+        ItemStack cursor = event.getCursor();
+        ItemStack newCursor = cursor == null ? null : cursor.clone();
         defer(context, () -> {
             if (!player.getItemOnCursor().equals(oldCursor)) {
                 onItemInteraction(false);
@@ -170,11 +178,10 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
                     return;
                 }
             }
-            session.transfer(() -> {
+            transferItems(() -> {
                 changes.forEach(this::setItemAt);
                 player.setItemOnCursor(newCursor);
-            });
-            onItemInteraction(!changes.isEmpty());
+            }, () -> onItemInteraction(!changes.isEmpty()));
         });
     }
 

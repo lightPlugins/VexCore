@@ -2,13 +2,18 @@ package dev.vexsoft.core.common.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import java.util.Collection;
+import java.util.concurrent.CompletableFuture;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /** Persists plugin-owned player containers in a storage backend */
 public interface PlayerDataStore extends AutoCloseable {
+
+    /** Completes when backend initialization has finished on its storage executor. */
+    default CompletableFuture<Void> readiness() {
+        return CompletableFuture.completedFuture(null);
+    }
 
     /** Adds missing storage structures for the supplied containers */
     CompletableFuture<Void> reconcile(String owner, Collection<DataContainerKey<?>> keys);

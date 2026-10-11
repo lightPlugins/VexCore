@@ -7,15 +7,16 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
 import dev.vexsoft.core.common.service.stats.contribution.StatContributionCoordinatorService;
+import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.signals.core.PlayerDataLoadedSignal;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Objects;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -25,7 +26,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
-@Dependencies({PlayerDataCoordinatorService.class, PlayerDataStoreService.class, PlayerIdentityService.class, SignalService.class, StatContributionCoordinatorService.class})
+@Dependencies({PlayerDataCoordinatorService.class, PlayerDataStoreService.class, PlayerIdentityService.class,
+    SignalService.class, StatContributionCoordinatorService.class, ProfileSessionService.class})
 public final class VexPlayerLifecycleListener implements Listener {
 
     private final PlayerDataCoordinatorService players;
@@ -33,6 +35,8 @@ public final class VexPlayerLifecycleListener implements Listener {
     private final PlayerIdentityService identities;
     private final PlayerDataStoreService dataStore;
     private final StatContributionCoordinatorService statContributions;
+    private final ProfileSessionService profiles;
+    private final Plugin plugin;
     private final Logger logger;
     private final ConcurrentHashMap<UUID, UUID> loginAttempts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, UUID> readyPlayers = new ConcurrentHashMap<>();
@@ -45,11 +49,13 @@ public final class VexPlayerLifecycleListener implements Listener {
         identities = checkedServices.require(PlayerIdentityService.class);
         signals = checkedServices.require(SignalService.class);
         statContributions = checkedServices.require(StatContributionCoordinatorService.class);
+        profiles = checkedServices.require(ProfileSessionService.class);
 
-        if (!(checkedServices.getOwner() instanceof Plugin plugin)) {
+        if (!(checkedServices.getOwner() instanceof Plugin owner)) {
             throw new IllegalArgumentException("Player lifecycle listener owner must be a Bukkit plugin");
         }
 
+        plugin = owner;
         logger = plugin.getLogger();
     }
 
@@ -113,18 +119,32 @@ public final class VexPlayerLifecycleListener implements Listener {
             .orElseThrow(() -> new IllegalStateException("VexPlayer was not loaded before join: " + uniqueId));
 
         player.bindPlatformPlayer(event.getPlayer());
-        statContributions.refreshPlayer(player);
-        signals.publish(new PlayerDataLoadedSignal(player));
+        profiles.initialize(player).whenComplete((ignored, failure) -> event.getPlayer().getScheduler().run(
+            plugin,
+            task -> {
+                if (players.find(uniqueId).orElse(null) != player || !event.getPlayer().isConnected()) {
+                    return;
+                }
+                if (failure != null) {
+                    logger.log(Level.SEVERE, "Unable to restore player profiles " + uniqueId, failure);
+                    event.getPlayer().kick(Component.text(dataStore.getLoginKickMessage()));
+                    return;
+                }
+                statContributions.refreshPlayer(player);
+                signals.publish(new PlayerDataLoadedSignal(player));
+            }, null));
     }
 
     @EventHandler
     public void onPlayerQuit(final PlayerQuitEvent event) {
         cleanupCurrentAttempt(event.getPlayer().getUniqueId());
-        players.find(event.getPlayer().getUniqueId()).ifPresent(player -> {
+        CompletableFuture<Void> retirement = players.find(event.getPlayer().getUniqueId()).map(player -> {
+            CompletableFuture<Void> captured = profiles.retire(player);
             statContributions.removePlayer(player);
             player.unbindPlatformPlayer();
-        });
-        players.saveAndRemove(event.getPlayer().getUniqueId()).exceptionally(throwable -> {
+            return captured;
+        }).orElseGet(() -> CompletableFuture.completedFuture(null));
+        retirement.thenCompose(ignored -> players.saveAndRemove(event.getPlayer().getUniqueId())).exceptionally(throwable -> {
             logger.log(Level.SEVERE, "Unable to save VexPlayer " + event.getPlayer().getUniqueId(), throwable);
 
             return null;

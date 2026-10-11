@@ -26,7 +26,7 @@ public final class VexCurrencyContainer implements CurrencyContainer {
     public WholeAmount getBalance(final Currency currency) {
         Currency checked = requireAvailable(currency);
 
-        return player.read(CurrencyPlayerData.CURRENCIES, data -> balance(data, checked));
+        return player.read(CurrencyPlayerData.key(checked), data -> balance(data, checked));
     }
 
     @Override
@@ -42,7 +42,7 @@ public final class VexCurrencyContainer implements CurrencyContainer {
         }
 
         return player.update(
-            CurrencyPlayerData.CURRENCIES,
+            CurrencyPlayerData.key(checked),
             data -> {
                 WholeAmount previous = balance(data, checked);
                 WholeAmount updated = previous.add(amount);
@@ -76,21 +76,21 @@ public final class VexCurrencyContainer implements CurrencyContainer {
 
         synchronized (player) {
             String signature = currency.getKey() + "=" + amount;
-            String receipt = player.read(CurrencyPlayerData.CURRENCIES, data -> data.getReceipts().get(operationId));
+            String receipt = player.read(CurrencyPlayerData.key(currency), data -> data.getReceipts().get(operationId));
 
             if (receipt != null) {
                 if (!receipt.equals(signature)) {
                     throw new IllegalArgumentException("Currency operation id reused with different arguments");
                 }
 
-                WholeAmount current = player.read(CurrencyPlayerData.CURRENCIES, data -> balance(data, currency));
+                WholeAmount current = player.read(CurrencyPlayerData.key(currency), data -> balance(data, currency));
                 return transaction(CurrencyTransaction.Status.SUCCESS, current, current, "already-applied");
             }
 
             CurrencyTransaction result = deposit(currency, amount);
             if (result.successful()) {
                 // The receipt and balance share one serialized container and one player lock.
-                player.update(CurrencyPlayerData.CURRENCIES, data -> {
+                player.update(CurrencyPlayerData.key(currency), data -> {
                     data.getReceipts().put(operationId, signature);
                 });
             }
@@ -113,32 +113,23 @@ public final class VexCurrencyContainer implements CurrencyContainer {
             checkedAmounts.merge(checked, checkedAmount, WholeAmount::add);
         });
 
-        return player.update(
-            CurrencyPlayerData.CURRENCIES,
-            data -> {
-                Map<CurrencyKey, WholeAmount> updated = new LinkedHashMap<>();
-
-                for (Map.Entry<Currency, WholeAmount> entry : checkedAmounts.entrySet()) {
-                    Currency currency = entry.getKey();
-                    WholeAmount balance = balance(data, currency).add(entry.getValue());
-
-                    if (currency.getDefinition()
-                        .getMaximumBalance()
-                        .map(maximum -> balance.compareTo(maximum) > 0)
-                        .orElse(false)) {
-                        return new CurrencyBatchTransaction(false, "maximum-exceeded", Map.of());
-                    }
-
-                    updated.put(currency.getKey(), balance);
+        synchronized (player) {
+            Map<CurrencyKey, WholeAmount> updated = new LinkedHashMap<>();
+            for (Map.Entry<Currency, WholeAmount> entry : checkedAmounts.entrySet()) {
+                Currency currency = entry.getKey();
+                WholeAmount balance = getBalance(currency).add(entry.getValue());
+                if (currency.getDefinition().getMaximumBalance()
+                    .map(maximum -> balance.compareTo(maximum) > 0).orElse(false)) {
+                    return new CurrencyBatchTransaction(false, "maximum-exceeded", Map.of());
                 }
-
-                updated.forEach((key, balance) -> data.getBalances().put(key.toString(), balance.toString()));
-
-                return new CurrencyBatchTransaction(true, "", updated);
+                updated.put(currency.getKey(), balance);
             }
-        );
+            checkedAmounts.keySet().forEach(currency -> player.update(CurrencyPlayerData.key(currency), data -> {
+                data.getBalances().put(currency.getKey().toString(), updated.get(currency.getKey()).toString());
+            }));
+            return new CurrencyBatchTransaction(true, "", updated);
+        }
     }
-
     @Override
     public CurrencyTransaction withdraw(final Currency currency, final WholeAmount amount) {
         Currency checked = available(currency);
@@ -152,7 +143,7 @@ public final class VexCurrencyContainer implements CurrencyContainer {
         }
 
         return player.update(
-            CurrencyPlayerData.CURRENCIES,
+            CurrencyPlayerData.key(checked),
             data -> {
                 WholeAmount previous = balance(data, checked);
 
@@ -191,7 +182,7 @@ public final class VexCurrencyContainer implements CurrencyContainer {
         }
 
         return player.update(
-            CurrencyPlayerData.CURRENCIES,
+            CurrencyPlayerData.key(checked),
             data -> {
                 WholeAmount previous = balance(data, checked);
 

@@ -4,10 +4,15 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.identity.PlayerIdentity;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
+import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
+import dev.vexsoft.core.api.player.profile.storage.StoredProfileDocument;
 import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
+import dev.vexsoft.core.common.data.profile.JdbcProfileDocuments;
+import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,28 +20,30 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.PGConnection;
 import org.postgresql.PGNotification;
-import org.postgresql.ds.PGSimpleDataSource;
 
-public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore {
+public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDataStore, PlayerIdentityStore, ProfileDocumentStore {
 
     private static final String GLOBAL_DATA_TABLE = "\"vex_global_data\"";
     private static final String GLOBAL_DATA_CHANNEL = "vex_global_data";
     private static final String PLAYER_IDENTITIES_TABLE = "\"vex_player_identities\"";
 
     private final HikariDataSource dataSource;
+    private final CompletableFuture<Void> initialization;
+    private final JdbcProfileDocuments profileDocuments;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final CopyOnWriteArrayList<Consumer<GlobalDataReference>> globalListeners = new CopyOnWriteArrayList<>();
     private final AtomicBoolean globalListenerStarted = new AtomicBoolean();
@@ -57,16 +64,6 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
         postgres.setUser(Objects.requireNonNull(username, "username"));
         postgres.setPassword(Objects.requireNonNull(password, "password"));
 
-        if (autoCreateDatabase) {
-            createDatabaseIfMissing(
-                postgres,
-                jdbcUrl,
-                username,
-                password,
-                Objects.requireNonNull(maintenanceDatabase, "maintenanceDatabase")
-            );
-        }
-
         HikariConfig config = new HikariConfig();
         // A direct DataSource avoids DriverManager lookups across Paper's library classloader
         config.setDataSource(postgres);
@@ -75,6 +72,51 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
         // Keep pool creation lazy when automatic database creation is disabled
         config.setInitializationFailTimeout(-1);
         dataSource = new HikariDataSource(config);
+        initialization = CompletableFuture.runAsync(() -> {
+            if (autoCreateDatabase) {
+                createDatabaseIfMissing(
+                    postgres,
+                    jdbcUrl,
+                    username,
+                    password,
+                    Objects.requireNonNull(maintenanceDatabase, "maintenanceDatabase")
+                );
+            }
+        }, executor);
+        profileDocuments = new JdbcProfileDocuments(this::connection, executor, true);
+    }
+
+    @Override
+    public CompletableFuture<Void> readiness() {
+        return initialization.copy();
+    }
+
+    private Connection connection() throws SQLException {
+        // This adapter is invoked exclusively by database executor tasks, never the server thread.
+        initialization.join();
+        return dataSource.getConnection();
+    }
+
+    @Override
+    public CompletableFuture<Void> reconcileProfileDocuments() {
+        return profileDocuments.reconcileProfileDocuments();
+    }
+
+    @Override
+    public CompletableFuture<Map<ProfileDocumentKey, StoredProfileDocument>> loadProfileDocuments(
+        final Collection<ProfileDocumentKey> keys
+    ) {
+        return profileDocuments.loadProfileDocuments(keys);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> commitProfileDocuments(final Collection<ProfileDocumentChange> changes) {
+        return profileDocuments.commitProfileDocuments(changes);
+    }
+
+    @Override
+    public CompletableFuture<Long> profileDatabaseTime() {
+        return profileDocuments.profileDatabaseTime();
     }
 
     private void createDatabaseIfMissing(
@@ -162,7 +204,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.runAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+                try (Connection connection = connection(); Statement statement = connection.createStatement()) {
                     statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + table
                         + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL)");
 
@@ -197,7 +239,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
             () -> {
                 Map<String, String> values = new LinkedHashMap<>();
 
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setObject(1, uniqueId);
 
@@ -252,7 +294,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.runAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection()) {
+                try (Connection connection = connection()) {
                     connection.setAutoCommit(false);
 
                     try {
@@ -333,7 +375,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setObject(1, uniqueId);
 
@@ -356,7 +398,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     return statement.executeUpdate();
                 } catch (SQLException exception) {
@@ -373,7 +415,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setString(1, playerName);
 
@@ -393,7 +435,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
     public CompletableFuture<Void> reconcileGlobalData() {
         return CompletableFuture.runAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+                try (Connection connection = connection(); Statement statement = connection.createStatement()) {
                     statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + GLOBAL_DATA_TABLE
                         + " (owner VARCHAR(63) NOT NULL, data_key VARCHAR(63) NOT NULL,"
                         + " value JSONB NOT NULL, revision BIGINT NOT NULL,"
@@ -413,7 +455,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setString(1, owner);
                     statement.setString(2, key);
@@ -442,7 +484,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setString(1, owner);
                     statement.setString(2, key);
@@ -484,7 +526,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setString(1, owner);
                     statement.setString(2, key);
@@ -517,7 +559,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
     public CompletableFuture<Void> reconcilePlayerIdentities() {
         return CompletableFuture.runAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+                try (Connection connection = connection(); Statement statement = connection.createStatement()) {
                     statement.executeUpdate("CREATE TABLE IF NOT EXISTS " + PLAYER_IDENTITIES_TABLE
                         + " (player_id UUID PRIMARY KEY, player_name VARCHAR(16) NOT NULL,"
                         + " updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)");
@@ -540,7 +582,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     statement.setObject(1, uniqueId);
                     statement.setString(2, name);
@@ -627,7 +669,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
     ) {
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     if (expectedRevision == 0) {
                         statement.setString(1, owner);
@@ -679,7 +721,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
 
     private void listenForGlobalDataChanges() {
         while (!closed.get()) {
-            try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            try (Connection connection = connection(); Statement statement = connection.createStatement()) {
                 statement.execute("LISTEN " + GLOBAL_DATA_CHANNEL);
                 PGConnection postgres = connection.unwrap(PGConnection.class);
 
@@ -729,7 +771,7 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
     ) {
         return CompletableFuture.supplyAsync(
             () -> {
-                try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                try (Connection connection = connection(); PreparedStatement statement = connection.prepareStatement(
                     sql)) {
                     binder.bind(statement);
 

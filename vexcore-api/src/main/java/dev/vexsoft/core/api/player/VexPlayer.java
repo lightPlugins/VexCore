@@ -1,20 +1,24 @@
 package dev.vexsoft.core.api.player;
 
+import dev.vexsoft.core.api.player.profile.PlayerDataAddress;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.Value;
 import org.jetbrains.annotations.ApiStatus;
@@ -35,13 +39,44 @@ public final class VexPlayer {
     @Getter
     private volatile String name;
     private final Map<DataContainerKey<?>, ContainerState<?>> containers = new ConcurrentHashMap<>();
+    private final Map<ProfileDomain, PlayerProfileContext> profileContexts = new ConcurrentHashMap<>();
+    private Predicate<PlayerProfileContext> profileAccess = ignored -> true;
     private final PlayerContainerLookup containerLookup;
     private volatile PlayerContainer[] featureContainers = EMPTY_FEATURE_CONTAINERS;
     private volatile Object platformPlayer;
     private List<Runnable> committedEffects;
+    private List<Runnable> durableEffects;
     private List<Runnable> rollbackEffects;
     private Map<DataContainerKey<?>, ContainerSnapshot<Object>> transactionSnapshots;
     private Function<Object, Object> transactionCopier;
+    private ProfileDomain mutationDomain;
+
+    /** Creates an initially empty player instance for the data coordinator. */
+    @ApiStatus.Internal
+    public VexPlayer(final UUID uniqueId, final String name) {
+        this(uniqueId, name, EMPTY_CONTAINER_LOOKUP);
+    }
+
+    /** Creates a player backed by the supplied feature-container registry. */
+    @ApiStatus.Internal
+    public VexPlayer(final UUID uniqueId, final String name, final PlayerContainerLookup containerLookup) {
+        this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
+        this.name = Objects.requireNonNull(name, "name");
+        this.containerLookup = Objects.requireNonNull(containerLookup, "containerLookup");
+    }
+
+    /** Limits one guarded mutation to opted-in containers in its domain; unrelated account writes remain independent. */
+    public synchronized <T> T inProfileMutation(final ProfileDomain domain, final Supplier<T> operation) {
+        if (mutationDomain != null) {
+            throw new IllegalStateException("Nested profile mutation");
+        }
+        mutationDomain = Objects.requireNonNull(domain, "domain");
+        try {
+            return Objects.requireNonNull(operation, "operation").get();
+        } finally {
+            mutationDomain = null;
+        }
+    }
 
     /** Copies containers on their first write and restores those values when the economic operation fails. */
     public boolean atomic(final Function<Object, Object> copier, final BooleanSupplier operation) {
@@ -91,7 +126,7 @@ public final class VexPlayer {
         if (success) {
             effects.forEach(effect -> {
                 try {
-                    effect.run();
+                    afterCommit(effect);
                 } catch (RuntimeException failure) {
                     System.getLogger(VexPlayer.class.getName())
                         .log(
@@ -116,9 +151,35 @@ public final class VexPlayer {
 
                 return;
             }
+            if (durableEffects != null) {
+                durableEffects.add(effect);
+                return;
+            }
         }
 
         effect.run();
+    }
+
+    /** Defers post-commit effects across an asynchronous durability boundary on the platform thread. */
+    @ApiStatus.Internal
+    public synchronized void beginDurableEffects() {
+        if (durableEffects != null || committedEffects != null) {
+            throw new IllegalStateException("A durable player operation is already active");
+        }
+        durableEffects = new ArrayList<>();
+    }
+
+    /** Releases only committed effects; failed writes never publish rewards or observer notifications. */
+    @ApiStatus.Internal
+    public void finishDurableEffects(final boolean committed) {
+        List<Runnable> effects;
+        synchronized (this) {
+            effects = durableEffects;
+            durableEffects = null;
+        }
+        if (committed && effects != null) {
+            effects.forEach(this::afterCommit);
+        }
     }
 
     /** Registers an external compensation for the active transaction; standalone successful actions need no undo. */
@@ -127,24 +188,6 @@ public final class VexPlayer {
         if (rollbackEffects != null) {
             rollbackEffects.add(effect);
         }
-    }
-
-    private <T> void restoreValue(final DataContainerKey<T> key, final Object value) {
-        state(key).reset(key.getType().cast(value));
-    }
-
-    /** Creates an initially empty player instance for the data coordinator. */
-    @ApiStatus.Internal
-    public VexPlayer(final UUID uniqueId, final String name) {
-        this(uniqueId, name, EMPTY_CONTAINER_LOOKUP);
-    }
-
-    /** Creates a player backed by the supplied feature-container registry. */
-    @ApiStatus.Internal
-    public VexPlayer(final UUID uniqueId, final String name, final PlayerContainerLookup containerLookup) {
-        this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
-        this.name = Objects.requireNonNull(name, "name");
-        this.containerLookup = Objects.requireNonNull(containerLookup, "containerLookup");
     }
 
     /** Returns the required feature container bound to this player. */
@@ -286,6 +329,89 @@ public final class VexPlayer {
         platformPlayer = null;
     }
 
+    /** Finds a ready profile context without changing the account's stable identity. */
+    public Optional<PlayerProfileContext> findProfileContext(final ProfileDomain domain) {
+        return Optional.ofNullable(profileContexts.get(Objects.requireNonNull(domain, "domain")));
+    }
+
+    /** Checks the complete captured identity, including reconnect and membership generation. */
+    public boolean isCurrentContext(final PlayerProfileContext context) {
+        return Objects.requireNonNull(context, "context").equals(profileContexts.get(context.domain()));
+    }
+
+    /** Captures every installed domain session for an asynchronous operation. */
+    public Map<ProfileDomain, PlayerProfileContext> profileContexts() {
+        return Map.copyOf(profileContexts);
+    }
+
+    /** Binds a cached ownership check without adding database requests to container access. */
+    @ApiStatus.Internal
+    public void setProfileAccessGuard(final Predicate<PlayerProfileContext> access) {
+        profileAccess = Objects.requireNonNull(access, "access");
+    }
+
+    /** Resolves a key's explicit persistence address; missing profile contexts fail closed. */
+    public PlayerDataAddress addressOf(final DataContainerKey<?> key) {
+        return Objects.requireNonNull(key, "key").getScope().domain()
+            .map(domain -> findProfileContext(domain).orElseThrow(() -> new IllegalStateException(
+                "Profile context is not ready: " + domain.value())).address())
+            .orElseGet(() -> PlayerDataAddress.account(uniqueId));
+    }
+
+    /** Installs a complete detached profile before notifying feature facades. */
+    @ApiStatus.Internal
+    public synchronized void installProfile(
+        final PlayerProfileContext context,
+        final Map<DataContainerKey<?>, Object> values
+    ) {
+        Objects.requireNonNull(context, "context");
+        if (!uniqueId.equals(context.playerId()) || transactionSnapshots != null) {
+            throw new IllegalStateException("Cannot install a profile inside another player's transaction");
+        }
+        Map<DataContainerKey<?>, ContainerState<?>> replacement = new LinkedHashMap<>();
+        values.forEach((key, value) -> {
+            if (!key.getScope().domain().filter(context.domain()::equals).isPresent()) {
+                throw new IllegalArgumentException("Profile value belongs to another scope: " + key.getName());
+            }
+            replacement.put(key, profileState(key, value));
+        });
+        for (DataContainerKey<?> key : containers.keySet()) {
+            if (key.getScope().domain().filter(context.domain()::equals).isPresent() && !replacement.containsKey(key)) {
+                throw new IllegalArgumentException("Incomplete profile snapshot: " + key.getName());
+            }
+        }
+        PlayerProfileContext previous = profileContexts.put(context.domain(), context);
+        containers.putAll(replacement);
+        for (PlayerContainer container : featureContainers) {
+            if (container != null) {
+                container.onProfileChanged(previous, context);
+            }
+        }
+    }
+
+    /** Restores detached values of a retired platform session without invoking platform-dependent facades. */
+    @ApiStatus.Internal
+    public synchronized void rollbackRetiredProfile(
+        final PlayerProfileContext context, final Map<DataContainerKey<?>, Object> values
+    ) {
+        if (platformPlayer != null || !isCurrentContext(context)) {
+            throw new IllegalStateException("Only an unbound captured session can be rolled back without notifications");
+        }
+        values.forEach((key, value) -> containers.put(key, profileState(key, value)));
+    }
+
+    /** Acknowledges only the same scope and revision captured by a completed storage write. */
+    @ApiStatus.Internal
+    public synchronized void markClean(
+        final DataContainerKey<?> key,
+        final PlayerProfileContext context,
+        final long revision
+    ) {
+        if (context == null && key.getScope().domain().isEmpty() || context != null && isCurrentContext(context)) {
+            markClean(key, revision);
+        }
+    }
+
     /** Returns a registered container without marking it as changed */
     public <T> T require(final DataContainerKey<T> key) {
         return state(key).read();
@@ -312,6 +438,12 @@ public final class VexPlayer {
         Objects.requireNonNull(update, "update");
         snapshotBeforeWrite(key);
         return state(key).update(update);
+    }
+
+    /** Replaces an immutable container value and marks its new revision for persistence. */
+    public synchronized <T> void replace(final DataContainerKey<T> key, final T value) {
+        snapshotBeforeWrite(key);
+        state(key).replace(key.getType().cast(Objects.requireNonNull(value, "value")));
     }
 
     /** Mutates a container, marking it dirty only when the callback reports a change. */
@@ -372,6 +504,18 @@ public final class VexPlayer {
         return stateUnchecked(key).snapshot(Objects.requireNonNull(snapshotter, "snapshotter"));
     }
 
+    /** Captures installed state for operator recovery after lease expiry, without permitting any mutation. */
+    @ApiStatus.Internal
+    public synchronized <R> ContainerSnapshot<R> recoverySnapshot(
+        final DataContainerKey<?> key, final Function<Object, R> snapshotter
+    ) {
+        ContainerState<?> state = containers.get(Objects.requireNonNull(key, "key"));
+        if (state == null) {
+            throw new IllegalStateException("Recovery container is not installed");
+        }
+        return state.snapshot(Objects.requireNonNull(snapshotter, "snapshotter"));
+    }
+
     /** Marks a container clean if it has not changed since the supplied revision was saved. */
     @ApiStatus.Internal
     public void markClean(final DataContainerKey<?> key, final long revision) {
@@ -393,7 +537,18 @@ public final class VexPlayer {
         }
     }
 
+    private <T> void restoreValue(final DataContainerKey<T> key, final Object value) {
+        state(key).reset(key.getType().cast(value));
+    }
+
+    private static <T> ContainerState<T> profileState(final DataContainerKey<T> key, final Object value) {
+        return new ContainerState<>(key.getType().cast(Objects.requireNonNull(value, "value")), false);
+    }
+
     private void snapshotBeforeWrite(final DataContainerKey<?> key) {
+        if (mutationDomain != null && !key.getScope().domain().filter(mutationDomain::equals).isPresent()) {
+            throw new IllegalStateException("Profile transactions may only mutate their participating domain");
+        }
         if (transactionSnapshots != null && !transactionSnapshots.containsKey(key)) {
             transactionSnapshots.put(key, stateUnchecked(key).snapshot(transactionCopier));
         }
@@ -404,6 +559,13 @@ public final class VexPlayer {
     }
 
     private ContainerState<?> stateUnchecked(final DataContainerKey<?> key) {
+        ProfileDomain domain = key.getScope().domain().orElse(null);
+        if (domain != null) {
+            PlayerProfileContext context = profileContexts.get(domain);
+            if (context == null || !profileAccess.test(context)) {
+                throw new IllegalStateException("Profile context is not writable: " + domain.value());
+            }
+        }
         ContainerState<?> state = containers.get(Objects.requireNonNull(key, "key"));
 
         if (state == null) {
@@ -485,6 +647,12 @@ public final class VexPlayer {
 
         private synchronized void reset(final T resetValue) {
             value = Objects.requireNonNull(resetValue, "resetValue");
+            dirty = true;
+            revision++;
+        }
+
+        private synchronized void replace(final T replacement) {
+            value = replacement;
             dirty = true;
             revision++;
         }

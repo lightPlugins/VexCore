@@ -1,15 +1,25 @@
 package dev.vexsoft.core.common.service.data;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
+import dev.vexsoft.core.common.data.PlayerDataStore;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Provides the player data store configured for VexCore
  */
 public interface PlayerDataStoreService extends VexService {
+
+    /** Defers backend closure until asynchronous player/session drains and recovery export finish. */
+    default void drainBeforeClose(final CompletableFuture<Void> drain) {
+    }
+
+    /** Completes after the shared backend schemas are usable, without blocking startup or the server thread. */
+    default CompletableFuture<Void> getReadiness() {
+        return CompletableFuture.completedFuture(null);
+    }
 
     /** Returns the configured player data store */
     PlayerDataStore getStore();

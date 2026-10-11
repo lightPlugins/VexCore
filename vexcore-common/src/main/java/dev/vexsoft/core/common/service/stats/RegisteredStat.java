@@ -33,6 +33,9 @@ final class RegisteredStat implements Stat {
     }
 
     void update(final StatDefinition updatedDefinition) {
+        if (!definition.getDataScope().domain().equals(updatedDefinition.getDataScope().domain())) {
+            throw new IllegalArgumentException("Changing a registered stat scope requires an offline migration");
+        }
         definition = Objects.requireNonNull(updatedDefinition, "updatedDefinition");
     }
 

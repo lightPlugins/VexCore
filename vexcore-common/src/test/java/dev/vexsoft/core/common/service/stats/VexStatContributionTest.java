@@ -11,12 +11,12 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.stats.contribution.VexStatContributionCoordinatorService;
+import dev.vexsoft.core.stats.contribution.StatContributionProvider;
 import dev.vexsoft.core.stats.Stat;
 import dev.vexsoft.core.stats.StatContainer;
 import dev.vexsoft.core.stats.StatDefinition;
 import dev.vexsoft.core.stats.StatKey;
 import dev.vexsoft.core.stats.StatModifier;
-import dev.vexsoft.core.stats.contribution.StatContributionProvider;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
@@ -126,6 +126,8 @@ public final class VexStatContributionTest {
             services = (VexServiceRegistry) Proxy.newProxyInstance(VexServiceRegistry.class.getClassLoader(),
                 new Class<?>[] {VexServiceRegistry.class}, (instance, method, arguments) -> switch (method.getName()) {
                     case "require" -> managed.get(arguments[0]);
+                    case "find" -> java.util.Optional.ofNullable(managed.get(arguments[0]));
+                    case "getOwner" -> owner;
                     case "isAvailable" -> managed.containsKey(arguments[0]);
                     default -> throw new AssertionError(method.getName());
                 });

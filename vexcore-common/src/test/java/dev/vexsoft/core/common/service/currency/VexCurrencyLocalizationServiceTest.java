@@ -28,6 +28,7 @@ final class VexCurrencyLocalizationServiceTest {
         VexServiceRegistry services = proxy(VexServiceRegistry.class, (object, method, args) ->
             switch (method.getName()) {
                 case "require" -> dependencies.get(args[0]);
+                case "find" -> java.util.Optional.ofNullable(dependencies.get(args[0]));
                 case "getOwner" -> (ServiceOwner) () -> "VexIsles";
                 default -> throw new UnsupportedOperationException(method.getName());
             });

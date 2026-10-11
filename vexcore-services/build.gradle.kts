@@ -6,6 +6,7 @@ sourceSets.main {
     resources.srcDir(project(":vexcore-paper").layout.buildDirectory.dir("generated/screen-ui-metrics"))
 }
 tasks.processResources { dependsOn(":vexcore-paper:generateScreenUiPack") }
+tasks.named("sourcesJar") { dependsOn(":vexcore-paper:generateScreenUiPack") }
 tasks.test {
     dependsOn(":vexcore-paper:generateInteractiveUiPack")
     systemProperty("interactiveUiPackDirectory", project(":vexcore-paper").layout.buildDirectory.dir("generated/interactive-ui-pack").get().asFile.absolutePath)
@@ -21,6 +22,7 @@ dependencies {
 
     compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
     compileOnly("me.clip:placeholderapi:2.12.2")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.2")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
@@ -28,6 +30,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
-    testRuntimeOnly("com.fasterxml.jackson.core:jackson-databind:2.21.2")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
     testRuntimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.2")
 }
