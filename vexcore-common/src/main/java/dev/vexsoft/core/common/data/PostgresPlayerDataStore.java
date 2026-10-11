@@ -12,6 +12,7 @@ import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import dev.vexsoft.core.common.data.profile.JdbcProfileDocuments;
+import dev.vexsoft.core.common.data.redis.JdbcNetworkCheckpoints;
 import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -89,6 +90,11 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
     @Override
     public CompletableFuture<Void> readiness() {
         return initialization.copy();
+    }
+
+    @Override
+    public JdbcNetworkCheckpoints networkCheckpoints() {
+        return new JdbcNetworkCheckpoints(this::connection, executor);
     }
 
     private Connection connection() throws SQLException {

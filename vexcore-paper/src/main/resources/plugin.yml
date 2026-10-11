@@ -9,6 +9,7 @@ softdepend:
   - PlaceholderAPI
   - Vault
 libraries:
+  - io.lettuce:lettuce-core:6.7.1.RELEASE
   - com.github.ben-manes.caffeine:caffeine:3.2.4
   - com.fasterxml.jackson.core:jackson-databind:2.21.2
   - com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.2

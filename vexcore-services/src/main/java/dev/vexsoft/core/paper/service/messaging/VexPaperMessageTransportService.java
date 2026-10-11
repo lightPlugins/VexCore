@@ -6,6 +6,11 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageEnvelope;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
+import dev.vexsoft.core.common.service.messaging.RedisMessageChannel;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.data.redis.RedisPlayerDataStore;
+import dev.vexsoft.core.api.service.configuration.ConfigurationService;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -18,7 +23,7 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jspecify.annotations.NonNull;
 
 /** Exchanges encoded messages with Velocity through Paper's plugin messaging channels. */
-@Dependencies({MessageCodecService.class})
+@Dependencies({MessageCodecService.class, PlayerDataStoreService.class, ConfigurationService.class})
 public final class VexPaperMessageTransportService implements MessageTransportService, PluginMessageListener,
     AutoCloseable {
 
@@ -26,6 +31,7 @@ public final class VexPaperMessageTransportService implements MessageTransportSe
 
     private final JavaPlugin plugin;
     private final MessageCodecService codec;
+    private final RedisMessageChannel redis;
     private final CopyOnWriteArrayList<Consumer<MessageEnvelope>> receivers = new CopyOnWriteArrayList<>();
     private final AtomicBoolean started = new AtomicBoolean();
 
@@ -38,11 +44,26 @@ public final class VexPaperMessageTransportService implements MessageTransportSe
 
         this.plugin = javaPlugin;
         this.codec = checkedServices.require(MessageCodecService.class);
+        var backend = checkedServices.require(PlayerDataStoreService.class).getStore();
+        if (backend instanceof RedisPlayerDataStore live) {
+            String serverId = checkedServices.require(ConfigurationService.class)
+                .load(Path.of("network.yml"), "network.yml").getString("server-id", "server");
+            redis = new RedisMessageChannel(live, codec, false, serverId,
+                playerId -> plugin.getServer().getPlayer(playerId) != null);
+            redis.subscribe(message -> receivers.forEach(receiver -> receiver.accept(message)));
+        } else {
+            redis = null;
+        }
     }
 
     @Override
     public void start() {
         if (!started.compareAndSet(false, true)) {
+            return;
+        }
+
+        if (redis != null) {
+            redis.start();
             return;
         }
 
@@ -52,6 +73,9 @@ public final class VexPaperMessageTransportService implements MessageTransportSe
 
     @Override
     public DeliveryResult send(final MessageEnvelope message) {
+        if (redis != null) {
+            return redis.send(message);
+        }
         byte[] encoded;
 
         try {
@@ -109,6 +133,11 @@ public final class VexPaperMessageTransportService implements MessageTransportSe
 
     @Override
     public void close() {
+        if (redis != null) {
+            redis.close();
+            receivers.clear();
+            return;
+        }
         receivers.clear();
 
         if (!started.compareAndSet(true, false)) {

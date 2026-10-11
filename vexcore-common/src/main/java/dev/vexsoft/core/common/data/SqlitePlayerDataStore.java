@@ -10,6 +10,7 @@ import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import dev.vexsoft.core.common.data.profile.JdbcProfileDocuments;
+import dev.vexsoft.core.common.data.redis.JdbcNetworkCheckpoints;
 import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -70,6 +71,11 @@ public final class SqlitePlayerDataStore implements PlayerDataStore, GlobalDataS
     @Override
     public CompletableFuture<Void> readiness() {
         return initialization.copy();
+    }
+
+    @Override
+    public JdbcNetworkCheckpoints networkCheckpoints() {
+        return new JdbcNetworkCheckpoints(this::connection, executor);
     }
 
     @Override

@@ -11,6 +11,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine:3.2.4")
     implementation("com.zaxxer:HikariCP:6.3.0")
     implementation("org.postgresql:postgresql:42.7.8")
+    implementation("io.lettuce:lettuce-core:6.7.1.RELEASE")
 
     compileOnly("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")

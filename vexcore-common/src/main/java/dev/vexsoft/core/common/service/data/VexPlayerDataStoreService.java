@@ -10,6 +10,8 @@ import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.PostgresPlayerDataStore;
 import dev.vexsoft.core.common.data.SqlitePlayerDataStore;
+import dev.vexsoft.core.common.data.redis.RedisPlayerDataStore;
+import dev.vexsoft.core.common.data.redis.RedisSettings;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -60,7 +62,7 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
                 "SQLite is only supported by a standalone Paper server; proxy setups require PostgreSQL");
         }
 
-        store = switch (storageType) {
+        PlayerDataStore durable = switch (storageType) {
             case "memory" -> new MemoryPlayerDataStore();
             case "sqlite" -> new SqlitePlayerDataStore(sqliteFile(
                 configurations.getOwner().getConfigurationDirectory(),
@@ -76,7 +78,20 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
             );
             default -> throw new IllegalArgumentException("Unsupported player data storage: " + storageType);
         };
-        readiness = store.readiness().thenCompose(ignored -> CompletableFuture.allOf(
+        if (configuration.getBoolean("redis.enabled", false)) {
+            if (!storageType.equals("postgresql") && !storageType.equals("sqlite")) {
+                durable.close();
+                throw new IllegalArgumentException("Redis requires a durable SQL checkpoint backend");
+            }
+            store = new RedisPlayerDataStore(durable, RedisSettings.read(configuration));
+        } else {
+            store = durable;
+        }
+        CompletableFuture<Void> modeReady = store.readiness();
+        if (!store.isLive() && (storageType.equals("postgresql") || storageType.equals("sqlite"))) {
+            modeReady = modeReady.thenCompose(ignored -> store.networkCheckpoints().verifyDirectMode());
+        }
+        readiness = modeReady.thenCompose(ignored -> CompletableFuture.allOf(
             ((GlobalDataStore) store).reconcileGlobalData(),
             ((PlayerIdentityStore) store).reconcilePlayerIdentities()
         ));

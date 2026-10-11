@@ -22,6 +22,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
+import dev.vexsoft.core.common.data.redis.IndeterminateCommitException;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
@@ -70,8 +71,9 @@ class VexProfileSessionServiceTest {
             assertFalse(operation.isDone());
             assertFalse(fixture.sessions.isReady(fixture.player));
             assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
-            assertTrue(fixture.sessions.transact(fixture.player, () -> ProfileMutation.of("second"))
-                .isCompletedExceptionally());
+            assertTrue(fixture.sessions.transact(fixture.player, () -> {
+                throw new AssertionError("A busy session must reject before invoking the mutation");
+            }).handle((value, failure) -> failure instanceof ProfileSessionBusyException).join());
             fixture.commit.complete(null);
             assertEquals("done", operation.get(5, TimeUnit.SECONDS));
             fixture.sessions.readiness(fixture.player).get(5, TimeUnit.SECONDS);
@@ -95,6 +97,119 @@ class VexProfileSessionServiceTest {
             fixture.saveGate.complete(null);
             operation.get(5, TimeUnit.SECONDS);
             assertTrue(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void liveBackgroundSaveLeavesGameplayReadyAndCoalescesOverlappingSaves() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.saveGate = new CompletableFuture<>();
+            fixture.entity.submit(() -> fixture.level = 11).get();
+            var saving = fixture.sessions.save(fixture.player);
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            assertFalse(saving.isDone());
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
+            assertEquals(saving, fixture.sessions.save(fixture.player));
+            assertEquals(1, fixture.nativeCommits);
+            fixture.saveGate.complete(null);
+            saving.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void ambiguousLiveBackgroundSaveFencesGameplayAndPreservesTheLiveState() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.saveGate = new CompletableFuture<>();
+            fixture.entity.submit(() -> fixture.level = 11).get();
+            var saving = fixture.sessions.save(fixture.player);
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            fixture.saveGate.completeExceptionally(new IndeterminateCommitException(new IllegalStateException("Timeout")));
+            assertTrue(saving.handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            assertEquals(11, fixture.entity.submit(() -> fixture.level).get());
+            assertEquals(1, fixture.kicks);
+        }
+    }
+
+    @Test
+    void liveTransactionMutatesBeforeOneCommitWithoutLoadingOrSavingItsBaseline() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var operation = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            assertEquals(42, fixture.entity.submit(() -> fixture.level).get());
+            assertFalse(operation.isDone());
+            assertEquals(1, fixture.nativeCommits);
+            assertEquals(0, fixture.profileLoads);
+            fixture.commit.complete(null);
+            assertEquals("done", operation.get(5, TimeUnit.SECONDS));
+            assertEquals(1, fixture.effects);
+        }
+    }
+
+    @Test
+    void failedLiveTransactionRetainsUnsavedGameplayBaselineForRetry() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.entity.submit(() -> {
+                fixture.level = 20;
+                fixture.player.replace(VALUE, "earned");
+            }).get();
+            var operation = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            fixture.commit.completeExceptionally(new IllegalStateException("Write rejected"));
+            assertTrue(operation.handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertEquals("earned", fixture.player.read(VALUE, value -> value));
+            assertEquals(20, fixture.entity.submit(() -> fixture.level).get());
+            assertTrue(fixture.player.getDirtyKeys().contains(VALUE));
+            fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+            assertEquals("earned", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
+        }
+    }
+
+    @Test
+    void liveTransactionWaitsForAnOutstandingBackgroundWrite() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.saveGate = new CompletableFuture<>();
+            fixture.entity.submit(() -> fixture.level = 11).get();
+            var saving = fixture.sessions.save(fixture.player);
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            var operation = fixture.change();
+            assertFalse(operation.isDone());
+            assertEquals(11, fixture.entity.submit(() -> fixture.level).get());
+            fixture.saveGate.complete(null);
+            saving.get(5, TimeUnit.SECONDS);
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            assertEquals(2, fixture.nativeCommits);
+            fixture.commit.complete(null);
+            assertEquals("done", operation.get(5, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void transactionCanOvertakeAQueuedLiveCaptureWithoutDeadlocking() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var occupied = new CompletableFuture<Void>();
+            var release = new CompletableFuture<Void>();
+            fixture.entity.execute(() -> {
+                occupied.complete(null);
+                release.join();
+            });
+            occupied.get(5, TimeUnit.SECONDS);
+            CompletableFuture<Void> saving;
+            CompletableFuture<String> operation;
+            try {
+                saving = fixture.sessions.save(fixture.player);
+                operation = fixture.change();
+            } finally {
+                release.complete(null);
+            }
+            saving.get(5, TimeUnit.SECONDS);
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            assertEquals(1, fixture.nativeCommits);
+            fixture.commit.complete(null);
+            assertEquals("done", operation.get(5, TimeUnit.SECONDS));
         }
     }
 
@@ -151,6 +266,43 @@ class VexProfileSessionServiceTest {
             assertEquals(0, fixture.effects);
             assertTrue(fixture.sessions.isReady(fixture.player));
             assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
+        }
+    }
+
+    @Test
+    void ambiguousCommitFencesTheSessionWithoutRestoringAnOlderInventory() throws Exception {
+        try (var fixture = new Fixture()) {
+            var operation = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            fixture.commit.completeExceptionally(new IndeterminateCommitException(new IllegalStateException("Timeout")));
+            assertTrue(operation.handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            fixture.entity.submit(() -> {
+            }).get();
+            assertEquals("mutated", fixture.player.read(VALUE, value -> value));
+            assertEquals(42, fixture.level);
+            assertEquals(0, fixture.effects);
+            assertEquals(1, fixture.kicks);
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+        }
+    }
+
+    @Test
+    void ambiguousBaselineSavePreventsTheEconomicMutationFromStarting() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.saveGate = new CompletableFuture<>();
+            var operation = fixture.change();
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            fixture.saveGate.completeExceptionally(new IndeterminateCommitException(new IllegalStateException("Timeout")));
+            assertTrue(operation.handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            fixture.entity.submit(() -> {
+            }).get();
+            assertEquals("old", fixture.player.read(VALUE, value -> value));
+            assertEquals(10, fixture.level);
+            assertEquals(1, fixture.kicks);
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            fixture.saveGate = null;
         }
     }
 
@@ -278,12 +430,18 @@ class VexProfileSessionServiceTest {
         private int effects;
         private int kicks;
         private boolean failRestore;
+        private int nativeCommits;
+        private int profileLoads;
 
         private Fixture() throws Exception {
             this(true);
         }
 
         private Fixture(final boolean initialize) throws Exception {
+            this(initialize, false);
+        }
+
+        private Fixture(final boolean initialize, final boolean live) throws Exception {
             serverField = Bukkit.class.getDeclaredField("server");
             serverField.setAccessible(true);
             previousServer = serverField.get(null);
@@ -300,9 +458,18 @@ class VexProfileSessionServiceTest {
             });
             var backend = (PlayerDataStore) Proxy.newProxyInstance(PlayerDataStore.class.getClassLoader(),
                 new Class<?>[]{PlayerDataStore.class, ProfileDocumentStore.class}, (object, method, arguments) -> {
+                    if (method.getName().equals("isLive")) {
+                        return live;
+                    }
+                    if (method.getReturnType() != CompletableFuture.class) {
+                        return method.invoke(memory, arguments);
+                    }
                     CompletableFuture<Void> permitted = CompletableFuture.completedFuture(null);
                     if (method.getName().equals("commitProfileDocuments")) {
                         var changes = (Collection<ProfileDocumentChange>) arguments[0];
+                        if (changes.stream().anyMatch(change -> change.key().name().startsWith("native_state_"))) {
+                            nativeCommits++;
+                        }
                         if (saveGate != null && changes.stream()
                             .anyMatch(change -> change.key().name().startsWith("native_state_"))) {
                             saving.complete(null);
@@ -313,6 +480,9 @@ class VexProfileSessionServiceTest {
                             waiting.complete(null);
                             permitted = commit;
                         }
+                    }
+                    if (method.getName().equals("loadProfileDocuments")) {
+                        profileLoads++;
                     }
                     return permitted.thenComposeAsync(ignored -> {
                         try {
@@ -412,6 +582,8 @@ class VexProfileSessionServiceTest {
                 sessions.initialize(player).get(5, TimeUnit.SECONDS);
             }
             entity.submit(() -> level = 10).get();
+            nativeCommits = 0;
+            profileLoads = 0;
         }
 
         private CompletableFuture<String> change() {

@@ -2,6 +2,8 @@ package dev.vexsoft.core.paper.profile;
 
 import dev.vexsoft.core.api.world.WorldKey;
 import java.util.List;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 /** Serializable native personal-profile state; platform objects never enter persistent containers. */
@@ -103,6 +105,29 @@ public record PaperProfileState(
     @Override
     public byte[] cursor() {
         return cursor.clone();
+    }
+
+    /** Compares gameplay state independently of capture time and freshly allocated serialized item arrays. */
+    public boolean sameState(final PaperProfileState other) {
+        return other != null && heldSlot == other.heldSlot && level == other.level
+            && totalExperience == other.totalExperience && experience == other.experience
+            && fireTicks == other.fireTicks && remainingAir == other.remainingAir && foodLevel == other.foodLevel
+            && saturation == other.saturation && exhaustion == other.exhaustion && effects.equals(other.effects)
+            && possessionIdentities.equals(other.possessionIdentities) && Objects.equals(position, other.position)
+            && Arrays.equals(cursor, other.cursor) && sameItems(inventory, other.inventory)
+            && sameItems(enderChest, other.enderChest);
+    }
+
+    private static boolean sameItems(final List<byte[]> left, final List<byte[]> right) {
+        if (left.size() != right.size()) {
+            return false;
+        }
+        for (int index = 0; index < left.size(); index++) {
+            if (!Arrays.equals(left.get(index), right.get(index))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Computes remaining wall-clock effect duration without restarting effects on every activation. */

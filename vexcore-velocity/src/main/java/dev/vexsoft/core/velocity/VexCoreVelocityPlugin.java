@@ -40,6 +40,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import org.slf4j.Logger;
 
@@ -76,11 +77,11 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
 
         try {
             coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
-            coreServices.register(MessageTransportService.class, VexVelocityMessageTransportService.class);
             coreServices.registerQueuedServices();
             coreServices.register(ConfigurationService.class, VexConfigurationService.class);
             coreServices.register(CacheService.class, VexCacheService.class);
             coreServices.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
+            coreServices.register(MessageTransportService.class, VexVelocityMessageTransportService.class);
             coreServices.register(GlobalDataCoordinatorService.class, VexGlobalDataCoordinatorService.class);
             coreServices.register(GlobalDataService.class, VexGlobalDataService.class);
             coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
@@ -96,7 +97,8 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
 
             platformLogger.info(
                 "[VexCore] Shared storage initialized using " + (storageType.equals("postgresql") ? "PostgreSQL"
-                    : storageType));
+                    : storageType) + (coreServices.require(PlayerDataStoreService.class).getStore().isLive()
+                    ? " checkpoints and Redis live state" : ""));
             platformLogger.info("[VexCore] Velocity messaging successfully enabled");
         } catch (RuntimeException | Error throwable) {
             coreServices.unregisterOwnedServices();
@@ -109,6 +111,12 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
         Objects.requireNonNull(event, "event");
 
         if (coreServices != null) {
+            var storage = coreServices.require(PlayerDataStoreService.class);
+            storage.drainBeforeClose(storage.getStore().checkpoint().orTimeout(30, TimeUnit.SECONDS)
+                .exceptionally(failure -> {
+                    platformLogger.error("[VexCore] Final network checkpoint failed; previous checkpoint is retained", failure);
+                    return null;
+                }));
             coreServices.unregisterOwnedServices();
             coreServices = null;
         }

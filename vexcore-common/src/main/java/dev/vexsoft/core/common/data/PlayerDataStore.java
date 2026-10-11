@@ -1,6 +1,7 @@
 package dev.vexsoft.core.common.data;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
+import dev.vexsoft.core.common.data.redis.JdbcNetworkCheckpoints;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.Map;
@@ -9,6 +10,25 @@ import java.util.UUID;
 
 /** Persists plugin-owned player containers in a storage backend */
 public interface PlayerDataStore extends AutoCloseable {
+
+    /** Returns the complete SQL checkpoint repository; live Redis never writes legacy gameplay tables. */
+    default JdbcNetworkCheckpoints networkCheckpoints() {
+        throw new UnsupportedOperationException("Network checkpoints require PostgreSQL or SQLite");
+    }
+
+    /** Identifies an authoritative network store rather than a direct durable store. */
+    default boolean isLive() {
+        return false;
+    }
+
+    /** Requests a complete checkpoint after queued live changes have settled. */
+    default CompletableFuture<Void> checkpoint() {
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /** Coalesces a checkpoint request without making a player handover wait for SQL. */
+    default void requestCheckpoint() {
+    }
 
     /** Completes when backend initialization has finished on its storage executor. */
     default CompletableFuture<Void> readiness() {
@@ -20,6 +40,17 @@ public interface PlayerDataStore extends AutoCloseable {
 
     /** Loads the stored JSON values for one plugin and player */
     CompletableFuture<Map<String, String>> load(String owner, UUID uniqueId, Collection<DataContainerKey<?>> keys);
+
+    /** Reads account values without adopting their revisions into a writable local session. */
+    default CompletableFuture<Map<String, String>> readStored(
+        final String owner, final UUID uniqueId, final Collection<DataContainerKey<?>> keys
+    ) {
+        return load(owner, uniqueId, keys);
+    }
+
+    /** Releases local write-version tracking after a player's queued saves have drained. */
+    default void releasePlayer(final UUID uniqueId) {
+    }
 
     /** Saves JSON values for one plugin and player */
     CompletableFuture<Void> save(String owner, UUID uniqueId, String playerName, Map<String, String> values);

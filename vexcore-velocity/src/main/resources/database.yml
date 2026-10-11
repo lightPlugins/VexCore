@@ -1,6 +1,25 @@
 # Velocity always participates in a multi-process setup and therefore requires PostgreSQL.
 storage: postgresql
 
+# Match the Redis connection and namespace on every backend and proxy.
+redis:
+  enabled: false
+  host: localhost
+  port: 6379
+  username: default
+  password: change-me
+  database: 0
+  ssl: false
+  key-prefix: "vexcore:production:"
+  client-name: "vexcore-velocity"
+  connect-timeout-millis: 3000
+  command-timeout-millis: 1500
+  maximum-pending-commands: 4096
+  maximum-journal-entries: 1000000
+
+persistence:
+  checkpoint-interval-seconds: 300
+
 postgresql:
   jdbc-url: jdbc:postgresql://localhost:5432/vexcore
   username: postgres

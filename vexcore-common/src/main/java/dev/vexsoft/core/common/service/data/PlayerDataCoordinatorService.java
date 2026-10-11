@@ -80,6 +80,11 @@ public interface PlayerDataCoordinatorService extends VexService {
         return CompletableFuture.failedFuture(new UnsupportedOperationException("Profile loading is unavailable"));
     }
 
+    /** Captures detached local values using loaded revisions; unsupported stores retain the persistent read path. */
+    default CompletableFuture<ProfileDataSnapshot> snapshotProfile(VexPlayer player, PlayerProfileContext context) {
+        return loadProfile(context);
+    }
+
     /** Installs a fully loaded profile on the platform's player execution context. */
     default void installProfile(VexPlayer player, ProfileDataSnapshot snapshot) {
         throw new UnsupportedOperationException("Profile installation is unavailable");

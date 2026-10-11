@@ -578,3 +578,85 @@ quit, respawn, and world changes also retire handles. isActive lets feature runt
 Named rewards support independent chances, upgraded item bundles, frozen preparation for retries, transactional inventory
 delivery, private overflow and grouped announcements. Namespace adapters expose existing plugin item and block factories.
 See [shared rewards and resource providers](docs/rewards.md) for the API contracts and reusable YAML format.
+
+### Redis live state and SQL checkpoints
+
+Paper and Velocity share the Redis backend configured in `plugins/VexSoft/VexCore/database.yml`.
+Set `redis.enabled: true` on **every** instance in the network and use the same Redis endpoint, database,
+key prefix and PostgreSQL checkpoint database. The templates leave Redis disabled until credentials are supplied.
+Each Paper server must have a unique `network.yml` server ID matching its Velocity registration. The current
+directory/transfer protocol has one active Velocity proxy authority; adding backend instances does not add proxies.
+Redis control messages work on empty backends without a connected player. Duplicate endpoint ownership fences
+the conflicting process. After an unclean stop its endpoint lease expires within 15 seconds.
+
+Use Redis 7 or newer with `maxmemory-policy noeviction` and server-managed AOF persistence. Do not expire or
+evict authoritative state, journal or epoch keys. The configured ACL user needs the Core namespace's read/write,
+stream, scripting, `TIME`, `INFO server`, and `CLIENT SETNAME` permissions. Scripts preflight their write permissions
+before changing any state or journal entry. The Java client uses bounded asynchronous queues. Profile,
+account, shared/global and published configuration operations use Redis; legacy SQL gameplay tables are no longer
+updated in live mode. Exact currency amounts remain strings. Existing plugin APIs continue to address account,
+personal-profile and shared-profile data separately. Vault's external provider remains outside these checkpoints.
+
+**Initial cutover:** stop all old Paper and Velocity writers, back up SQL, configure all instances, and start the
+updated plugins together. Cold initialization imports all existing Core owner tables, profile documents, global
+data and identities into one complete recovery point. It never imports individual SQL values during gameplay.
+Once checkpoint data exists, the new plugin refuses direct-SQL mode to prevent accidental loading of old tables.
+An old plugin version cannot enforce that guard, so do not run old and new storage modes together.
+
+Paper captures live native state every second without blocking gameplay while the write is pending;
+unchanged native snapshots are skipped. Economic and ownership
+changes use the guarded Redis transaction boundary. Retries reuse an operation receipt; ambiguous outcomes fence
+the affected profile until reconnect rather than compensating an operation that may already have committed.
+Live economic transactions capture their rollback baseline locally and commit wallet and inventory together once;
+they wait for any outstanding background write, and confirmed failures retain unsaved baseline changes for retry.
+Profile/server handovers drain live writes first. Profile switch/logout request a coalesced checkpoint;
+requests coalesce across the network for 10 seconds and unchanged checkpoints skip SQL writes.
+SQL writes do not delay the handover. The default checkpoint interval is 300 seconds, configurable under
+`persistence.checkpoint-interval-seconds`. Only one coordinator publishes at a time, and both checkpoint generation
+and recovery epoch fence stale SQL publishers. The last full checkpoint remains usable after a failed SQL write.
+
+A Paper crash reads the surviving Redis state on reconnect. Loss of the Redis authority restores the entire last
+complete SQL checkpoint, including inventories, currencies, world-item receipts, shared stock and pending claims.
+Never restore individual players from legacy tables. A database outage increases the checkpoint age; the bounded
+journal rejects further writes when full. Redis unavailability rejects authoritative changes. These guarantees
+also reject a missing checkpoint anchor or a Redis recovery older than SQL; restart all instances through a coordinated
+cold recovery in that situation. They
+cover Core-owned state, not external economy providers or mutable world containers. A future island/world adapter
+must coordinate world/container snapshots with these checkpoints; no island implementation is included here.
+
+PostgreSQL checkpoints use a schema per plugin and a table per data area. Core uses `vexcore.players`,
+`vexcore.player_names`, `vexcore.inventories`, `vexcore.currencies`, `vexcore.delivery_inboxes`,
+`vexcore.profile_sessions`, `vexcore.world_items` and `vexcore.pickup`. Isles uses `vexisles.profiles`
+(one shared roster per profile), `vexisles.profile_accounts` (a player's profile list), `vexisles.profile_members`,
+`vexisles.loadouts`, `vexisles.pet_buffer`, `vexisles.shops` and further registered container tables.
+Tables are created lazily as their first records are saved. The SQL account needs permission to create plugin
+schemas/tables and read/write the checkpoint tables. Domain-specific native container names and departure
+receipt names are grouped into their data area, preserving the original `container_key`. New plugin containers
+participate automatically; island worlds still require a dedicated persistence adapter.
+
+Each data row has `namespace`, `record_key`, `scope`, `domain`, `player_uuid`, `profile_uuid`, `container_key`,
+`revision`, JSONB `value` and `updated_checkpoint`. UUIDs identify both members and shared profiles; shared rows
+have no player UUID. Exact currency amounts inside the payload remain strings. `vexcore.checkpoint_tables`
+tracks registered tables and `vexcore.checkpoints` stores only generation, journal position, recovery epoch and
+layout version. SQLite uses the same columns with JSON text and `<plugin>__<area>` table names.
+
+Normal checkpoints read only the SQL cursor, coalesce the journal up to a fixed cut and batch-write changed rows
+plus explicit deletions. Untouched rows retain their prior `updated_checkpoint`; they still belong to the complete
+recovery point. All table changes and the cursor commit in one transaction. Recovery reads the complete table
+set under a consistent SQL snapshot, so a concurrent publisher cannot mix generations. Generation and epoch
+checks reject stale coordinators before their rows change. New tables and their registration also roll back on failure.
+
+On first access, old `vex_network_checkpoints` snapshots migrate transactionally into the new tables, retaining
+position, generation and epoch. Only the successfully copied namespace's old blob row is removed; old pre-Redis
+owner tables remain obsolete migration sources. Stop old writers and back up SQL before upgrading the storage
+layout. Do not run old binaries against the migrated database. No manual-edit commands are added.
+
+Capacity and Redis latency must be measured with production-shaped inventories before increasing player
+counts; sharding requires an explicit transaction design rather than independent Redis instances.
+
+Integration tests use an isolated namespace on a real Redis server: set `VEXCORE_TEST_REDIS` to a test Redis URI
+and run `:vexcore-common:test`. Without that variable Redis integration tests are skipped; SQL checkpoint tests
+and the existing storage/profile tests still run. No test flushes the Redis database or touches another namespace.
+Set `VEXCORE_TEST_POSTGRES` to a test JDBC URL whose user can create databases to run the PostgreSQL table tests.
+Each test creates and drops its own database. Without this variable only that PostgreSQL variant is skipped;
+the same migration, incremental publication, rollback and concurrent recovery tests still run on SQLite.

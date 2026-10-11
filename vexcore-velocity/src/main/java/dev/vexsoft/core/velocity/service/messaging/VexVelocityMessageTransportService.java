@@ -14,6 +14,9 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.messaging.MessageCodecService;
 import dev.vexsoft.core.common.service.messaging.MessageEnvelope;
 import dev.vexsoft.core.common.service.messaging.MessageTransportService;
+import dev.vexsoft.core.common.service.messaging.RedisMessageChannel;
+import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.data.redis.RedisPlayerDataStore;
 import dev.vexsoft.core.velocity.VexCoreVelocityPlugin;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,7 +28,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 
 /** Routes encoded messages between Velocity and backend servers, buffering pending deliveries. */
-@Dependencies({MessageCodecService.class})
+@Dependencies({MessageCodecService.class, PlayerDataStoreService.class})
 public final class VexVelocityMessageTransportService implements MessageTransportService, AutoCloseable {
 
     private static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.create("vexcore", "messaging");
@@ -35,6 +38,7 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
     private final ProxyServer proxyServer;
     private final Logger logger;
     private final MessageCodecService codec;
+    private final RedisMessageChannel redis;
     private final CopyOnWriteArrayList<Consumer<MessageEnvelope>> receivers = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, ConcurrentLinkedDeque<MessageEnvelope>> pending = new ConcurrentHashMap<>();
     private final AtomicBoolean started = new AtomicBoolean();
@@ -50,11 +54,22 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
         this.proxyServer = corePlugin.getProxyServer();
         this.logger = corePlugin.getPlatformLogger();
         this.codec = checkedServices.require(MessageCodecService.class);
+        var backend = checkedServices.require(PlayerDataStoreService.class).getStore();
+        redis = backend instanceof RedisPlayerDataStore live
+            ? new RedisMessageChannel(live, codec, true, "", playerId -> proxyServer.getPlayer(playerId).isPresent()) : null;
+        if (redis != null) {
+            redis.subscribe(message -> receivers.forEach(receiver -> receiver.accept(message)));
+        }
     }
 
     @Override
     public void start() {
         if (!started.compareAndSet(false, true)) {
+            return;
+        }
+
+        if (redis != null) {
+            redis.start();
             return;
         }
 
@@ -64,6 +79,9 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
 
     @Override
     public DeliveryResult send(final MessageEnvelope message) {
+        if (redis != null) {
+            return redis.send(message);
+        }
         return route(Objects.requireNonNull(message, "message"));
     }
 
@@ -105,6 +123,11 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
 
     @Override
     public void close() {
+        if (redis != null) {
+            redis.close();
+            receivers.clear();
+            return;
+        }
         receivers.clear();
         pending.clear();
 

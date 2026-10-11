@@ -224,9 +224,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(ConfigurationService.class, VexConfigurationService.class);
         coreServices.register(ThemeColorService.class, VexThemeColorService.class);
         coreServices.register(MessageCodecService.class, VexMessageCodecService.class);
-        coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
         coreServices.registerQueuedServices();
         modules.enable(new PlayerModule(this));
+        coreServices.register(MessageTransportService.class, VexPaperMessageTransportService.class);
         // Gameplay rewards require native profile sessions during their own service registration phase.
         coreServices.register(ProfileSessionService.class, VexProfileSessionService.class);
         coreServices.register(PublishedConfigurationService.class, VexPublishedConfigurationService.class);
@@ -347,9 +347,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
 
                 return null;
             }),
-            5,
-            5,
-            TimeUnit.MINUTES
+            services.require(PlayerDataStoreService.class).getStore().isLive() ? 1 : 300,
+            services.require(PlayerDataStoreService.class).getStore().isLive() ? 1 : 300,
+            TimeUnit.SECONDS
         );
         long startupMillis = TimeUnit.NANOSECONDS.toMillis(startupNanos + System.nanoTime() - enableStartedAt);
 
@@ -370,7 +370,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
                 ProfileSessionService profiles = coreServices.require(ProfileSessionService.class);
                 CompletableFuture<Void> drain = CompletableFuture.allOf(players.getLoadedPlayers().stream()
                     .map(profiles::retire).toArray(CompletableFuture[]::new))
-                    .thenCompose(ignored -> players.saveAll()).orTimeout(30L, TimeUnit.SECONDS);
+                    .thenCompose(ignored -> players.saveAll())
+                    .thenCompose(ignored -> services.require(PlayerDataStoreService.class).getStore().checkpoint())
+                    .orTimeout(30L, TimeUnit.SECONDS);
                 CompletableFuture<Void> recovered = drain.handleAsync((ignored, exception) -> {
                     if (exception != null) {
                         getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);

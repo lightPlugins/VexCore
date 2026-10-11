@@ -24,6 +24,7 @@ import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.cache.VexAsyncCache;
 import dev.vexsoft.core.cache.VexCacheOptions;
 import dev.vexsoft.core.common.data.PlayerDataStore;
+import dev.vexsoft.core.common.data.redis.RedisPlayerDataStore;
 import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -506,6 +507,29 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     @Override
+    public CompletableFuture<ProfileDataSnapshot> snapshotProfile(
+        final VexPlayer player, final PlayerProfileContext context
+    ) {
+        if (!store.isLive()) {
+            return loadProfile(context);
+        }
+        Map<DataContainerKey<?>, Object> values = new LinkedHashMap<>();
+        Map<String, OwnerContainers> owners = ownerSnapshot();
+        synchronized (player) {
+            if (!player.isCurrentContext(context)) {
+                return CompletableFuture.failedFuture(new IllegalStateException("Profile context retired"));
+            }
+            owners.values().forEach(owner -> owner.keys.values().forEach(key -> {
+                if (key.getScope().domain().filter(context.domain()::equals).isPresent()) {
+                    values.put(key, objectMapper.convertValue(snapshotData(player, key).getValue(), key.getType()));
+                }
+            }));
+            return CompletableFuture.completedFuture(new ProfileDataSnapshot(context, values,
+                profileRevisions.getOrDefault(context, Map.of())));
+        }
+    }
+
+    @Override
     public void installProfile(final VexPlayer player, final ProfileDataSnapshot snapshot) {
         installProfile(player, snapshot, List.of());
     }
@@ -536,6 +560,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         VexPlayer removed = players.remove(Objects.requireNonNull(uniqueId, "uniqueId"));
 
         if (removed != null) {
+            store.releasePlayer(uniqueId);
             removed.profileContexts().values().forEach(context -> {
                 profileRevisions.remove(context);
                 profileWriteGuards.remove(context);
@@ -574,6 +599,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
                             removalRequested.remove(uniqueId);
 
                             if (players.remove(uniqueId, player)) {
+                                store.releasePlayer(uniqueId);
                                 player.profileContexts().values().forEach(context -> {
                                     profileRevisions.remove(context);
                                     profileWriteGuards.remove(context);
@@ -704,7 +730,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             return CompletableFuture.failedFuture(new IllegalArgumentException("Unregistered owner container"));
         }
         String ownerName = normalizeOwner(owner.getServiceOwnerName());
-        return store.load(ownerName, Objects.requireNonNull(playerId, "playerId"), List.of(key)).thenApply(values -> {
+        return store.readStored(ownerName, Objects.requireNonNull(playerId, "playerId"), List.of(key)).thenApply(values -> {
             String json = values.get(key.getName());
             if (json == null) {
                 return Optional.empty();
@@ -759,7 +785,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         CompletableFuture<?> reset = store.reset(selection.owner, checkedUniqueId, List.of(selection.key.getName()));
 
-        return loaded == null ? reset.thenApply(ignored -> null) : CompletableFuture.allOf(reset, queueSave(loaded));
+        return loaded == null ? reset.thenApply(ignored -> null) : reset.thenCompose(ignored -> queueSave(loaded));
     }
 
     @Override
@@ -778,7 +804,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             .toArray(CompletableFuture[]::new);
         CompletableFuture<Void> stored = CompletableFuture.allOf(resets);
 
-        return loaded == null ? stored : CompletableFuture.allOf(stored, queueSave(loaded));
+        return loaded == null ? stored : stored.thenCompose(ignored -> queueSave(loaded));
     }
 
     @Override
@@ -795,7 +821,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
         CompletableFuture<?> reset = store.resetAll(selection.owner, List.of(selection.key.getName()));
 
-        return CompletableFuture.allOf(reset, savePlayers(loaded));
+        return reset.thenCompose(ignored -> savePlayers(loaded));
     }
 
     @Override
@@ -812,7 +838,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             .map(entry -> store.resetAll(entry.getKey(), accountKeys(entry.getValue())))
             .toArray(CompletableFuture[]::new);
 
-        return CompletableFuture.allOf(CompletableFuture.allOf(resets), savePlayers(loaded));
+        return CompletableFuture.allOf(resets).thenCompose(ignored -> savePlayers(loaded));
     }
 
     @Override
@@ -1029,14 +1055,16 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             revisions.putAll(serialized.revisions());
         });
 
-        CompletableFuture<Void> saved = store.saveAllOwners(player.getUniqueId(), player.getName(), values);
+        CompletableFuture<Void> saved = store.isLive() ? CompletableFuture.completedFuture(null)
+            : store.saveAllOwners(player.getUniqueId(), player.getName(), values);
         if (!profileChanges.isEmpty()) {
             if (leases != null) {
                 contexts.values().forEach(context -> profileChanges.add(leases.writeGuard(context)));
             }
             contexts.values().forEach(context -> profileChanges.addAll(profileWriteGuards.getOrDefault(context, List.of())));
-            saved = saved.thenCompose(ignored -> ((ProfileDocumentStore) store)
-                .commitProfileDocuments(profileChanges).thenAccept(committed -> {
+            saved = saved.thenCompose(ignored -> (store instanceof RedisPlayerDataStore live
+                ? live.commitPlayer(player.getUniqueId(), values, profileChanges)
+                : ((ProfileDocumentStore) store).commitProfileDocuments(profileChanges)).thenAccept(committed -> {
                     if (!committed) {
                         throw new IllegalStateException("Profile save revision conflict; refusing to overwrite");
                     }
@@ -1050,6 +1078,8 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
                         }
                     }
                 }));
+        } else if (store.isLive()) {
+            saved = store.saveAllOwners(player.getUniqueId(), player.getName(), values);
         }
         return saved.thenRun(() -> revisions.forEach((key, revision) -> player.markClean(
             key, key.getScope().domain().map(contexts::get).orElse(null), revision)));
@@ -1098,6 +1128,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
 
                 if (throwable == null && !retirements.containsKey(uniqueId) && removalRequested.remove(uniqueId)) {
                     if (players.remove(uniqueId, player)) {
+                        store.releasePlayer(uniqueId);
                         player.closeContainers();
                     }
                 }
