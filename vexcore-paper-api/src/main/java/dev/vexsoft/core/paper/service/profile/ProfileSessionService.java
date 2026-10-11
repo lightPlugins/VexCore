@@ -45,6 +45,11 @@ public interface ProfileSessionService extends VexService {
     /** Checks cached participation state for event guards without database access. */
     boolean isReady(VexPlayer player);
 
+    /** Allows movement in a restored, writable session while inventory transactions or saves are pending. */
+    default boolean isMovementAllowed(final VexPlayer player) {
+        return isReady(player);
+    }
+
     /** Returns the cached context of the domain owning native state, without copying the domain map. */
     default Optional<PlayerProfileContext> activeContext(final VexPlayer player) {
         return Optional.empty();

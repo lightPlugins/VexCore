@@ -31,7 +31,7 @@ import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
-/** Freezes mutable platform interactions while a participating domain is loading or changing. */
+/** Guards mutable interactions during profile writes and movement during profile restoration. */
 @Dependencies({PlayerService.class, ProfileSessionService.class})
 public final class ProfileReadinessListener implements Listener {
 
@@ -88,7 +88,8 @@ public final class ProfileReadinessListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void move(final PlayerMoveEvent event) {
-        if (event.hasChangedPosition() && blocked(event.getPlayer())) {
+        if (event.hasChangedPosition() && players.find(event.getPlayer().getUniqueId())
+            .map(player -> !profiles.isMovementAllowed(player)).orElse(true)) {
             event.setCancelled(true);
         }
     }

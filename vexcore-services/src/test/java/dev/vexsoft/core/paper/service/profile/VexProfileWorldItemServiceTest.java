@@ -361,6 +361,12 @@ class VexProfileWorldItemServiceTest {
                     case "getUniqueId" -> id;
                     case "getPersistentDataContainer" -> data;
                     case "getItemStack" -> this.stack;
+                    case "setTicksLived" -> {
+                        if ((int) arguments[0] <= 0) {
+                            throw new IllegalArgumentException("Age must be greater than 0");
+                        }
+                        yield null;
+                    }
                     case "setItemStack" -> {
                         this.stack = (Stack) arguments[0];
                         yield null;

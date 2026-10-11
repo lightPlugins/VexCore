@@ -307,7 +307,7 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
         // Mark the native source before IO so merges, hoppers or damage cannot mutate the captured payout.
         if (!projection.getPersistentDataContainer().has(PUBLIC_RECEIPT)) {
             // The receipt owns one five-minute lifetime; avoid a despawn event and DB read on every tick.
-            projection.setTicksLived(0);
+            projection.setTicksLived(1);
             projection.getPersistentDataContainer().set(PUBLIC_RECEIPT, PersistentDataType.BYTE, (byte) 1);
         }
         projection.setCanMobPickup(false);

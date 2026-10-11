@@ -63,20 +63,58 @@ class VexProfileSessionServiceTest {
     private static final DataContainerKey<String> ACCOUNT = DataContainerKey.of("preferences", String.class, () -> "de");
 
     @Test
-    void delayedCommitFreezesTheSessionAndCompletesOnlyAfterDurability() throws Exception {
+    void delayedCommitGuardsMutationsButAllowsMovementUntilDurability() throws Exception {
         try (var fixture = new Fixture()) {
             var operation = fixture.change();
             fixture.waiting.get(5, TimeUnit.SECONDS);
             assertFalse(operation.isDone());
             assertFalse(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
             assertTrue(fixture.sessions.transact(fixture.player, () -> ProfileMutation.of("second"))
                 .isCompletedExceptionally());
             fixture.commit.complete(null);
             assertEquals("done", operation.get(5, TimeUnit.SECONDS));
             fixture.sessions.readiness(fixture.player).get(5, TimeUnit.SECONDS);
             assertTrue(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
             assertEquals("mutated", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
             assertEquals(42, fixture.level);
+        }
+    }
+
+    @Test
+    void delayedSaveAllowsMovementWhileMutationsRemainBlocked() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.saveGate = new CompletableFuture<>();
+            fixture.entity.submit(() -> fixture.level = 11).get();
+            var operation = fixture.sessions.save(fixture.player);
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            assertFalse(operation.isDone());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
+            fixture.saveGate.complete(null);
+            operation.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void movementWaitsForInitialRestorationAndProfileSwitchTeleport() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
+
+            fixture.teleport = new CompletableFuture<>();
+            fixture.teleporting = new CompletableFuture<>();
+            var operation = fixture.sessions.activate(fixture.player,
+                new ProfileSelection(DOMAIN, UUID.randomUUID(), 1, List.of()));
+            fixture.teleporting.get(5, TimeUnit.SECONDS);
+            assertFalse(operation.isDone());
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            fixture.teleport.complete(true);
+            operation.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
         }
     }
 
@@ -104,6 +142,7 @@ class VexProfileSessionServiceTest {
         try (var fixture = new Fixture()) {
             var operation = fixture.change();
             fixture.waiting.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
             fixture.commit.completeExceptionally(new IllegalStateException("Database unavailable"));
             assertTrue(operation.handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
             fixture.sessions.readiness(fixture.player).get(5, TimeUnit.SECONDS);
@@ -111,6 +150,7 @@ class VexProfileSessionServiceTest {
             assertEquals(10, fixture.level);
             assertEquals(0, fixture.effects);
             assertTrue(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
         }
     }
 
@@ -119,10 +159,24 @@ class VexProfileSessionServiceTest {
         try (var fixture = new Fixture()) {
             var original = fixture.context();
             fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
             fixture.sessions.resume(fixture.player).get(5, TimeUnit.SECONDS);
             assertTrue(fixture.context().fence() > original.fence());
             assertFalse(fixture.player.isCurrentContext(original));
             assertTrue(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
+        }
+    }
+
+    @Test
+    void aSessionWithoutWritableOwnershipCannotMove() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+            fixture.leases.release(fixture.context()).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            // A disconnected expired session must not capture native state into an unwritable profile.
+            fixture.player.unbindPlatformPlayer();
         }
     }
 
@@ -164,6 +218,7 @@ class VexProfileSessionServiceTest {
             assertEquals(10, fixture.level);
             assertTrue(fixture.sessions.isReady(fixture.player));
             assertTrue(fixture.leases.isWritable(original));
+            assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
         }
     }
 
@@ -176,6 +231,7 @@ class VexProfileSessionServiceTest {
                 new ProfileSelection(DOMAIN, UUID.randomUUID(), 1, List.of()))
                 .handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
             assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
             assertFalse(fixture.leases.isWritable(previous));
             assertFalse(fixture.leases.isWritable(fixture.context()));
             assertEquals(1, fixture.kicks);
@@ -207,6 +263,10 @@ class VexProfileSessionServiceTest {
         private final MemoryPlayerDataStore memory = new MemoryPlayerDataStore();
         private final CompletableFuture<Void> commit = new CompletableFuture<>();
         private final CompletableFuture<Void> waiting = new CompletableFuture<>();
+        private final CompletableFuture<Void> saving = new CompletableFuture<>();
+        private CompletableFuture<Void> saveGate;
+        private CompletableFuture<Boolean> teleport = CompletableFuture.completedFuture(true);
+        private CompletableFuture<Void> teleporting = new CompletableFuture<>();
         private final UUID profile = UUID.randomUUID();
         private final Field serverField;
         private final Object previousServer;
@@ -220,6 +280,10 @@ class VexProfileSessionServiceTest {
         private boolean failRestore;
 
         private Fixture() throws Exception {
+            this(true);
+        }
+
+        private Fixture(final boolean initialize) throws Exception {
             serverField = Bukkit.class.getDeclaredField("server");
             serverField.setAccessible(true);
             previousServer = serverField.get(null);
@@ -239,6 +303,11 @@ class VexProfileSessionServiceTest {
                     CompletableFuture<Void> permitted = CompletableFuture.completedFuture(null);
                     if (method.getName().equals("commitProfileDocuments")) {
                         var changes = (Collection<ProfileDocumentChange>) arguments[0];
+                        if (saveGate != null && changes.stream()
+                            .anyMatch(change -> change.key().name().startsWith("native_state_"))) {
+                            saving.complete(null);
+                            permitted = saveGate;
+                        }
                         if (changes.stream().anyMatch(change -> change.key().name().equals("wallet")
                             && "\"mutated\"".equals(change.value()))) {
                             waiting.complete(null);
@@ -301,7 +370,10 @@ class VexProfileSessionServiceTest {
                     case "getExp", "getExhaustion" -> 0F;
                     case "getSaturation" -> 5F;
                     case "getFoodLevel" -> 20;
-                    case "teleportAsync" -> CompletableFuture.completedFuture(true);
+                    case "teleportAsync" -> {
+                        teleporting.complete(null);
+                        yield teleport;
+                    }
                     default -> null;
                 };
             });
@@ -336,7 +408,9 @@ class VexProfileSessionServiceTest {
             player = coordinator.load(UUID.randomUUID(), "Alex").get(5, TimeUnit.SECONDS);
             player.install(ACCOUNT, "de");
             player.bindPlatformPlayer(nativePlayer);
-            sessions.initialize(player).get(5, TimeUnit.SECONDS);
+            if (initialize) {
+                sessions.initialize(player).get(5, TimeUnit.SECONDS);
+            }
             entity.submit(() -> level = 10).get();
         }
 

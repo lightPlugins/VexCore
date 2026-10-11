@@ -154,12 +154,14 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 return CompletableFuture.failedFuture(new IllegalStateException("Profile session is changing or retired"));
             }
             session.changing.set(true);
+            session.restoring = true;
             ready = new CompletableFuture<>();
             session.ready = ready;
         }
         PlayerProfileContext previous = player.findProfileContext(selection.domain()).orElse(null);
         boolean previousWritable = previous != null && leases.isWritable(previous);
         if (previous != null && previous.profileId().equals(selection.profileId()) && leases.isWritable(previous)) {
+            session.restoring = false;
             session.changing.set(false);
             ready.complete(null);
             return CompletableFuture.failedFuture(new IllegalArgumentException("Profile already active"));
@@ -257,8 +259,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 .thenCompose(ignored -> CompletableFuture.failedFuture(failure));
         });
         return settled.whenComplete((ignored, failure) -> {
+            boolean restored = failure == null || transition.recovered;
+            session.restoring = !restored;
             session.changing.set(false);
-            if (failure == null || transition.recovered) {
+            if (restored) {
                 ready.complete(null);
             } else {
                 ready.completeExceptionally(failure);
@@ -471,6 +475,18 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     }
 
     @Override
+    public boolean isMovementAllowed(final VexPlayer player) {
+        DomainBinding current = binding;
+        Session session = sessions.get(player);
+        if (current == null) {
+            return true;
+        }
+        // Saving and economic transactions guard inventory state without freezing the player's position.
+        return session != null && !session.retired && !session.restoring && !session.poisoned
+            && player.findProfileContext(current.participant().domain()).map(leases::isWritable).orElse(false);
+    }
+
+    @Override
     public boolean deferDelivery(final VexPlayer player, final List<ItemStack> items) {
         DomainBinding current = binding;
         if (current == null) {
@@ -595,6 +611,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         private volatile CompletableFuture<Void> ready = new CompletableFuture<>();
         private CompletableFuture<Void> retirement = CompletableFuture.completedFuture(null);
         private volatile boolean started;
+        private volatile boolean restoring = true;
         private volatile boolean retired;
         private volatile boolean poisoned;
         private long generation;
