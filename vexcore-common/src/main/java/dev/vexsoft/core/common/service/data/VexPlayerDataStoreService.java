@@ -114,11 +114,9 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
 
     @Override
     public void close() {
-        // Keep queued writes alive during shutdown without blocking the server's tick thread.
-        Thread.ofPlatform().daemon(false).name("VexCore-storage-shutdown").start(() -> {
-            shutdownDrain.handle((ignored, failure) -> null).join();
-            store.close();
-        });
+        // Platform shutdown must not return while backend workers can still load classes from the plugin JAR.
+        shutdownDrain.handle((ignored, failure) -> null).join();
+        store.close();
     }
 
     private Path sqliteFile(final Path configurationDirectory, final String configuredFile) {

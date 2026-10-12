@@ -611,6 +611,10 @@ Live economic transactions capture their rollback baseline locally and commit wa
 they wait for any outstanding background write, and confirmed failures retain unsaved baseline changes for retry.
 Profile/server handovers drain live writes first. Profile switch/logout request a coalesced checkpoint;
 requests coalesce across the network for 10 seconds and unchanged checkpoints skip SQL writes.
+Paper shutdown waits for player retirement, saves and the final SQL checkpoint before unregistering services.
+The drain has a 30-second timeout; failures export dirty player snapshots to `plugins/VexCore/player-recovery`.
+Recovery export and backend worker closure finish before the plugin JAR is closed. Keep recovery files from a
+failed shutdown and review their contents before reconnecting affected players; a configuration reload does not restore them.
 
 Velocity gates all ordinary backend switches and Core teleports with an awaiting event task. The source
 drains its current transaction and background save, captures its final native state and publishes one

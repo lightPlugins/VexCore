@@ -12,7 +12,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface PlayerDataStoreService extends VexService {
 
-    /** Defers backend closure until asynchronous player/session drains and recovery export finish. */
+    /** Makes backend closure wait for player/session drains and recovery export before returning. */
     default void drainBeforeClose(final CompletableFuture<Void> drain) {
     }
 

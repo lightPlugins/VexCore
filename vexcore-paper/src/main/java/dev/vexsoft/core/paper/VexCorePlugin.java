@@ -191,6 +191,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -382,31 +383,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         if (services != null) {
             services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
                 ProfileSessionService profiles = coreServices.require(ProfileSessionService.class);
-                CompletableFuture<Void> drain = CompletableFuture.allOf(players.getLoadedPlayers().stream()
-                    .map(profiles::retire).toArray(CompletableFuture[]::new))
-                    .thenCompose(ignored -> players.saveAll())
-                    .thenCompose(ignored -> services.require(PlayerDataStoreService.class).getStore().checkpoint())
-                    .orTimeout(30L, TimeUnit.SECONDS);
-                CompletableFuture<Void> recovered = drain.handleAsync((ignored, exception) -> {
-                    if (exception != null) {
-                        getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
-                        Path recovery = getDataFolder().toPath()
-                            .resolve("player-recovery")
-                            .resolve(Instant.now().toString().replace(':', '-'));
-
-                        try {
-                            players.exportRecovery(recovery);
-                            getLogger().severe("Dirty player recovery snapshots written to " + recovery
-                                + ". Review these files before allowing affected players to" + " reconnect.");
-                        } catch (RuntimeException recoveryFailure) {
-                            getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
-                        }
-                    }
-                    return null;
-                });
-                services.require(PlayerDataStoreService.class).drainBeforeClose(recovered);
-                services.require(ProfileLeaseService.class).drainBeforeClose(drain);
-                players.drainBeforeClose(recovered);
+                drainPlayerData(players, profiles, services.require(PlayerDataStoreService.class),
+                    services.require(ProfileLeaseService.class), exception -> recoverPlayers(players, exception));
             });
         }
 
@@ -479,6 +457,52 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
     @Override
     public void reportConfigurationWarning(final String message, final Throwable cause) {
         reportWarning(message, cause);
+    }
+
+    static void drainPlayerData(
+        final PlayerDataCoordinatorService players,
+        final ProfileSessionService profiles,
+        final PlayerDataStoreService storage,
+        final ProfileLeaseService leases,
+        final Consumer<Throwable> recovery
+    ) {
+        CompletableFuture<Void> drain;
+        try {
+            drain = CompletableFuture.allOf(players.getLoadedPlayers().stream()
+                .map(profiles::retire).toArray(CompletableFuture[]::new));
+        } catch (RuntimeException failure) {
+            drain = CompletableFuture.failedFuture(failure);
+        }
+        drain = drain.thenCompose(ignored -> players.saveAll())
+            .thenCompose(ignored -> storage.getStore().checkpoint())
+            .orTimeout(30L, TimeUnit.SECONDS);
+        CompletableFuture<Void> recovered = drain.handleAsync((ignored, exception) -> {
+            if (exception != null) {
+                recovery.accept(exception);
+            }
+            return null;
+        });
+        storage.drainBeforeClose(recovered);
+        leases.drainBeforeClose(drain);
+        players.drainBeforeClose(recovered);
+
+        // Paper closes the plugin JAR after onDisable returns. Keep its classes and services available to the drain.
+        recovered.join();
+    }
+
+    private void recoverPlayers(final PlayerDataCoordinatorService players, final Throwable exception) {
+        getLogger().log(Level.SEVERE, "Unable to save every VexPlayer during shutdown", exception);
+        Path recovery = getDataFolder().toPath()
+            .resolve("player-recovery")
+            .resolve(Instant.now().toString().replace(':', '-'));
+
+        try {
+            players.exportRecovery(recovery);
+            getLogger().severe("Dirty player recovery snapshots written to " + recovery
+                + ". Review these files before allowing affected players to reconnect.");
+        } catch (RuntimeException recoveryFailure) {
+            getLogger().log(Level.SEVERE, "Unable to write player recovery snapshots", recoveryFailure);
+        }
     }
 
     private void reportWarning(final String message, final Throwable cause) {

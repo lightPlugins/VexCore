@@ -429,6 +429,7 @@ public final class RedisPlayerDataStore
             connection.close();
         }
         client.shutdown();
+        worker.close();
         durable.close();
         listeners.clear();
         accountRevisions.clear();
