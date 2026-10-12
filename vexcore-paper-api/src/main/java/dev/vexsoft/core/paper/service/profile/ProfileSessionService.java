@@ -1,24 +1,35 @@
 package dev.vexsoft.core.paper.service.profile;
 
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.profile.ProfileMutation;
 import dev.vexsoft.core.api.player.profile.ProfileSelection;
-import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.profile.PaperProfileParticipant;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import org.bukkit.inventory.ItemStack;
 
 /** Serializes optional profile activation, native capture, readiness, and server-transfer retirement. */
 public interface ProfileSessionService extends VexService {
 
+    /** Returns the domain currently owning native state on this backend. */
+    default Optional<ProfileDomain> domain() {
+        return Optional.empty();
+    }
+
+    /** Reports whether this backend can currently bootstrap incoming game sessions. */
+    default boolean acceptingTransfers() {
+        return true;
+    }
+
     /** Registers one domain adapter; closing the registration retires its participation. */
     AutoCloseable register(PaperProfileParticipant participant);
 
-    /** Asynchronously initializes every participating domain after the native player is bound. */
+    /** Consumes an incoming handover and asynchronously restores the selected profile after native binding. */
     CompletableFuture<Void> initialize(VexPlayer player);
 
     /** Activates a captured target through save, atomic selection commit, install, and restore. */
@@ -39,6 +50,10 @@ public interface ProfileSessionService extends VexService {
 
     /** Reacquires the durable selected context after a failed transfer, using a fresh session identity. */
     CompletableFuture<Void> resume(VexPlayer player);
+
+    /** Releases connection-only guards after the platform player is unbound, without discarding pending saves. */
+    default void disconnected(final VexPlayer player) {
+    }
 
     /** Returns this account session's initialization/activation readiness. */
     CompletableFuture<Void> readiness(VexPlayer player);

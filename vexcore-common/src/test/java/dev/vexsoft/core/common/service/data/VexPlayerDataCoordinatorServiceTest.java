@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.PlayerContainer;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.player.profile.PlayerDataScope;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDataSnapshot;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.ServiceReference;
@@ -14,17 +18,59 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
+import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import java.util.Collection;
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 public final class VexPlayerDataCoordinatorServiceTest {
+
+    @Test
+    void liveRollbackSnapshotIsDetachedAndSerializedOnTheSaveExecutor() throws Exception {
+        var memory = new MemoryPlayerDataStore();
+        var live = (PlayerDataStore) Proxy.newProxyInstance(PlayerDataStore.class.getClassLoader(),
+            new Class<?>[]{PlayerDataStore.class, ProfileDocumentStore.class}, (instance, method, arguments) ->
+                method.getName().equals("isLive") ? true : method.invoke(memory, arguments));
+        var services = new TestServices(live);
+        try (var coordinator = new VexPlayerDataCoordinatorService(services)) {
+            var domain = new ProfileDomain("test:game");
+            var key = DataContainerKey.of("snapshot", SnapshotProbe.class, SnapshotProbe::new,
+                PlayerDataScope.profile(domain));
+            coordinator.register(services.getOwner(), registry -> registry.register(key));
+            var player = coordinator.create(UUID.randomUUID(), "Alex");
+            var context = new PlayerProfileContext(domain, UUID.randomUUID(), player.getUniqueId(),
+                UUID.randomUUID(), 1, 1, 1);
+            var value = new SnapshotProbe();
+            value.value = "before";
+            coordinator.installProfile(player, new ProfileDataSnapshot(context, Map.of(key, value), Map.of()));
+            SnapshotProbe.serializingThread = new CompletableFuture<>();
+            var snapshot = coordinator.snapshotProfile(player, context).get(5, TimeUnit.SECONDS);
+            assertTrue(SnapshotProbe.serializingThread.get(5, TimeUnit.SECONDS).startsWith("vex-player-snapshot-"));
+            player.update(key, current -> {
+                current.value = "after";
+            });
+            assertEquals("before", ((SnapshotProbe) snapshot.values().get(key)).value);
+        }
+    }
+
+    public static final class SnapshotProbe {
+
+        private static CompletableFuture<String> serializingThread = new CompletableFuture<>();
+        public String value;
+
+        public String getValue() {
+            serializingThread.complete(Thread.currentThread().getName());
+            return value;
+        }
+    }
 
     @Test
     public void storedReadIgnoresDirtyLiveValuesAndDoesNotCreateOfflineSessions() {

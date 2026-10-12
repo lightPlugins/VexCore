@@ -1,21 +1,29 @@
 package dev.vexsoft.core.paper.profile;
 
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
 import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.profile.ProfileSelection;
-import dev.vexsoft.core.api.player.VexPlayer;
-import java.util.concurrent.CompletableFuture;
+import dev.vexsoft.core.api.world.ServerPosition;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.Location;
 
 /** Supplies game policy and entity-thread cleanup/restoration to Core's optional profile lifecycle. */
 public interface PaperProfileParticipant {
 
     /** Returns this game's explicitly participating namespace. */
     ProfileDomain domain();
+
+    /** Advertises whether this game has the configuration required to accept routed arrivals. */
+    default boolean acceptingTransfers() {
+        return true;
+    }
 
     /** Resolves or creates the selected membership asynchronously before gameplay becomes ready. */
     CompletableFuture<ProfileSelection> bootstrap(VexPlayer player);
@@ -33,6 +41,17 @@ public interface PaperProfileParticipant {
     default CompletableFuture<Location> destination(final Player player, final PaperProfileState state,
         final boolean initial) {
         return CompletableFuture.completedFuture(spawn(player));
+    }
+
+    /** Resolves an explicit arrival before readiness; future world adapters may asynchronously load its world here. */
+    default CompletableFuture<Location> arrivalDestination(final Player player, final ServerPosition destination) {
+        var key = destination.world();
+        var world = Bukkit.getWorld(new NamespacedKey(key.namespace(), key.value()));
+        if (world == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Arrival world is unavailable"));
+        }
+        return CompletableFuture.completedFuture(new Location(world, destination.x(), destination.y(), destination.z(),
+            destination.yaw(), destination.pitch()));
     }
 
     /** Captures a game-approved position on the entity thread, or null when no position should be retained. */

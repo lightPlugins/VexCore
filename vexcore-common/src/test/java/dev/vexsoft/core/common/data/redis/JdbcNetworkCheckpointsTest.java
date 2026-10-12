@@ -78,6 +78,23 @@ class JdbcNetworkCheckpointsTest {
         }
     }
 
+    @Test
+    void handoverAndItsFinalInventoryRecoverTogetherFromOneCheckpoint() {
+        try (var store = new SqlitePlayerDataStore(directory.resolve("handover.db"))) {
+            var repository = store.networkCheckpoints();
+            var initial = repository.load("network").join();
+            UUID player = UUID.randomUUID();
+            String ticket = "p|account/" + player + "|vexcore|server_transfer";
+            String inventory = "p|profile/test:game/" + UUID.randomUUID() + '/' + player + "|vexcore|native_state";
+            var values = Map.of(ticket, record("{\"requestId\":\"confirmed\"}"),
+                inventory, record("{\"level\":42}"));
+            assertTrue(repository.publish("network", new NetworkCheckpoint(initial.generation(), "2-0", values)).join());
+            assertEquals(values, repository.load("network").join().values());
+            assertFalse(repository.publish("network", new NetworkCheckpoint(initial.generation(), "1-0", Map.of())).join());
+            assertEquals(values, repository.load("network").join().values());
+        }
+    }
+
     private static String record(final String value) {
         try {
             return new ObjectMapper().writeValueAsString(Map.of("value", value, "revision", 1));

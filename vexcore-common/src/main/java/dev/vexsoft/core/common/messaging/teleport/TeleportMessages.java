@@ -9,6 +9,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TeleportMessages {
 
+    public static final MessageType<TeleportPreparation> PREPARATION =
+        MessageType.json(MessageKey.of("vexcore", "teleport.preparation"), TeleportPreparation.class);
+    public static final MessageType<TeleportPreparationResult> PREPARATION_RESULT =
+        MessageType.json(MessageKey.of("vexcore", "teleport.preparation_result"), TeleportPreparationResult.class);
+    public static final MessageType<TeleportAbort> ABORT =
+        MessageType.json(MessageKey.of("vexcore", "teleport.abort"), TeleportAbort.class);
+
     public static final MessageType<TeleportTransferRequest> TRANSFER_REQUEST =
         MessageType.json(MessageKey.of("vexcore", "teleport.transfer_request"), TeleportTransferRequest.class);
     public static final MessageType<TeleportArrival> ARRIVAL =

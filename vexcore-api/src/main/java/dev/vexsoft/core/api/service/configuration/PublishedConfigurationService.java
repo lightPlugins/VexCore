@@ -1,9 +1,9 @@
 package dev.vexsoft.core.api.service.configuration;
 
 import dev.vexsoft.core.api.service.registry.VexService;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.Optional;
 
 /** Stores and serves owner-scoped, immutable configuration snapshots shared through the database. */
 public interface PublishedConfigurationService extends VexService {
@@ -24,6 +24,11 @@ public interface PublishedConfigurationService extends VexService {
 
     /** Returns the currently published snapshot or fails when none exists. */
     <T> T require(Class<T> type);
+
+    /** Returns the locally installed database revision, or zero before initial publication. */
+    default long revision(final Class<?> type) {
+        return 0;
+    }
 
     /** Publishes a validated snapshot and its source commit, returning the active version. */
     <T> CompletableFuture<PublishedConfigurationVersion> publish(Class<T> type, T value, String commit);

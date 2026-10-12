@@ -11,13 +11,13 @@ import dev.vexsoft.core.common.data.global.GlobalDataReference;
 import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.global.StoredGlobalData;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 
 /** Database-backed published configuration service scoped to one plugin owner. */
 @Dependencies(PlayerDataStoreService.class)
@@ -92,6 +92,11 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
     @Override
     public <T> Optional<T> find(final Class<T> type) {
         return Optional.ofNullable(registration(type).value);
+    }
+
+    @Override
+    public long revision(final Class<?> type) {
+        return registration(type).revision;
     }
 
     @Override

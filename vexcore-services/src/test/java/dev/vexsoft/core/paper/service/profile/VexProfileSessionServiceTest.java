@@ -2,9 +2,14 @@ package dev.vexsoft.core.paper.service.profile;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.api.messaging.DeliveryResult;
+import dev.vexsoft.core.api.network.ServerId;
+import dev.vexsoft.core.api.network.admission.AdmissionReference;
 import dev.vexsoft.core.api.player.DataContainerKey;
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.profile.PlayerDataAddress;
 import dev.vexsoft.core.api.player.profile.PlayerDataScope;
 import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
@@ -13,46 +18,64 @@ import dev.vexsoft.core.api.player.profile.ProfileMutation;
 import dev.vexsoft.core.api.player.profile.ProfileSelection;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
-import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.cache.CacheService;
+import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.network.AdmissionService;
 import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.api.teleport.TransferOptions;
+import dev.vexsoft.core.api.world.ServerPosition;
+import dev.vexsoft.core.api.world.WorldKey;
 import dev.vexsoft.core.common.data.MemoryPlayerDataStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.data.profile.ProfileDocumentStore;
 import dev.vexsoft.core.common.data.redis.IndeterminateCommitException;
+import dev.vexsoft.core.common.messaging.teleport.TeleportAbort;
+import dev.vexsoft.core.common.messaging.teleport.TeleportPreparation;
+import dev.vexsoft.core.common.service.admission.VexAdmissionService;
 import dev.vexsoft.core.common.service.cache.VexCacheService;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.PlayerTransferStoreService;
+import dev.vexsoft.core.common.service.data.PlayerTransferTicket;
 import dev.vexsoft.core.common.service.data.VexPlayerDataCoordinatorService;
+import dev.vexsoft.core.common.service.data.VexPlayerTransferStoreService;
 import dev.vexsoft.core.common.service.data.VexProfileLeaseService;
 import dev.vexsoft.core.common.service.data.VexProfileStorageService;
 import dev.vexsoft.core.paper.profile.PaperProfileParticipant;
+import dev.vexsoft.core.paper.profile.PaperProfileState;
+import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.teleport.TransferDisplayService;
+import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
+import dev.vexsoft.core.paper.service.world.WorldService;
 import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Server;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.Location;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.Server;
 import org.junit.jupiter.api.Test;
 
 /** Exercises the real session, coordinator and lease boundary with independent entity and database executors. */
@@ -115,6 +138,155 @@ class VexProfileSessionServiceTest {
             fixture.saveGate.complete(null);
             saving.get(5, TimeUnit.SECONDS);
             assertTrue(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void queuedLiveAutosaveSettlesWhenTheEntityRetiresBeforeCapture() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var occupied = new CompletableFuture<Void>();
+            var release = new CompletableFuture<Void>();
+            fixture.entity.execute(() -> {
+                occupied.complete(null);
+                release.join();
+            });
+            occupied.get(5, TimeUnit.SECONDS);
+            CompletableFuture<Void> saving;
+            try {
+                saving = fixture.sessions.save(fixture.player);
+                fixture.entityRetired = true;
+            } finally {
+                release.complete(null);
+            }
+            saving.get(5, TimeUnit.SECONDS);
+            assertEquals(0, fixture.nativeCommits);
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.leases.isWritable(fixture.context()));
+            fixture.coordinator.saveAndRemove(fixture.player.getUniqueId()).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.coordinator.find(fixture.player.getUniqueId()).isEmpty());
+        }
+    }
+
+    @Test
+    void rejectedEntitySchedulingDoesNotLeaveLiveSaveOrRetirementPending() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.rejectScheduling = true;
+            fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+            assertEquals(0, fixture.nativeCommits);
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.leases.isWritable(fixture.context()));
+        }
+    }
+
+    @Test
+    void detachedPlayerIsNotReadyAndSavesDirtyDataWithoutSchedulingNativeCapture() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.player.unbindPlatformPlayer();
+            fixture.rejectScheduling = true;
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.sessions.isMovementAllowed(fixture.player));
+            fixture.player.replace(VALUE, "earned");
+            fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+            assertEquals("earned", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
+        }
+    }
+
+    @Test
+    void logoutCapturesFinalNativeStateWhileAnOlderAutosaveIsQueued() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var saving = new CompletableFuture<Void>();
+            var retiring = new CompletableFuture<Void>();
+            fixture.entity.submit(() -> {
+                // Queue an async autosave while quit still owns the entity and can capture its final state.
+                fixture.database.submit(() -> fixture.sessions.save(fixture.player)
+                    .whenComplete((ignored, failure) -> complete(saving, failure))).get();
+                fixture.level = 33;
+                fixture.sessions.retire(fixture.player)
+                    .whenComplete((ignored, failure) -> complete(retiring, failure));
+                fixture.player.unbindPlatformPlayer();
+                fixture.entityRetired = true;
+                return null;
+            }).get(5, TimeUnit.SECONDS);
+            saving.get(5, TimeUnit.SECONDS);
+            retiring.get(5, TimeUnit.SECONDS);
+            assertEquals(1, fixture.nativeCommits);
+            var stored = fixture.coordinator.loadProfile(fixture.context()).get(5, TimeUnit.SECONDS);
+            var nativeState = stored.values().values().stream()
+                .filter(PaperProfileState.class::isInstance)
+                .map(PaperProfileState.class::cast)
+                .findFirst().orElseThrow();
+            assertEquals(33, nativeState.level());
+            assertFalse(fixture.leases.isWritable(fixture.context()));
+        }
+    }
+
+    @Test
+    void rejectedNativeCaptureStillSavesDirtyDataInNonLiveMode() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.player.replace(VALUE, "earned");
+            fixture.rejectScheduling = true;
+            fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+            assertEquals("earned", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    void rejectedSchedulingFailsAnEconomicOperationBeforeItsMutation() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.rejectScheduling = true;
+            assertTrue(fixture.change().handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertEquals("old", fixture.player.read(VALUE, value -> value));
+            assertEquals(10, fixture.level);
+            assertEquals(0, fixture.effects);
+        }
+    }
+
+    @Test
+    void liveAutosaveStillReportsAConfirmedStorageFailure() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.saveGate = new CompletableFuture<>();
+            fixture.entity.submit(() -> fixture.level = 11).get();
+            var saving = fixture.sessions.save(fixture.player);
+            fixture.saving.get(5, TimeUnit.SECONDS);
+            fixture.saveGate.completeExceptionally(new IllegalStateException("Database unavailable"));
+            assertTrue(saving.handle((ignored, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            fixture.saveGate = null;
+        }
+    }
+
+    @Test
+    void logoutDuringTheCommitKeepsTheConfirmedPurchaseAndDrainsTheSession() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var operation = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            var retiring = fixture.entity.submit(() -> {
+                var retirement = fixture.sessions.retire(fixture.player);
+                fixture.player.unbindPlatformPlayer();
+                fixture.entityRetired = true;
+                return retirement;
+            }).get(5, TimeUnit.SECONDS);
+            fixture.commit.complete(null);
+            assertEquals("done", operation.get(5, TimeUnit.SECONDS));
+            retiring.get(5, TimeUnit.SECONDS);
+            assertEquals("mutated", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
+            assertEquals(0, fixture.effects);
+            assertFalse(fixture.leases.isWritable(fixture.context()));
+        }
+    }
+
+    @Test
+    void detachedOperationsFailWithoutLeavingReadinessOrRetirementPending() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            fixture.player.unbindPlatformPlayer();
+            assertTrue(fixture.change().handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertTrue(fixture.sessions.activate(fixture.player,
+                new ProfileSelection(DOMAIN, UUID.randomUUID(), 1, List.of()))
+                .handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            fixture.sessions.readiness(fixture.player).get(5, TimeUnit.SECONDS);
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.leases.isWritable(fixture.context()));
         }
     }
 
@@ -405,6 +577,188 @@ class VexProfileSessionServiceTest {
         }
     }
 
+    @Test
+    void proxyPreparationWaitsForTheConfirmedPurchaseAndPreservesItsFinalNativeState() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var teleports = new VexTeleportCoordinatorService(fixture.registry);
+            var purchase = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            var request = new TeleportPreparation(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-1", "isles-2", null);
+            var preparation = teleports.prepare(request);
+            assertFalse(preparation.isDone());
+            fixture.commit.complete(null);
+            assertEquals("done", purchase.get(5, TimeUnit.SECONDS));
+            assertTrue(preparation.get(5, TimeUnit.SECONDS));
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            var ticket = fixture.transfers.claim(fixture.player.getUniqueId(), "isles-2", UUID.randomUUID())
+                .get(5, TimeUnit.SECONDS).orElseThrow();
+            var snapshot = fixture.coordinator.loadProfile(ticket.profiles().getFirst()).get(5, TimeUnit.SECONDS);
+            assertEquals("mutated", snapshot.values().get(VALUE));
+            assertTrue(snapshot.values().values().stream().anyMatch(value ->
+                value instanceof PaperProfileState nativeState && nativeState.level() == 42));
+            teleports.abort(new TeleportAbort(request.requestId(), request.playerId())).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void abortDuringAPurchaseDrainsBeforeResumingAndCannotOverwriteTheConfirmedPurchase() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var teleports = new VexTeleportCoordinatorService(fixture.registry);
+            var purchase = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            var request = new TeleportPreparation(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-1", "isles-2", null);
+            var preparation = teleports.prepare(request);
+            var aborted = teleports.abort(new TeleportAbort(request.requestId(), request.playerId()));
+            assertFalse(aborted.isDone());
+            fixture.commit.complete(null);
+            assertEquals("done", purchase.get(5, TimeUnit.SECONDS));
+            aborted.get(5, TimeUnit.SECONDS);
+            assertFalse(preparation.get(5, TimeUnit.SECONDS));
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertEquals("mutated", fixture.player.read(VALUE, value -> value));
+            assertEquals(42, fixture.entity.submit(() -> fixture.level).get(5, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void expiredAdmissionIsRejectedBeforeAnyProfileOrNativeStateIsInstalled() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            var reference = new AdmissionReference(UUID.randomUUID(),
+                fixture.player.getUniqueId(), "isles", destination.server(), UUID.randomUUID());
+            var options = new TransferOptions(reference, null, false);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", destination, List.of(), System.currentTimeMillis() + 30_000,
+                null, false, options)).get(5, TimeUnit.SECONDS);
+            assertThrows(Exception.class, () -> fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS));
+            assertFalse(fixture.teleporting.isDone());
+            assertFalse(fixture.resolvingArrival.isDone());
+            assertEquals(0, fixture.nativeCommits);
+            assertEquals(0, fixture.spawns);
+            assertTrue(fixture.player.profileContexts().isEmpty());
+        }
+    }
+
+    @Test
+    void explicitAccountOnlyArrivalAcceptsSavedGameContextsWithoutInstallingThemInTheLobby() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.participant.close();
+            var context = new PlayerProfileContext(DOMAIN, fixture.profile, fixture.player.getUniqueId(),
+                UUID.randomUUID(), 1, 1, 1);
+            var options = new TransferOptions(null, null, true);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", null, List.of(context), System.currentTimeMillis() + 30_000,
+                null, false, options)).get(5, TimeUnit.SECONDS);
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.player.profileContexts().isEmpty());
+            assertEquals(0, fixture.nativeCommits);
+            assertFalse(fixture.teleporting.isDone());
+        }
+    }
+
+    @Test
+    void ordinaryArrivalStillRejectsABackendWithoutTheRequiredGameParticipant() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.participant.close();
+            var context = new PlayerProfileContext(DOMAIN, fixture.profile, fixture.player.getUniqueId(),
+                UUID.randomUUID(), 1, 1, 1);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", null, List.of(context), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            assertThrows(Exception.class, () -> fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS));
+            assertTrue(fixture.player.profileContexts().isEmpty());
+            assertEquals(0, fixture.nativeCommits);
+            assertFalse(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void anExplicitAccountOnlyArrivalCannotActivateAGameDomain() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            var options = new TransferOptions(null, null, true);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", null, List.of(), System.currentTimeMillis() + 30_000,
+                null, false, options)).get(5, TimeUnit.SECONDS);
+            assertThrows(Exception.class, () -> fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS));
+            assertFalse(fixture.teleporting.isDone());
+            assertEquals(0, fixture.nativeCommits);
+            assertEquals(0, fixture.spawns);
+        }
+    }
+
+    @Test
+    void explicitArrivalWaitsForItsWorldResolverAndBypassesTheOrdinarySpawn() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.failSpawn = true;
+            fixture.arrival = new CompletableFuture<>();
+            var expected = new PlayerProfileContext(DOMAIN, fixture.profile, fixture.player.getUniqueId(),
+                UUID.randomUUID(), 1, 1, 1);
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", destination, List.of(expected), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            var initialized = fixture.sessions.initialize(fixture.player);
+            fixture.resolvingArrival.get(5, TimeUnit.SECONDS);
+            assertFalse(initialized.isDone());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            fixture.arrival.complete(new Location(null, 10, 80, 20));
+            initialized.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertEquals(0, fixture.spawns);
+            assertTrue(fixture.teleporting.isDone());
+        }
+    }
+
+    @Test
+    void initialLoginWaitsAsynchronouslyForAnOlderLeaseInsteadOfFailingImmediately() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.rejectFirstAcquire.set(true);
+            var initialized = fixture.sessions.initialize(fixture.player);
+            fixture.waitingForOwnership.get(5, TimeUnit.SECONDS);
+            assertFalse(initialized.isDone());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            initialized.get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void changedMembershipCannotApplyTheInventoryOrWarpFromAnOlderHandover() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            var oldMembership = new PlayerProfileContext(DOMAIN, fixture.profile, fixture.player.getUniqueId(),
+                UUID.randomUUID(), 1, 2, 1);
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "isles-2", "isles-1", destination, List.of(oldMembership), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            var initialized = fixture.sessions.initialize(fixture.player);
+            try {
+                initialized.get(5, TimeUnit.SECONDS);
+                throw new AssertionError("A changed membership must reject the transferred snapshot");
+            } catch (ExecutionException expected) {
+                assertFalse(fixture.sessions.isReady(fixture.player));
+                assertTrue(fixture.player.findProfileContext(DOMAIN).isEmpty());
+                assertFalse(fixture.resolvingArrival.isDone());
+                assertEquals(0, fixture.nativeCommits);
+            }
+        }
+    }
+
+    private static void complete(final CompletableFuture<Void> result, final Throwable failure) {
+        if (failure == null) {
+            result.complete(null);
+        } else {
+            result.completeExceptionally(failure);
+        }
+    }
+
     private static final class Fixture implements AutoCloseable {
 
         private final ExecutorService entity = Executors.newSingleThreadExecutor(
@@ -426,12 +780,23 @@ class VexProfileSessionServiceTest {
         private final VexPlayerDataCoordinatorService coordinator;
         private final VexProfileSessionService sessions;
         private final VexPlayer player;
+        private final VexServiceRegistry registry;
+        private final PlayerTransferStoreService transfers;
+        private final AutoCloseable participant;
+        private CompletableFuture<Location> arrival = CompletableFuture.completedFuture(new Location(null, 0, 80, 0));
+        private final CompletableFuture<Void> resolvingArrival = new CompletableFuture<>();
+        private boolean failSpawn;
+        private int spawns;
+        private final AtomicBoolean rejectFirstAcquire = new AtomicBoolean();
+        private final CompletableFuture<Void> waitingForOwnership = new CompletableFuture<>();
         private int level = 10;
         private int effects;
         private int kicks;
         private boolean failRestore;
         private int nativeCommits;
         private int profileLoads;
+        private volatile boolean entityRetired;
+        private volatile boolean rejectScheduling;
 
         private Fixture() throws Exception {
             this(true);
@@ -451,7 +816,7 @@ class VexProfileSessionServiceTest {
             var plugin = Proxy.newProxyInstance(Plugin.class.getClassLoader(),
                 new Class<?>[]{Plugin.class, ServiceOwner.class}, (object, method, arguments) ->
                     method.getName().equals("getServiceOwnerName") ? "test" : null);
-            var registry = proxy(VexServiceRegistry.class, (object, method, arguments) -> switch (method.getName()) {
+            registry = proxy(VexServiceRegistry.class, (object, method, arguments) -> switch (method.getName()) {
                 case "getOwner" -> plugin;
                 case "find" -> Optional.ofNullable(dependencies.get(arguments[0]));
                 default -> dependencies.get(arguments[0]);
@@ -498,9 +863,27 @@ class VexProfileSessionServiceTest {
                     : CompletableFuture.completedFuture(null)));
             dependencies.put(CacheService.class, new VexCacheService(registry));
             dependencies.put(ProfileStorageService.class, new VexProfileStorageService(registry));
+            dependencies.put(TransferDisplayService.class,
+                proxy(TransferDisplayService.class, (object, method, arguments) -> null));
+            dependencies.put(AdmissionService.class,
+                new VexAdmissionService(registry));
+            transfers = new VexPlayerTransferStoreService(registry);
+            dependencies.put(PlayerTransferStoreService.class, transfers);
+            dependencies.put(ServerIdentityService.class, proxy(ServerIdentityService.class,
+                (object, method, arguments) -> new ServerId("isles-1")));
+            dependencies.put(WorldService.class, proxy(WorldService.class, (object, method, arguments) -> Optional.empty()));
+            dependencies.put(MessagingService.class, proxy(MessagingService.class,
+                (object, method, arguments) -> DeliveryResult.SENT));
             leases = new VexProfileLeaseService(registry);
-            dependencies.put(ProfileLeaseService.class, leases);
+            dependencies.put(ProfileLeaseService.class, proxy(ProfileLeaseService.class, (object, method, arguments) -> {
+                if (method.getName().equals("acquire") && rejectFirstAcquire.compareAndSet(true, false)) {
+                    waitingForOwnership.complete(null);
+                    return CompletableFuture.completedFuture(Optional.empty());
+                }
+                return method.invoke(leases, arguments);
+            }));
             coordinator = new VexPlayerDataCoordinatorService(registry);
+            dependencies.put(PlayerDataCoordinatorService.class, coordinator);
             dependencies.put(PlayerDataCoordinatorService.class, coordinator);
             coordinator.register((ServiceOwner) plugin, keys -> keys.register(VALUE));
             var nativeInventory = proxy(PlayerInventory.class, (object, method, arguments) -> switch (method.getName()) {
@@ -512,8 +895,17 @@ class VexProfileSessionServiceTest {
             var ender = proxy(Inventory.class, (object, method, arguments) ->
                 method.getName().equals("getContents") ? new ItemStack[27] : null);
             var scheduler = proxy(EntityScheduler.class, (object, method, arguments) -> {
-                entity.execute(() -> ((Consumer<Object>) arguments[1]).accept(null));
-                return null;
+                if (rejectScheduling) {
+                    return null;
+                }
+                entity.execute(() -> {
+                    if (entityRetired) {
+                        ((Runnable) arguments[2]).run();
+                    } else {
+                        ((Consumer<Object>) arguments[1]).accept(null);
+                    }
+                });
+                return proxy(ScheduledTask.class, (task, taskMethod, taskArguments) -> null);
             });
             var nativePlayer = proxy(Player.class, (object, method, arguments) -> {
                 if (method.getName().equals("getScheduler")) {
@@ -548,7 +940,8 @@ class VexProfileSessionServiceTest {
                 };
             });
             sessions = new VexProfileSessionService(registry);
-            sessions.register(new PaperProfileParticipant() {
+            dependencies.put(ProfileSessionService.class, sessions);
+            participant = sessions.register(new PaperProfileParticipant() {
                 @Override
                 public ProfileDomain domain() {
                     return DOMAIN;
@@ -572,7 +965,17 @@ class VexProfileSessionServiceTest {
 
                 @Override
                 public Location spawn(final Player owner) {
+                    spawns++;
+                    if (failSpawn) {
+                        throw new IllegalStateException("The ordinary spawn world is not loaded");
+                    }
                     return new Location(null, 0, 80, 0);
+                }
+
+                @Override
+                public CompletableFuture<Location> arrivalDestination(final Player owner, final ServerPosition destination) {
+                    resolvingArrival.complete(null);
+                    return arrival;
                 }
             });
             player = coordinator.load(UUID.randomUUID(), "Alex").get(5, TimeUnit.SECONDS);

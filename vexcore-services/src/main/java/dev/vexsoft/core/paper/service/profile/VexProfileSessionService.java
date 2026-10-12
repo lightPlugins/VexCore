@@ -1,6 +1,8 @@
 package dev.vexsoft.core.paper.service.profile;
 
+import dev.vexsoft.core.api.messaging.MessageTarget;
 import dev.vexsoft.core.api.player.DataContainerKey;
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.profile.PlayerDataScope;
 import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
 import dev.vexsoft.core.api.player.profile.ProfileDataSnapshot;
@@ -8,41 +10,52 @@ import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.profile.ProfileMutation;
 import dev.vexsoft.core.api.player.profile.ProfileSelection;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
-import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.service.messaging.MessagingService;
+import dev.vexsoft.core.api.service.network.AdmissionService;
 import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
+import dev.vexsoft.core.api.teleport.TeleportStatus;
 import dev.vexsoft.core.common.data.redis.IndeterminateCommitException;
+import dev.vexsoft.core.common.messaging.teleport.TeleportCompletion;
+import dev.vexsoft.core.common.messaging.teleport.TeleportMessages;
+import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
 import dev.vexsoft.core.common.service.data.PlayerDataStoreService;
+import dev.vexsoft.core.common.service.data.PlayerTransferStoreService;
+import dev.vexsoft.core.common.service.data.PlayerTransferTicket;
 import dev.vexsoft.core.common.service.data.ScopedPlayerDataKeys;
 import dev.vexsoft.core.paper.profile.PaperProfileParticipant;
 import dev.vexsoft.core.paper.profile.PaperProfileState;
 import dev.vexsoft.core.paper.profile.ProfileItemInbox;
 import dev.vexsoft.core.paper.profile.ProfileItemRealm;
+import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.teleport.TransferDisplayService;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 /** Runs profile transitions through fenced persistence and entity-thread native state restoration. */
 @Dependencies({PlayerDataCoordinatorService.class, ProfileLeaseService.class, ProfileStorageService.class,
-    PlayerDataStoreService.class})
+    PlayerDataStoreService.class, PlayerTransferStoreService.class, ServerIdentityService.class, AdmissionService.class, TransferDisplayService.class})
 public final class VexProfileSessionService implements ProfileSessionService, AutoCloseable {
 
     private final PlayerDataCoordinatorService players;
@@ -51,6 +64,11 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     private final Plugin plugin;
     private final VexServiceRegistry services;
     private final PlayerDataStoreService backend;
+    private final PlayerTransferStoreService transfers;
+    private final String serverId;
+    private final AdmissionService admissions;
+    private final TransferDisplayService transferDisplays;
+    private final Set<VexPlayer> suspended = ConcurrentHashMap.newKeySet();
     private final AutoCloseable retirementRegistration;
     private final AutoCloseable captureRegistration;
     private final Map<VexPlayer, Session> sessions = new ConcurrentHashMap<>();
@@ -66,6 +84,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         leases = services.require(ProfileLeaseService.class);
         storage = services.require(ProfileStorageService.class);
         backend = services.require(PlayerDataStoreService.class);
+        transfers = services.require(PlayerTransferStoreService.class);
+        admissions = services.require(AdmissionService.class);
+        transferDisplays = services.require(TransferDisplayService.class);
+        serverId = services.require(ServerIdentityService.class).getServerId().value();
         if (!(services.getOwner() instanceof Plugin owner)) {
             throw new IllegalArgumentException("Profile platform service requires a Paper plugin owner");
         }
@@ -122,10 +144,53 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     }
 
     @Override
+    public Optional<ProfileDomain> domain() {
+        return Optional.ofNullable(binding).map(current -> current.participant().domain());
+    }
+
+    @Override
+    public boolean acceptingTransfers() {
+        DomainBinding current = binding;
+        return current == null || current.participant().acceptingTransfers();
+    }
+
+    @Override
     public CompletableFuture<Void> initialize(final VexPlayer player) {
         DomainBinding current = binding;
         if (current == null) {
-            return CompletableFuture.completedFuture(null);
+            suspended.add(player);
+            return transfers.claim(player.getUniqueId(), serverId, UUID.randomUUID()).thenCompose(ticket -> {
+                if (ticket.isEmpty()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                PlayerTransferTicket arrival = ticket.get();
+                transferDisplays.show(player, arrival.requestId(), arrival.options().presentation());
+                CompletableFuture<Void> restored = validateArrival(arrival).thenCompose(ignored -> {
+                    if (!arrival.profiles().isEmpty() && !arrival.options().accountOnly()) {
+                        return CompletableFuture.failedFuture(new IllegalStateException(
+                            "The destination has no participant for the transferred profiles"));
+                    } else if (arrival.destination() == null) {
+                        return CompletableFuture.completedFuture(null);
+                    } else {
+                        Player platform = player.requirePlatformPlayer(Player.class);
+                        var destination = arrival.destination();
+                        return entity(platform, () -> {
+                            var key = destination.world();
+                            var world = Bukkit.getWorld(new NamespacedKey(key.namespace(), key.value()));
+                            if (world == null) {
+                                throw new IllegalStateException("Arrival world is unavailable");
+                            }
+                            return platform.teleportAsync(new Location(world, destination.x(), destination.y(),
+                                destination.z(), destination.yaw(), destination.pitch()));
+                        }).thenCompose(teleported -> teleported).thenAccept(teleported -> {
+                            if (!teleported) {
+                                throw new IllegalStateException("Arrival teleport was rejected");
+                            }
+                        }).orTimeout(30, TimeUnit.SECONDS);
+                    }
+                });
+                return finishArrival(player, arrival, restored);
+            }).thenRun(() -> suspended.remove(player));
         }
         Session session = sessions.computeIfAbsent(player, ignored -> new Session());
         synchronized (session) {
@@ -133,11 +198,36 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 return session.ready;
             }
             session.started = true;
-            CompletableFuture<Void> initialized = current.participant().bootstrap(player)
-                .thenCompose(selection -> activate(player, selection));
+            CompletableFuture<Void> initialized = transfers.claim(player.getUniqueId(), serverId, session.id)
+                .thenCompose(ticket -> {
+                    session.arrival = ticket.orElse(null);
+                    if (session.arrival != null) {
+                        transferDisplays.show(player, session.arrival.requestId(), session.arrival.options().presentation());
+                    }
+                    CompletableFuture<Void> admitted = session.arrival == null
+                        ? CompletableFuture.completedFuture(null) : validateArrival(session.arrival);
+                    if (session.arrival != null && session.arrival.options().accountOnly()) {
+                        admitted = CompletableFuture.failedFuture(
+                            new IllegalStateException("Account-only arrival reached a game backend"));
+                    }
+                    CompletableFuture<Void> restored = admitted.thenCompose(ignored -> current.participant().bootstrap(player))
+                        .thenCompose(selection -> {
+                        if (session.arrival != null && !session.arrival.profiles().isEmpty()
+                            && session.arrival.profiles().stream().noneMatch(expected ->
+                            expected.domain().equals(selection.domain()) && expected.profileId().equals(selection.profileId())
+                                && expected.membershipEpoch() == selection.membershipEpoch())) {
+                            return CompletableFuture.failedFuture(new IllegalStateException("Transferred profile changed"));
+                        }
+                        return activate(player, selection);
+                    });
+                    return session.arrival == null ? restored : finishArrival(player, session.arrival, restored);
+                });
             return initialized.whenComplete((ignored, failure) -> {
+                session.arrival = null;
                 if (failure != null) {
                     session.ready.completeExceptionally(failure);
+                } else {
+                    session.ready.complete(null);
                 }
             });
         }
@@ -148,6 +238,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(selection, "selection");
         DomainBinding current = requireBinding(selection.domain());
+        Player platform = player.findPlatformPlayer(Player.class).orElse(null);
+        if (platform == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Player disconnected before profile switch"));
+        }
         Session session = sessions.computeIfAbsent(player, ignored -> new Session());
         CompletableFuture<Void> ready;
         synchronized (session) {
@@ -167,7 +261,6 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             ready.complete(null);
             return CompletableFuture.failedFuture(new IllegalArgumentException("Profile already active"));
         }
-        Player platform = player.requirePlatformPlayer(Player.class);
         Transition transition = new Transition();
         CompletableFuture<Void> result = entity(platform, () -> {
             if (platform.isDead()) {
@@ -180,8 +273,8 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             }
             return null;
         }).thenCompose(ignored -> players.save(player.getUniqueId()))
-            .thenCompose(ignored -> leases.acquire(selection.domain(), selection.profileId(), player.getUniqueId(),
-                session.id, ++session.generation, selection.membershipEpoch()))
+            .thenCompose(ignored -> acquire(player, selection, session, platform, ++session.generation,
+                previous == null ? System.nanoTime() + TimeUnit.SECONDS.toNanos(50) : 0))
             .thenCompose(acquired -> {
                 transition.target = acquired.orElseThrow(() -> new IllegalStateException("Profile is in use"));
                 return players.loadProfile(transition.target);
@@ -205,7 +298,9 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                         session.writeGuards = selection.writeGuards();
                         PaperProfileState state = player.read(current.nativeKey(), value -> value);
                         PaperProfileStateCodec.apply(platform, state);
-                        return current.participant().destination(platform, state, previous == null);
+                        return session.arrival != null && session.arrival.destination() != null
+                            ? current.participant().arrivalDestination(platform, session.arrival.destination())
+                            : current.participant().destination(platform, state, previous == null);
                     }).thenCompose(destination -> destination)
                         .thenCompose(location -> entity(platform, () -> {
                             if (transition.failed || session.retired || !player.isCurrentContext(transition.target)
@@ -267,7 +362,9 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             session.restoring = !restored;
             session.changing.set(false);
             if (restored) {
-                ready.complete(null);
+                if (session.arrival == null) {
+                    ready.complete(null);
+                }
             } else {
                 ready.completeExceptionally(failure);
             }
@@ -297,13 +394,17 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         if (current == null || session == null) {
             return players.save(player.getUniqueId());
         }
+        Player platform = player.findPlatformPlayer(Player.class).orElse(null);
+        if (platform == null) {
+            return expected == null ? players.save(player.getUniqueId()) : players.save(expected);
+        }
         if (backend.getStore().isLive()) {
-            return saveLive(player, current, session, expected);
+            return saveLive(player, platform, current, session, expected);
         }
         CompletableFuture<Void> ready;
         synchronized (session) {
             if (session.retired) {
-                return CompletableFuture.failedFuture(new IllegalStateException("Profile session is retired"));
+                return CompletableFuture.completedFuture(null);
             }
             if (session.changing.get() || !session.ready.isDone()) {
                 return session.ready.thenCompose(ignored -> save(player, expected));
@@ -315,14 +416,17 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             ready = new CompletableFuture<>();
             session.ready = ready;
         }
-        Player platform = player.requirePlatformPlayer(Player.class);
         CompletableFuture<Void> saved = entity(platform, () -> {
+            if (session.retired) {
+                return null;
+            }
             if (expected != null && !player.isCurrentContext(expected)) {
                 throw new IllegalStateException("Captured save context retired");
             }
             capture(player, platform, current);
             return null;
-        }).thenCompose(ignored -> expected == null ? players.save(player.getUniqueId()) : players.save(expected));
+        }, () -> null).thenCompose(ignored -> expected == null
+            ? players.save(player.getUniqueId()) : players.save(expected));
         return saved.whenComplete((ignored, failure) -> {
             session.changing.set(false);
             if (failure != null && indeterminate(failure)) {
@@ -337,6 +441,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
 
     private CompletableFuture<Void> saveLive(
         final VexPlayer player,
+        final Player platform,
         final DomainBinding current,
         final Session session,
         final PlayerProfileContext expected
@@ -344,7 +449,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         CompletableFuture<Void> saved;
         synchronized (session) {
             if (session.retired) {
-                return CompletableFuture.failedFuture(new IllegalStateException("Profile session is retired"));
+                return CompletableFuture.completedFuture(null);
             }
             if (session.changing.get() || !session.ready.isDone()) {
                 return session.ready.thenCompose(ignored -> save(player, expected));
@@ -358,7 +463,6 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             saved = new CompletableFuture<>();
             session.backgroundSave = saved;
         }
-        Player platform = player.requirePlatformPlayer(Player.class);
         entity(platform, () -> {
             // A switch or transaction captures its own baseline; do not capture halfway through that operation.
             if (session.changing.get() || session.retired) {
@@ -371,7 +475,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 capture(player, platform, current);
             }
             return true;
-        }).thenCompose(captured -> captured ? players.save(player.getUniqueId())
+        }, () -> false).thenCompose(captured -> captured ? players.save(player.getUniqueId())
             : CompletableFuture.completedFuture(null)).whenComplete((ignored, failure) -> {
                 if (failure == null) {
                     saved.complete(null);
@@ -393,6 +497,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         if (current == null || session == null) {
             return CompletableFuture.failedFuture(new IllegalStateException("Profile session is not ready"));
         }
+        Player platform = player.findPlatformPlayer(Player.class).orElse(null);
+        if (platform == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Player disconnected before profile operation"));
+        }
         CompletableFuture<Void> ready;
         synchronized (session) {
             if (!session.retired && !session.poisoned && (session.changing.get() || !session.ready.isDone())) {
@@ -405,7 +513,6 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             ready = new CompletableFuture<>();
             session.ready = ready;
         }
-        Player platform = player.requirePlatformPlayer(Player.class);
         PlayerProfileContext context = player.findProfileContext(current.participant().domain()).orElseThrow();
         DurableOperation<T> operation = new DurableOperation<>();
         boolean live = backend.getStore().isLive();
@@ -443,6 +550,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 // Durability defines success even when the player disconnects before a notification can run.
                 return entity(platform, () -> {
                     player.finishDurableEffects(true);
+                    return operation.mutation.result();
+                }, () -> {
+                    // Quit can retire the notification task after the purchase has already committed.
+                    player.finishDurableEffects(false);
                     return operation.mutation.result();
                 }).handle((value, notificationFailure) -> {
                     if (notificationFailure != null) {
@@ -531,6 +642,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         DomainBinding current = binding;
         Session session = sessions.get(player);
         if (session == null || current == null) {
+            suspended.add(player);
             return players.save(player.getUniqueId());
         }
         synchronized (session) {
@@ -540,15 +652,24 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             session.retired = true;
             PlayerProfileContext context = player.findProfileContext(current.participant().domain()).orElse(null);
             Player platform = player.findPlatformPlayer(Player.class).orElse(null);
-            CompletableFuture<Void> captured = platform == null || context == null || session.changing.get() || session.poisoned
+            CompletableFuture<Void> captured = platform == null || context == null || !leases.isWritable(context)
+                || session.changing.get() || session.poisoned
                 ? CompletableFuture.completedFuture(null) : entity(platform, () -> {
                     platform.closeInventory();
                     current.participant().prepare(platform, context);
                     capture(player, platform, current);
                     return null;
-                });
+                }, () -> null);
             session.retirement = captured.thenCompose(ignored -> session.ready.handle((ready, failure) -> null))
                 .thenCompose(ignored -> session.backgroundSave.handle((saved, failure) -> null))
+                .thenCompose(ignored -> session.poisoned || platform == null || context == null || !leases.isWritable(context)
+                    || player.findPlatformPlayer(Player.class).orElse(null) != platform
+                    ? CompletableFuture.completedFuture(null) : entity(platform, () -> {
+                        // A busy purchase or older autosave can finish after the first capture. Drain before the final one.
+                        current.participant().prepare(platform, context);
+                        capture(player, platform, current);
+                        return null;
+                    }, () -> null))
                 .thenCompose(ignored -> session.poisoned ? CompletableFuture.completedFuture(null)
                     : players.save(player.getUniqueId()))
                 .thenCompose(ignored -> releaseContexts(player))
@@ -574,31 +695,39 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         CompletableFuture<Void> drained = previous == null ? CompletableFuture.completedFuture(null) : retire(player);
         return drained.thenCompose(ignored -> {
             sessions.remove(player);
-            return initialize(player);
+            return initialize(player).thenRun(() -> suspended.remove(player));
         });
     }
 
     @Override
     public boolean isReady(final VexPlayer player) {
+        if (suspended.contains(player)) {
+            return false;
+        }
         DomainBinding current = binding;
         Session session = sessions.get(player);
         if (current == null) {
-            return true;
+            return player.findPlatformPlayer(Player.class).isPresent();
         }
-        return session != null && !session.retired && !session.poisoned && !session.changing.get() && session.ready.isDone()
+        return session != null && player.findPlatformPlayer(Player.class).isPresent()
+            && !session.retired && !session.poisoned && !session.changing.get() && session.ready.isDone()
             && !session.ready.isCompletedExceptionally()
             && player.findProfileContext(current.participant().domain()).map(leases::isWritable).orElse(false);
     }
 
     @Override
     public boolean isMovementAllowed(final VexPlayer player) {
+        if (suspended.contains(player)) {
+            return false;
+        }
         DomainBinding current = binding;
         Session session = sessions.get(player);
         if (current == null) {
-            return true;
+            return player.findPlatformPlayer(Player.class).isPresent();
         }
         // Saving and economic transactions guard inventory state without freezing the player's position.
-        return session != null && !session.retired && !session.restoring && !session.poisoned
+        return session != null && player.findPlatformPlayer(Player.class).isPresent()
+            && !session.retired && !session.restoring && !session.poisoned
             && player.findProfileContext(current.participant().domain()).map(leases::isWritable).orElse(false);
     }
 
@@ -665,6 +794,58 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         }
     }
 
+    @Override
+    public void disconnected(final VexPlayer player) {
+        suspended.remove(player);
+        transferDisplays.disconnected(player);
+    }
+
+    private CompletableFuture<Optional<PlayerProfileContext>> acquire(
+        final VexPlayer player, final ProfileSelection selection, final Session session, final Player platform,
+        final long generation, final long deadline
+    ) {
+        if (session.retired || player.findPlatformPlayer(Player.class).orElse(null) != platform) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Login retired while waiting for profile ownership"));
+        }
+        return leases.acquire(selection.domain(), selection.profileId(), player.getUniqueId(),
+            session.id, generation, selection.membershipEpoch()).thenCompose(acquired -> {
+                if (acquired.isPresent() || deadline == 0 || System.nanoTime() >= deadline) {
+                    return CompletableFuture.completedFuture(acquired);
+                }
+                // A crashed or rapidly reconnecting source can still hold its lease. Never sleep on an entity thread.
+                return CompletableFuture.supplyAsync(() -> null, CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS))
+                    .thenCompose(ignored -> acquire(player, selection, session, platform, generation, deadline));
+            });
+    }
+
+    private CompletableFuture<Void> finishArrival(
+        final VexPlayer player, final PlayerTransferTicket ticket, final CompletableFuture<Void> restored
+    ) {
+        return restored.handle((ignored, failure) -> failure).thenCompose(failure -> transfers.finish(ticket)
+            .thenCompose(ignored -> ticket.options().admission() == null ? CompletableFuture.completedFuture(null)
+                : admissions.finish(ticket.options().admission(), failure == null))
+            .thenCompose(ignored -> {
+                transferDisplays.finish(player, ticket.requestId(), failure == null);
+                services.require(MessagingService.class).send(MessageTarget.server(ticket.sourceServer()),
+                    TeleportMessages.COMPLETION, new TeleportCompletion(ticket.requestId(),
+                        failure == null ? TeleportStatus.SUCCESS : TeleportStatus.FAILED,
+                        failure == null ? "" : "The destination could not restore the transferred profile"));
+                return failure == null ? CompletableFuture.completedFuture(null) : CompletableFuture.failedFuture(failure);
+            }));
+    }
+
+    private CompletableFuture<Void> validateArrival(final PlayerTransferTicket ticket) {
+        var reference = ticket.options().admission();
+        if (reference == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        if (!reference.playerId().equals(ticket.playerId()) || !reference.server().value().equals(serverId)) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Arrival admission identity mismatch"));
+        }
+        return admissions.validate(reference).thenCompose(valid -> valid ? CompletableFuture.completedFuture(null)
+            : CompletableFuture.failedFuture(new IllegalStateException("Arrival admission expired")));
+    }
+
     private CompletableFuture<Void> releaseContexts(final VexPlayer player) {
         return CompletableFuture.allOf(player.profileContexts().values().stream()
             .map(leases::release).toArray(CompletableFuture[]::new));
@@ -691,21 +872,36 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     }
 
     private <T> CompletableFuture<T> entity(final Player player, final Supplier<T> operation) {
+        return entity(player, operation, () -> {
+            throw new IllegalStateException("Player entity retired");
+        });
+    }
+
+    private <T> CompletableFuture<T> entity(
+        final Player player,
+        final Supplier<T> operation,
+        final Supplier<T> retiredOperation
+    ) {
         CompletableFuture<T> result = new CompletableFuture<>();
-        Runnable action = () -> {
-            try {
-                result.complete(operation.get());
-            } catch (RuntimeException failure) {
-                result.completeExceptionally(failure);
-            }
-        };
+        Runnable action = () -> completeEntityOperation(result, operation);
         if (Bukkit.isOwnedByCurrentRegion(player)) {
             action.run();
         } else {
-            player.getScheduler().run(plugin, task -> action.run(),
-                () -> result.completeExceptionally(new IllegalStateException("Player entity retired")));
+            // A scheduler already retired rejects the task without invoking either callback.
+            Runnable retired = () -> completeEntityOperation(result, retiredOperation);
+            if (player.getScheduler().run(plugin, task -> action.run(), retired) == null) {
+                retired.run();
+            }
         }
         return result;
+    }
+
+    private static <T> void completeEntityOperation(final CompletableFuture<T> result, final Supplier<T> operation) {
+        try {
+            result.complete(operation.get());
+        } catch (RuntimeException failure) {
+            result.completeExceptionally(failure);
+        }
     }
 
     private record DomainBinding(
@@ -723,6 +919,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     }
 
     private static final class Session {
+        private PlayerTransferTicket arrival;
 
         private final UUID id = UUID.randomUUID();
         private final AtomicBoolean changing = new AtomicBoolean();

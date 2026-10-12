@@ -15,6 +15,8 @@ import dev.vexsoft.core.common.service.data.VexPlayerDataStoreService;
 import dev.vexsoft.core.common.service.data.VexPlayerService;
 import dev.vexsoft.core.common.service.data.VexProfileLeaseService;
 import dev.vexsoft.core.common.service.data.VexProfileStorageService;
+import dev.vexsoft.core.common.service.data.PlayerTransferStoreService;
+import dev.vexsoft.core.common.service.data.VexPlayerTransferStoreService;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.logging.Level;
@@ -36,6 +38,7 @@ public final class PlayerModule implements VexModule, ConfigurationOwner, LocalS
         services.register(ConfigurationService.class, VexConfigurationService.class);
         services.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
         services.register(ProfileStorageService.class, VexProfileStorageService.class);
+        services.register(PlayerTransferStoreService.class, VexPlayerTransferStoreService.class);
         services.register(ProfileLeaseService.class, VexProfileLeaseService.class);
         services.register(PlayerDataCoordinatorService.class, VexPlayerDataCoordinatorService.class);
         services.register(PlayerService.class, VexPlayerService.class);

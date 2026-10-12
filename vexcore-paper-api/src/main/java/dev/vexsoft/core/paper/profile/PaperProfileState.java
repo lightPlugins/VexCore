@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.profile;
 
 import dev.vexsoft.core.api.world.WorldKey;
+import dev.vexsoft.core.api.network.ServerId;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Objects;
@@ -139,10 +140,20 @@ public record PaperProfileState(
     }
 
     /** Stores an optional position using the Foundation's persistent world key. */
-    public record Position(String world, double x, double y, double z, float yaw, float pitch) {
+    public record Position(String world, double x, double y, double z, float yaw, float pitch, String server) {
+
+        /** Preserves existing world-only snapshots without guessing which backend produced them. */
+        public Position(final String world, final double x, final double y, final double z,
+            final float yaw, final float pitch) {
+            this(world, x, y, z, yaw, pitch, "");
+        }
 
         /** Validates the namespaced world and finite coordinates before persistence. */
         public Position {
+            server = server == null ? "" : server;
+            if (!server.isEmpty()) {
+                new ServerId(server);
+            }
             WorldKey.parse(world);
             if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)
                 || !Float.isFinite(yaw) || !Float.isFinite(pitch)) {

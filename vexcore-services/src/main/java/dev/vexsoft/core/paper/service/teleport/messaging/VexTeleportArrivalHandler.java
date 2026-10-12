@@ -15,7 +15,7 @@ import dev.vexsoft.core.common.messaging.teleport.TeleportMessages;
 import dev.vexsoft.core.paper.service.teleport.TeleportCoordinatorService;
 import java.util.Objects;
 
-/** Completes a transferred player's asynchronous teleport on the destination server. */
+/** Rejects legacy arrivals without applying their destination to a newer player session. */
 @Dependencies({TeleportCoordinatorService.class, MessagingService.class})
 public final class VexTeleportArrivalHandler implements MessageHandler<TeleportArrival> {
 

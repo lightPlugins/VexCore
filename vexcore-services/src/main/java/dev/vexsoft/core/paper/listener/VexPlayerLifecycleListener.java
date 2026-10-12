@@ -142,6 +142,7 @@ public final class VexPlayerLifecycleListener implements Listener {
             CompletableFuture<Void> captured = profiles.retire(player);
             statContributions.removePlayer(player);
             player.unbindPlatformPlayer();
+            profiles.disconnected(player);
             return captured;
         }).orElseGet(() -> CompletableFuture.completedFuture(null));
         retirement.thenCompose(ignored -> players.saveAndRemove(event.getPlayer().getUniqueId())).exceptionally(throwable -> {

@@ -39,5 +39,10 @@ class PaperProfileStateTest {
         assertNull(decoded.position());
         var position = new PaperProfileState.Position("game:isles", 1.5, 80, 2.5, 45, 0);
         assertEquals(position, mapper.readValue(mapper.writeValueAsBytes(position), PaperProfileState.Position.class));
+        var oldPosition = (ObjectNode) mapper.valueToTree(position);
+        oldPosition.remove("server");
+        assertEquals("", mapper.treeToValue(oldPosition, PaperProfileState.Position.class).server());
+        var networkPosition = new PaperProfileState.Position("game:isles", 1.5, 80, 2.5, 45, 0, "isles-2");
+        assertEquals(networkPosition, mapper.readValue(mapper.writeValueAsBytes(networkPosition), PaperProfileState.Position.class));
     }
 }

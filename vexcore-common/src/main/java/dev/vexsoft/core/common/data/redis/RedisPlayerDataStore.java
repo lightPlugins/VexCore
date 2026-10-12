@@ -21,6 +21,7 @@ import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.StreamMessage;
+import io.lettuce.core.TimeoutOptions;
 import io.lettuce.core.XTrimArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
@@ -99,9 +100,7 @@ public final class RedisPlayerDataStore
         checkpoints = durable.networkCheckpoints();
         pending = new Semaphore(settings.maximumPendingCommands());
         client = RedisClient.create(settings.uri());
-        client.setOptions(ClientOptions.builder().requestQueueSize(settings.maximumPendingCommands())
-            .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
-            .socketOptions(SocketOptions.builder().connectTimeout(settings.connectTimeout()).build()).build());
+        client.setOptions(clientOptions(settings));
         initialization = durable.readiness().thenRunAsync(this::initialize, worker);
         worker.scheduleWithFixedDelay(() -> {
             if (initialization.isDone() && !initialization.isCompletedExceptionally() && !closed.get()) {
@@ -112,6 +111,14 @@ public final class RedisPlayerDataStore
             }
         }, settings.checkpointIntervalSeconds(), settings.checkpointIntervalSeconds(), TimeUnit.SECONDS);
         worker.scheduleWithFixedDelay(this::pollInvalidations, 1, 1, TimeUnit.SECONDS);
+    }
+
+    static ClientOptions clientOptions(final RedisSettings settings) {
+        // RedisURI alone only bounds synchronous waits; async saves also need command expiration.
+        return ClientOptions.builder().requestQueueSize(settings.maximumPendingCommands())
+            .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
+            .socketOptions(SocketOptions.builder().connectTimeout(settings.connectTimeout()).build())
+            .timeoutOptions(TimeoutOptions.enabled(settings.uri().getTimeout())).build();
     }
 
     @Override

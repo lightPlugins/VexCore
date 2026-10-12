@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.service.teleport;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.teleport.TeleportResult;
+import dev.vexsoft.core.api.teleport.TransferOptions;
 import dev.vexsoft.core.api.world.ServerPosition;
 import java.util.concurrent.CompletableFuture;
 
@@ -10,7 +11,10 @@ import java.util.concurrent.CompletableFuture;
 public interface PlayerTeleportService extends VexService {
 
     /**
-     * Teleports a player and completes after Paper's asynchronous chunk load and teleport callback.
+     * Teleports without blocking server threads and completes after destination restoration and asynchronous teleport.
      */
     CompletableFuture<TeleportResult> teleport(VexPlayer player, ServerPosition destination);
+
+    /** Starts an admitted transfer with its explicitly supplied profile policy and loading presentation. */
+    CompletableFuture<TeleportResult> teleport(VexPlayer player, ServerPosition destination, TransferOptions options);
 }

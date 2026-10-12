@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.teleport.TeleportResult;
+import dev.vexsoft.core.api.teleport.TransferOptions;
 import dev.vexsoft.core.api.world.ServerPosition;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -21,5 +22,12 @@ public final class VexPlayerTeleportService implements PlayerTeleportService {
     @Override
     public CompletableFuture<TeleportResult> teleport(final VexPlayer player, final ServerPosition destination) {
         return coordinator.teleport(player, destination);
+    }
+
+    @Override
+    public CompletableFuture<TeleportResult> teleport(
+        final VexPlayer player, final ServerPosition destination, final TransferOptions options
+    ) {
+        return coordinator.teleport(player, destination, options);
     }
 }

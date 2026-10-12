@@ -513,20 +513,26 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
         if (!store.isLive()) {
             return loadProfile(context);
         }
-        Map<DataContainerKey<?>, Object> values = new LinkedHashMap<>();
-        Map<String, OwnerContainers> owners = ownerSnapshot();
-        synchronized (player) {
-            if (!player.isCurrentContext(context)) {
-                return CompletableFuture.failedFuture(new IllegalStateException("Profile context retired"));
-            }
-            owners.values().forEach(owner -> owner.keys.values().forEach(key -> {
-                if (key.getScope().domain().filter(context.domain()::equals).isPresent()) {
-                    values.put(key, objectMapper.convertValue(snapshotData(player, key).getValue(), key.getType()));
+        // A completed live baseline can call this directly from the entity thread during a shop click.
+        return CompletableFuture.supplyAsync(() -> {
+            Map<DataContainerKey<?>, JsonNode> captured = new LinkedHashMap<>();
+            Map<String, OwnerContainers> owners = ownerSnapshot();
+            Map<ProfileDocumentKey, Long> revisions;
+            synchronized (player) {
+                if (!player.isCurrentContext(context)) {
+                    throw new IllegalStateException("Profile context retired");
                 }
-            }));
-            return CompletableFuture.completedFuture(new ProfileDataSnapshot(context, values,
-                profileRevisions.getOrDefault(context, Map.of())));
-        }
+                owners.values().forEach(owner -> owner.keys.values().forEach(key -> {
+                    if (key.getScope().domain().filter(context.domain()::equals).isPresent()) {
+                        captured.put(key, snapshotData(player, key).getValue());
+                    }
+                }));
+                revisions = Map.copyOf(profileRevisions.getOrDefault(context, Map.of()));
+            }
+            Map<DataContainerKey<?>, Object> values = new LinkedHashMap<>();
+            captured.forEach((key, value) -> values.put(key, objectMapper.convertValue(value, key.getType())));
+            return new ProfileDataSnapshot(context, values, revisions);
+        }, saveExecutor);
     }
 
     @Override

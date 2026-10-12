@@ -235,7 +235,7 @@ final class JdbcCheckpointRecords {
             name = switch (base) {
                 case "native_state" -> "inventories";
                 case "native_inbox" -> "delivery_inboxes";
-                case "session_lease", "session_heartbeat", "session_retirement" -> "profile_sessions";
+                case "session_lease", "session_heartbeat", "session_retirement", "server_transfer" -> "profile_sessions";
                 default -> base.startsWith("published_") ? "published_configurations" : base;
             };
         } else if (schema.equals("vexisles")) {

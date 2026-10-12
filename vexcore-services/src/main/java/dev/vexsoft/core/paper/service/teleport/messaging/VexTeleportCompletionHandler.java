@@ -28,6 +28,6 @@ public final class VexTeleportCompletionHandler implements MessageHandler<Telepo
     @Override
     public void handle(final TeleportCompletion message, final MessageContext context) {
         Objects.requireNonNull(context, "context");
-        teleports.complete(message);
+        teleports.complete(message, context.getSourceServer());
     }
 }
