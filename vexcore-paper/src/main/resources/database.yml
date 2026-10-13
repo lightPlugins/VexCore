@@ -21,6 +21,9 @@ persistence:
   checkpoint-interval-seconds: 300
 
 player-data:
+  # 0 retains the backend default (Redis: 1 second; SQL/memory: 300 seconds).
+  # Personal actions only change cached data; saves are spread across this interval.
+  autosave-interval-seconds: 0
   login-timeout-seconds: 15
   login-kick-message: "Your player data could not be loaded. Please try again."
 

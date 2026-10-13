@@ -30,6 +30,7 @@ import dev.vexsoft.core.paper.profile.PaperProfileState;
 import dev.vexsoft.core.paper.profile.ProfileItemInbox;
 import dev.vexsoft.core.paper.profile.ProfileItemRealm;
 import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.teleport.TransferDisplayService;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -55,7 +56,8 @@ import org.bukkit.plugin.Plugin;
 
 /** Runs profile transitions through fenced persistence and entity-thread native state restoration. */
 @Dependencies({PlayerDataCoordinatorService.class, ProfileLeaseService.class, ProfileStorageService.class,
-    PlayerDataStoreService.class, PlayerTransferStoreService.class, ServerIdentityService.class, AdmissionService.class, TransferDisplayService.class})
+    PlayerDataStoreService.class, PlayerTransferStoreService.class, ServerIdentityService.class, AdmissionService.class,
+    TransferDisplayService.class, ScheduleService.class})
 public final class VexProfileSessionService implements ProfileSessionService, AutoCloseable {
 
     private final PlayerDataCoordinatorService players;
@@ -68,6 +70,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     private final String serverId;
     private final AdmissionService admissions;
     private final TransferDisplayService transferDisplays;
+    private final ScheduleService schedules;
     private final Set<VexPlayer> suspended = ConcurrentHashMap.newKeySet();
     private final AutoCloseable retirementRegistration;
     private final AutoCloseable captureRegistration;
@@ -87,6 +90,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         transfers = services.require(PlayerTransferStoreService.class);
         admissions = services.require(AdmissionService.class);
         transferDisplays = services.require(TransferDisplayService.class);
+        schedules = services.require(ScheduleService.class);
         serverId = services.require(ServerIdentityService.class).getServerId().value();
         if (!(services.getOwner() instanceof Plugin owner)) {
             throw new IllegalArgumentException("Profile platform service requires a Paper plugin owner");
@@ -262,8 +266,9 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             return CompletableFuture.failedFuture(new IllegalArgumentException("Profile already active"));
         }
         Transition transition = new Transition();
-        CompletableFuture<Void> result = entity(platform, () -> {
-            if (platform.isDead()) {
+        CompletableFuture<Void> result = activationEntity(player, platform, session, previous == null, () -> {
+            if (platform.isDead() && previous != null) {
+                transition.rejectedWhileDead = true;
                 throw new IllegalStateException("Cannot switch profiles while dead");
             }
             platform.closeInventory();
@@ -290,19 +295,37 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                         return CompletableFuture.failedFuture(new IllegalStateException("Profile selection changed"));
                     }
                     transition.committed = true;
-                    return entity(platform, () -> {
-                        if (transition.failed || session.retired || !platform.isConnected()) {
+                    return activationEntity(player, platform, session, previous == null, () -> {
+                        if (transition.failed || session.retired || !leases.isWritable(transition.target)
+                            || !platform.isConnected()) {
                             throw new IllegalStateException("Player disconnected after profile commit");
                         }
                         players.installProfile(player, snapshot, selection.writeGuards());
                         session.writeGuards = selection.writeGuards();
-                        PaperProfileState state = player.read(current.nativeKey(), value -> value);
+                        if (platform.isDead()) {
+                            if (previous != null) {
+                                throw new IllegalStateException("Cannot switch profiles while dead");
+                            }
+                            // Vanilla can load an old death before the first game profile is restored.
+                            // Install the target first so respawn listeners see its scoped containers.
+                            platform.spigot().respawn();
+                        }
+                        return player.read(current.nativeKey(), value -> value);
+                    }).thenCompose(state -> activationEntity(player, platform, session, previous == null, () -> {
+                        // Respawn can replace the native handle and move its owning execution context.
+                        if (transition.failed || session.retired || !player.isCurrentContext(transition.target)
+                            || !leases.isWritable(transition.target) || !platform.isConnected()) {
+                            throw new IllegalStateException("Profile restoration retired after respawn");
+                        }
+                        if (platform.isDead()) {
+                            throw new IllegalStateException("Initial profile respawn did not complete");
+                        }
                         PaperProfileStateCodec.apply(platform, state);
                         return session.arrival != null && session.arrival.destination() != null
                             ? current.participant().arrivalDestination(platform, session.arrival.destination())
                             : current.participant().destination(platform, state, previous == null);
-                    }).thenCompose(destination -> destination)
-                        .thenCompose(location -> entity(platform, () -> {
+                    })).thenCompose(destination -> destination)
+                        .thenCompose(location -> activationEntity(player, platform, session, previous == null, () -> {
                             if (transition.failed || session.retired || !player.isCurrentContext(transition.target)
                                 || !leases.isWritable(transition.target)) {
                                 throw new IllegalStateException("Profile restoration retired before teleport");
@@ -315,7 +338,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                             if (!teleported) {
                                 return CompletableFuture.failedFuture(new IllegalStateException("Activation teleport failed"));
                             }
-                            return entity(platform, () -> {
+                            return activationEntity(player, platform, session, previous == null, () -> {
                                 if (transition.failed || session.retired || !player.isCurrentContext(transition.target)) {
                                     throw new IllegalStateException("Profile restoration retired before gameplay");
                                 }
@@ -335,11 +358,17 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             CompletableFuture<Void> recovery;
             if (!session.poisoned && !transition.committed && previousWritable
                 && player.findPlatformPlayer(Player.class).orElse(null) == platform && !session.retired) {
-                recovery = entity(platform, () -> {
-                    current.participant().restore(platform, previous);
+                if (transition.rejectedWhileDead) {
+                    // The guard ran before preparation or capture; leave the dead source untouched.
                     transition.recovered = true;
-                    return null;
-                });
+                    recovery = CompletableFuture.completedFuture(null);
+                } else {
+                    recovery = entity(platform, () -> {
+                        current.participant().restore(platform, previous);
+                        transition.recovered = true;
+                        return null;
+                    });
+                }
             } else {
                 recovery = entity(platform, () -> {
                     platform.kick(Component.text(backend.getLoginKickMessage()));
@@ -398,48 +427,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         if (platform == null) {
             return expected == null ? players.save(player.getUniqueId()) : players.save(expected);
         }
-        if (backend.getStore().isLive()) {
-            return saveLive(player, platform, current, session, expected);
-        }
-        CompletableFuture<Void> ready;
-        synchronized (session) {
-            if (session.retired) {
-                return CompletableFuture.completedFuture(null);
-            }
-            if (session.changing.get() || !session.ready.isDone()) {
-                return session.ready.thenCompose(ignored -> save(player, expected));
-            }
-            if (!isReady(player) || expected != null && !player.isCurrentContext(expected)) {
-                return CompletableFuture.failedFuture(new IllegalStateException("Profile session is not writable"));
-            }
-            session.changing.set(true);
-            ready = new CompletableFuture<>();
-            session.ready = ready;
-        }
-        CompletableFuture<Void> saved = entity(platform, () -> {
-            if (session.retired) {
-                return null;
-            }
-            if (expected != null && !player.isCurrentContext(expected)) {
-                throw new IllegalStateException("Captured save context retired");
-            }
-            capture(player, platform, current);
-            return null;
-        }, () -> null).thenCompose(ignored -> expected == null
-            ? players.save(player.getUniqueId()) : players.save(expected));
-        return saved.whenComplete((ignored, failure) -> {
-            session.changing.set(false);
-            if (failure != null && indeterminate(failure)) {
-                poison(session, platform);
-                ready.completeExceptionally(failure);
-            } else {
-                // Confirmed failures retain dirty data and permit a retry from the same live session.
-                ready.complete(null);
-            }
-        });
+        return saveBackground(player, platform, current, session, expected);
     }
 
-    private CompletableFuture<Void> saveLive(
+    private CompletableFuture<Void> saveBackground(
         final VexPlayer player,
         final Player platform,
         final DomainBinding current,
@@ -466,17 +457,17 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         entity(platform, () -> {
             // A switch or transaction captures its own baseline; do not capture halfway through that operation.
             if (session.changing.get() || session.retired) {
-                return false;
+                return CompletableFuture.<Void>completedFuture(null);
             }
             if (expected != null && !player.isCurrentContext(expected)) {
                 throw new IllegalStateException("Captured save context retired");
             }
             synchronized (player) {
                 capture(player, platform, current);
+                return players.saveCaptured(player.getUniqueId());
             }
-            return true;
-        }, () -> false).thenCompose(captured -> captured ? players.save(player.getUniqueId())
-            : CompletableFuture.completedFuture(null)).whenComplete((ignored, failure) -> {
+        }, () -> players.saveCaptured(player.getUniqueId())).thenCompose(captured -> captured)
+            .whenComplete((ignored, failure) -> {
                 if (failure == null) {
                     saved.complete(null);
                 } else {
@@ -487,6 +478,35 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                 }
             });
         return saved;
+    }
+
+    @Override
+    public <T> CompletableFuture<T> mutate(final VexPlayer player, final Supplier<T> mutation) {
+        Objects.requireNonNull(mutation, "mutation");
+        Player platform = player.findPlatformPlayer(Player.class).orElse(null);
+        if (platform == null || !Bukkit.isOwnedByCurrentRegion(platform)) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Local mutation requires the player thread"));
+        }
+        DomainBinding current = binding;
+        Session session = sessions.get(player);
+        if (current == null || session == null) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Profile session is not ready"));
+        }
+        synchronized (session) {
+            if (session.changing.get() || !session.ready.isDone()) {
+                return CompletableFuture.failedFuture(new ProfileSessionBusyException());
+            }
+            synchronized (player) {
+                if (!isReady(player)) {
+                    return CompletableFuture.failedFuture(new IllegalStateException("Profile session is not ready"));
+                }
+                try {
+                    return CompletableFuture.completedFuture(player.inProfileMutation(current.participant().domain(), mutation));
+                } catch (RuntimeException failure) {
+                    return CompletableFuture.failedFuture(failure);
+                }
+            }
+        }
     }
 
     @Override
@@ -821,7 +841,15 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
     private CompletableFuture<Void> finishArrival(
         final VexPlayer player, final PlayerTransferTicket ticket, final CompletableFuture<Void> restored
     ) {
-        return restored.handle((ignored, failure) -> failure).thenCompose(failure -> transfers.finish(ticket)
+        return restored.handle((ignored, failure) -> {
+            if (failure != null) {
+                // Log before cleanup or another kick can retire the destination player scheduler.
+                plugin.getLogger().log(Level.SEVERE, "Profile arrival failed [player=" + ticket.playerId()
+                    + ", request=" + ticket.requestId() + ", source=" + ticket.sourceServer()
+                    + ", target=" + ticket.targetServer() + ", profiles=" + ticket.profiles() + "]", failure);
+            }
+            return failure;
+        }).thenCompose(failure -> transfers.finish(ticket)
             .thenCompose(ignored -> ticket.options().admission() == null ? CompletableFuture.completedFuture(null)
                 : admissions.finish(ticket.options().admission(), failure == null))
             .thenCompose(ignored -> {
@@ -871,6 +899,46 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         return current;
     }
 
+    private <T> CompletableFuture<T> activationEntity(
+        final VexPlayer player,
+        final Player platform,
+        final Session session,
+        final boolean initial,
+        final Supplier<T> operation
+    ) {
+        if (!initial) {
+            return entity(platform, operation);
+        }
+        var expectedReady = session.ready;
+        DomainBinding current = binding;
+        Supplier<T> checked = () -> {
+            if (sessions.get(player) != session || session.ready != expectedReady || !session.changing.get()
+                || session.retired || session.poisoned
+                || player.findPlatformPlayer(Player.class).orElse(null) != platform || !platform.isConnected()) {
+                throw new IllegalStateException("Initial profile activation retired");
+            }
+            return operation.get();
+        };
+        return entity(platform, () -> CompletableFuture.completedFuture(checked.get()), () -> {
+            // Paper also invokes retirement callbacks for removed-but-connected dead players.
+            // Defer onto their region: respawning inside this critical callback is unsafe.
+            if (current == null || !Bukkit.isOwnedByCurrentRegion(platform) || !platform.isConnected() || !platform.isDead()
+                || sessions.get(player) != session || session.retired || session.poisoned
+                || player.findPlatformPlayer(Player.class).orElse(null) != platform) {
+                throw new IllegalStateException("Player entity retired");
+            }
+            var resumed = new CompletableFuture<T>();
+            schedules.runAt(platform.getLocation(), () -> entity(platform, checked).whenComplete((value, failure) -> {
+                if (failure == null) {
+                    resumed.complete(value);
+                } else {
+                    resumed.completeExceptionally(failure);
+                }
+            }));
+            return resumed.orTimeout(current.participant().restoreTimeoutSeconds(), TimeUnit.SECONDS);
+        }).thenCompose(resumed -> resumed);
+    }
+
     private <T> CompletableFuture<T> entity(final Player player, final Supplier<T> operation) {
         return entity(player, operation, () -> {
             throw new IllegalStateException("Player entity retired");
@@ -915,6 +983,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         private PlayerProfileContext target;
         private boolean committed;
         private boolean recovered;
+        private boolean rejectedWhileDead;
         private volatile boolean failed;
     }
 

@@ -1,6 +1,7 @@
 package dev.vexsoft.core.common.service.data;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
@@ -19,6 +20,18 @@ import org.junit.jupiter.api.io.TempDir;
 
 @Timeout(10)
 public final class VexPlayerDataStoreServiceShutdownTest {
+
+    @Test
+    public void playerAutosavePeriodKeepsBackendDefaultsAndAcceptsAnExplicitInterval(@TempDir final Path directory) {
+        try (var defaults = storage(directory)) {
+            assertEquals(300, defaults.getPlayerAutosaveIntervalSeconds());
+        }
+        try (var configured = storage(directory, 10)) {
+            assertEquals(10, configured.getPlayerAutosaveIntervalSeconds());
+        }
+        assertThrows(IllegalArgumentException.class, () -> storage(directory, -1));
+        assertThrows(IllegalArgumentException.class, () -> storage(directory, 3601));
+    }
 
     @Test
     public void closeWaitsForDrainAndFinishesBackendClosureBeforeReturning(@TempDir final Path directory)
@@ -58,8 +71,13 @@ public final class VexPlayerDataStoreServiceShutdownTest {
     }
 
     private static VexPlayerDataStoreService storage(final Path directory) {
+        return storage(directory, 0);
+    }
+
+    private static VexPlayerDataStoreService storage(final Path directory, final long autosaveSeconds) {
         var configuration = new YamlVexConfiguration(directory.resolve("database.yml"));
         configuration.set("storage", "memory");
+        configuration.set("player-data.autosave-interval-seconds", autosaveSeconds);
         ConfigurationService configurations = (ConfigurationService) Proxy.newProxyInstance(
             ConfigurationService.class.getClassLoader(), new Class<?>[]{ConfigurationService.class},
             (instance, method, arguments) -> {

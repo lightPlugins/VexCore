@@ -603,9 +603,18 @@ data and identities into one complete recovery point. It never imports individua
 Once checkpoint data exists, the new plugin refuses direct-SQL mode to prevent accidental loading of old tables.
 An old plugin version cannot enforce that guard, so do not run old and new storage modes together.
 
-Paper captures live native state every second without blocking gameplay while the write is pending;
-unchanged native snapshots are skipped. Economic and ownership
-changes use the guarded Redis transaction boundary. Retries reuse an operation receipt; ambiguous outcomes fence
+Personal shop trades, crafting, gathering and pet rewards use cached profile mutations on the player's entity
+thread. They validate local ownership and readiness, retain an in-process rollback for changed possessions and
+containers, and perform no storage reads, writes or full native/profile captures per action.
+`ProfileSessionService.mutate` requires the caller to supply that rollback; `transact` remains the durable
+boundary for shared stock, claims and ownership transfers.
+
+Periodic saves freeze dirty containers together with native state on the entity thread, then write in the
+background without blocking gameplay. Saves are spread across the period instead of capturing every player in
+the same tick. Unchanged native snapshots are skipped, and newer mutations remain dirty after an older save
+finishes. `player-data.autosave-interval-seconds` accepts 1–3600 seconds; 0 retains the backend default (Redis:
+1 second, direct SQL/memory: 300 seconds). A process crash can lose personal changes since the last confirmed save.
+Shared economic and ownership changes use the guarded Redis transaction boundary. Retries reuse an operation receipt; ambiguous outcomes fence
 the affected profile until reconnect rather than compensating an operation that may already have committed.
 Live economic transactions capture their rollback baseline locally and commit wallet and inventory together once;
 they wait for any outstanding background write, and confirmed failures retain unsaved baseline changes for retry.
@@ -626,6 +635,25 @@ resume a source after another login has claimed the handover. Cancelled/expired 
 old warp to a later session. Unavailable targets retain or recover the source using the normal save
 and fence boundary. Initial login can asynchronously await an older lease for up to 50 seconds.
 
+Failed arrivals log `Profile arrival failed` on the destination with player UUID, request UUID, source/target
+server and the original exception. Logging runs before completion cleanup and does not depend on a still-live
+player scheduler. Initialization failures also log `Unable to restore player profiles` even when activation
+already kicked the player. The source's generic restore failure alone cannot identify the failed phase;
+correlate its request UUID with the destination's stacktrace.
+
+An initial game login may load a dead Vanilla player before any scoped profile is active. Core installs the
+target's containers after the fenced selection commit, then uses the platform respawn API if needed before
+applying its native inventory and teleport destination. Respawn listeners therefore see the target's scoped
+data. Readiness stays blocked throughout; an unsuccessful respawn fails restoration. A normal switch with an
+already active, dead profile remains rejected before preparation, without respawning or rebuilding its source.
+
+Paper's entity scheduler may invoke a task's retirement callback for a removed-but-connected dead player
+before initial activation can respawn it. Initial restoration handles that case by queuing onto the player's
+owning world region, outside the critical retirement callback. It rechecks the loaded player binding, exact
+activation readiness, connection and lease before continuing. A disconnected, retired or superseded session
+cannot use this route, and the region continuation is time-bounded. Ordinary operations retain their entity
+scheduler retirement behavior.
+
 Update Paper, Velocity and participating plugins together; mixed handover protocol versions are not
 supported. A target missing the source's profile participant rejects the handover. A dead source
 cannot provide a final capture: unprepared automatic proxy fallback is rejected, and reconnect uses
@@ -634,6 +662,13 @@ external containers transactional and does not implement AdvancedSlimePaper worl
 SQL writes do not delay the handover. The default checkpoint interval is 300 seconds, configurable under
 `persistence.checkpoint-interval-seconds`. Only one coordinator publishes at a time, and both checkpoint generation
 and recovery epoch fence stale SQL publishers. The last full checkpoint remains usable after a failed SQL write.
+
+Ordinary player drops and pickups use Vanilla's native inventory/entity transfer without a profile save,
+database read or scheduled reconstruction per action. A dropped stack receives its profile provenance locally
+after cancellation checks, preserving Vanilla's exact source slot for Q and inventory drops. Public loot stays
+public when only part of its stack is picked up. Native world entities and player autosaves retain their normal,
+independent persistence boundaries; ordinary transfers are not atomically checkpointed with the world.
+Existing journal-backed projections and death drops continue through their recorded ownership boundary.
 
 A Paper crash reads the surviving Redis state on reconnect. Loss of the Redis authority restores the entire last
 complete SQL checkpoint, including inventories, currencies, world-item receipts, shared stock and pending claims.

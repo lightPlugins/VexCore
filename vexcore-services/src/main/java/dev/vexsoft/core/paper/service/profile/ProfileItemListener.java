@@ -66,17 +66,23 @@ public final class ProfileItemListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void drop(final PlayerDropItemEvent event) {
         PlayerProfileContext context = context(event.getPlayer());
-        if (context != null) {
+        if (!ProfileItemRealm.permits(event.getItemDrop().getItemStack(), context)) {
             event.setCancelled(true);
-            ItemStack stack = event.getItemDrop().getItemStack().clone();
-            Location location = event.getItemDrop().getLocation().clone();
-            // Bukkit restores the cancelled source after this event. Capture only on the following entity tick.
-            schedules.runForLater(event.getPlayer(), 1, () -> players.find(context.playerId()).ifPresent(player -> {
-                if (player.isCurrentContext(context) && sessions.isReady(player)) {
-                    report(worldItems.drop(player, List.of(stack), location));
-                }
-            }), null);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void scopeDrop(final PlayerDropItemEvent event) {
+        PlayerProfileContext context = context(event.getPlayer());
+        if (context == null) {
+            return;
+        }
+        // Vanilla already removed the exact source slot, including Q/Ctrl-Q inside an inventory.
+        // Do not cancel and reconstruct that removal by searching for an equivalent stack.
+        ItemStack stack = event.getItemDrop().getItemStack().clone();
+        ProfileItemRealm.bind(stack, context);
+        event.getItemDrop().setItemStack(stack);
+        event.getItemDrop().setCanMobPickup(false);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -90,8 +96,11 @@ public final class ProfileItemListener implements Listener {
         }
         PlayerProfileContext context = context(player);
         if (context != null) {
-            event.setCancelled(true);
-            if (ProfileItemRealm.permits(stack, context)) {
+            if (!ProfileItemRealm.permits(stack, context)) {
+                event.setCancelled(true);
+            } else if (worldItems.isProjection(event.getItem())) {
+                // Existing journal projections still settle their authoritative record; new native drops do not.
+                event.setCancelled(true);
                 players.find(player.getUniqueId()).ifPresent(owner -> report(worldItems.collect(owner, event.getItem())));
             }
         } else if (ProfileItemRealm.realm(stack) != null || worldItems.isProjection(event.getItem())) {

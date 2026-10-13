@@ -119,20 +119,25 @@ public final class VexPlayerLifecycleListener implements Listener {
             .orElseThrow(() -> new IllegalStateException("VexPlayer was not loaded before join: " + uniqueId));
 
         player.bindPlatformPlayer(event.getPlayer());
-        profiles.initialize(player).whenComplete((ignored, failure) -> event.getPlayer().getScheduler().run(
-            plugin,
-            task -> {
-                if (players.find(uniqueId).orElse(null) != player || !event.getPlayer().isConnected()) {
-                    return;
-                }
-                if (failure != null) {
-                    logger.log(Level.SEVERE, "Unable to restore player profiles " + uniqueId, failure);
-                    event.getPlayer().kick(Component.text(dataStore.getLoginKickMessage()));
-                    return;
-                }
-                statContributions.refreshPlayer(player);
-                signals.publish(new PlayerDataLoadedSignal(player));
-            }, null));
+        profiles.initialize(player).whenComplete((ignored, failure) -> {
+            // Activation can kick before its future settles; diagnostics must survive entity retirement.
+            if (failure != null) {
+                logger.log(Level.SEVERE, "Unable to restore player profiles " + uniqueId, failure);
+            }
+            event.getPlayer().getScheduler().run(
+                plugin,
+                task -> {
+                    if (players.find(uniqueId).orElse(null) != player || !event.getPlayer().isConnected()) {
+                        return;
+                    }
+                    if (failure != null) {
+                        event.getPlayer().kick(Component.text(dataStore.getLoginKickMessage()));
+                        return;
+                    }
+                    statContributions.refreshPlayer(player);
+                    signals.publish(new PlayerDataLoadedSignal(player));
+                }, null);
+        });
     }
 
     @EventHandler

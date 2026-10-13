@@ -112,6 +112,9 @@ public interface PlayerDataCoordinatorService extends VexService {
     /** Saves every changed container while retaining the cached player. */
     CompletableFuture<Void> save(UUID uniqueId);
 
+    /** Freezes dirty container revisions immediately and queues that coherent snapshot for asynchronous storage. */
+    CompletableFuture<Void> saveCaptured(UUID uniqueId);
+
     /** Atomically commits extra revision-bound documents with this session's scoped dirty containers. */
     default CompletableFuture<Void> save(final UUID uniqueId, final List<ProfileDocumentChange> changes) {
         if (!changes.isEmpty()) {

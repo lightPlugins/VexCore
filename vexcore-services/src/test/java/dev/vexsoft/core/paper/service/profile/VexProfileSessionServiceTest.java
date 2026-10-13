@@ -47,6 +47,7 @@ import dev.vexsoft.core.common.service.data.VexProfileStorageService;
 import dev.vexsoft.core.paper.profile.PaperProfileParticipant;
 import dev.vexsoft.core.paper.profile.PaperProfileState;
 import dev.vexsoft.core.paper.service.network.ServerIdentityService;
+import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.teleport.TransferDisplayService;
 import dev.vexsoft.core.paper.service.teleport.VexTeleportCoordinatorService;
 import dev.vexsoft.core.paper.service.world.WorldService;
@@ -62,12 +63,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Server;
@@ -85,6 +90,114 @@ class VexProfileSessionServiceTest {
     private static final DataContainerKey<String> VALUE =
         DataContainerKey.of("wallet", String.class, () -> "old", PlayerDataScope.profile(DOMAIN));
     private static final DataContainerKey<String> ACCOUNT = DataContainerKey.of("preferences", String.class, () -> "de");
+
+    @Test
+    void repeatedCachedMutationsCompleteInlineWithoutCaptureStorageOrReadinessChanges() throws Exception {
+        try (var fixture = new Fixture()) {
+            int loads = fixture.profileLoads;
+            fixture.entity.submit(() -> {
+                for (int action = 0; action < 100; action++) {
+                    String value = "local-" + action;
+                    var result = fixture.sessions.mutate(fixture.player, () -> {
+                        fixture.player.replace(VALUE, value);
+                        fixture.player.afterCommit(() -> fixture.effects++);
+                        return value;
+                    });
+                    assertTrue(result.isDone());
+                    assertEquals(value, result.join());
+                    assertTrue(fixture.sessions.isReady(fixture.player));
+                }
+            }).get(5, TimeUnit.SECONDS);
+            assertEquals(0, fixture.nativeCommits);
+            assertEquals(loads, fixture.profileLoads);
+            assertEquals(100, fixture.effects);
+            assertTrue(fixture.player.getDirtyKeys().contains(VALUE));
+        }
+    }
+
+    @Test
+    void cachedMutationRejectsWrongThreadsAndUnrelatedAccountWrites() throws Exception {
+        try (var fixture = new Fixture()) {
+            assertThrows(ExecutionException.class, () -> fixture.sessions.mutate(fixture.player, () -> {
+                throw new AssertionError("An off-thread caller must not run");
+            }).get(5, TimeUnit.SECONDS));
+            var result = fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                fixture.player.replace(ACCOUNT, "en");
+                return null;
+            })).get();
+            assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+            assertEquals("de", fixture.player.read(ACCOUNT, value -> value));
+            assertEquals(0, fixture.nativeCommits);
+        }
+    }
+
+    @Test
+    void cachedMutationRejectsADurablyBusySessionWithoutWaiting() throws Exception {
+        try (var fixture = new Fixture()) {
+            var committed = fixture.change();
+            fixture.waiting.get(5, TimeUnit.SECONDS);
+            var local = fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                throw new AssertionError("A durable operation must exclude local mutation");
+            })).get();
+            assertTrue(local.isDone());
+            assertThrows(ExecutionException.class, () -> local.get(5, TimeUnit.SECONDS));
+            fixture.commit.complete(null);
+            committed.get(5, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    void backgroundSaveFreezesWalletAndNativeStateTogetherWhileLaterMutationsRemainPlayable() throws Exception {
+        for (boolean live : new boolean[]{false, true}) {
+            try (var fixture = new Fixture(true, live)) {
+                fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                    fixture.player.replace(VALUE, "before");
+                    fixture.level = 11;
+                    return null;
+                }).join()).get();
+                fixture.saveGate = new CompletableFuture<>();
+                var saved = fixture.sessions.save(fixture.player);
+                fixture.saving.get(5, TimeUnit.SECONDS);
+                fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                    fixture.player.replace(VALUE, "after");
+                    fixture.level = 22;
+                    return null;
+                }).join()).get();
+                assertTrue(fixture.sessions.isReady(fixture.player));
+                fixture.saveGate.complete(null);
+                saved.get(5, TimeUnit.SECONDS);
+                var context = fixture.player.findProfileContext(DOMAIN).orElseThrow();
+                var before = fixture.coordinator.loadProfile(context).get(5, TimeUnit.SECONDS);
+                assertEquals("before", before.values().get(VALUE));
+                assertEquals(11, before.values().values().stream().filter(PaperProfileState.class::isInstance)
+                    .map(PaperProfileState.class::cast).findFirst().orElseThrow().level());
+                assertTrue(fixture.player.getDirtyKeys().contains(VALUE));
+                fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+                var after = fixture.coordinator.loadProfile(context).get(5, TimeUnit.SECONDS);
+                assertEquals("after", after.values().get(VALUE));
+                assertEquals(22, after.values().values().stream().filter(PaperProfileState.class::isInstance)
+                    .map(PaperProfileState.class::cast).findFirst().orElseThrow().level());
+            }
+        }
+    }
+
+    @Test
+    void retirementSavesTheLastCachedMutationBeforeReleasingOwnership() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                fixture.player.replace(VALUE, "last-local");
+                fixture.level = 33;
+                return null;
+            }).join()).get();
+            var context = fixture.player.findProfileContext(DOMAIN).orElseThrow();
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            var stored = fixture.coordinator.loadProfile(context).get(5, TimeUnit.SECONDS);
+            assertEquals("last-local", stored.values().get(VALUE));
+            assertEquals(33, stored.values().values().stream().filter(PaperProfileState.class::isInstance)
+                .map(PaperProfileState.class::cast).findFirst().orElseThrow().level());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+        }
+    }
 
     @Test
     void delayedCommitGuardsMutationsButAllowsMovementUntilDurability() throws Exception {
@@ -108,14 +221,14 @@ class VexProfileSessionServiceTest {
     }
 
     @Test
-    void delayedSaveAllowsMovementWhileMutationsRemainBlocked() throws Exception {
+    void delayedBackgroundSaveLeavesInventoryAndMovementReady() throws Exception {
         try (var fixture = new Fixture()) {
             fixture.saveGate = new CompletableFuture<>();
             fixture.entity.submit(() -> fixture.level = 11).get();
             var operation = fixture.sessions.save(fixture.player);
             fixture.saving.get(5, TimeUnit.SECONDS);
             assertFalse(operation.isDone());
-            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertTrue(fixture.sessions.isReady(fixture.player));
             assertTrue(fixture.sessions.isMovementAllowed(fixture.player));
             fixture.saveGate.complete(null);
             operation.get(5, TimeUnit.SECONDS);
@@ -243,16 +356,25 @@ class VexProfileSessionServiceTest {
     }
 
     @Test
-    void liveAutosaveStillReportsAConfirmedStorageFailure() throws Exception {
-        try (var fixture = new Fixture(true, true)) {
-            fixture.saveGate = new CompletableFuture<>();
-            fixture.entity.submit(() -> fixture.level = 11).get();
-            var saving = fixture.sessions.save(fixture.player);
-            fixture.saving.get(5, TimeUnit.SECONDS);
-            fixture.saveGate.completeExceptionally(new IllegalStateException("Database unavailable"));
-            assertTrue(saving.handle((ignored, failure) -> failure != null).get(5, TimeUnit.SECONDS));
-            assertTrue(fixture.sessions.isReady(fixture.player));
-            fixture.saveGate = null;
+    void confirmedAutosaveFailureReportsTheErrorAndLeavesCachedMutationsAvailable() throws Exception {
+        for (boolean live : new boolean[]{false, true}) {
+            try (var fixture = new Fixture(true, live)) {
+                fixture.saveGate = new CompletableFuture<>();
+                fixture.entity.submit(() -> fixture.level = 11).get();
+                var saving = fixture.sessions.save(fixture.player);
+                fixture.saving.get(5, TimeUnit.SECONDS);
+                fixture.saveGate.completeExceptionally(new IllegalStateException("Database unavailable"));
+                assertTrue(saving.handle((ignored, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+                assertTrue(fixture.sessions.isReady(fixture.player));
+                assertEquals("still-playing", fixture.entity.submit(() -> fixture.sessions.mutate(fixture.player, () -> {
+                    fixture.player.replace(VALUE, "still-playing");
+                    return "still-playing";
+                }).join()).get(5, TimeUnit.SECONDS));
+                assertTrue(fixture.player.getDirtyKeys().contains(VALUE));
+                fixture.saveGate = null;
+                fixture.sessions.save(fixture.player).get(5, TimeUnit.SECONDS);
+                assertEquals("still-playing", fixture.coordinator.loadProfile(fixture.context()).join().values().get(VALUE));
+            }
         }
     }
 
@@ -692,6 +814,155 @@ class VexProfileSessionServiceTest {
     }
 
     @Test
+    void deadLobbyArrivalSurvivesEntityTaskRetirementWithoutRunningRespawnInsideItsCallback() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.dead = true;
+            fixture.retireDeadTasks = true;
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "lobby-1", "isles-1", destination, List.of(), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.dead);
+            assertTrue(fixture.regionFallbacks > 0);
+            assertEquals(1, fixture.respawns);
+            assertEquals(0, fixture.kicks);
+            assertTrue(fixture.teleporting.isDone());
+        }
+    }
+
+    @Test
+    void regionRecoveryDoesNotRestoreAPlayerWhoDisconnectedBeforeItsTaskRan() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.dead = true;
+            fixture.retireDeadTasks = true;
+            fixture.holdRegions = true;
+            var initialized = fixture.sessions.initialize(fixture.player);
+            fixture.regionWaiting.get(5, TimeUnit.SECONDS);
+            fixture.entity.submit(() -> {
+                fixture.connected = false;
+                fixture.heldRegions.forEach(Runnable::run);
+            }).get(5, TimeUnit.SECONDS);
+            assertThrows(ExecutionException.class, () -> initialized.get(5, TimeUnit.SECONDS));
+            assertEquals(0, fixture.respawns);
+            assertTrue(fixture.player.profileContexts().isEmpty());
+            assertFalse(fixture.teleporting.isDone());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+        }
+    }
+
+    @Test
+    void initialLoginRespawnsStaleNativeDeathAfterInstallingTheProfile() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.dead = true;
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.dead);
+            assertEquals(1, fixture.respawns);
+            assertEquals(0, fixture.kicks);
+            assertTrue(fixture.teleporting.isDone());
+        }
+    }
+
+    @Test
+    void lobbyArrivalWithNoPriorProfileRecoversADeadNativePlayerAndKeepsItsDestination() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.dead = true;
+            fixture.failSpawn = true;
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "lobby-1", "isles-1", destination, List.of(), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.dead);
+            assertEquals(1, fixture.respawns);
+            assertEquals(0, fixture.spawns);
+            assertEquals(0, fixture.kicks);
+            assertTrue(fixture.resolvingArrival.isDone());
+            assertTrue(fixture.teleporting.isDone());
+        }
+    }
+
+    @Test
+    void switchingAnActiveDeadProfileRemainsRejectedWithoutRespawningOrReplacingIt() throws Exception {
+        try (var fixture = new Fixture()) {
+            var previous = fixture.context();
+            int loads = fixture.profileLoads;
+            int restores = fixture.restores;
+            fixture.dead = true;
+            var changed = fixture.sessions.activate(fixture.player,
+                new ProfileSelection(DOMAIN, UUID.randomUUID(), 1, List.of()));
+            assertThrows(ExecutionException.class, () -> changed.get(5, TimeUnit.SECONDS));
+            assertEquals(0, fixture.respawns);
+            assertEquals(loads, fixture.profileLoads);
+            assertTrue(fixture.player.isCurrentContext(previous));
+            assertEquals(restores, fixture.restores);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertEquals(0, fixture.kicks);
+            assertTrue(fixture.dead);
+        }
+    }
+
+    @Test
+    void unsuccessfulLoginRespawnDoesNotApplyNativeStateOrFinishTheTransferSuccessfully() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.dead = true;
+            fixture.failRespawn = true;
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "lobby-1", "isles-1", null, List.of(), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            var initialized = fixture.sessions.initialize(fixture.player);
+            assertThrows(ExecutionException.class, () -> initialized.get(5, TimeUnit.SECONDS));
+            assertEquals(1, fixture.respawns);
+            assertEquals(1, fixture.kicks);
+            assertEquals(10, fixture.level);
+            assertFalse(fixture.teleporting.isDone());
+            assertFalse(fixture.sessions.isReady(fixture.player));
+            assertFalse(fixture.leases.isWritable(fixture.context()));
+        }
+    }
+
+    @Test
+    void firstGameArrivalFromLobbyWithoutProfileContextsBootstrapsAndRestores() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            var destination = new ServerPosition(new ServerId("isles-1"), new WorldKey("test", "remote"),
+                10, 80, 20, 0, 0);
+            fixture.transfers.prepare(new PlayerTransferTicket(UUID.randomUUID(), fixture.player.getUniqueId(),
+                "lobby-1", "isles-1", destination, List.of(), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS);
+            assertTrue(fixture.sessions.isReady(fixture.player));
+            assertEquals(fixture.profile, fixture.context().profileId());
+            assertTrue(fixture.teleporting.isDone());
+            assertTrue(fixture.logs.isEmpty());
+        }
+    }
+
+    @Test
+    void failedArrivalLogsItsRequestAndRestoreCauseAfterThePlayerWasKicked() throws Exception {
+        try (var fixture = new Fixture(false)) {
+            fixture.failRestore = true;
+            var request = UUID.randomUUID();
+            fixture.transfers.prepare(new PlayerTransferTicket(request, fixture.player.getUniqueId(),
+                "lobby-1", "isles-1", null, List.of(), System.currentTimeMillis() + 30_000,
+                null, false)).get(5, TimeUnit.SECONDS);
+            assertThrows(ExecutionException.class,
+                () -> fixture.sessions.initialize(fixture.player).get(5, TimeUnit.SECONDS));
+            assertEquals(1, fixture.kicks);
+            assertEquals(1, fixture.logs.size());
+            var logged = fixture.logs.getFirst();
+            assertTrue(logged.getMessage().contains(request.toString()));
+            assertTrue(logged.getMessage().contains(fixture.player.getUniqueId().toString()));
+            assertTrue(logged.getMessage().contains("source=lobby-1, target=isles-1"));
+            assertTrue(logged.getThrown().toString().contains("Game projections unavailable"));
+        }
+    }
+
+    @Test
     void explicitArrivalWaitsForItsWorldResolverAndBypassesTheOrdinarySpawn() throws Exception {
         try (var fixture = new Fixture(false)) {
             fixture.failSpawn = true;
@@ -766,6 +1037,8 @@ class VexProfileSessionServiceTest {
         private final ExecutorService database = Executors.newSingleThreadExecutor(
             Thread.ofPlatform().name("profile-test-database").factory());
         private final Map<Class<?>, Object> dependencies = new HashMap<>();
+        private final Logger logger = Logger.getAnonymousLogger();
+        private final List<LogRecord> logs = new CopyOnWriteArrayList<>();
         private final MemoryPlayerDataStore memory = new MemoryPlayerDataStore();
         private final CompletableFuture<Void> commit = new CompletableFuture<>();
         private final CompletableFuture<Void> waiting = new CompletableFuture<>();
@@ -792,6 +1065,17 @@ class VexProfileSessionServiceTest {
         private int level = 10;
         private int effects;
         private int kicks;
+        private volatile boolean dead;
+        private volatile boolean connected = true;
+        private volatile boolean retireDeadTasks;
+        private boolean retiringCallback;
+        private volatile boolean holdRegions;
+        private int regionFallbacks;
+        private final CompletableFuture<Void> regionWaiting = new CompletableFuture<>();
+        private final List<Runnable> heldRegions = new CopyOnWriteArrayList<>();
+        private boolean failRespawn;
+        private int respawns;
+        private int restores;
         private boolean failRestore;
         private int nativeCommits;
         private int profileLoads;
@@ -807,6 +1091,21 @@ class VexProfileSessionServiceTest {
         }
 
         private Fixture(final boolean initialize, final boolean live) throws Exception {
+            logger.setUseParentHandlers(false);
+            logger.addHandler(new Handler() {
+                @Override
+                public void publish(final LogRecord record) {
+                    logs.add(record);
+                }
+
+                @Override
+                public void flush() {
+                }
+
+                @Override
+                public void close() {
+                }
+            });
             serverField = Bukkit.class.getDeclaredField("server");
             serverField.setAccessible(true);
             previousServer = serverField.get(null);
@@ -814,8 +1113,11 @@ class VexProfileSessionServiceTest {
                 method.getName().equals("isOwnedByCurrentRegion")
                     ? Thread.currentThread().getName().equals("profile-test-entity") : null));
             var plugin = Proxy.newProxyInstance(Plugin.class.getClassLoader(),
-                new Class<?>[]{Plugin.class, ServiceOwner.class}, (object, method, arguments) ->
-                    method.getName().equals("getServiceOwnerName") ? "test" : null);
+                new Class<?>[]{Plugin.class, ServiceOwner.class}, (object, method, arguments) -> switch (method.getName()) {
+                    case "getServiceOwnerName" -> "test";
+                    case "getLogger" -> logger;
+                    default -> null;
+                });
             registry = proxy(VexServiceRegistry.class, (object, method, arguments) -> switch (method.getName()) {
                 case "getOwner" -> plugin;
                 case "find" -> Optional.ofNullable(dependencies.get(arguments[0]));
@@ -872,6 +1174,17 @@ class VexProfileSessionServiceTest {
             dependencies.put(ServerIdentityService.class, proxy(ServerIdentityService.class,
                 (object, method, arguments) -> new ServerId("isles-1")));
             dependencies.put(WorldService.class, proxy(WorldService.class, (object, method, arguments) -> Optional.empty()));
+            dependencies.put(ScheduleService.class, proxy(ScheduleService.class, (object, method, arguments) -> {
+                assertEquals("runAt", method.getName());
+                regionFallbacks++;
+                if (holdRegions) {
+                    heldRegions.add((Runnable) arguments[1]);
+                    regionWaiting.complete(null);
+                } else {
+                    entity.execute((Runnable) arguments[1]);
+                }
+                return null;
+            }));
             dependencies.put(MessagingService.class, proxy(MessagingService.class,
                 (object, method, arguments) -> DeliveryResult.SENT));
             leases = new VexProfileLeaseService(registry);
@@ -899,8 +1212,13 @@ class VexProfileSessionServiceTest {
                     return null;
                 }
                 entity.execute(() -> {
-                    if (entityRetired) {
-                        ((Runnable) arguments[2]).run();
+                    if (entityRetired || retireDeadTasks && dead) {
+                        retiringCallback = true;
+                        try {
+                            ((Runnable) arguments[2]).run();
+                        } finally {
+                            retiringCallback = false;
+                        }
                     } else {
                         ((Consumer<Object>) arguments[1]).accept(null);
                     }
@@ -919,10 +1237,26 @@ class VexProfileSessionServiceTest {
                     }
                     case "getInventory" -> nativeInventory;
                     case "getEnderChest" -> ender;
-                    case "isConnected", "isOnline", "addPotionEffects" -> true;
-                    case "isDead" -> false;
+                    case "isConnected", "isOnline" -> connected;
+                    case "addPotionEffects" -> true;
+                    case "getLocation" -> new Location(null, 0, 80, 0);
+                    case "isDead" -> dead;
+                    case "spigot" -> new Player.Spigot() {
+                        @Override
+                        public void respawn() {
+                            assertFalse(retiringCallback, "Respawn must never run inside the scheduler's retirement callback");
+                            assertTrue(player.findProfileContext(DOMAIN).isPresent(),
+                                "Game respawn listeners require the target's scoped data");
+                            assertFalse(sessions.isReady(player));
+                            respawns++;
+                            if (!failRespawn) {
+                                dead = false;
+                            }
+                        }
+                    };
                     case "getLevel" -> level;
                     case "setLevel" -> {
+                        assertFalse(dead, "Native state must be restored only after successful respawn");
                         level = (int) arguments[0];
                         yield null;
                     }
@@ -958,6 +1292,7 @@ class VexProfileSessionServiceTest {
 
                 @Override
                 public void restore(final Player owner, final PlayerProfileContext current) {
+                    restores++;
                     if (failRestore) {
                         throw new IllegalStateException("Game projections unavailable");
                     }

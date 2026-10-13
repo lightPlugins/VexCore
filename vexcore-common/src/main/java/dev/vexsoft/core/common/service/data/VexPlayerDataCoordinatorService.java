@@ -664,6 +664,21 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     @Override
+    public CompletableFuture<Void> saveCaptured(final UUID uniqueId) {
+        VexPlayer player = players.get(Objects.requireNonNull(uniqueId, "uniqueId"));
+        if (player == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        synchronized (player) {
+            var snapshots = new LinkedHashMap<DataContainerKey<?>, VexPlayer.ContainerSnapshot<JsonNode>>();
+            for (DataContainerKey<?> key : player.getDirtyKeys()) {
+                snapshots.put(key, snapshotData(player, key));
+            }
+            return queueSave(player, List.of(), Map.copyOf(snapshots));
+        }
+    }
+
+    @Override
     public CompletableFuture<Void> save(final UUID uniqueId, final List<ProfileDocumentChange> changes) {
         VexPlayer player = players.get(uniqueId);
         if (player == null) {
@@ -1012,7 +1027,8 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     private CompletableFuture<Void> saveNow(
         final VexPlayer player,
         final Map<ProfileDomain, PlayerProfileContext> contexts,
-        final List<ProfileDocumentChange> additional
+        final List<ProfileDocumentChange> additional,
+        final Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<JsonNode>> captured
     ) {
         Map<String, OwnerContainers> owners;
 
@@ -1026,8 +1042,12 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
             if (!player.profileContexts().equals(contexts)) {
                 return CompletableFuture.failedFuture(new IllegalStateException("Captured profile session retired"));
             }
-            for (DataContainerKey<?> key : player.getDirtyKeys()) {
-                snapshots.put(key, snapshotData(player, key));
+            if (captured == null) {
+                for (DataContainerKey<?> key : player.getDirtyKeys()) {
+                    snapshots.put(key, snapshotData(player, key));
+                }
+            } else {
+                snapshots.putAll(captured);
             }
         }
 
@@ -1096,14 +1116,22 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
     }
 
     private CompletableFuture<Void> queueSave(final VexPlayer player, final List<ProfileDocumentChange> additional) {
+        return queueSave(player, additional, null);
+    }
+
+    private CompletableFuture<Void> queueSave(
+        final VexPlayer player,
+        final List<ProfileDocumentChange> additional,
+        final Map<DataContainerKey<?>, VexPlayer.ContainerSnapshot<JsonNode>> captured
+    ) {
         UUID uniqueId = player.getUniqueId();
         Map<ProfileDomain, PlayerProfileContext> contexts = player.profileContexts();
         CompletableFuture<Void> next;
-        SaveRequest request = new SaveRequest(contexts, additional.isEmpty());
+        SaveRequest request = new SaveRequest(contexts, additional.isEmpty() && captured == null);
 
         synchronized (saveLock) {
             SaveRequest pending = pendingSaves.get(uniqueId);
-            if (additional.isEmpty() && pending != null && pending.coalescible && pending.contexts.equals(contexts)) {
+            if (request.coalescible && pending != null && pending.coalescible && pending.contexts.equals(contexts)) {
                 return pending.future;
             }
             CompletableFuture<Void> previous = saveChains.get(uniqueId);
@@ -1116,7 +1144,7 @@ public final class VexPlayerDataCoordinatorService implements PlayerDataCoordina
                         pendingSaves.remove(uniqueId, request);
                     }
 
-                    return readiness.thenCompose(unused -> saveNow(player, contexts, additional));
+                    return readiness.thenCompose(unused -> saveNow(player, contexts, additional, captured));
                 },
                 saveExecutor
             );

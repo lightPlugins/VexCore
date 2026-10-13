@@ -30,6 +30,8 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
     @Getter
     private final Duration loginTimeout;
     @Getter
+    private final long playerAutosaveIntervalSeconds;
+    @Getter
     private final String loginKickMessage;
     @Getter
     private final CompletableFuture<Void> readiness;
@@ -40,6 +42,10 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
         ConfigurationService configurations = checkedServices.require(ConfigurationService.class);
         VexConfiguration configuration = configurations.load(Path.of("database.yml"), "database.yml");
         long loginTimeoutSeconds = configuration.getLong("player-data.login-timeout-seconds", 15L);
+        long autosaveSeconds = configuration.getLong("player-data.autosave-interval-seconds", 0L);
+        if (autosaveSeconds < 0 || autosaveSeconds > 3600) {
+            throw new IllegalArgumentException("player-data.autosave-interval-seconds must be between 0 and 3600");
+        }
 
         if (loginTimeoutSeconds < 1L || loginTimeoutSeconds > 120L) {
             throw new IllegalArgumentException("player-data.login-timeout-seconds must be between 1 and 120");
@@ -87,6 +93,7 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
         } else {
             store = durable;
         }
+        playerAutosaveIntervalSeconds = autosaveSeconds == 0 ? (store.isLive() ? 1 : 300) : autosaveSeconds;
         CompletableFuture<Void> modeReady = store.readiness();
         if (!store.isLive() && (storageType.equals("postgresql") || storageType.equals("sqlite"))) {
             modeReady = modeReady.thenCompose(ignored -> store.networkCheckpoints().verifyDirectMode());

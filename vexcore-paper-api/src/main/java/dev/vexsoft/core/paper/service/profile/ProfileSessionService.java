@@ -32,7 +32,10 @@ public interface ProfileSessionService extends VexService {
     /** Consumes an incoming handover and asynchronously restores the selected profile after native binding. */
     CompletableFuture<Void> initialize(VexPlayer player);
 
-    /** Activates a captured target through save, atomic selection commit, install, and restore. */
+    /**
+     * Activates a captured target through save, atomic selection commit, install, and restore.
+     * Initial activation respawns a dead native login after installing its profile; active switches while dead fail.
+     */
     CompletableFuture<Void> activate(VexPlayer player, ProfileSelection selection);
 
     /**
@@ -42,7 +45,14 @@ public interface ProfileSessionService extends VexService {
      */
     <T> CompletableFuture<T> transact(VexPlayer player, Supplier<ProfileMutation<T>> mutation);
 
-    /** Captures native state on the entity thread before saving the complete active context asynchronously. */
+    /**
+     * Runs a cached personal mutation immediately on the owning entity thread, without storage or native capture.
+     * The caller supplies local rollback for failures. Scoped writes are limited to the current domain, and
+     * restoring, retiring or durably busy sessions reject the callback without waiting.
+     */
+    <T> CompletableFuture<T> mutate(VexPlayer player, Supplier<T> mutation);
+
+    /** Freezes native state and dirty containers on the entity thread, then saves without blocking gameplay. */
     CompletableFuture<Void> save(VexPlayer player);
 
     /** Captures and drains a session, then releases fenced ownership before disconnect or transfer. */

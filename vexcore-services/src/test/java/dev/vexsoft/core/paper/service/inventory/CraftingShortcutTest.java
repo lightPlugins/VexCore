@@ -131,6 +131,20 @@ public final class CraftingShortcutTest {
         assertTrue(event.isCancelled());
     }
 
+    @Test
+    void ordinaryStorageClicksAndHotbarSwapsDoNotScheduleShortcutRefreshes() {
+        Fixture fixture = new Fixture();
+        fixture.show();
+        for (ClickType click : List.of(ClickType.LEFT, ClickType.SHIFT_LEFT, ClickType.NUMBER_KEY)) {
+            var event = new InventoryClickEvent(fixture.view, InventoryType.SlotType.CONTAINER,
+                10, click, InventoryAction.MOVE_TO_OTHER_INVENTORY);
+            fixture.listener.click(event);
+            assertFalse(event.isCancelled());
+        }
+        assertTrue(fixture.scheduled.isEmpty());
+        assertTrue(fixture.shortcuts.isShortcut(fixture.matrix[0]));
+    }
+
     private static final class Fixture {
 
         private final UUID id = UUID.randomUUID();

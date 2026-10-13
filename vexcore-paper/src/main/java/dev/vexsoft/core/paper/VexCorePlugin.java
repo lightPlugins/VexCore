@@ -193,6 +193,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
@@ -352,18 +353,30 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(ListenerService.class).register(ProfileItemListener.class, coreServices);
         coreServices.require(ListenerService.class).register(VexInventoryListener.class, coreServices);
         coreServices.require(ListenerService.class).register(VexPlayerDummyListener.class, coreServices);
+        long autosaveSeconds = services.require(PlayerDataStoreService.class).getPlayerAutosaveIntervalSeconds();
         playerAutosaveTask = getServer().getAsyncScheduler().runAtFixedRate(
             this,
-            task -> CompletableFuture.allOf(players.getLoadedPlayers().stream()
-                .filter(player -> coreServices.require(ProfileSessionService.class).isReady(player))
-                .map(player -> coreServices.require(ProfileSessionService.class).save(player))
-                .toArray(CompletableFuture[]::new)).exceptionally(throwable -> {
-                getLogger().log(Level.SEVERE, "Unable to autosave Vex players", throwable);
-
-                return null;
-            }),
-            services.require(PlayerDataStoreService.class).getStore().isLive() ? 1 : 300,
-            services.require(PlayerDataStoreService.class).getStore().isLive() ? 1 : 300,
+            task -> {
+                var profiles = coreServices.require(ProfileSessionService.class);
+                var schedules = coreServices.require(ScheduleService.class);
+                var ready = players.getLoadedPlayers().stream().filter(profiles::isReady).toList();
+                long periodTicks = autosaveSeconds * 20;
+                for (int index = 0; index < ready.size(); index++) {
+                    var player = ready.get(index);
+                    long delay = 1 + index * periodTicks / ready.size();
+                    player.findPlatformPlayer(Player.class).ifPresent(platformPlayer -> schedules.runForLater(
+                        platformPlayer,
+                        delay,
+                        () -> profiles.save(player).exceptionally(throwable -> {
+                            getLogger().log(Level.SEVERE, "Unable to autosave Vex player " + player.getUniqueId(), throwable);
+                            return null;
+                        }),
+                        null
+                    ));
+                }
+            },
+            autosaveSeconds,
+            autosaveSeconds,
             TimeUnit.SECONDS
         );
         long startupMillis = TimeUnit.NANOSECONDS.toMillis(startupNanos + System.nanoTime() - enableStartedAt);

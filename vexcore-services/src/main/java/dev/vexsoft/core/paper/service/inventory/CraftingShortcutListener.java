@@ -38,6 +38,9 @@ public final class CraftingShortcutListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
+        if (!shortcuts.isCraftingBlocked(player)) {
+            return;
+        }
         boolean craftingSlot = shortcuts.isCraftingBlocked(player)
             && event.getView().getTopInventory() instanceof CraftingInventory
             && event.getRawSlot() >= 0 && event.getRawSlot() < event.getView().getTopInventory().getSize();
@@ -52,8 +55,8 @@ public final class CraftingShortcutListener implements Listener {
                 && (event.isLeftClick() || event.isRightClick())) {
                 shortcuts.activate(player);
             }
+            schedules.runFor(player, () -> shortcuts.refresh(player));
         }
-        schedules.runFor(player, () -> shortcuts.refresh(player));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

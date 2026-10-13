@@ -24,6 +24,11 @@ public interface PlayerDataStoreService extends VexService {
     /** Returns the configured player data store */
     PlayerDataStore getStore();
 
+    /** Returns the background player-save period in seconds; it does not trigger saves for individual actions. */
+    default long getPlayerAutosaveIntervalSeconds() {
+        return getStore().isLive() ? 1 : 300;
+    }
+
     /** Returns the global data store sharing this storage backend's resources. */
     GlobalDataStore getGlobalStore();
 

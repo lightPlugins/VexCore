@@ -23,6 +23,7 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
 
     private static final String PACKET_HANDLER = "packet_handler";
     private static final String HANDLER_NAME = "vexcore_packets";
+    private static final String PROTECTED_PACKET_UNPACKER = "protected_packet_unpacker";
 
     public VexPacketConnectionAdapterService(final VexServiceRegistry services) {
     }
@@ -59,7 +60,7 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
         return loader != null && loader.getSentChunksRaw().contains(key);
     }
 
-    private static void addHandler(
+    static void addHandler(
         final ChannelPipeline pipeline,
         final UUID viewerId,
         final PacketDuplexHandler handler
@@ -102,7 +103,10 @@ public final class VexPacketConnectionAdapterService implements PacketConnection
             }
         };
 
-        if (pipeline.get(PACKET_HANDLER) != null) {
+        // Outbound handlers run in reverse order. Observe ModelEngine packets after its wrapper is unpacked.
+        if (pipeline.get(PROTECTED_PACKET_UNPACKER) != null) {
+            pipeline.addBefore(PROTECTED_PACKET_UNPACKER, HANDLER_NAME, channelHandler);
+        } else if (pipeline.get(PACKET_HANDLER) != null) {
             pipeline.addBefore(PACKET_HANDLER, HANDLER_NAME, channelHandler);
         } else {
             pipeline.addLast(HANDLER_NAME, channelHandler);
