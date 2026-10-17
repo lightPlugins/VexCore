@@ -11,7 +11,7 @@ public interface TransferDisplayService extends VexService {
     /** Shows a loading bossbar only for the current native player binding. */
     void show(VexPlayer player, UUID request, TransferPresentation presentation);
 
-    /** Removes or briefly fails only the matching transfer display. */
+    /** Removes matching progress and plays optional arrival audio on success, or briefly displays failure. */
     void finish(VexPlayer player, UUID request, boolean successful);
 
     /** Retires loading UI owned by a disconnected native session. */

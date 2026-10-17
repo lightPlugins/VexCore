@@ -30,6 +30,8 @@ final class ItemRewardPreparationTest {
             case "validate" -> null;
             case "create" -> new Stack(1);
             case "name" -> Component.text("Iron");
+            case "describe" -> Component.text(arguments[2] + "× ")
+                .append(Component.translatable("item.minecraft.raw_iron"));
             case "deliver" -> {
                 deliveries.incrementAndGet();
                 @SuppressWarnings("unchecked")

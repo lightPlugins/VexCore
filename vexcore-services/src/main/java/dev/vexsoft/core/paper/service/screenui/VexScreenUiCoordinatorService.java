@@ -152,7 +152,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         try {
             var task = schedules.runForLater(
                 session.player,
-                2,
+                1,
                 () -> render(session),
                 () -> {
                     synchronized (this) {

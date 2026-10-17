@@ -175,7 +175,9 @@ final class ScreenUiShaderContractTest {
         }
 
         try (var files = Files.walk(pack.resolve("assets/vexcore/font/ui/v26_2"))) {
-            assertEquals(1035, files.filter(Files::isRegularFile).count(), "Scale and transition presets stay bounded");
+            assertEquals(1035, files.filter(Files::isRegularFile)
+                .filter(file -> !file.toString().replace('\\', '/').contains("/sprite/"))
+                .count(), "Scale and transition presets stay bounded independently of contributed sprites");
         }
     }
 

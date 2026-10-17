@@ -65,6 +65,12 @@ public final class ItemReward implements Reward {
         return number.intValue();
     }
 
+    private static Component join(final List<Component> descriptions) {
+        // Separators inherit the consumer's quantity color, rather than the surrounding menu heading.
+        Component result = Component.join(JoinConfiguration.commas(true), descriptions);
+        return descriptions.isEmpty() ? result : result.color(descriptions.getFirst().color());
+    }
+
     private record Definition(RewardItem item, int minimum, int maximum) {
     }
 
@@ -88,7 +94,7 @@ public final class ItemReward implements Reward {
             for (Definition definition : definitions) {
                 int amount = ThreadLocalRandom.current().nextInt(definition.minimum(), definition.maximum() + 1);
                 ItemStack prototype = items.create(definition.item());
-                descriptions.add(Component.text(amount + "\u00D7 ").append(items.name(viewer, definition.item())));
+                descriptions.add(items.describe(viewer, definition.item(), Integer.toString(amount)));
                 int remaining = amount;
                 while (remaining > 0) {
                     ItemStack stack = prototype.clone();
@@ -109,11 +115,10 @@ public final class ItemReward implements Reward {
         @Override
         public Component describe(final PlayerExecutionContext context) {
             Player viewer = context.player().requirePlatformPlayer(Player.class);
-            return Component.join(JoinConfiguration.commas(true), definitions.stream()
-                .map(definition -> Component.text(definition.minimum() == definition.maximum()
-                    ? definition.minimum() + "\u00D7 "
-                    : definition.minimum() + "\u2013" + definition.maximum() + "\u00D7 ")
-                    .append(items.name(viewer, definition.item()))).toList());
+            return join(definitions.stream()
+                .map(definition -> items.describe(viewer, definition.item(), definition.minimum() == definition.maximum()
+                    ? Integer.toString(definition.minimum()) : definition.minimum() + "\u2013" + definition.maximum()))
+                .toList());
         }
     }
 
@@ -143,7 +148,7 @@ public final class ItemReward implements Reward {
 
         @Override
         public Component describe(final PlayerExecutionContext context) {
-            return Component.join(JoinConfiguration.commas(true), descriptions);
+            return join(descriptions);
         }
 
         @Override

@@ -72,9 +72,12 @@ final class RewardAnnouncementTest {
             new Class<?>[]{RewardItemService.class}, (instance, method, arguments) -> switch (method.getName()) {
                 case "validate" -> null;
                 case "create" -> new Stack();
-                case "name" -> ((RewardItem) arguments[1]).key().equals("vexisles:chestplate")
-                    ? Component.text("Chestplate +5", NamedTextColor.GOLD)
-                    : Component.text("Diamond", NamedTextColor.AQUA);
+                case "name", "describe" -> {
+                    Component name = ((RewardItem) arguments[1]).key().equals("vexisles:chestplate")
+                        ? Component.text("Chestplate +5", NamedTextColor.GOLD)
+                        : Component.text("Diamond", NamedTextColor.AQUA);
+                    yield method.getName().equals("name") ? name : Component.text(arguments[2] + "× ").append(name);
+                }
                 default -> throw new AssertionError(method.getName());
             });
         var itemRegistry = (VexServiceRegistry) Proxy.newProxyInstance(VexServiceRegistry.class.getClassLoader(),

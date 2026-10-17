@@ -36,6 +36,12 @@ register a namespace through `RewardItemProvider` for their existing item factor
 Close the registration handle on unload. Item providers validate upgrade levels and construct the physical upgraded stack;
 Core does not define a second upgrade model. All reward consumers can reuse this handler rather than adding local item grants.
 
+Consumers can independently register a `RewardItemPresentation` through
+`RewardItemService.registerPresentation(namespace, formatting)`. This formats quantity/range and item name without
+replacing the namespace's validation, item factory, or delivery. Close its registration handle on unload. The item
+reward uses this formatter both for configured previews and frozen prepared descriptions. Client-translated vanilla
+names remain Adventure translatable components; formatters must preserve them and custom item rarity styling.
+
 `RewardItemService.deliver` inserts stacks into the native inventory first. Remaining stacks become real owner-only item
 entities after successful commit. Visibility is disabled before spawning. Persistent ownership rejects other players,
 mobs and hoppers and prevents merging with public or differently owned drops. Visibility is restored on entity load and

@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.reward.item.RewardItem;
 import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
+import dev.vexsoft.core.paper.reward.item.RewardItemPresentation;
 import java.util.List;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -15,6 +16,9 @@ public interface RewardItemService extends VexService {
     /** Registers a namespace and returns a handle that removes only this provider. */
     AutoCloseable register(String namespace, RewardItemProvider provider);
 
+    /** Registers namespace-specific display formatting without replacing item validation or delivery. */
+    AutoCloseable registerPresentation(String namespace, RewardItemPresentation presentation);
+
     /** Validates an item reference against the registered provider. */
     void validate(RewardItem item);
 
@@ -23,6 +27,11 @@ public interface RewardItemService extends VexService {
 
     /** Resolves the provider's localized item name. */
     Component name(Player viewer, RewardItem item);
+
+    /** Describes a quantity or range, preserving provider names and client translations. */
+    default Component describe(Player viewer, RewardItem item, String amount) {
+        return Component.text(amount + "× ").append(name(viewer, item));
+    }
 
     /** Inserts prepared stacks and defers owner-only overflow drops until the player transaction commits. */
     void deliver(VexPlayer player, List<ItemStack> items);

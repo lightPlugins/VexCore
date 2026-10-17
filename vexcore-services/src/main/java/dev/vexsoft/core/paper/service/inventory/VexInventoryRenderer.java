@@ -28,9 +28,10 @@ final class VexInventoryRenderer {
         Inventory inventory =
             Bukkit.createInventory(Objects.requireNonNull(holder, "holder"), view.getSize(), view.getTitle(context));
 
+        renderInto(context, inventory, elements, defaultTooltipStyle);
+
         holder.attach(inventory);
         holder.setInventoryKey(view.getKey());
-        renderInto(context, inventory, elements, defaultTooltipStyle);
 
         return inventory;
     }

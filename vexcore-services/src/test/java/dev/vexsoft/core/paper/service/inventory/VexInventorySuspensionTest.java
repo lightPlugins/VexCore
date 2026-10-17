@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.service.inventory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
@@ -28,6 +29,62 @@ import org.junit.jupiter.api.Test;
 
 /** Verifies that dialog suspension preserves history and cannot resurrect closed or replaced views. */
 final class VexInventorySuspensionTest {
+
+    @Test
+    void failedMenuSnapshotsDoNotCloseTheCurrentViewOrDuplicateItsHistory() throws Exception {
+        try (var fixture = new Fixture()) {
+            var first = new View("test:first");
+            var current = new View("test:current");
+            var broken = new View("test:broken");
+            broken.failElements = true;
+            fixture.service.openRoot(fixture.player, first);
+            fixture.service.open(fixture.player, current);
+            var inventory = fixture.top;
+            for (int attempt = 0; attempt < 3; attempt++) {
+                assertThrows(IllegalStateException.class, () -> fixture.service.open(fixture.player, broken));
+                assertSame(current, fixture.service.getCurrentView(fixture.id).orElseThrow());
+                assertSame(inventory, fixture.top);
+                assertEquals(1, fixture.service.getSession(fixture.id).getHistory().size());
+                assertEquals(0, current.closes);
+            }
+            fixture.service.back(fixture.player);
+            assertSame(first, fixture.service.getCurrentView(fixture.id).orElseThrow());
+        }
+    }
+
+    @Test
+    void failedItemRenderingKeepsTheCurrentHolderAndHistoryIntact() throws Exception {
+        try (var fixture = new Fixture()) {
+            var current = new View("test:current");
+            var broken = new View("test:broken");
+            broken.failRendering = true;
+            fixture.service.openRoot(fixture.player, current);
+            var inventory = fixture.top;
+            var holder = fixture.service.getSession(fixture.id).getHolder();
+            assertThrows(IllegalStateException.class, () -> fixture.service.open(fixture.player, broken));
+            assertSame(inventory, fixture.top);
+            assertSame(inventory, holder.getInventory());
+            assertEquals(current.getKey(), holder.getInventoryKey());
+            assertTrue(fixture.service.getSession(fixture.id).getHistory().isEmpty());
+            assertEquals(0, current.closes);
+        }
+    }
+
+    @Test
+    void failedRootReplacementPreservesTheExistingBackDestination() throws Exception {
+        try (var fixture = new Fixture()) {
+            var first = new View("test:first");
+            var current = new View("test:current");
+            var broken = new View("test:broken");
+            broken.failElements = true;
+            fixture.service.openRoot(fixture.player, first);
+            fixture.service.open(fixture.player, current);
+            assertThrows(IllegalStateException.class, () -> fixture.service.openRoot(fixture.player, broken));
+            assertEquals(1, fixture.service.getSession(fixture.id).getHistory().size());
+            fixture.service.back(fixture.player);
+            assertSame(first, fixture.service.getCurrentView(fixture.id).orElseThrow());
+        }
+    }
 
     @Test
     void suspendResumeAndBackKeepTheOriginalViewInstances() throws Exception {
@@ -176,6 +233,8 @@ final class VexInventorySuspensionTest {
 
         private final InventoryKey key;
         private int closes;
+        private boolean failElements;
+        private boolean failRendering;
 
         private View(final String key) {
             this.key = InventoryKey.of(key);
@@ -198,6 +257,14 @@ final class VexInventorySuspensionTest {
 
         @Override
         public Map<Integer, InventoryElement> getElements(final InventoryContext context) {
+            if (failElements) {
+                throw new IllegalStateException("Injected element snapshot failure");
+            }
+            if (failRendering) {
+                return Map.of(0, ignored -> {
+                    throw new IllegalStateException("Injected item rendering failure");
+                });
+            }
             return Map.of();
         }
 

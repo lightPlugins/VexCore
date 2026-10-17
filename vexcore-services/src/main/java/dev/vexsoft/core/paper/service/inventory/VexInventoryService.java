@@ -311,11 +311,15 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
             }
         );
 
+        InventoryContext context = createContext(player);
+        // Prepare the replacement before changing history or closing the current view. Rendering can fail.
+        Map<Integer, InventoryElement> elements = snapshotElements(view, context);
+        Inventory inventory = renderer.render(context, view, session.getHolder(), elements, defaultTooltipStyle);
+
         if (clearHistory) {
             session.getHistory().clear();
         }
 
-        InventoryContext context = createContext(player);
         InventoryView current = session.getCurrentView();
         boolean switching = current != null && current != view;
 
@@ -332,9 +336,6 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
         InventoryHolder openHolder = player.getOpenInventory().getTopInventory().getHolder();
 
         session.setSuppressNextClose(openHolder == session.getHolder());
-        Map<Integer, InventoryElement> elements = snapshotElements(view, context);
-        Inventory inventory = renderer.render(context, view, session.getHolder(), elements, defaultTooltipStyle);
-
         session.setInventory(inventory);
         session.updateRenderedElements(elements);
         session.setCurrentView(view);

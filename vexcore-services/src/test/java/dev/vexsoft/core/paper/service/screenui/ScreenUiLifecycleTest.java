@@ -113,6 +113,8 @@ public final class ScreenUiLifecycleTest {
                         throw new UnsupportedOperationException(method.getName());
                     }
 
+                    assertEquals(1L, args[1]);
+
                     queued.add((Runnable) args[2]);
 
                     return Optional.of(task);

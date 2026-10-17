@@ -125,6 +125,10 @@ import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.service.signals.VexSignalService;
 import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
 import dev.vexsoft.core.paper.service.teleport.VexPlayerTeleportService;
+import dev.vexsoft.core.paper.service.effect.ParticleEffectService;
+import dev.vexsoft.core.paper.service.effect.VexParticleEffectService;
+import dev.vexsoft.core.paper.service.upgrade.UpgradeAnimationService;
+import dev.vexsoft.core.paper.service.upgrade.VexUpgradeAnimationService;
 import java.util.Objects;
 
 /** Registers the standard owner-bound services and listeners for Paper plugins. */
@@ -144,6 +148,8 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         checkedServices.register(ScreenUiService.class, VexScreenUiService.class);
         checkedServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
         checkedServices.register(ScheduleService.class, VexScheduleService.class);
+        checkedServices.register(ParticleEffectService.class, VexParticleEffectService.class);
+        checkedServices.register(UpgradeAnimationService.class, VexUpgradeAnimationService.class);
         checkedServices.register(ActionBarService.class, VexActionBarService.class);
         checkedServices.register(SidebarService.class, VexSidebarService.class);
         checkedServices.register(InventoryService.class, VexInventoryService.class);

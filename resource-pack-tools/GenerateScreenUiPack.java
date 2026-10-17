@@ -162,6 +162,7 @@ public final class GenerateScreenUiPack {
 
         png(root, "assets/vexcore/textures/ui/panel.png", panel);
         generateAnchors(root, versionPack, protocol, atlas, panel, rows);
+        generateUpgradeRitual(root, protocol);
 
         for (int y = 0; y <= 240; y++) {
             write(
@@ -529,6 +530,215 @@ public final class GenerateScreenUiPack {
         }
 
         return output;
+    }
+
+    private static void generateUpgradeRitual(Path root, Properties protocol) throws Exception {
+        upgradeSprite(root, protocol, "frame", upgradeFrame());
+        for (int phase = 0; phase < 16; phase++) {
+            upgradeSprite(root, protocol, "core_" + phase, upgradeCore(phase, false));
+            upgradeSprite(root, protocol, "burst_" + phase, upgradeCore(phase, true));
+        }
+        for (int rune = 1; rune <= 3; rune++) {
+            BufferedImage image = new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < 20; y++) {
+                for (int x = 0; x < 20; x++) {
+                    int edgeX = Math.min(x, 19 - x);
+                    int edgeY = Math.min(y, 19 - y);
+                    boolean outside = edgeX + edgeY < 2;
+                    int alpha = outside ? 0 : edgeX == 0 || edgeY == 0 || edgeX + edgeY == 2 ? 205 : 20;
+                    double dx = Math.abs(x - 9.5);
+                    double dy = Math.abs(y - 9.5);
+                    boolean glyph = switch (rune) {
+                        case 1 -> dx + dy >= 4 && dx + dy <= 6;
+                        case 2 -> Math.max(dx, dy) >= 3 && Math.max(dx, dy) <= 4;
+                        default -> Math.min(dx, dy) < 1 && Math.max(dx, dy) < 6
+                            || dx + dy >= 5 && dx + dy <= 6;
+                    };
+                    if (glyph || dx < 1 && dy < 1) {
+                        alpha = 255;
+                    }
+                    image.setRGB(x, y, whiteAlpha(alpha));
+                }
+            }
+            upgradeSprite(root, protocol, "rune_" + rune, image);
+        }
+        for (int fill = 0; fill <= 180; fill++) {
+            BufferedImage bar = new BufferedImage(180, 8, BufferedImage.TYPE_INT_ARGB);
+            int width = fill;
+            for (int x = 0; x < width; x++) {
+                for (int y = 1; y < 7; y++) {
+                    if ((x == 0 || x == width - 1) && (y == 1 || y == 6)) {
+                        continue;
+                    }
+                    int alpha = y == 1 || y == 6 ? 255 : 220;
+                    bar.setRGB(x, y, whiteAlpha(alpha));
+                }
+            }
+            upgradeSprite(root, protocol, "bar_" + fill, bar);
+        }
+    }
+
+    private static BufferedImage upgradeFrame() {
+        var image = new BufferedImage(224, 240, BufferedImage.TYPE_INT_ARGB);
+        // Work in edge distances so opposing corners are identical, including the even-sized center axes.
+        for (int y = 0; y < 240; y++) {
+            for (int x = 0; x < 224; x++) {
+                int edgeX = Math.min(x, 223 - x);
+                int edgeY = Math.min(y, 239 - y);
+                int color = 0;
+                if (insideChamfer(edgeX, edgeY, 2, 7)) {
+                    color = 0xFF30213F;
+                }
+                if (insideChamfer(edgeX, edgeY, 3, 6)) {
+                    color = 0xEE100D1B;
+                }
+                if (insideChamfer(edgeX, edgeY, 5, 5)) {
+                    color = 0xEE0D0B16;
+                }
+                boolean bracket = edgeX + edgeY >= 9 && edgeX + edgeY <= 11
+                    || edgeX >= 7 && edgeX <= 23 && edgeY == 2
+                    || edgeY >= 7 && edgeY <= 23 && edgeX == 2;
+                if (bracket && edgeX >= 2 && edgeY >= 2 && edgeX <= 23 && edgeY <= 23) {
+                    color = 0xFFC4B5FD;
+                }
+                boolean inset = edgeX + edgeY == 15 && edgeX >= 5 && edgeY >= 5;
+                if (inset) {
+                    color = 0xFF7C3AED;
+                }
+                image.setRGB(x, y, color);
+            }
+        }
+        var graphics = image.createGraphics();
+        graphics.setColor(new Color(59, 42, 82));
+        graphics.fillRect(31, 62, 162, 1);
+        graphics.setColor(new Color(139, 92, 246));
+        graphics.fillRect(25, 61, 3, 3);
+        graphics.fillRect(196, 61, 3, 3);
+        graphics.fillRect(109, 61, 6, 3);
+        graphics.dispose();
+        // The recessed track is centered on the same coordinates as the separately rendered fill sprite.
+        for (int y = 0; y < 14; y++) {
+            for (int x = 0; x < 184; x++) {
+                int edgeX = Math.min(x, 183 - x);
+                int edgeY = Math.min(y, 13 - y);
+                if (edgeX + edgeY < 2) {
+                    continue;
+                }
+                image.setRGB(20 + x, 170 + y,
+                    edgeX == 0 || edgeY == 0 || edgeX + edgeY == 2 ? 0xFF57416F : 0xFF181020);
+            }
+        }
+        return image;
+    }
+
+    private static boolean insideChamfer(int edgeX, int edgeY, int inset, int cut) {
+        return edgeX >= inset && edgeY >= inset && edgeX + edgeY >= inset * 2 + cut;
+    }
+
+    private static BufferedImage upgradeCore(int phase, boolean success) {
+        var image = new BufferedImage(72, 72, BufferedImage.TYPE_INT_ARGB);
+        int pulse = phase <= 8 ? phase : 16 - phase;
+        // A 2x2 pixel lattice and one shared half-pixel center prevent uneven diagonals and crawling outlines.
+        for (int cellY = 0; cellY < 36; cellY++) {
+            for (int cellX = 0; cellX < 36; cellX++) {
+                int dx = Math.abs(cellX * 2 - 35);
+                int dy = Math.abs(cellY * 2 - 35);
+                int square = Math.max(dx, dy);
+                int diamond = dx + dy;
+                int alpha = 0;
+                if (square <= 31 && diamond <= 52) {
+                    alpha = 6 + pulse;
+                }
+                boolean outer = square <= 29 && diamond <= 48;
+                boolean inner = square <= 25 && diamond <= 42;
+                if (outer && !inner) {
+                    alpha = 45 + pulse * 5;
+                }
+                if (diamond >= 26 && diamond <= 28) {
+                    alpha = Math.max(alpha, 95 + pulse * 12);
+                }
+                if (dx == dy && square >= 15 && square <= 23
+                    || Math.min(dx, dy) == 1 && square >= 19 && square <= 25) {
+                    alpha = Math.max(alpha, 70 + pulse * 6);
+                }
+                int node = 17 + pulse / 3 * 2;
+                if (dx == dy && square == node
+                    || Math.min(dx, dy) == 1 && square == node + 4) {
+                    alpha = 210 + pulse * 5;
+                }
+                boolean bezel = square <= 17 && diamond <= 28;
+                boolean bezelInside = square <= 13 && diamond <= 22;
+                if (bezel) {
+                    alpha = bezelInside ? 30 + pulse * 3 : 145 + pulse * 9;
+                }
+                if (square <= 15 && diamond <= 26 && !bezelInside) {
+                    alpha = Math.max(alpha, 200 + pulse * 5);
+                }
+                if (diamond <= 14) {
+                    alpha = 100 + pulse * 10;
+                }
+                if (diamond <= 10) {
+                    alpha = 180 + pulse * 7;
+                }
+                if (diamond <= 6) {
+                    alpha = 235 + pulse * 2;
+                }
+                if (diamond <= 2) {
+                    alpha = 255;
+                }
+                if (success) {
+                    // Two bounded expansion fronts settle into a bright crystal, never clip at the canvas edge.
+                    int wave = 8 + (phase * 22 / 15) / 2 * 2;
+                    int fade = Math.max(0, 240 - phase * 16);
+                    if (Math.abs(diamond - wave) <= 2 || Math.abs(square * 2 - wave) <= 2) {
+                        alpha = Math.max(alpha, fade);
+                    }
+                    if (diamond <= 14) {
+                        alpha = Math.max(alpha, 155 + (14 - diamond) * 6 + Math.max(0, 6 - phase) * 4);
+                    }
+                    if (square > 31) {
+                        alpha = 0;
+                    }
+                }
+                int color = whiteAlpha(alpha);
+                for (int y = 0; y < 2; y++) {
+                    for (int x = 0; x < 2; x++) {
+                        image.setRGB(cellX * 2 + x, cellY * 2 + y, color);
+                    }
+                }
+            }
+        }
+        return image;
+    }
+
+    private static int whiteAlpha(int alpha) {
+        return alpha == 0 ? 0 : Math.min(255, alpha) << 24 | 0xFFFFFF;
+    }
+
+    private static void upgradeSprite(Path root, Properties protocol, String name, BufferedImage content)
+        throws Exception {
+        if (content.getWidth() > 254 || content.getHeight() > 240) {
+            throw new IllegalArgumentException("Upgrade sprite exceeds the bounded pixel canvas");
+        }
+        BufferedImage canvas = new BufferedImage(256, 256, BufferedImage.TYPE_INT_ARGB);
+        var graphics = canvas.createGraphics();
+        graphics.drawImage(content, 0, 2, null);
+        graphics.dispose();
+        canvas.setRGB(0, 0, 0x01565831);
+        canvas.setRGB(0, 1, 0x01434F52);
+        // Invisible width sentinel preserves bitmap-font advance for an empty progress bar.
+        canvas.setRGB(content.getWidth() - 1, 0, 0x01FFFFFF);
+        png(root, "assets/vexcore/textures/ui/upgrade/" + name + ".png", canvas);
+        int count = Integer.parseInt(protocol.getProperty("maxY"))
+            - Integer.parseInt(protocol.getProperty("minY")) + 1;
+        int encoded = Integer.parseInt(protocol.getProperty("base")) + (78 * 9 + 4) * count
+            - Integer.parseInt(protocol.getProperty("minY"));
+        int ascent = 8 - (encoded * Integer.parseInt(protocol.getProperty("stride"))
+            + Integer.parseInt(protocol.getProperty("bias")));
+        write(root, "assets/vexcore/font/ui/" + protocol.getProperty("renderer")
+            + "/sprite/upgrade/" + name + "/100/center.json",
+            "{\"providers\":[{\"type\":\"bitmap\",\"file\":\"vexcore:ui/upgrade/" + name
+                + ".png\",\"height\":256,\"ascent\":" + ascent + ",\"chars\":[\"\\ue100\"]}]}");
     }
 
     private static void write(Path root, String file, String content) throws Exception {

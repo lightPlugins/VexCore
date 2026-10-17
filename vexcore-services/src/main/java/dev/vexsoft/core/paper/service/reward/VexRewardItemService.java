@@ -5,6 +5,7 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.reward.item.RewardItem;
 import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
+import dev.vexsoft.core.paper.reward.item.RewardItemPresentation;
 import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +24,7 @@ import org.bukkit.persistence.PersistentDataType;
 public final class VexRewardItemService implements RewardItemService {
 
     private final Map<String, RewardItemProvider> providers = new ConcurrentHashMap<>();
+    private final Map<String, RewardItemPresentation> presentations = new ConcurrentHashMap<>();
     private final ScheduleService schedules;
     private final ProfileSessionService profiles;
 
@@ -48,6 +50,15 @@ public final class VexRewardItemService implements RewardItemService {
     }
 
     @Override
+    public AutoCloseable registerPresentation(final String namespace, final RewardItemPresentation presentation) {
+        if (!namespace.matches("[a-z0-9._-]+")
+            || presentations.putIfAbsent(namespace, Objects.requireNonNull(presentation, "presentation")) != null) {
+            throw new IllegalArgumentException("Invalid or duplicate reward presentation namespace: " + namespace);
+        }
+        return () -> presentations.remove(namespace, presentation);
+    }
+
+    @Override
     public ItemStack create(final RewardItem item) {
         validate(item);
         return provider(item).create(item);
@@ -56,6 +67,15 @@ public final class VexRewardItemService implements RewardItemService {
     @Override
     public Component name(final Player viewer, final RewardItem item) {
         return provider(item).name(viewer, item);
+    }
+
+    @Override
+    public Component describe(final Player viewer, final RewardItem item, final String amount) {
+        var key = Objects.requireNonNull(NamespacedKey.fromString(item.key()));
+        var formatting = presentations.get(key.getNamespace());
+        Component name = name(viewer, item);
+        return formatting == null ? Component.text(amount + "× ").append(name)
+            : formatting.describe(viewer, item, amount, name);
     }
 
     @Override

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.entity.Player;
+import org.bukkit.SoundCategory;
 
 /** Renders carried Components on entity schedulers and never persists a native UI object. */
 @Dependencies(ScheduleService.class)
@@ -50,11 +51,18 @@ public final class VexTransferDisplayService implements TransferDisplayService, 
         }
         owner.findPlatformPlayer(Player.class).ifPresent(player -> schedules.runFor(player, () -> {
             var display = displays.get(owner);
-            if (display == null || !display.request().equals(request) || display.player() != player) {
+            if (display == null || !display.request().equals(request) || display.player() != player
+                || owner.findPlatformPlayer(Player.class).orElse(null) != player || !player.isConnected()) {
                 return;
             }
             if (successful) {
-                remove(owner, display);
+                if (remove(owner, display)) {
+                    var sound = display.presentation().arrivalSound();
+                    if (sound != null && sound.volume() > 0) {
+                        player.playSound(player.getLocation(), sound.type(), SoundCategory.MASTER,
+                            sound.volume(), sound.pitch());
+                    }
+                }
             } else {
                 display.bar().name(GsonComponentSerializer.gson().deserialize(display.presentation().failedTitle()));
                 display.bar().color(BossBar.Color.RED);
@@ -71,10 +79,12 @@ public final class VexTransferDisplayService implements TransferDisplayService, 
         }
     }
 
-    private void remove(final VexPlayer owner, final Display display) {
+    private boolean remove(final VexPlayer owner, final Display display) {
         if (displays.remove(owner, display)) {
             display.player().hideBossBar(display.bar());
+            return true;
         }
+        return false;
     }
 
     @Override
