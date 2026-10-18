@@ -42,11 +42,21 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
 
     @Override
     public synchronized <T> void register(final Class<T> type, final String system) {
+        register(type, system, null);
+    }
+
+    @Override
+    public synchronized <T> void register(final Class<T> type, final String system, final String legacySystem) {
         Class<T> checkedType = Objects.requireNonNull(type, "type");
         String checkedSystem = Objects.requireNonNull(system, "system");
 
         if (!checkedSystem.matches("[a-z][a-z0-9_]{0,52}")) {
             throw new IllegalArgumentException("Invalid published configuration system: " + checkedSystem);
+        }
+
+        if (legacySystem != null && (!legacySystem.matches("[a-z][a-z0-9_]{0,52}")
+            || legacySystem.equals(checkedSystem))) {
+            throw new IllegalArgumentException("Invalid legacy configuration system: " + legacySystem);
         }
 
         if (registrations.containsKey(checkedType)) {
@@ -61,10 +71,24 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
 
         Registration<T> registration = new Registration<>(checkedType, key);
         registrations.put(checkedType, registration);
-        store.loadGlobalData(owner, key).thenAccept(stored -> {
-            if (registrations.get(checkedType) == registration) {
-                stored.ifPresent(value -> registration.install(read(registration, value), value.revision()));
+        store.loadGlobalData(owner, key).thenCompose(stored -> {
+            if (registrations.get(checkedType) != registration) {
+                return CompletableFuture.<Void>completedFuture(null);
             }
+            if (stored.isPresent()) {
+                var value = stored.orElseThrow();
+                registration.install(read(registration, value), value.revision());
+                return CompletableFuture.<Void>completedFuture(null);
+            }
+            if (legacySystem == null) {
+                return CompletableFuture.<Void>completedFuture(null);
+            }
+            return store.loadGlobalData(owner, KEY_PREFIX + legacySystem).thenAccept(legacy -> {
+                if (registrations.get(checkedType) == registration) {
+                    // Keep fallback data in memory only: a first publish must still create the new key at revision one.
+                    legacy.ifPresent(value -> registration.install(read(registration, value), 0));
+                }
+            });
         }).whenComplete((ignored, failure) -> {
             if (failure == null) {
                 registration.initialization.complete(null);
@@ -248,7 +272,7 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
         }
 
         private synchronized void install(final Payload payload, final long newRevision) {
-            if (registrations.get(type) != this || newRevision <= revision) {
+            if (registrations.get(type) != this || value != null && newRevision <= revision) {
                 return;
             }
 

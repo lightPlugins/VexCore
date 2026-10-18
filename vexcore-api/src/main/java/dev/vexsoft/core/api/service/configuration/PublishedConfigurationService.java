@@ -11,6 +11,14 @@ public interface PublishedConfigurationService extends VexService {
     /** Registers one type and starts its asynchronous read; use readiness before requiring an initial snapshot. */
     <T> void register(Class<T> type, String system);
 
+    /**
+     * Registers a new system, reading a legacy snapshot only when the new key has no stored value.
+     * The legacy key is never written; its in-memory fallback has revision zero until the new system is published.
+     */
+    default <T> void register(final Class<T> type, final String system, final String legacySystem) {
+        throw new UnsupportedOperationException("Legacy configuration fallback is not supported");
+    }
+
     /** Awaits asynchronous initial reads for the currently registered types without blocking a server thread. */
     default CompletableFuture<Void> readiness() {
         return CompletableFuture.completedFuture(null);
