@@ -48,6 +48,8 @@ val generateScreenUiPack = tasks.register<Exec>("generateScreenUiPack") {
     description = "Generates the standalone VexCore bossbar UI resource pack."
     inputs.file(screenUiPackGenerator)
     inputs.dir(screenUiFontDirectory)
+    inputs.dir(rootProject.layout.projectDirectory.dir("resource-pack-tools/artwork"))
+    inputs.dir(rootProject.layout.projectDirectory.dir("resource-pack-tools/sounds"))
     inputs.dir(screenUiVersionPack)
     outputs.dir(screenUiPackDirectory)
     outputs.dir(screenUiMetricsDirectory)

@@ -21,7 +21,7 @@ import javax.imageio.stream.ImageOutputStream;
  * Run from the Core checkout with Java 25 source-file mode:
  * {@code java resource-pack-tools/PreviewUpgradeRitual.java <generated-pack-root> <output-directory> [font-directory]}.
  * The optional font directory defaults to {@code resource-pack-tools/fonts} and must contain {@code m5x7.ttf}.
- * Outputs two 3x nearest-neighbor composites, a 6x full-bar alignment crop, a looping GIF, and a contact sheet.
+ * Outputs 3x charging, empty, hold and success composites, a 6x bar crop, looping GIFs, and a contact sheet.
  * The GIF samples sixteen charging and sixteen success frames at two ticks per frame, with a brief 99-percent hold;
  * it previews the art and composition rather than reproducing randomized server timing or authoritative outcomes.
  */
@@ -31,10 +31,9 @@ public final class PreviewUpgradeRitual {
     private static final int HEIGHT = 320;
     private static final int SCALE = 3;
     private static final int OFFSET_Y = -30;
-    private static final int VIOLET = 0x8B5CF6;
-    private static final int LILAC = 0xC4B5FD;
-    private static final int SECONDARY = 0x71717A;
-    private static final int NORMAL = 0xA1A1AA;
+    private static final int CHARGE_TINT = 0xE8E0ED;
+    private static final int SECONDARY = 0x52525B;
+    private static final int NORMAL = 0x3F3F46;
     private static final int[] PROGRESS = {0, 12, 12, 12, 28, 28, 28, 47, 47, 47, 68, 68, 85, 85, 99, 99};
 
     private final Path sprites;
@@ -69,14 +68,28 @@ public final class PreviewUpgradeRitual {
         }
         ImageIO.write(scale(preview.compose(11, false, false), SCALE), "PNG",
             output.resolve("upgrade-ritual-preview.png").toFile());
+        ImageIO.write(scale(preview.compose(0, false, false), SCALE), "PNG",
+            output.resolve("upgrade-ritual-empty.png").toFile());
+        ImageIO.write(scale(preview.compose(16, true, false), SCALE), "PNG",
+            output.resolve("upgrade-ritual-hold.png").toFile());
         ImageIO.write(scale(preview.compose(6, false, true), SCALE), "PNG",
             output.resolve("upgrade-ritual-success.png").toFile());
         var fullBar = preview.compose(6, false, true).getSubimage(WIDTH / 2 - 98,
-            HEIGHT / 2 + OFFSET_Y + 52, 196, 22);
+            HEIGHT / 2 + OFFSET_Y + 58, 196, 22);
         ImageIO.write(scale(fullBar, 6), "PNG", output.resolve("upgrade-ritual-bar-alignment.png").toFile());
         ImageIO.write(scale(preview.contactSheet(), SCALE), "PNG",
             output.resolve("upgrade-ritual-contact-sheet.png").toFile());
         writeGif(output.resolve("upgrade-ritual.gif"), frames, 10);
+        var successFrames = new ArrayList<BufferedImage>();
+        for (int phase = 0; phase < 16; phase++) {
+            var panel = preview.compose(phase, false, true).getSubimage(WIDTH / 2 - 112,
+                HEIGHT / 2 + OFFSET_Y - 114, 224, 240);
+            successFrames.add(scale(panel, SCALE));
+        }
+        for (int hold = 0; hold < 4; hold++) {
+            successFrames.add(successFrames.getLast());
+        }
+        writeGif(output.resolve("upgrade-ritual-success.gif"), successFrames, 14);
         System.out.println("Wrote upgrade ritual composites, animation, and contact sheet to " + output.toAbsolutePath());
     }
 
@@ -90,15 +103,19 @@ public final class PreviewUpgradeRitual {
         }
         double flash = success || holding ? 0 : Math.max(0, 1 - (frame - lastStep) / 3.0);
         double pulse = 0.5 - Math.cos(frame * Math.PI / 8) * 0.5;
-        int tint = blend(VIOLET, 0xE9D5FF, Math.max(flash * 0.55, pulse * 0.32));
+        int tint = blend(CHARGE_TINT, 0xFFFFFF, Math.max(flash, pulse));
         sprite(graphics, "frame", 224, 240, -112, -114, 0xFFFFFF);
-        sprite(graphics, (success ? "burst_" : "core_") + frame % 16, 72, 72, -36, -49, tint);
+        if (success) {
+            sprite(graphics, "success_" + frame % 16, 184, 104, -92, -45, 0xFFFFFF);
+        }
+        sprite(graphics, (success ? "burst_" : "core_") + frame % 16, 72, 72, -36, -45, tint);
         int activeRunes = success ? 3 : progress >= 65 ? 2 : progress >= 30 ? 1 : 0;
         for (int rune = 0; rune < 3; rune++) {
-            int runeTint = holding && rune == 2 ? blend(0x3F354D, 0xFBBF24, 0.25 + pulse * 0.5)
-                : rune < activeRunes ? LILAC : 0x3F354D;
-            sprite(graphics, "rune_" + (rune + 1), 20, 20, -50 + rune * 40, 30,
-                runeTint);
+            int runeTint = holding && rune == 2 ? blend(0xFFFFFF, 0xFFD090, 0.25 + pulse * 0.5) : 0xFFFFFF;
+            String asset = "rune_" + (rune + 1) + (rune < activeRunes ? "" : "_inactive");
+            double reveal = Math.clamp((frame - (rune == 1 ? 0 : 2)) / 7.0, 0, 1);
+            int lift = success ? (int) Math.round(2 * Math.sin(reveal * Math.PI)) : 0;
+            sprite(graphics, asset, 22, 26, -51 + rune * 40, 25 - lift, runeTint);
         }
         double visibleProgress = progress;
         if (!success && !holding) {
@@ -113,14 +130,14 @@ public final class PreviewUpgradeRitual {
             visibleProgress = previous + (progress - previous) * filled;
         }
         int pixels = (int) Math.round(visibleProgress * 1.8);
-        sprite(graphics, "bar_" + pixels, 180, 8, -90, 59, blend(VIOLET, 0xF5F3FF, flash));
-        centered(graphics, "RESONANZSCHMIEDE", -102, LILAC);
-        centered(graphics, "Tumblebud", -83, 0xD8B4FE);
+        sprite(graphics, "bar_" + pixels, 180, 12, -90, 64, blend(CHARGE_TINT, 0xFFFFFF, flash));
+        centered(graphics, "RESONANZSCHMIEDE", -102, 0x633A80);
+        centered(graphics, "Tumblebud", -83, 0x513675);
         centered(graphics, "+4 -> +5  |  60 % Erfolgschance", -66, NORMAL);
-        centered(graphics, progress + " %", 73, LILAC);
+        centered(graphics, progress + "%", -1, 0xB9BAC3);
         centered(graphics, success ? "RESONANZ ENTFESSELT"
             : holding ? "Die Resonanz sucht ihr Gleichgewicht ..." : "Die Resonanz verdichtet sich ...",
-            92, success ? 0xA3E635 : holding ? 0xFBBF24 : NORMAL);
+            92, success ? 0x3C6301 : holding ? 0x973C08 : NORMAL);
         centered(graphics, "Shift - Ergebnis sofort anzeigen", 110, SECONDARY);
         graphics.dispose();
         return image;
@@ -141,7 +158,7 @@ public final class PreviewUpgradeRitual {
                     graphics.fillRect(x + tileX, y + tileY, 8, 8);
                 }
             }
-            graphics.drawImage(tint(read(name, 72, 72), VIOLET), x + 4, y + 4, null);
+            graphics.drawImage(read(name, 72, 72), x + 4, y + 4, null);
             graphics.setColor(new Color(SECONDARY));
             graphics.drawRect(x, y, 79, 79);
             graphics.setColor(new Color(NORMAL));
@@ -179,7 +196,12 @@ public final class PreviewUpgradeRitual {
             line = line.substring(0, line.length() - 1);
         }
         graphics.setColor(new Color(color));
-        graphics.drawString(line, (WIDTH - metrics.stringWidth(line)) / 2, HEIGHT / 2 + y + OFFSET_Y + 10);
+        int x = (WIDTH - metrics.stringWidth(line)) / 2;
+        int baseline = HEIGHT / 2 + y + OFFSET_Y + 10;
+        graphics.setColor(new Color(y == -1 ? 0x777780 : 0x9B969F));
+        graphics.drawString(line, x + 1, baseline + 1);
+        graphics.setColor(new Color(color));
+        graphics.drawString(line, x, baseline);
     }
 
     private Graphics2D graphics(final BufferedImage image) {

@@ -42,6 +42,7 @@ public interface ProfileSessionService extends VexService {
      * Freezes interactions, executes on the entity thread, commits native/profile state, and rolls back failed writes.
      * The supplier may mutate only containers explicitly scoped to the participating domain.
      * A concurrent operation fails with {@link ProfileSessionBusyException} before invoking its supplier.
+     * A retired entity fails with {@link ProfileSessionRetiredException}; committed state remains authoritative.
      */
     <T> CompletableFuture<T> transact(VexPlayer player, Supplier<ProfileMutation<T>> mutation);
 

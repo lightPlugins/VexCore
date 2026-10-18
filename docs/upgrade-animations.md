@@ -55,6 +55,16 @@ Sound sequences are keyed by `start`, `step`, `rune`, `hold`, `success`, and `fa
 a relative tick delay and a validated sound type, volume, and pitch. Charging pitches rise with
 the ritual's progress. Delayed cues share the finite animation task and are discarded on cleanup.
 
+Optional `music` settings select a viewer-local streamed background track, volume, duration in ticks, and looping.
+The default `vexcore:upgrade.background` is the supplied stereo Ogg Vorbis file in `resource-pack-tools/sounds/`.
+It lasts 24.25 seconds (485 ticks), plays at its original pitch on the master sound source, and starts with the screen.
+Looping uses the same finite ritual task and stops the previous instance before restarting. Music stops before the
+first success or failure cue, and immediately on skip, cancellation, disconnect, world change, retirement or shutdown.
+Skipping while persistence is pending silences the track immediately, then waits for the same durable result before
+its result cue. Cleanup stops only this viewer's configured music key, preserving other game sounds and result cues.
+The original settings constructors and snapshots without `music` remain valid and silent; the YAML loader supplies
+the new default unless `music.enabled: false` is configured. Publish/reload the animation settings after updating.
+
 The progress bar uses actual pixel widths 0–180. Every step sweeps forward from the previous percentage
 to the new target over up to twelve ticks, starting quickly and easing to a stop, then holds that width.
 Short gaps and the final hold bound
@@ -62,13 +72,35 @@ the sweep so it completes before the next step or finale. A selected early failu
 to finish before collapsing the bar. Charging never flashes to full width or retracts.
 The bright accent appears immediately and fades out over up to eighteen ticks, with no opacity fade-in.
 Both text and sprite helpers
-apply the same global -30 GUI pixel Y offset. The bar's relative Y is 59 to center its eight pixels
-inside the panel's fourteen-pixel track.
+apply the same global -30 GUI pixel Y offset. The twelve-pixel fill starts at relative Y 64 on a shallow
+fourteen-pixel gray track. The percentage sits on the anvil's front face at relative text Y -1, using
+cool steel-gray ink and a subtle gray one-pixel shadow. Its compact `0%`–`100%` label fits the 24-pixel face;
+older translations with a space before `%` are compacted as well. The percentage explicitly disables bold on every
+component span, including nested styles from older published translations, so `100%` never becomes an ellipsis.
+The bar contains no text. Heading, subject, details,
+phase and Shift positions remain unchanged.
 
-The standard Core resource-pack generator supplies 217 upgrade sprites: one frame, sixteen core
-frames, sixteen success burst frames, three runes, and 181 bar fills. Core and burst silhouettes use
-an exactly mirrored 2×2 pixel lattice. The charge loop breathes evenly across its wrap boundary;
-failure dims its last crystal pose in place. All four chamfered panel corners share the same pixels.
+The standard Core resource-pack generator supplies 236 upgrade sprites: one frame, sixteen core
+frames, sixteen success burst frames, sixteen success-effect overlays, three active glyphs, three inactive glyphs,
+and 181 bar fills.
+The central forge uses the approved 72×72 source artwork in `resource-pack-tools/artwork/upgrade-forge.png`:
+a front-facing shaded anvil with a levitating amethyst. Its silhouette is mirrored left/right.
+The generator preserves the metal shading and animates the amethyst. Success brightens and briefly lifts the crystal,
+then sends two angular shockwaves and three overlapping mirrored star showers across a separate 184×104 layer.
+That layer stays behind the forge and runes and within the existing text gutters. The center rune and outer rune pair
+briefly lift in sequence, then return to their original positions. All sixteen success phases span the configured
+finish duration and fade to a clear final frame; no success effects play before authoritative success is revealed.
+The charge loop breathes evenly across its wrap boundary; failure dims its last forge pose in place.
+The panel uses an opaque Minecraft-gray surface, a bright top/left bevel, and a dark bottom/right bevel.
+All four square corners have the same mirrored one-pixel cut; their lighting follows the bevel direction.
+Three distinct, freestanding 22×26 pixel letterforms use six-pixel straight strokes with separate
+highlight and shadow edges. Active and inactive variants share identical silhouettes.
+An engraved baseline aligns the glyphs underneath the anvil without individual slots or a surrounding plate.
+The slimmer continuous bar has square ends, a muted violet fill and restrained bevels, without a dark inset well.
+Text receives a separate one-pixel offset shadow, synchronized with phase and percentage changes.
+Only this ritual normalizes pale component colors for the light surface, including older published
+translations; other Screen UI renderers keep their existing shadow behavior. Supplied wording, rarity hues,
+and component metadata are retained. Text and its shadow are updated together when their content changes.
 Every new PNG uses a 256×256
 canvas with two protocol marker rows. Visible elements occupy at most 224×240 logical GUI pixels;
 the panel includes the phase label and Shift hint with clear spacing above its bottom border.

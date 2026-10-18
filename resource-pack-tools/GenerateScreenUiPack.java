@@ -31,6 +31,12 @@ public final class GenerateScreenUiPack {
         }
 
         write(root, "FONT-LICENSE.txt", Files.readString(fontDirectory.resolve("LICENSE.txt")));
+        var musicFile = fontDirectory.resolveSibling("sounds").resolve("upgrader_background.ogg");
+        var musicTarget = root.resolve("assets/vexcore/sounds/upgrade/upgrader_background.ogg");
+        Files.createDirectories(musicTarget.getParent());
+        Files.write(musicTarget, Files.readAllBytes(musicFile));
+        write(root, "assets/vexcore/sounds.json",
+            "{\"upgrade.background\":{\"sounds\":[{\"name\":\"vexcore:upgrade/upgrader_background\",\"stream\":true}]}}");
         write(
             root,
             "pack.mcmeta",
@@ -162,7 +168,7 @@ public final class GenerateScreenUiPack {
 
         png(root, "assets/vexcore/textures/ui/panel.png", panel);
         generateAnchors(root, versionPack, protocol, atlas, panel, rows);
-        generateUpgradeRitual(root, protocol);
+        generateUpgradeRitual(root, protocol, fontDirectory.resolveSibling("artwork"));
 
         for (int y = 0; y <= 240; y++) {
             write(
@@ -532,46 +538,28 @@ public final class GenerateScreenUiPack {
         return output;
     }
 
-    private static void generateUpgradeRitual(Path root, Properties protocol) throws Exception {
+    private static void generateUpgradeRitual(Path root, Properties protocol, Path artwork) throws Exception {
+        var forge = ImageIO.read(artwork.resolve("upgrade-forge.png").toFile());
+        if (forge == null || forge.getWidth() != 72 || forge.getHeight() != 72) {
+            throw new IllegalArgumentException("Upgrade forge artwork must use its owned 72x72 pixel canvas");
+        }
         upgradeSprite(root, protocol, "frame", upgradeFrame());
         for (int phase = 0; phase < 16; phase++) {
-            upgradeSprite(root, protocol, "core_" + phase, upgradeCore(phase, false));
-            upgradeSprite(root, protocol, "burst_" + phase, upgradeCore(phase, true));
+            upgradeSprite(root, protocol, "core_" + phase, upgradeCore(forge, phase, false));
+            upgradeSprite(root, protocol, "burst_" + phase, upgradeCore(forge, phase, true));
+            upgradeSprite(root, protocol, "success_" + phase, upgradeSuccess(phase));
         }
         for (int rune = 1; rune <= 3; rune++) {
-            BufferedImage image = new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB);
-            for (int y = 0; y < 20; y++) {
-                for (int x = 0; x < 20; x++) {
-                    int edgeX = Math.min(x, 19 - x);
-                    int edgeY = Math.min(y, 19 - y);
-                    boolean outside = edgeX + edgeY < 2;
-                    int alpha = outside ? 0 : edgeX == 0 || edgeY == 0 || edgeX + edgeY == 2 ? 205 : 20;
-                    double dx = Math.abs(x - 9.5);
-                    double dy = Math.abs(y - 9.5);
-                    boolean glyph = switch (rune) {
-                        case 1 -> dx + dy >= 4 && dx + dy <= 6;
-                        case 2 -> Math.max(dx, dy) >= 3 && Math.max(dx, dy) <= 4;
-                        default -> Math.min(dx, dy) < 1 && Math.max(dx, dy) < 6
-                            || dx + dy >= 5 && dx + dy <= 6;
-                    };
-                    if (glyph || dx < 1 && dy < 1) {
-                        alpha = 255;
-                    }
-                    image.setRGB(x, y, whiteAlpha(alpha));
-                }
-            }
-            upgradeSprite(root, protocol, "rune_" + rune, image);
+            upgradeSprite(root, protocol, "rune_" + rune, upgradeRune(rune, true));
+            upgradeSprite(root, protocol, "rune_" + rune + "_inactive", upgradeRune(rune, false));
         }
         for (int fill = 0; fill <= 180; fill++) {
-            BufferedImage bar = new BufferedImage(180, 8, BufferedImage.TYPE_INT_ARGB);
-            int width = fill;
-            for (int x = 0; x < width; x++) {
-                for (int y = 1; y < 7; y++) {
-                    if ((x == 0 || x == width - 1) && (y == 1 || y == 6)) {
-                        continue;
-                    }
-                    int alpha = y == 1 || y == 6 ? 255 : 220;
-                    bar.setRGB(x, y, whiteAlpha(alpha));
+            BufferedImage bar = new BufferedImage(180, 12, BufferedImage.TYPE_INT_ARGB);
+            for (int x = 0; x < fill; x++) {
+                for (int y = 0; y < 12; y++) {
+                    int color = y == 0 ? 0xFFC9A8DD : y == 1 ? 0xFFAD83C8
+                        : y == 11 ? 0xFF70517F : y == 10 ? 0xFF815B96 : 0xFF8D65A3;
+                    bar.setRGB(x, y, color);
                 }
             }
             upgradeSprite(root, protocol, "bar_" + fill, bar);
@@ -580,135 +568,194 @@ public final class GenerateScreenUiPack {
 
     private static BufferedImage upgradeFrame() {
         var image = new BufferedImage(224, 240, BufferedImage.TYPE_INT_ARGB);
-        // Work in edge distances so opposing corners are identical, including the even-sized center axes.
+        // All four corners have the same one-pixel cut; only the bevel lighting is directional.
         for (int y = 0; y < 240; y++) {
             for (int x = 0; x < 224; x++) {
                 int edgeX = Math.min(x, 223 - x);
                 int edgeY = Math.min(y, 239 - y);
-                int color = 0;
-                if (insideChamfer(edgeX, edgeY, 2, 7)) {
-                    color = 0xFF30213F;
+                if (edgeX == 0 && edgeY == 0) {
+                    continue;
                 }
-                if (insideChamfer(edgeX, edgeY, 3, 6)) {
-                    color = 0xEE100D1B;
-                }
-                if (insideChamfer(edgeX, edgeY, 5, 5)) {
-                    color = 0xEE0D0B16;
-                }
-                boolean bracket = edgeX + edgeY >= 9 && edgeX + edgeY <= 11
-                    || edgeX >= 7 && edgeX <= 23 && edgeY == 2
-                    || edgeY >= 7 && edgeY <= 23 && edgeX == 2;
-                if (bracket && edgeX >= 2 && edgeY >= 2 && edgeX <= 23 && edgeY <= 23) {
-                    color = 0xFFC4B5FD;
-                }
-                boolean inset = edgeX + edgeY == 15 && edgeX >= 5 && edgeY >= 5;
-                if (inset) {
-                    color = 0xFF7C3AED;
-                }
+                int edge = Math.min(edgeX, edgeY);
+                boolean lit = Math.min(x, y) <= Math.min(223 - x, 239 - y);
+                int color = switch (edge) {
+                    case 0 -> 0xFF101010;
+                    case 1 -> lit ? 0xFFFFFFFF : 0xFF555555;
+                    case 2 -> lit ? 0xFFDBDBDB : 0xFF8B8B8B;
+                    default -> 0xFFC6C6C6;
+                };
                 image.setRGB(x, y, color);
             }
         }
         var graphics = image.createGraphics();
-        graphics.setColor(new Color(59, 42, 82));
-        graphics.fillRect(31, 62, 162, 1);
-        graphics.setColor(new Color(139, 92, 246));
-        graphics.fillRect(25, 61, 3, 3);
-        graphics.fillRect(196, 61, 3, 3);
-        graphics.fillRect(109, 61, 6, 3);
+        graphics.setColor(new Color(0x8B8B8B));
+        graphics.fillRect(24, 61, 176, 1);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(24, 62, 176, 1);
+        graphics.setColor(new Color(0xBDBDBD));
+        graphics.fillRect(20, 177, 184, 14);
+        graphics.setColor(new Color(0xDFDBE2));
+        graphics.fillRect(20, 177, 184, 1);
+        graphics.setColor(new Color(0xE5E5E5));
+        graphics.fillRect(20, 178, 1, 13);
+        graphics.setColor(new Color(0x99909F));
+        graphics.fillRect(20, 190, 184, 1);
+        graphics.setColor(new Color(0xAAA1B0));
+        graphics.fillRect(203, 178, 1, 13);
+        graphics.setColor(new Color(0xA29BA7));
+        graphics.fillRect(58, 167, 108, 1);
+        graphics.setColor(new Color(0xE2DDE5));
+        graphics.fillRect(58, 168, 108, 1);
+        for (int center : new int[]{72, 112, 152}) {
+            graphics.setColor(new Color(0x83768F));
+            graphics.fillRect(center - 2, 166, 4, 1);
+            graphics.setColor(new Color(0xA895B8));
+            graphics.fillRect(center - 1, 167, 2, 2);
+        }
         graphics.dispose();
-        // The recessed track is centered on the same coordinates as the separately rendered fill sprite.
-        for (int y = 0; y < 14; y++) {
-            for (int x = 0; x < 184; x++) {
-                int edgeX = Math.min(x, 183 - x);
-                int edgeY = Math.min(y, 13 - y);
-                if (edgeX + edgeY < 2) {
+        return image;
+    }
+
+    private static BufferedImage upgradeRune(int rune, boolean active) {
+        String[] rows = switch (rune) {
+            case 1 -> new String[]{"11111", "00001", "00111", "00100", "00100", "11100"};
+            case 2 -> new String[]{"10000", "10000", "10111", "10101", "11101", "00001"};
+            default -> new String[]{"00111", "00100", "11110", "10000", "11100", "00100"};
+        };
+        boolean[][] mask = new boolean[24][28];
+        for (int row = 0; row < rows.length; row++) {
+            for (int column = 0; column < rows[row].length(); column++) {
+                if (rows[row].charAt(column) != '1') {
                     continue;
                 }
-                image.setRGB(20 + x, 170 + y,
-                    edgeX == 0 || edgeY == 0 || edgeX + edgeY == 2 ? 0xFF57416F : 0xFF181020);
+                // Expand four-pixel letter strokes by one pixel on every side: six-pixel stems.
+                for (int y = -1; y <= 4; y++) {
+                    for (int x = -1; x <= 4; x++) {
+                        mask[2 + column * 4 + x][2 + row * 4 + y] = true;
+                    }
+                }
+            }
+        }
+        var image = new BufferedImage(22, 26, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 1; y <= 26; y++) {
+            for (int x = 1; x <= 22; x++) {
+                if (!mask[x][y]) {
+                    continue;
+                }
+                boolean lit = !mask[x - 1][y] || !mask[x][y - 1];
+                boolean shaded = !mask[x + 1][y] || !mask[x][y + 1];
+                int color = active ? 0xFF9560B8 : 0xFF858087;
+                if (lit) {
+                    color = active ? 0xFFD8B5EE : 0xFFAAA6AC;
+                } else if (shaded) {
+                    color = active ? 0xFF55306F : 0xFF56515A;
+                }
+                image.setRGB(x - 1, y - 1, color);
             }
         }
         return image;
     }
 
-    private static boolean insideChamfer(int edgeX, int edgeY, int inset, int cut) {
-        return edgeX >= inset && edgeY >= inset && edgeX + edgeY >= inset * 2 + cut;
-    }
-
-    private static BufferedImage upgradeCore(int phase, boolean success) {
+    private static BufferedImage upgradeCore(BufferedImage forge, int phase, boolean success) {
         var image = new BufferedImage(72, 72, BufferedImage.TYPE_INT_ARGB);
-        int pulse = phase <= 8 ? phase : 16 - phase;
-        // A 2x2 pixel lattice and one shared half-pixel center prevent uneven diagonals and crawling outlines.
-        for (int cellY = 0; cellY < 36; cellY++) {
-            for (int cellX = 0; cellX < 36; cellX++) {
-                int dx = Math.abs(cellX * 2 - 35);
-                int dy = Math.abs(cellY * 2 - 35);
-                int square = Math.max(dx, dy);
-                int diamond = dx + dy;
-                int alpha = 0;
-                if (square <= 31 && diamond <= 52) {
-                    alpha = 6 + pulse;
-                }
-                boolean outer = square <= 29 && diamond <= 48;
-                boolean inner = square <= 25 && diamond <= 42;
-                if (outer && !inner) {
-                    alpha = 45 + pulse * 5;
-                }
-                if (diamond >= 26 && diamond <= 28) {
-                    alpha = Math.max(alpha, 95 + pulse * 12);
-                }
-                if (dx == dy && square >= 15 && square <= 23
-                    || Math.min(dx, dy) == 1 && square >= 19 && square <= 25) {
-                    alpha = Math.max(alpha, 70 + pulse * 6);
-                }
-                int node = 17 + pulse / 3 * 2;
-                if (dx == dy && square == node
-                    || Math.min(dx, dy) == 1 && square == node + 4) {
-                    alpha = 210 + pulse * 5;
-                }
-                boolean bezel = square <= 17 && diamond <= 28;
-                boolean bezelInside = square <= 13 && diamond <= 22;
-                if (bezel) {
-                    alpha = bezelInside ? 30 + pulse * 3 : 145 + pulse * 9;
-                }
-                if (square <= 15 && diamond <= 26 && !bezelInside) {
-                    alpha = Math.max(alpha, 200 + pulse * 5);
-                }
-                if (diamond <= 14) {
-                    alpha = 100 + pulse * 10;
-                }
-                if (diamond <= 10) {
-                    alpha = 180 + pulse * 7;
-                }
-                if (diamond <= 6) {
-                    alpha = 235 + pulse * 2;
-                }
-                if (diamond <= 2) {
-                    alpha = 255;
-                }
-                if (success) {
-                    // Two bounded expansion fronts settle into a bright crystal, never clip at the canvas edge.
-                    int wave = 8 + (phase * 22 / 15) / 2 * 2;
-                    int fade = Math.max(0, 240 - phase * 16);
-                    if (Math.abs(diamond - wave) <= 2 || Math.abs(square * 2 - wave) <= 2) {
-                        alpha = Math.max(alpha, fade);
-                    }
-                    if (diamond <= 14) {
-                        alpha = Math.max(alpha, 155 + (14 - diamond) * 6 + Math.max(0, 6 - phase) * 4);
-                    }
-                    if (square > 31) {
-                        alpha = 0;
+        int pulse = success ? Math.max(0, 42 - phase * 3) : phase <= 8 ? phase : 16 - phase;
+        int lift = success ? (int) Math.round(3 * Math.sin(phase * Math.PI / 15)) : 0;
+        for (int y = 0; y < 72; y++) {
+            for (int x = 0; x < 72; x++) {
+                int color = forge.getRGB(x, y);
+                boolean amethyst = false;
+                if ((color >>> 24) != 0) {
+                    int red = color >> 16 & 255;
+                    int green = color >> 8 & 255;
+                    int blue = color & 255;
+                    // Only amethyst breathes; the approved metal shading stays fixed.
+                    amethyst = red - green > 12 && blue - green > 18;
+                    int brightness = amethyst ? pulse : 0;
+                    color = 0xFF000000 | Math.min(255, red + brightness) << 16
+                        | Math.min(255, green + brightness) << 8 | Math.min(255, blue + brightness);
+                } else if (success) {
+                    int dx = Math.abs(x * 2 - 71);
+                    int spread = 25 + phase * 2;
+                    int sparkY = 12 - phase / 3;
+                    if (Math.abs(dx - spread) <= 1 && Math.abs(y - sparkY) <= 1
+                        || Math.abs(dx - spread) <= 3 && y == sparkY) {
+                        color = whiteAlpha(Math.max(0, 240 - phase * 16));
                     }
                 }
-                int color = whiteAlpha(alpha);
-                for (int y = 0; y < 2; y++) {
-                    for (int x = 0; x < 2; x++) {
-                        image.setRGB(cellX * 2 + x, cellY * 2 + y, color);
-                    }
+                if ((color >>> 24) != 0) {
+                    image.setRGB(x, amethyst && y <= 28 ? y - lift : y, color);
                 }
             }
         }
         return image;
+    }
+
+    private static BufferedImage upgradeSuccess(int phase) {
+        var image = new BufferedImage(184, 104, BufferedImage.TYPE_INT_ARGB);
+        // Both angular shockwaves travel behind the forge and runes, inside the existing text gutters.
+        for (int wave = 0; wave < 2; wave++) {
+            int age = phase - wave * 4;
+            if (age < 0 || age > 10) {
+                continue;
+            }
+            int radius = 12 + age * 7;
+            int alpha = (10 - age) * (wave == 0 ? 20 : 14);
+            for (int y = 3; y < 99; y++) {
+                for (int x = 3; x < 92; x++) {
+                    double distance = Math.abs(x - 91.5) + Math.abs(y - 37) * 2.5;
+                    if (Math.abs(distance - radius) <= 0.75) {
+                        successPixel(image, x, y, alpha << 24 | 0xA782C0);
+                    } else if (Math.abs(distance - radius + 2) <= 0.75) {
+                        successPixel(image, x, y, alpha << 24 | 0xF0DFFF);
+                    }
+                }
+            }
+        }
+        // Eighteen mirrored trajectories create three overlapping showers instead of one pair of sparks.
+        for (int star = 0; star < 18; star++) {
+            int delay = star / 6 * 3 + star % 3;
+            int age = phase - delay;
+            int lifetime = Math.min(8, 15 - delay);
+            if (age < 0 || age >= lifetime) {
+                continue;
+            }
+            double travel = age / (double) lifetime;
+            int targetX = 8 + star * 29 % 74;
+            int targetY = 9 + star * 37 % 82;
+            int x = (int) Math.round(targetX + (1 - travel) * 10);
+            int y = (int) Math.round(targetY - travel * 8);
+            int radius = age <= 2 ? 3 : age <= 5 ? 2 : 1;
+            int alpha = Math.min(255, 320 - age * 32);
+            successStar(image, x, y, radius, alpha, star % 3 == 0);
+        }
+        // The first impact connects the floating crystal to the working surface with a short light shaft.
+        if (phase < 4) {
+            for (int y = 8; y <= 34; y++) {
+                successPixel(image, 91, y, (150 - phase * 35) << 24 | 0xF5E9FF);
+            }
+        }
+        return image;
+    }
+
+    private static void successStar(BufferedImage image, int x, int y, int radius, int alpha, boolean warm) {
+        for (int offset = -radius; offset <= radius; offset++) {
+            int color = alpha << 24 | (Math.abs(offset) == radius ? 0xB397C5 : warm ? 0xFFF0CE : 0xF8EFFF);
+            successPixel(image, x + offset, y, color);
+            successPixel(image, x, y + offset, color);
+        }
+        if (radius >= 2) {
+            for (int offset : new int[]{-1, 1}) {
+                successPixel(image, x + offset, y - 1, (alpha * 2 / 3) << 24 | 0xD5BAE5);
+                successPixel(image, x + offset, y + 1, (alpha * 2 / 3) << 24 | 0xD5BAE5);
+            }
+        }
+    }
+
+    private static void successPixel(BufferedImage image, int x, int y, int color) {
+        if (x >= 0 && x < image.getWidth() / 2 && y >= 0 && y < image.getHeight() && (color >>> 24) != 0) {
+            image.setRGB(x, y, color);
+            image.setRGB(image.getWidth() - 1 - x, y, color);
+        }
     }
 
     private static int whiteAlpha(int alpha) {

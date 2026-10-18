@@ -348,10 +348,37 @@ class VexProfileSessionServiceTest {
     void rejectedSchedulingFailsAnEconomicOperationBeforeItsMutation() throws Exception {
         try (var fixture = new Fixture(true, true)) {
             fixture.rejectScheduling = true;
-            assertTrue(fixture.change().handle((value, failure) -> failure != null).get(5, TimeUnit.SECONDS));
+            assertTrue(fixture.change().handle((value, failure) -> {
+                while (failure instanceof java.util.concurrent.CompletionException && failure.getCause() != null) {
+                    failure = failure.getCause();
+                }
+                return failure instanceof ProfileSessionRetiredException;
+            }).get(5, TimeUnit.SECONDS));
             assertEquals("old", fixture.player.read(VALUE, value -> value));
             assertEquals(10, fixture.level);
             assertEquals(0, fixture.effects);
+        }
+    }
+
+    @Test
+    void entityRetirementAfterSchedulingFailsBeforeMutationAndStillDrainsTheSession() throws Exception {
+        try (var fixture = new Fixture(true, true)) {
+            var operation = fixture.entity.submit(() -> {
+                var queued = fixture.database.submit(fixture::change).get(5, TimeUnit.SECONDS);
+                fixture.entityRetired = true;
+                return queued;
+            }).get(5, TimeUnit.SECONDS);
+            assertTrue(operation.handle((value, failure) -> {
+                while (failure instanceof java.util.concurrent.CompletionException && failure.getCause() != null) {
+                    failure = failure.getCause();
+                }
+                return failure instanceof ProfileSessionRetiredException;
+            }).get(5, TimeUnit.SECONDS));
+            assertEquals("old", fixture.player.read(VALUE, value -> value));
+            assertEquals(10, fixture.level);
+            assertEquals(0, fixture.effects);
+            fixture.sessions.retire(fixture.player).get(5, TimeUnit.SECONDS);
+            assertFalse(fixture.leases.isWritable(fixture.context()));
         }
     }
 

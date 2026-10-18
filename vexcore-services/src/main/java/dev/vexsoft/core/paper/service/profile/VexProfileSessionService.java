@@ -519,10 +519,13 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         }
         Player platform = player.findPlatformPlayer(Player.class).orElse(null);
         if (platform == null) {
-            return CompletableFuture.failedFuture(new IllegalStateException("Player disconnected before profile operation"));
+            return CompletableFuture.failedFuture(new ProfileSessionRetiredException());
         }
         CompletableFuture<Void> ready;
         synchronized (session) {
+            if (session.retired) {
+                return CompletableFuture.failedFuture(new ProfileSessionRetiredException());
+            }
             if (!session.retired && !session.poisoned && (session.changing.get() || !session.ready.isDone())) {
                 return CompletableFuture.failedFuture(new ProfileSessionBusyException());
             }
@@ -551,7 +554,10 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             .thenCompose(before -> {
                 operation.before = before;
                 return entity(platform, () -> {
-                    if (session.retired || !player.isCurrentContext(context) || !leases.isWritable(context)) {
+                    if (session.retired) {
+                        throw new ProfileSessionRetiredException();
+                    }
+                    if (!player.isCurrentContext(context) || !leases.isWritable(context)) {
                         throw new IllegalStateException("Captured economic session retired");
                     }
                     // Background snapshots must see wallet and native inventory before or after the whole mutation.
@@ -941,7 +947,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
 
     private <T> CompletableFuture<T> entity(final Player player, final Supplier<T> operation) {
         return entity(player, operation, () -> {
-            throw new IllegalStateException("Player entity retired");
+            throw new ProfileSessionRetiredException();
         });
     }
 

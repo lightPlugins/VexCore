@@ -10,7 +10,8 @@ import java.util.Optional;
 /** Bounded tick timings and event sound sequences shared by Arkie and item upgrade rituals. */
 public record UpgradeAnimationSettings(
     int chargeTicks, int holdTicks, int finishTicks, int resolutionTimeoutTicks,
-    Map<String, List<UpgradeAnimationSound>> sounds, double instantSuccessChance, List<UpgradeAnimationPacing> pacing
+    Map<String, List<UpgradeAnimationSound>> sounds, double instantSuccessChance, List<UpgradeAnimationPacing> pacing,
+    UpgradeAnimationMusic music
 ) {
 
     /** Preserves fixed-charge callers without additional visual breakthrough checks or chance-dependent pacing. */
@@ -19,6 +20,14 @@ public record UpgradeAnimationSettings(
         Map<String, List<UpgradeAnimationSound>> sounds
     ) {
         this(chargeTicks, holdTicks, finishTicks, resolutionTimeoutTicks, sounds, 0, List.of());
+    }
+
+    /** Preserves existing callers and serialized settings without a background track. */
+    public UpgradeAnimationSettings(
+        int chargeTicks, int holdTicks, int finishTicks, int resolutionTimeoutTicks,
+        Map<String, List<UpgradeAnimationSound>> sounds, double instantSuccessChance, List<UpgradeAnimationPacing> pacing
+    ) {
+        this(chargeTicks, holdTicks, finishTicks, resolutionTimeoutTicks, sounds, instantSuccessChance, pacing, null);
     }
 
     public UpgradeAnimationSettings {
@@ -58,7 +67,7 @@ public record UpgradeAnimationSettings(
         return pacing.stream().filter(profile -> successChance >= profile.minimumSuccessChance()).findFirst();
     }
 
-    /** Returns a slower charge with layered vanilla sounds and a short pause before the final success reveal. */
+    /** Returns a slower charge with forge music, layered sounds, and a pause before the final success reveal. */
     public static UpgradeAnimationSettings defaults() {
         return new UpgradeAnimationSettings(220, 24, 44, 200, Map.of(
             "start", List.of(cue(0, "block.beacon.activate", 0.65F, 0.65F),
@@ -76,7 +85,7 @@ public record UpgradeAnimationSettings(
             new UpgradeAnimationPacing(0.6, 3, 5, 100, 140, 0, 0),
             new UpgradeAnimationPacing(0.3, 5, 7, 140, 180, 0, 0),
             new UpgradeAnimationPacing(0, 7, 9, 200, 240, 60, 80)
-        ));
+        ), new UpgradeAnimationMusic(new Sound("vexcore:upgrade.background", 0.55F, 1.0F), 485, true));
     }
 
     private static UpgradeAnimationSound cue(int delay, String type, float volume, float pitch) {

@@ -9,6 +9,7 @@ import dev.vexsoft.core.paper.inventory.page.*;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.lang.reflect.Proxy;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,6 +23,58 @@ import org.bukkit.inventory.PlayerInventory;
 import org.junit.jupiter.api.Test;
 
 public final class VexSlotInventoryInteractionsTest {
+
+    @Test
+    void asynchronousExchangeBlocksRepeatedClicksAndRefreshesExactlyOnceAfterCompletion() {
+        var fixture = new Fixture();
+        var completion = new CompletableFuture<Void>();
+        int[] transfers = {0};
+        var elements = Map.<Integer, InventoryElement>of(11, CursorInventoryElement.asynchronous(
+            context -> null, context -> {
+                transfers[0]++;
+                return completion;
+            }));
+        fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
+        fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
+        var lower = fixture.click(60, ClickType.LEFT);
+        fixture.handler.click(fixture.context, fixture.menu, elements, lower);
+        assertTrue(lower.isCancelled());
+        assertEquals(1, transfers[0]);
+        assertTrue(fixture.refreshedItems.isEmpty());
+        completion.complete(null);
+        fixture.runScheduled();
+        assertEquals(1, fixture.refreshedItems.size());
+        var resumed = fixture.click(60, ClickType.LEFT);
+        fixture.handler.click(fixture.context, fixture.menu, elements, resumed);
+        assertFalse(resumed.isCancelled());
+    }
+
+    @Test
+    void closingDuringAsynchronousExchangePreventsTheLateRefresh() {
+        var fixture = new Fixture();
+        var completion = new CompletableFuture<Void>();
+        var elements = Map.<Integer, InventoryElement>of(11,
+            CursorInventoryElement.asynchronous(context -> null, context -> completion));
+        fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
+        fixture.handler.cancel(fixture.id);
+        completion.complete(null);
+        fixture.runScheduled();
+        assertTrue(fixture.refreshedItems.isEmpty());
+    }
+
+    @Test
+    void failedAsynchronousExchangeRefreshesRollbackAndAllowsAnotherAttempt() {
+        var fixture = new Fixture();
+        var completion = new CompletableFuture<Void>();
+        var elements = Map.<Integer, InventoryElement>of(11,
+            CursorInventoryElement.asynchronous(context -> null, context -> completion));
+        fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
+        completion.completeExceptionally(new IllegalStateException("Storage failed"));
+        fixture.runScheduled();
+        assertEquals(1, fixture.refreshedItems.size());
+        fixture.handler.click(fixture.context, fixture.menu, fixture.elements(), fixture.click(11, ClickType.LEFT));
+        assertEquals(1, fixture.menu.transfers);
+    }
 
     @Test
     void ordinaryLowerClicksAndDragsStayNative() {
@@ -232,12 +285,12 @@ public final class VexSlotInventoryInteractionsTest {
         final ScheduleService schedules = proxy(
             ScheduleService.class,
             (proxyObject, invokedMethod, arguments) -> {
-                if (invokedMethod.getName().equals("runForLater")) {
+                if (invokedMethod.getName().equals("runForLater") || invokedMethod.getName().equals("runFor")) {
                     if (rejectScheduling) {
                         return Optional.empty();
                     }
 
-                    scheduled.add((Runnable) arguments[2]);
+                    scheduled.add((Runnable) arguments[invokedMethod.getName().equals("runForLater") ? 2 : 1]);
 
                     return Optional.of(proxy(
                         dev.vexsoft.core.paper.scheduler.VexTask.class,

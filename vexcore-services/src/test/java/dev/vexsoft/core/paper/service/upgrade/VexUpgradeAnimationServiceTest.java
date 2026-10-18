@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.api.teleport.TransferPresentation;
 import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import dev.vexsoft.core.paper.scheduler.VexTask;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
@@ -17,11 +18,14 @@ import dev.vexsoft.core.paper.screenui.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
 import dev.vexsoft.core.paper.screenui.UiTexture;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import dev.vexsoft.core.paper.service.screenui.ScreenUiRenderer;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.upgrade.UpgradeAnimationMusic;
 import dev.vexsoft.core.paper.upgrade.UpgradeAnimationOutcome;
 import dev.vexsoft.core.paper.upgrade.UpgradeAnimationPacing;
 import dev.vexsoft.core.paper.upgrade.UpgradeAnimationRequest;
 import dev.vexsoft.core.paper.upgrade.UpgradeAnimationSettings;
+import dev.vexsoft.core.paper.upgrade.UpgradeAnimationSound;
 import dev.vexsoft.core.paper.upgrade.UpgradeAnimationTexts;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -33,9 +37,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -45,6 +53,84 @@ import org.junit.jupiter.api.Test;
 final class VexUpgradeAnimationServiceTest {
 
     private static final UpgradeAnimationSettings SETTINGS = new UpgradeAnimationSettings(40, 2, 20, 40, Map.of());
+
+    @Test
+    void musicStopsBeforeTheImmediateResultCueForBothOutcomes() throws Exception {
+        for (boolean success : List.of(true, false)) {
+            try (var fixture = new Fixture()) {
+                fixture.enableMusic(true);
+                fixture.resolution.complete(success);
+                var completion = fixture.play();
+                assertEquals(List.of("play:vexcore:upgrade.background"), fixture.audioEvents);
+                assertEquals(1.0F, fixture.playedMusic.getFirst().pitch());
+                assertEquals(Sound.Source.MASTER, fixture.playedMusic.getFirst().source());
+                fixture.tick(SETTINGS.chargeTicks() + SETTINGS.holdTicks() + SETTINGS.finishTicks());
+                assertEquals(success ? UpgradeAnimationOutcome.SUCCESS : UpgradeAnimationOutcome.FAILURE,
+                    completion.join());
+                String result = "play:minecraft:" + (success ? "ui.toast.challenge_complete" : "block.fire.extinguish");
+                int resultIndex = fixture.audioEvents.indexOf(result);
+                assertTrue(resultIndex > 0);
+                assertEquals("stop:vexcore:upgrade.background", fixture.audioEvents.get(resultIndex - 1),
+                    "The background must stop before the result starts, not at the end of the finale");
+            }
+        }
+    }
+
+    @Test
+    void backgroundRepeatsOnlyWhenConfiguredAndNeverChangesPitch() throws Exception {
+        for (boolean loop : List.of(true, false)) {
+            try (var fixture = new Fixture()) {
+                fixture.enableMusic(loop);
+                fixture.play();
+                fixture.tick(40);
+                assertEquals(loop ? 3 : 1, fixture.playedMusic.size());
+                assertTrue(fixture.playedMusic.stream().allMatch(sound -> sound.pitch() == 1.0F));
+                fixture.service.cancel(fixture.player);
+                assertEquals("stop:vexcore:upgrade.background", fixture.audioEvents.getLast());
+            }
+        }
+    }
+
+    @Test
+    void everyPresentationCleanupStopsOnlyItsOwnedBackgroundTrack() throws Exception {
+        for (String action : List.of("cancel", "disconnect", "world", "screen", "retire", "close")) {
+            try (var fixture = new Fixture()) {
+                fixture.enableMusic(true);
+                var completion = fixture.play();
+                switch (action) {
+                    case "cancel" -> fixture.service.cancel(fixture.player);
+                    case "disconnect" -> fixture.online = false;
+                    case "world" -> fixture.world = world();
+                    case "screen" -> fixture.screen.closed = true;
+                    case "retire" -> fixture.timer.retired.run();
+                    case "close" -> ((VexUpgradeAnimationService) fixture.service).close();
+                    default -> throw new IllegalArgumentException(action);
+                }
+                fixture.tick(1);
+                assertEquals(UpgradeAnimationOutcome.CANCELLED, completion.join(), action);
+                assertEquals(List.of("play:vexcore:upgrade.background", "stop:vexcore:upgrade.background"),
+                    fixture.audioEvents, action);
+            }
+        }
+    }
+
+    @Test
+    void skipStopsMusicImmediatelyWhileTheDurableResultIsStillPending() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.enableMusic(true);
+            var completion = fixture.play();
+            fixture.service.skip(fixture.player);
+            fixture.tick(25);
+            assertFalse(completion.isDone());
+            assertEquals(List.of("play:vexcore:upgrade.background", "stop:vexcore:upgrade.background"),
+                fixture.audioEvents);
+            fixture.resolution.complete(true);
+            fixture.tick(1);
+            assertEquals(UpgradeAnimationOutcome.SUCCESS, completion.join());
+            assertEquals("play:minecraft:ui.toast.challenge_complete", fixture.audioEvents.getLast());
+            assertEquals(1, fixture.playedMusic.size());
+        }
+    }
 
     @Test
     void successWaitsForDurableResolutionAndCompletesExactlyOnceAfterTheFinalAnimation() throws Exception {
@@ -59,12 +145,16 @@ final class VexUpgradeAnimationServiceTest {
             assertFalse(completion.isDone());
             assertEquals(retained, fixture.screen.progress.getLast());
             assertFalse(fixture.screen.progress.contains(100));
+            assertFalse(fixture.screen.textures.containsKey("success_fx"));
             fixture.resolution.complete(true);
             for (int tick = 0; tick < 50 && !fixture.screen.progress.contains(100); tick++) {
                 fixture.tick(1);
             }
             assertTrue(fixture.screen.progress.contains(100));
             assertTrue(fixture.screen.progress.contains(99));
+            assertTrue(fixture.screen.textures.get("success_fx").fontPrefix().value().endsWith("success_0"));
+            assertEquals(101, fixture.screen.textureLayouts.get("success_fx").layer(),
+                "Success sparks stay behind the readable forge and rune artwork");
             assertFalse(completion.isDone());
             fixture.tick(SETTINGS.finishTicks());
             assertEquals(UpgradeAnimationOutcome.SUCCESS, completion.join());
@@ -86,6 +176,7 @@ final class VexUpgradeAnimationServiceTest {
             fixture.tick(42 + SETTINGS.finishTicks());
             assertEquals(UpgradeAnimationOutcome.FAILURE, completion.join());
             assertFalse(fixture.screen.progress.contains(100));
+            assertFalse(fixture.screen.textures.containsKey("success_fx"), "Failure never plays the success finale");
             assertTrue(fixture.screen.progress.getLast() >= 5 && fixture.screen.progress.getLast() <= 99);
             assertTrue(fixture.screen.text.contains(Component.text("Failure")));
             assertEquals("sprite/upgrade/bar_0", fixture.screen.bar.fontPrefix().value());
@@ -452,9 +543,9 @@ final class VexUpgradeAnimationServiceTest {
                 fixture.tick(SETTINGS.holdTicks() - 1);
                 assertEquals(99, fixture.screen.progress.getLast());
                 var pendingTint = fixture.screen.textureLayouts.get("rune_2").tint();
-                assertFalse(pendingTint.equals(TextColor.color(0xC4B5FD)),
-                    "The last rune must not look successfully applied while the result is hidden");
-                assertFalse(pendingTint.equals(TextColor.color(0x3F354D)),
+                assertTrue(fixture.screen.textures.get("rune_2").fontPrefix().value().endsWith("rune_3_inactive"),
+                    "The last rune keeps its inactive texture while the result is hidden");
+                assertFalse(pendingTint.equals(TextColor.color(0xFFFFFF)),
                     "The last rune must visibly attempt activation during the hold");
                 fixture.tick(1);
                 assertEquals(success ? 100 : 99, fixture.screen.progress.getLast());
@@ -534,15 +625,63 @@ final class VexUpgradeAnimationServiceTest {
         try (var fixture = new Fixture()) {
             fixture.play();
             assertEquals(-144, fixture.screen.textureLayouts.get("frame").y());
-            assertEquals(-79, fixture.screen.textureLayouts.get("core").y());
-            assertEquals(0, fixture.screen.textureLayouts.get("rune_0").y());
-            assertEquals(29, fixture.screen.textureLayouts.get("bar").y());
+            assertEquals(-75, fixture.screen.textureLayouts.get("core").y());
+            assertEquals(-5, fixture.screen.textureLayouts.get("rune_0").y());
+            assertEquals(34, fixture.screen.textureLayouts.get("bar").y());
             assertEquals(-132, fixture.screen.textLayouts.get("title").y());
             assertEquals(-113, fixture.screen.textLayouts.get("subject").y());
             assertEquals(-96, fixture.screen.textLayouts.get("upgrade").y());
-            assertEquals(43, fixture.screen.textLayouts.get("progress").y());
+            assertEquals(-31, fixture.screen.textLayouts.get("progress").y());
             assertEquals(62, fixture.screen.textLayouts.get("phase").y());
             assertEquals(80, fixture.screen.textLayouts.get("skip_hint").y());
+        }
+    }
+
+    @Test
+    void palePublishedTextGetsContrastAndSteelPercentageFitsTheAnvilThroughSuccess() throws Exception {
+        try (var fixture = new Fixture()) {
+            fixture.title = Component.text("Title", TextColor.color(0xE4E4E7))
+                .append(Component.text(" old", TextColor.color(0xC4B5FD)));
+            fixture.progressTemplate = Component.empty().decorate(TextDecoration.BOLD)
+                .append(Component.text("%progress% %", TextColor.color(0xC4B5FD)).decorate(TextDecoration.BOLD));
+            fixture.resolution.complete(true);
+            fixture.play();
+            var title = fixture.screen.lines.get("title").getFirst();
+            for (var color : List.of(title.color(), title.children().getFirst().color())) {
+                double brightness = color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114;
+                assertTrue(brightness <= 96, "Old pale text colors must remain readable on the gray panel");
+            }
+            assertEquals(1, fixture.screen.textLayouts.get("title_shadow").x());
+            assertEquals(-131, fixture.screen.textLayouts.get("title_shadow").y());
+            assertEquals(109, fixture.screen.textLayouts.get("title_shadow").layer());
+            assertEquals(TextColor.color(0xB9BAC3), fixture.screen.lines.get("progress").getFirst().color());
+            assertEquals(TextColor.color(0x777780), fixture.screen.lines.get("progress_shadow").getFirst().color());
+            assertFalse(fixture.screen.lines.containsKey("progress_left"), "Metal lettering needs no outline");
+            var core = fixture.screen.textureLayouts.get("core");
+            var progress = fixture.screen.textLayouts.get("progress");
+            assertEquals(core.y() + 44, progress.y(), "The lettering sits on the anvil's front face");
+            assertEquals("0%", PlainTextComponentSerializer.plainText()
+                .serialize(fixture.screen.lines.get("progress").getFirst()));
+            fixture.tick(SETTINGS.chargeTicks() + SETTINGS.holdTicks());
+            assertEquals(TextColor.color(0xB9BAC3), fixture.screen.lines.get("progress").getFirst().color(),
+                "Steel lettering keeps its color independently of bar fill");
+            assertEquals("100%", PlainTextComponentSerializer.plainText()
+                .serialize(fixture.screen.lines.get("progress").getFirst()));
+            var rendered = ScreenUiRenderer.layout(fixture.screen.lines.get("progress"), progress).getFirst();
+            assertEquals(24, rendered.width(), "100% must fit the narrow metal face without truncation");
+            assertEquals("100%", rendered.glyphs().stream().map(ScreenUiRenderer.Glyph::text)
+                .collect(Collectors.joining()));
+            for (var glyph : rendered.glyphs()) {
+                assertEquals(TextDecoration.State.FALSE, glyph.style().decoration(TextDecoration.BOLD),
+                    "Nested legacy formatting must not widen the percentage");
+            }
+            for (String id : List.of("progress", "phase")) {
+                String foreground = PlainTextComponentSerializer.plainText()
+                    .serialize(fixture.screen.lines.get(id).getFirst());
+                String shadow = PlainTextComponentSerializer.plainText()
+                    .serialize(fixture.screen.lines.get(id + "_shadow").getFirst());
+                assertEquals(foreground, shadow, "Dynamic phase and percentage shadows must update with their text");
+            }
         }
     }
 
@@ -590,8 +729,14 @@ final class VexUpgradeAnimationServiceTest {
         private int resolutions;
         private UpgradeAnimationSettings settings = SETTINGS;
         private double successChance = 0.5;
-        private Runnable onResolve = () -> {};
-        private Runnable onOpen = () -> {};
+        private Component title = Component.text("Title");
+        private Component progressTemplate = Component.text("%progress%");
+        private final List<String> audioEvents = new ArrayList<>();
+        private final List<Sound> playedMusic = new ArrayList<>();
+        private Runnable onResolve = () -> {
+        };
+        private Runnable onOpen = () -> {
+        };
         private boolean deferStart;
         private Runnable pendingStart;
         private CompletableFuture<Boolean> resolution = new CompletableFuture<>();
@@ -601,7 +746,19 @@ final class VexUpgradeAnimationServiceTest {
                 case "isOnline" -> online;
                 case "getWorld" -> world;
                 case "getLocation" -> new Location(world, 10, 64, 20);
-                case "playSound" -> null;
+                case "playSound" -> {
+                    if (arguments[0] instanceof Sound sound) {
+                        playedMusic.add(sound);
+                        audioEvents.add("play:" + sound.name().asString());
+                    } else {
+                        audioEvents.add("play:" + arguments[1]);
+                    }
+                    yield null;
+                }
+                case "stopSound" -> {
+                    audioEvents.add("stop:" + arguments[0]);
+                    yield null;
+                }
                 default -> null;
             });
         private final UpgradeAnimationService service;
@@ -619,7 +776,9 @@ final class VexUpgradeAnimationServiceTest {
                         } else {
                             ((Runnable) arguments[1]).run();
                         }
-                        return Optional.of(new Timer(() -> {}, () -> {}));
+                        return Optional.of(new Timer(() -> {
+                        }, () -> {
+                        }));
                     }
                     assertEquals("runForTimer", method.getName());
                     assertEquals(1L, arguments[2]);
@@ -648,14 +807,25 @@ final class VexUpgradeAnimationServiceTest {
         }
 
         private CompletableFuture<UpgradeAnimationOutcome> play() {
-            var texts = new UpgradeAnimationTexts(Component.text("Title"), Component.text("Arkie"),
-                Component.text("+4 to +5"), Component.text("%progress%"), Component.text("Charging"),
+            var texts = new UpgradeAnimationTexts(title, Component.text("Arkie"),
+                Component.text("+4 to +5"), progressTemplate, Component.text("Charging"),
                 Component.text("Holding"), Component.text("Success"), Component.text("Failure"), Component.text("Skip"));
             return service.play(player, new UpgradeAnimationRequest(texts, settings, () -> {
                 resolutions++;
                 onResolve.run();
                 return resolution;
             }, successChance));
+        }
+
+        private void enableMusic(boolean loop) {
+            settings = new UpgradeAnimationSettings(SETTINGS.chargeTicks(), SETTINGS.holdTicks(), SETTINGS.finishTicks(),
+                1200, Map.of(
+                    "success", List.of(new UpgradeAnimationSound(0,
+                        new TransferPresentation.Sound("minecraft:ui.toast.challenge_complete", 0.5F, 1.0F))),
+                    "failure", List.of(new UpgradeAnimationSound(0,
+                        new TransferPresentation.Sound("minecraft:block.fire.extinguish", 0.5F, 1.0F)))
+                ), 0, List.of(), new UpgradeAnimationMusic(
+                    new TransferPresentation.Sound("vexcore:upgrade.background", 0.55F, 1.0F), 20, loop));
         }
 
         private void tick(int count) {
@@ -684,6 +854,8 @@ final class VexUpgradeAnimationServiceTest {
         private UiTexture bar;
         private final Map<String, TextureLayout> textureLayouts = new HashMap<>();
         private final Map<String, TextBlockLayout> textLayouts = new HashMap<>();
+        private final Map<String, List<Component>> lines = new HashMap<>();
+        private final Map<String, UiTexture> textures = new HashMap<>();
         private boolean closed;
 
         @Override
@@ -695,6 +867,7 @@ final class VexUpgradeAnimationServiceTest {
         @Override
         public void textureBlock(String id, UiTexture texture, TextureLayout layout) {
             textureLayouts.put(id, layout);
+            textures.put(id, texture);
             if (id.equals("bar")) {
                 bar = texture;
             }
@@ -702,10 +875,12 @@ final class VexUpgradeAnimationServiceTest {
 
         @Override
         public void setLines(String id, List<Component> lines) {
-            text.addAll(lines);
+            this.lines.put(id, List.copyOf(lines));
+            text.addAll(lines.stream().map(line -> Component.text(PlainTextComponentSerializer.plainText()
+                .serialize(line))).toList());
             if (id.equals("progress")) {
                 progress.add(Integer.parseInt(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
-                    .plainText().serialize(lines.getFirst())));
+                    .plainText().serialize(lines.getFirst()).replace("%", "")));
             }
         }
 

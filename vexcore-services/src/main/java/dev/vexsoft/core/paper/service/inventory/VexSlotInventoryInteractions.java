@@ -26,6 +26,7 @@ final class VexSlotInventoryInteractions {
 
     private final ScheduleService schedules;
     private final Map<UUID, Object> pendingDrags = new ConcurrentHashMap<>();
+    private final Map<UUID, Object> pendingExchanges = new ConcurrentHashMap<>();
 
     void click(
         InventoryContext context,
@@ -39,7 +40,7 @@ final class VexSlotInventoryInteractions {
 
         Player player = context.getViewer();
 
-        if (pendingDrags.containsKey(player.getUniqueId())) {
+        if (pendingDrags.containsKey(player.getUniqueId()) || pendingExchanges.containsKey(player.getUniqueId())) {
             event.setCancelled(true);
 
             return;
@@ -93,7 +94,7 @@ final class VexSlotInventoryInteractions {
 
         Player player = context.getViewer();
 
-        if (pendingDrags.containsKey(player.getUniqueId())) {
+        if (pendingDrags.containsKey(player.getUniqueId()) || pendingExchanges.containsKey(player.getUniqueId())) {
             event.setCancelled(true);
 
             return;
@@ -149,11 +150,44 @@ final class VexSlotInventoryInteractions {
 
     void cancel(UUID playerId) {
         pendingDrags.remove(playerId);
+        pendingExchanges.remove(playerId);
     }
 
-    private static void transfer(InventoryContext context, SlotInventoryView view, CursorInventoryElement element) {
-        element.transfer(context);
+    private void transfer(InventoryContext context, SlotInventoryView view, CursorInventoryElement element) {
+        var player = context.getViewer();
+        var id = player.getUniqueId();
+        var ticket = new Object();
+        if (pendingExchanges.putIfAbsent(id, ticket) != null) {
+            return;
+        }
+        try {
+            var completion = element.transferAsync(context);
+            if (completion.isDone()) {
+                pendingExchanges.remove(id, ticket);
+                refresh(context, view);
+            } else {
+                completion.whenComplete((ignored, failure) -> {
+                    try {
+                        var scheduled = schedules.runFor(player, () -> {
+                            if (pendingExchanges.remove(id, ticket)) {
+                                refresh(context, view);
+                            }
+                        }, () -> pendingExchanges.remove(id, ticket));
+                        if (scheduled.isEmpty()) {
+                            pendingExchanges.remove(id, ticket);
+                        }
+                    } catch (RuntimeException rejected) {
+                        pendingExchanges.remove(id, ticket);
+                    }
+                });
+            }
+        } catch (RuntimeException failure) {
+            pendingExchanges.remove(id, ticket);
+            throw failure;
+        }
+    }
 
+    private static void refresh(InventoryContext context, SlotInventoryView view) {
         if (context.getInventoryService().getCurrentView(context.getViewer().getUniqueId()).orElse(null) == view) {
             context.getInventoryService().refresh(context.getViewer());
         }

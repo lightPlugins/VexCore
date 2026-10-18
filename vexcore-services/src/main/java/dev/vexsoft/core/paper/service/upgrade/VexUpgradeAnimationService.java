@@ -26,8 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -35,7 +38,9 @@ import org.bukkit.entity.Player;
 @Dependencies({ScheduleService.class, ScreenUiService.class})
 public final class VexUpgradeAnimationService implements UpgradeAnimationService, AutoCloseable {
 
-    private static final int VIOLET = 0x8B5CF6;
+    private static final int CHARGE_TINT = 0xE8E0ED;
+    private static final int PROGRESS_COLOR = 0xB9BAC3;
+    private static final int PROGRESS_SHADOW = 0x777780;
     private static final int OFFSET_Y = -30;
     private final ScheduleService schedules;
     private final ScreenUiService screens;
@@ -126,12 +131,13 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
                 text(animation, "title", texts.title(), -102);
                 text(animation, "subject", texts.subject(), -83);
                 text(animation, "upgrade", texts.upgrade(), -66);
-                text(animation, "progress", progress(animation, 0), 73);
+                text(animation, "progress", progress(animation, 0), -1);
                 text(animation, "phase", texts.charging(), 92);
                 if (!texts.skipHint().equals(Component.empty())) {
                     text(animation, "skip_hint", texts.skipHint(), 110);
                 }
                 render(animation, animation.timeline.frame(0), false);
+                startMusic(animation);
                 sound(animation, "start");
             }
             animation.task = schedules.runForTimer(animation.player, 1, 1,
@@ -177,6 +183,12 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
                 }
                 return;
             }
+            var music = animation.request.settings().music();
+            if (animation.musicPlaying && music.loop()
+                && animation.tick - animation.musicStartedAt >= music.durationTicks()) {
+                stopMusic(animation);
+                startMusic(animation);
+            }
             if (!animation.resolved) {
                 render(animation, animation.timeline.frame(0), false);
                 if (animation.tick - animation.resolveAt > settings.resolutionTimeoutTicks()) {
@@ -219,7 +231,7 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
             }
             if (animation.chargeTick == animation.timeline.duration() && animation.holdAt < 0) {
                 animation.holdAt = animation.tick;
-                animation.screen.setLines("phase", List.of(animation.request.texts().holding()));
+                setText(animation, "phase", animation.request.texts().holding());
                 sound(animation, "hold");
             }
             // A failure selected for 99% shares the entire last-rune hold with success; reaching it reveals nothing.
@@ -235,8 +247,8 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
         animation.finishAt = animation.tick;
         animation.finishProgress = progress;
         animation.sounds.clear();
-        animation.screen.setLines("phase", List.of(success
-            ? animation.request.texts().success() : animation.request.texts().failure()));
+        stopMusic(animation);
+        setText(animation, "phase", success ? animation.request.texts().success() : animation.request.texts().failure());
         render(animation, new UpgradeAnimationTimeline.Frame(success ? 100 : progress,
             success ? 180 : (int) Math.round(progress * 1.8), success ? 3 : 0, false, 0), true);
         sound(animation, success ? "success" : "failure");
@@ -260,6 +272,7 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
         if (!animation.presentationHidden) {
             animation.presentationHidden = true;
             animation.sounds.clear();
+            stopMusic(animation);
             if (animation.screen != null) {
                 animation.screen.close();
             }
@@ -289,24 +302,32 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
         double pulse = 0.5 - Math.cos(animation.tick * Math.PI / 16) * 0.5;
         boolean success = finishing && Boolean.TRUE.equals(animation.result);
         int finishAge = finishing ? animation.tick - animation.finishAt : 0;
+        int successPhase = Math.min(15, finishAge * 16 / Math.max(1, animation.request.settings().finishTicks()));
         int core = ((finishing && !success ? animation.finishAt : animation.tick) / 2) % 16;
         int tint = finishing && !success
-            ? blend(0x281B36, 0x9F7DC9,
+            ? blend(0x504050, 0xFFFFFF,
                 Math.max(0, 1 - finishAge / (double) animation.request.settings().finishTicks()))
-            : blend(VIOLET, 0xE9D5FF, Math.max(frame.flash() * 0.55, pulse * 0.32));
-        sprite(animation, "core", success ? "burst_" + Math.min(15, finishAge / 2) : "core_" + core,
-            72, 72, -36, -49, 102, tint);
+            : blend(CHARGE_TINT, 0xFFFFFF, Math.max(frame.flash(), pulse));
+        if (success) {
+            sprite(animation, "success_fx", "success_" + successPhase, 184, 104, -92, -45, 101, 0xFFFFFF);
+        }
+        sprite(animation, "core", success ? "burst_" + successPhase : "core_" + core,
+            72, 72, -36, -45, 102, tint);
         for (int rune = 0; rune < 3; rune++) {
             boolean active = rune < frame.runes();
             boolean pendingLastRune = !finishing && rune == 2 && animation.holdAt >= 0;
-            int runeTint = pendingLastRune ? blend(0x3F354D, 0xFBBF24, 0.25 + pulse * 0.5)
-                : active ? 0xC4B5FD : 0x3F354D;
-            sprite(animation, "rune_" + rune, "rune_" + (rune + 1), 20, 20,
-                -50 + rune * 40, 30, 103, runeTint);
+            int runeTint = pendingLastRune ? blend(0xFFFFFF, 0xFFD090, 0.25 + pulse * 0.5) : 0xFFFFFF;
+            double reveal = Math.clamp((successPhase - (rune == 1 ? 0 : 2)) / 7.0, 0, 1);
+            int lift = success ? (int) Math.round(2 * Math.sin(reveal * Math.PI)) : 0;
+            String asset = "rune_" + (rune + 1) + (active ? "" : "_inactive");
+            sprite(animation, "rune_" + rune, asset, 22, 26, -51 + rune * 40, 25 - lift, 103, runeTint);
         }
-        sprite(animation, "bar", "bar_" + frame.barFill(), 180, 8, -90, 59, 102,
-            blend(VIOLET, 0xF5F3FF, frame.flash()));
-        animation.screen.setLines("progress", List.of(progress(animation, frame.progress())));
+        sprite(animation, "bar", "bar_" + frame.barFill(), 180, 12, -90, 64, 102,
+            blend(CHARGE_TINT, 0xFFFFFF, frame.flash()));
+        if (animation.renderedProgress != frame.progress()) {
+            setText(animation, "progress", progress(animation, frame.progress()));
+            animation.renderedProgress = frame.progress();
+        }
     }
 
     private static int blend(int first, int second, double amount) {
@@ -318,13 +339,62 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
 
     private Component progress(Animation animation, int value) {
         return animation.request.texts().progress().replaceText(builder -> builder.matchLiteral("%progress%")
-            .replacement(Integer.toString(value)));
+            .replacement(Integer.toString(value)))
+            // Older translations separate the percent sign; compact it to fit 100% on the anvil's face.
+            .replaceText(builder -> builder.match("\\s+%").replacement("%"));
     }
 
     private void text(Animation animation, String id, Component text, int y) {
+        Component foreground = styledText(id, text);
+        boolean progress = id.equals("progress");
+        textBlock(animation, id + "_shadow", recolor(foreground, progress ? PROGRESS_SHADOW : 0x9B969F), 1, y + 1, 109);
+        textBlock(animation, id, foreground, 0, y, 110);
+    }
+
+    private void setText(Animation animation, String id, Component text) {
+        Component foreground = styledText(id, text);
+        boolean progress = id.equals("progress");
+        animation.screen.setLines(id, List.of(foreground));
+        animation.screen.setLines(id + "_shadow", List.of(recolor(foreground, progress ? PROGRESS_SHADOW : 0x9B969F)));
+    }
+
+    private void textBlock(Animation animation, String id, Component text, int x, int y, int layer) {
         animation.screen.textBlock(id, List.of(text), TextBlockLayout.builder().anchor(ScreenAnchor.CENTER)
-            .x(0).y(y + OFFSET_Y).maxWidth(208).horizontalAlignment(HorizontalAlignment.CENTER)
-            .overflow(TextOverflow.ELLIPSIS).layer(110).build());
+            .x(x).y(y + OFFSET_Y).maxWidth(id.startsWith("progress") ? 24 : 208)
+            .horizontalAlignment(HorizontalAlignment.CENTER)
+            .overflow(TextOverflow.ELLIPSIS).layer(layer).build());
+    }
+
+    private Component styledText(String id, Component text) {
+        return id.equals("progress") ? progressText(text)
+            : panelText(text).colorIfAbsent(TextColor.color(0x57515D));
+    }
+
+    private Component progressText(Component text) {
+        // Older published labels can mark nested spans bold, making 100% exceed the 24-pixel metal face.
+        return text.children(text.children().stream().map(this::progressText).toList())
+            .color(TextColor.color(PROGRESS_COLOR)).decoration(TextDecoration.BOLD, false);
+    }
+
+    private Component panelText(Component text) {
+        var rendered = text.children(text.children().stream().map(this::panelText).toList());
+        var color = text.color();
+        if (color == null) {
+            return rendered;
+        }
+        // Older published translations can still carry pale colors intended for the former dark panel.
+        double brightness = color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114;
+        if (brightness <= 95) {
+            return rendered;
+        }
+        double shade = 95 / brightness;
+        return rendered.color(TextColor.color((int) Math.round(color.red() * shade),
+            (int) Math.round(color.green() * shade), (int) Math.round(color.blue() * shade)));
+    }
+
+    private Component recolor(Component text, int color) {
+        return text.children(text.children().stream().map(child -> recolor(child, color)).toList())
+            .color(TextColor.color(color));
     }
 
     private void sprite(
@@ -342,6 +412,25 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
             } else {
                 animation.sounds.add(new PendingSound(animation.tick + cue.delayTicks(), cue));
             }
+        }
+    }
+
+    private void startMusic(Animation animation) {
+        var music = animation.request.settings().music();
+        if (music == null || music.sound().volume() == 0) {
+            return;
+        }
+        animation.musicPlaying = true;
+        animation.musicStartedAt = animation.tick;
+        // Self-emitted playback keeps the stereo track independent of the player's position and charge pitch.
+        animation.player.playSound(Sound.sound(Key.key(music.sound().type()), Sound.Source.MASTER,
+            music.sound().volume(), 1.0F));
+    }
+
+    private void stopMusic(Animation animation) {
+        if (animation.musicPlaying) {
+            animation.musicPlaying = false;
+            animation.player.stopSound(animation.request.settings().music().sound().type(), SoundCategory.MASTER);
         }
     }
 
@@ -374,6 +463,11 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
         }
         animations.remove(animation.player.getUniqueId(), animation);
         var completion = result;
+        try {
+            stopMusic(animation);
+        } catch (RuntimeException failure) {
+            completion = UpgradeAnimationOutcome.ERROR;
+        }
         try {
             if (animation.task != null) {
                 animation.task.cancel();
@@ -413,12 +507,15 @@ public final class VexUpgradeAnimationService implements UpgradeAnimationService
         private int tick;
         private int chargeTick;
         private int lastProgress;
+        private int renderedProgress = -1;
         private int stepAt;
         private int resolveAt;
         private int holdAt = -1;
         private int runes;
         private int finishAt = -1;
         private int finishProgress;
+        private int musicStartedAt;
+        private boolean musicPlaying;
         private boolean resolving;
         private boolean presentationHidden;
 
