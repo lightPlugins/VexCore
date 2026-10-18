@@ -78,6 +78,12 @@ public final class V26_2ItemMetaTransformer {
             copy.set(DataComponents.LORE, copy.getPrototype().get(DataComponents.LORE));
         }
 
+        if (rule.getEnchantmentGlint() != null) {
+            copy.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, rule.getPersistentEnchantmentGlint() == null
+                ? copy.getPrototype().get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)
+                : rule.getPersistentEnchantmentGlint());
+        }
+
         if (rule.getTooltipStyle() != null) {
             copy.set(DataComponents.TOOLTIP_STYLE, copy.getPrototype().get(DataComponents.TOOLTIP_STYLE));
         }
@@ -108,6 +114,10 @@ public final class V26_2ItemMetaTransformer {
 
         if (rule.getItemModel() != null) {
             item.set(DataComponents.ITEM_MODEL, Identifier.parse(rule.getItemModel().asString()));
+        }
+
+        if (rule.getEnchantmentGlint() != null) {
+            item.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, rule.getEnchantmentGlint());
         }
 
         if (rule.getLore() == null) {

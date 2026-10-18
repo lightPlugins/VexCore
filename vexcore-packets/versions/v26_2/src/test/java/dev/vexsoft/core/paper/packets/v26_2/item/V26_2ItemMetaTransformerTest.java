@@ -43,6 +43,41 @@ public final class V26_2ItemMetaTransformerTest {
     }
 
     @Test
+    void creativeColoredGlintRestoresTheOriginalModelAndRealGlintWithoutChangingOtherComponents() {
+        var original = new ItemStack(Holder.direct(Items.IRON_SWORD, DataComponentMap.EMPTY));
+        var model = new NamespacedKey("isles", "sword");
+        original.set(DataComponents.ITEM_MODEL, Identifier.parse(model.asString()));
+        original.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        original.set(DataComponents.DAMAGE, 17);
+        var rendered = original.copy();
+        var variant = new NamespacedKey("isles", "rarity_glint/rare/isles/sword");
+        rendered.set(DataComponents.ITEM_MODEL, Identifier.parse(variant.asString()));
+        rendered.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false);
+        var rule = FakeItemMetaRule.builder().itemModel(variant).persistentItemModel(model)
+            .enchantmentGlint(false).persistentEnchantmentGlint(true).build();
+
+        var restored = transformer.sanitize(rendered, rule);
+
+        assertTrue(ItemStack.isSameItemSameComponents(original, restored));
+        assertEquals(original.getComponentsPatch(), restored.getComponentsPatch());
+        assertFalse(rendered.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
+        assertEquals(17, restored.get(DataComponents.DAMAGE));
+    }
+
+    @Test
+    void aViewerOnlyGlintOverrideDoesNotCreateAComponentPatchOnAnOrdinaryItem() {
+        var original = new ItemStack(Items.PAPER, 8);
+        var rendered = original.copy();
+        rendered.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false);
+        var rule = FakeItemMetaRule.builder().enchantmentGlint(false).build();
+
+        var restored = transformer.sanitize(rendered, rule);
+
+        assertEquals(original.getComponentsPatch(), restored.getComponentsPatch());
+        assertTrue(ItemStack.isSameItemSameComponents(original, restored));
+    }
+
+    @Test
     void creativeVanillaItemsStackWithNormalItemsAfterPresentationIsSanitized() {
         var preview = new NamespacedKey("isles", "preview");
         var tooltip = new NamespacedKey("isles", "tooltip");

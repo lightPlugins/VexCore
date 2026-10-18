@@ -15,6 +15,10 @@ public class FakeItemMetaRule {
     NamespacedKey itemModel;
     /** Configured server model to restore when Creative sends the rendered stack back. */
     NamespacedKey persistentItemModel;
+    /** Optional viewer glint override; null preserves the stack's own component. */
+    Boolean enchantmentGlint;
+    /** Canonical glint override to restore when Creative returns a rendered stack; null restores the prototype. */
+    Boolean persistentEnchantmentGlint;
     NamespacedKey tooltipStyle;
     List<Component> lore;
     FakeItemLoreMode loreMode;
