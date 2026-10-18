@@ -131,8 +131,15 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
         }
 
         if (next.getEnchantmentGlint() != null) {
-            builder.enchantmentGlint(next.getEnchantmentGlint())
-                .persistentEnchantmentGlint(next.getPersistentEnchantmentGlint());
+            builder.enchantmentGlint(next.getEnchantmentGlint());
+        }
+
+        if (next.getWornEnchantmentGlint() != null) {
+            builder.wornEnchantmentGlint(next.getWornEnchantmentGlint());
+        }
+
+        if (next.getEnchantmentGlint() != null || next.getWornEnchantmentGlint() != null) {
+            builder.persistentEnchantmentGlint(next.getPersistentEnchantmentGlint());
         }
 
         if (next.getTooltipStyle() != null) {
@@ -152,6 +159,7 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
 
     private static boolean isEmpty(final FakeItemMetaRule rule) {
         return rule.getDisplayName() == null && rule.getItemModel() == null && rule.getTooltipStyle() == null
-            && rule.getEnchantmentGlint() == null && rule.getLore() == null && !rule.isHideVanillaDetails();
+            && rule.getEnchantmentGlint() == null && rule.getWornEnchantmentGlint() == null
+            && rule.getLore() == null && !rule.isHideVanillaDetails();
     }
 }

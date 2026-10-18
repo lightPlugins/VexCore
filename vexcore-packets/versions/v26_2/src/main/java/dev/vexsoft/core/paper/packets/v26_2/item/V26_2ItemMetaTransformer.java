@@ -23,6 +23,20 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
 public final class V26_2ItemMetaTransformer {
 
     public ItemStack rewrite(final UUID viewerId, final ItemStack item, final FakeItemMetaLookup lookup) {
+        return rewrite(viewerId, item, lookup, false);
+    }
+
+    public ItemStack sanitize(final UUID viewerId, final ItemStack item, final FakeItemMetaLookup lookup) {
+        Optional<FakeItemMetaRule> result = find(viewerId, item, lookup);
+
+        if (result.isEmpty()) {
+            return item;
+        }
+
+        return sanitize(item, result.get());
+    }
+
+    ItemStack rewrite(final UUID viewerId, final ItemStack item, final FakeItemMetaLookup lookup, final boolean worn) {
         Optional<FakeItemMetaRule> result = find(viewerId, item, lookup);
 
         if (result.isEmpty()) {
@@ -31,7 +45,7 @@ public final class V26_2ItemMetaTransformer {
 
         ItemStack copy = item.copy();
 
-        apply(copy, result.get());
+        apply(copy, result.get(), worn);
 
         if (result.get().getTooltipStyle() != null || result.get().isHideVanillaDetails()) {
             org.bukkit.inventory.ItemStack bukkit = CraftItemStack.asBukkitCopy(copy);
@@ -45,16 +59,6 @@ public final class V26_2ItemMetaTransformer {
         }
 
         return copy;
-    }
-
-    public ItemStack sanitize(final UUID viewerId, final ItemStack item, final FakeItemMetaLookup lookup) {
-        Optional<FakeItemMetaRule> result = find(viewerId, item, lookup);
-
-        if (result.isEmpty()) {
-            return item;
-        }
-
-        return sanitize(item, result.get());
     }
 
     ItemStack sanitize(final ItemStack item, final FakeItemMetaRule rule) {
@@ -78,7 +82,7 @@ public final class V26_2ItemMetaTransformer {
             copy.set(DataComponents.LORE, copy.getPrototype().get(DataComponents.LORE));
         }
 
-        if (rule.getEnchantmentGlint() != null) {
+        if (rule.getEnchantmentGlint() != null || rule.getWornEnchantmentGlint() != null) {
             copy.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, rule.getPersistentEnchantmentGlint() == null
                 ? copy.getPrototype().get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)
                 : rule.getPersistentEnchantmentGlint());
@@ -107,7 +111,7 @@ public final class V26_2ItemMetaTransformer {
         return lookup.find(viewerId, CraftItemStack.asBukkitCopy(item));
     }
 
-    private static void apply(final ItemStack item, final FakeItemMetaRule rule) {
+    private static void apply(final ItemStack item, final FakeItemMetaRule rule, final boolean worn) {
         if (rule.getDisplayName() != null) {
             item.set(DataComponents.CUSTOM_NAME, PaperAdventure.asVanilla(rule.getDisplayName()));
         }
@@ -116,8 +120,10 @@ public final class V26_2ItemMetaTransformer {
             item.set(DataComponents.ITEM_MODEL, Identifier.parse(rule.getItemModel().asString()));
         }
 
-        if (rule.getEnchantmentGlint() != null) {
-            item.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, rule.getEnchantmentGlint());
+        Boolean glint = worn && rule.getWornEnchantmentGlint() != null
+            ? rule.getWornEnchantmentGlint() : rule.getEnchantmentGlint();
+        if (glint != null) {
+            item.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, glint);
         }
 
         if (rule.getLore() == null) {

@@ -17,6 +17,8 @@ public class FakeItemMetaRule {
     NamespacedKey persistentItemModel;
     /** Optional viewer glint override; null preserves the stack's own component. */
     Boolean enchantmentGlint;
+    /** Optional override for equipped armor; null uses the ordinary viewer glint override. */
+    Boolean wornEnchantmentGlint;
     /** Canonical glint override to restore when Creative returns a rendered stack; null restores the prototype. */
     Boolean persistentEnchantmentGlint;
     NamespacedKey tooltipStyle;

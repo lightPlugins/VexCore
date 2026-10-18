@@ -19,12 +19,15 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.network.protocol.game.ClientboundSetCursorItemPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.InventoryMenu;
 
 public final class V26_2ItemMetaPacketRewriter {
 
@@ -41,6 +44,7 @@ public final class V26_2ItemMetaPacketRewriter {
             case ClientboundSetCursorItemPacket cursor -> rewritePacket(viewerId, cursor, lookup);
             case ClientboundSetEntityDataPacket entity -> rewritePacket(viewerId, entity, lookup);
             case ClientboundSetEquipmentPacket equipment -> rewritePacket(viewerId, equipment, lookup);
+            case ClientboundSetPlayerInventoryPacket inventory -> rewritePacket(viewerId, inventory, lookup);
             default -> packet;
         };
     }
@@ -91,7 +95,8 @@ public final class V26_2ItemMetaPacketRewriter {
             return changed ? new ClientboundBundlePacket(children) : packet;
         }
         if (packet instanceof ClientboundContainerSetSlotPacket slotPacket) {
-            ItemStack item = transformer.rewrite(viewerId, slotPacket.getItem(), lookup);
+            ItemStack item = transformer.rewrite(viewerId, slotPacket.getItem(), lookup,
+                isWornMenuSlot(slotPacket.getContainerId(), slotPacket.getSlot()));
 
             if (item == slotPacket.getItem()) {
                 return packet;
@@ -113,6 +118,14 @@ public final class V26_2ItemMetaPacketRewriter {
             ItemStack item = transformer.rewrite(viewerId, cursorPacket.contents(), lookup);
 
             return item == cursorPacket.contents() ? packet : new ClientboundSetCursorItemPacket(item);
+        }
+
+        if (packet instanceof ClientboundSetPlayerInventoryPacket inventoryPacket) {
+            var equipment = Inventory.EQUIPMENT_SLOT_MAPPING.get(inventoryPacket.slot());
+            ItemStack item = transformer.rewrite(viewerId, inventoryPacket.contents(), lookup,
+                equipment != null && equipment.isArmor());
+            return item == inventoryPacket.contents() ? packet
+                : new ClientboundSetPlayerInventoryPacket(inventoryPacket.slot(), item);
         }
 
         if (packet instanceof ClientboundSetEntityDataPacket entityPacket) {
@@ -138,7 +151,7 @@ public final class V26_2ItemMetaPacketRewriter {
             boolean changed = false;
             for (var slot : equipmentPacket.getSlots()) {
                 ItemStack item = slot.getSecond();
-                ItemStack rewritten = transformer.rewrite(viewerId, item, lookup);
+                ItemStack rewritten = transformer.rewrite(viewerId, item, lookup, slot.getFirst().isArmor());
                 slots.add(Pair.of(slot.getFirst(), rewritten));
                 changed |= rewritten != item;
             }
@@ -164,8 +177,9 @@ public final class V26_2ItemMetaPacketRewriter {
         List<ItemStack> rewritten = new ArrayList<>(packet.items().size());
         boolean changed = false;
 
-        for (ItemStack item : packet.items()) {
-            ItemStack result = transformer.rewrite(viewerId, item, lookup);
+        for (int slot = 0; slot < packet.items().size(); slot++) {
+            ItemStack item = packet.items().get(slot);
+            ItemStack result = transformer.rewrite(viewerId, item, lookup, isWornMenuSlot(packet.containerId(), slot));
 
             rewritten.add(result);
             changed |= result != item;
@@ -182,6 +196,12 @@ public final class V26_2ItemMetaPacketRewriter {
         return new ClientboundContainerSetContentPacket(packet.containerId(), packet.stateId(), rewritten, carried);
     }
 
+    private static boolean isWornMenuSlot(final int containerId, final int slot) {
+        // The local player's renderer reads the same stacks as these four inventory-menu armor slots.
+        return containerId == InventoryMenu.CONTAINER_ID && slot >= InventoryMenu.ARMOR_SLOT_START
+            && slot < InventoryMenu.ARMOR_SLOT_END;
+    }
+
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private final class SanitizingHashedStack implements HashedStack {
 
@@ -191,7 +211,9 @@ public final class V26_2ItemMetaPacketRewriter {
 
         @Override
         public boolean matches(final ItemStack item, final HashedPatchMap.HashGenerator hasher) {
-            return delegate.matches(transformer.rewrite(viewerId, item, lookup), hasher);
+            // Predicted clicks can move an equipped stack to the cursor before its next presentation update.
+            return delegate.matches(transformer.rewrite(viewerId, item, lookup), hasher)
+                || delegate.matches(transformer.rewrite(viewerId, item, lookup, true), hasher);
         }
     }
 }
