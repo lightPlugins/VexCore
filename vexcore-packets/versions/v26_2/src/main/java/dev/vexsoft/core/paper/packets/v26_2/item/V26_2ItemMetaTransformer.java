@@ -12,15 +12,31 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.IntSupplier;
 import net.kyori.adventure.key.Key;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.equipment.Equippable;
+import net.minecraft.world.item.equipment.EquipmentAssets;
+import net.minecraft.resources.ResourceKey;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 
 public final class V26_2ItemMetaTransformer {
+
+    private final IntSupplier ticks;
+
+    public V26_2ItemMetaTransformer() {
+        this(Bukkit::getCurrentTick);
+    }
+
+    V26_2ItemMetaTransformer(final IntSupplier ticks) {
+        this.ticks = ticks;
+    }
 
     public ItemStack rewrite(final UUID viewerId, final ItemStack item, final FakeItemMetaLookup lookup) {
         return rewrite(viewerId, item, lookup, false);
@@ -43,16 +59,44 @@ public final class V26_2ItemMetaTransformer {
             return item;
         }
 
+        return rewrite(item, result.get(), worn, -1);
+    }
+
+    boolean matches(
+        final UUID viewerId,
+        final ItemStack item,
+        final FakeItemMetaLookup lookup,
+        final Predicate<ItemStack> predicate
+    ) {
+        var rule = find(viewerId, item, lookup);
+        if (rule.isEmpty()) {
+            return predicate.test(item);
+        }
+        if (predicate.test(rewrite(item, rule.get(), false, -1))) {
+            return true;
+        }
+        var animation = rule.get().getEquipmentAnimation();
+        int frames = animation == null ? 1 : animation.frames().size();
+        // Predicted clicks can refer to any previously displayed frame; gameplay components still must match.
+        for (int frame = 0; frame < frames; frame++) {
+            if (predicate.test(rewrite(item, rule.get(), true, frame))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ItemStack rewrite(final ItemStack item, final FakeItemMetaRule rule, final boolean worn, final int frame) {
         ItemStack copy = item.copy();
 
-        apply(copy, result.get(), worn);
+        apply(copy, rule, worn, frame);
 
-        if (result.get().getTooltipStyle() != null || result.get().isHideVanillaDetails()) {
+        if (rule.getTooltipStyle() != null || rule.isHideVanillaDetails()) {
             org.bukkit.inventory.ItemStack bukkit = CraftItemStack.asBukkitCopy(copy);
-            if (result.get().getTooltipStyle() != null) {
-                bukkit.setData(DataComponentTypes.TOOLTIP_STYLE, Key.key(result.get().getTooltipStyle().asString()));
+            if (rule.getTooltipStyle() != null) {
+                bukkit.setData(DataComponentTypes.TOOLTIP_STYLE, Key.key(rule.getTooltipStyle().asString()));
             }
-            if (result.get().isHideVanillaDetails()) {
+            if (rule.isHideVanillaDetails()) {
                 hideVanillaDetails(bukkit);
             }
             return CraftItemStack.asNMSCopy(bukkit);
@@ -88,6 +132,10 @@ public final class V26_2ItemMetaTransformer {
                 : rule.getPersistentEnchantmentGlint());
         }
 
+        if (rule.getEquipmentAnimation() != null) {
+            equipmentAsset(copy, rule.getEquipmentAnimation().original().asString());
+        }
+
         if (rule.getTooltipStyle() != null) {
             copy.set(DataComponents.TOOLTIP_STYLE, copy.getPrototype().get(DataComponents.TOOLTIP_STYLE));
         }
@@ -111,7 +159,7 @@ public final class V26_2ItemMetaTransformer {
         return lookup.find(viewerId, CraftItemStack.asBukkitCopy(item));
     }
 
-    private static void apply(final ItemStack item, final FakeItemMetaRule rule, final boolean worn) {
+    private void apply(final ItemStack item, final FakeItemMetaRule rule, final boolean worn, final int frame) {
         if (rule.getDisplayName() != null) {
             item.set(DataComponents.CUSTOM_NAME, PaperAdventure.asVanilla(rule.getDisplayName()));
         }
@@ -124,6 +172,12 @@ public final class V26_2ItemMetaTransformer {
             ? rule.getWornEnchantmentGlint() : rule.getEnchantmentGlint();
         if (glint != null) {
             item.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, glint);
+        }
+
+        if (worn && rule.getEquipmentAnimation() != null) {
+            var animation = rule.getEquipmentAnimation();
+            var asset = frame < 0 ? animation.at(ticks.getAsInt()) : animation.frames().get(frame);
+            equipmentAsset(item, asset.asString());
         }
 
         if (rule.getLore() == null) {
@@ -139,6 +193,16 @@ public final class V26_2ItemMetaTransformer {
         int size = Math.min(lore.size(), ItemLore.MAX_LINES);
 
         item.set(DataComponents.LORE, new ItemLore(List.copyOf(lore.subList(0, size))));
+    }
+
+    private static void equipmentAsset(final ItemStack item, final String asset) {
+        Equippable value = item.get(DataComponents.EQUIPPABLE);
+        if (value != null) {
+            item.set(DataComponents.EQUIPPABLE, new Equippable(value.slot(), value.equipSound(),
+                Optional.of(ResourceKey.create(EquipmentAssets.ROOT_ID, Identifier.parse(asset))), value.cameraOverlay(),
+                value.allowedEntities(), value.dispensable(), value.swappable(), value.damageOnHurt(),
+                value.equipOnInteract(), value.canBeSheared(), value.shearingSound()));
+        }
     }
 
     private static List<Component> existingLore(final ItemStack item) {

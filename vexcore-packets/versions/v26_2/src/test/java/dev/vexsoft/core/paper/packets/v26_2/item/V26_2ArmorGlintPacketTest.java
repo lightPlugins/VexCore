@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.mojang.datafixers.util.Pair;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaLookup;
 import dev.vexsoft.core.paper.packets.internal.FakeItemMetaRule;
+import dev.vexsoft.core.paper.packets.item.FakeItemEquipmentAnimation;
+import java.util.concurrent.atomic.AtomicInteger;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -158,6 +160,60 @@ final class V26_2ArmorGlintPacketTest {
         var projected = transformer.rewrite(viewer, original, lookup(wornRule), true);
         assertTrue(projected.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
         assertTrue(ItemStack.isSameItemSameComponents(original, transformer.sanitize(projected, wornRule)));
+    }
+
+    @Test
+    void wornAnimationChangesOnlyTheProjectedAssetAndSuppressesNativeGlint() {
+        var original = armor();
+        var canonical = original.get(DataComponents.EQUIPPABLE);
+        var animation = animation();
+        var animatedRule = rule().toBuilder().wornEnchantmentGlint(false).equipmentAnimation(animation).build();
+        var animatedRewriter = new V26_2ItemMetaPacketRewriter(() -> 2);
+        var packet = new ClientboundSetEquipmentPacket(42, List.of(Pair.of(EquipmentSlot.CHEST, original),
+            Pair.of(EquipmentSlot.MAINHAND, original)));
+        var result = (ClientboundSetEquipmentPacket) animatedRewriter.rewrite(viewer, packet, lookup(animatedRule));
+        var shown = result.getSlots().getFirst().getSecond();
+        assertEquals(animation.frames().get(1).asString(), shown.get(DataComponents.EQUIPPABLE).assetId()
+            .orElseThrow().identifier().toString());
+        assertFalse(shown.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
+        assertEquals(canonical, original.get(DataComponents.EQUIPPABLE));
+        assertEquals(canonical, result.getSlots().get(1).getSecond().get(DataComponents.EQUIPPABLE));
+        assertEquals(canonical.slot(), shown.get(DataComponents.EQUIPPABLE).slot());
+        assertEquals(canonical.equipSound(), shown.get(DataComponents.EQUIPPABLE).equipSound());
+        assertEquals(canonical.damageOnHurt(), shown.get(DataComponents.EQUIPPABLE).damageOnHurt());
+        assertEquals(original.get(DataComponents.DAMAGE), shown.get(DataComponents.DAMAGE));
+        assertTrue(ItemStack.isSameItemSameComponents(original, transformer.sanitize(shown, animatedRule)));
+    }
+
+    @Test
+    void predictedClicksAcceptEarlierAnimationFramesAndRejectChangedGameplayComponents() {
+        var tick = new AtomicInteger();
+        var animatedRule = rule().toBuilder().wornEnchantmentGlint(false).equipmentAnimation(animation()).build();
+        var animatedTransformer = new V26_2ItemMetaTransformer(tick::get);
+        var animatedRewriter = new V26_2ItemMetaPacketRewriter(tick::get);
+        var original = armor();
+        var shown = animatedTransformer.rewrite(viewer, original, lookup(animatedRule), true);
+        tick.set(4);
+        HashedStack clientHash = (candidate, hasher) -> ItemStack.isSameItemSameComponents(shown, candidate);
+        var changes = new Int2ObjectOpenHashMap<HashedStack>();
+        changes.put(6, clientHash);
+        var click = new ServerboundContainerClickPacket(0, 7, (short) 6, (byte) 0, ContainerInput.PICKUP,
+            changes, clientHash);
+        var sanitized = (ServerboundContainerClickPacket) animatedRewriter.sanitize(viewer, click, lookup(animatedRule));
+        assertTrue(sanitized.changedSlots().get(6).matches(original, null));
+        assertTrue(sanitized.carriedItem().matches(original, null));
+        var damaged = original.copy();
+        damaged.set(DataComponents.DAMAGE, 99);
+        assertFalse(sanitized.carriedItem().matches(damaged, null));
+        assertTrue(ItemStack.isSameItemSameComponents(original,
+            animatedTransformer.sanitize(viewer, shown, lookup(animatedRule))));
+    }
+
+    private static FakeItemEquipmentAnimation animation() {
+        return new FakeItemEquipmentAnimation(NamespacedKey.minecraft("iron"), List.of(
+            new NamespacedKey("isles", "rarity_glint/worn/legendary/minecraft/iron/0"),
+            new NamespacedKey("isles", "rarity_glint/worn/legendary/minecraft/iron/1"),
+            new NamespacedKey("isles", "rarity_glint/worn/legendary/minecraft/iron/2")), 2);
     }
 
     private static ItemStack armor() {

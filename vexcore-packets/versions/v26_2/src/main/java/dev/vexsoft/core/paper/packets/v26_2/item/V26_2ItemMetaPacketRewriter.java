@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import net.minecraft.network.HashedPatchMap;
@@ -31,7 +32,15 @@ import net.minecraft.world.inventory.InventoryMenu;
 
 public final class V26_2ItemMetaPacketRewriter {
 
-    private final V26_2ItemMetaTransformer transformer = new V26_2ItemMetaTransformer();
+    private final V26_2ItemMetaTransformer transformer;
+
+    public V26_2ItemMetaPacketRewriter() {
+        transformer = new V26_2ItemMetaTransformer();
+    }
+
+    V26_2ItemMetaPacketRewriter(final IntSupplier ticks) {
+        transformer = new V26_2ItemMetaTransformer(ticks);
+    }
 
     public Object rewrite(final UUID viewerId, final Object packet, final FakeItemMetaLookup lookup) {
         if (!lookup.hasAny(viewerId)) {
@@ -212,8 +221,7 @@ public final class V26_2ItemMetaPacketRewriter {
         @Override
         public boolean matches(final ItemStack item, final HashedPatchMap.HashGenerator hasher) {
             // Predicted clicks can move an equipped stack to the cursor before its next presentation update.
-            return delegate.matches(transformer.rewrite(viewerId, item, lookup), hasher)
-                || delegate.matches(transformer.rewrite(viewerId, item, lookup, true), hasher);
+            return transformer.matches(viewerId, item, lookup, candidate -> delegate.matches(candidate, hasher));
         }
     }
 }

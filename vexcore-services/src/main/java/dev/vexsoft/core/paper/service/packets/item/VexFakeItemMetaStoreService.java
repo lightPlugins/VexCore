@@ -138,6 +138,10 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
             builder.wornEnchantmentGlint(next.getWornEnchantmentGlint());
         }
 
+        if (next.getEquipmentAnimation() != null) {
+            builder.equipmentAnimation(next.getEquipmentAnimation());
+        }
+
         if (next.getEnchantmentGlint() != null || next.getWornEnchantmentGlint() != null) {
             builder.persistentEnchantmentGlint(next.getPersistentEnchantmentGlint());
         }
@@ -160,6 +164,7 @@ public final class VexFakeItemMetaStoreService implements FakeItemMetaStoreServi
     private static boolean isEmpty(final FakeItemMetaRule rule) {
         return rule.getDisplayName() == null && rule.getItemModel() == null && rule.getTooltipStyle() == null
             && rule.getEnchantmentGlint() == null && rule.getWornEnchantmentGlint() == null
+            && rule.getEquipmentAnimation() == null
             && rule.getLore() == null && !rule.isHideVanillaDetails();
     }
 }

@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.packets.internal;
 
 import dev.vexsoft.core.paper.packets.item.FakeItemLoreMode;
+import dev.vexsoft.core.paper.packets.item.FakeItemEquipmentAnimation;
 import java.util.List;
 import lombok.Builder;
 import lombok.Value;
@@ -21,6 +22,8 @@ public class FakeItemMetaRule {
     Boolean wornEnchantmentGlint;
     /** Canonical glint override to restore when Creative returns a rendered stack; null restores the prototype. */
     Boolean persistentEnchantmentGlint;
+    /** Optional client equipment animation; server equipment and gameplay data retain their canonical values. */
+    FakeItemEquipmentAnimation equipmentAnimation;
     NamespacedKey tooltipStyle;
     List<Component> lore;
     FakeItemLoreMode loreMode;
