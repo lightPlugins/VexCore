@@ -45,6 +45,9 @@ public interface InventoryService extends VexService {
     /** Refreshes the view currently open for the player */
     void refresh(Player player);
 
+    /** Holds click corrections; render the settled state before invoking the returned synchronization action. */
+    Runnable deferSynchronization(Player player);
+
     /** Temporarily closes the native inventory for a dialog while retaining the current view and history. */
     void suspend(Player player);
 

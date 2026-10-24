@@ -5,20 +5,20 @@ import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
 import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import org.jetbrains.annotations.ApiStatus;
@@ -188,6 +188,11 @@ public final class VexPlayer {
         if (rollbackEffects != null) {
             rollbackEffects.add(effect);
         }
+    }
+
+    /** Returns whether this player is currently participating in an atomic economic operation. */
+    public synchronized boolean isInTransaction() {
+        return transactionSnapshots != null;
     }
 
     /** Returns the required feature container bound to this player. */

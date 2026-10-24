@@ -1,5 +1,7 @@
 package dev.vexsoft.core.number;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -48,6 +50,7 @@ public final class WholeAmount implements Comparable<WholeAmount> {
     }
 
     /** Parses an exact unsigned base-ten integer without compact suffixes. */
+    @JsonCreator
     public static WholeAmount parse(final String value) {
         String checked = Objects.requireNonNull(value, "value").trim();
 
@@ -169,6 +172,7 @@ public final class WholeAmount implements Comparable<WholeAmount> {
 
     /** Returns the complete unformatted base-ten integer. */
     @Override
+    @JsonValue
     public String toString() {
         return value.toString();
     }

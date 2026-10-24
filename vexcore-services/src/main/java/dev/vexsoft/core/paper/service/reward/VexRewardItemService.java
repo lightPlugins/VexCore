@@ -3,20 +3,21 @@ package dev.vexsoft.core.paper.service.reward;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.paper.reward.item.RewardItem;
-import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
 import dev.vexsoft.core.paper.reward.item.RewardItemPresentation;
+import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
 import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 /** Shared namespace resolver and transactional inventory-to-private-drop delivery. */
@@ -61,7 +62,24 @@ public final class VexRewardItemService implements RewardItemService {
     @Override
     public ItemStack create(final RewardItem item) {
         validate(item);
+        if (isVirtual(item)) {
+            throw new IllegalArgumentException("Virtual items cannot be created as physical rewards");
+        }
         return provider(item).create(item);
+    }
+
+    @Override
+    public boolean isVirtual(final RewardItem item) {
+        validate(item);
+        return provider(item).isVirtual(item);
+    }
+
+    @Override
+    public void deliverVirtual(final VexPlayer player, final RewardItem item, final WholeAmount amount) {
+        if (!isVirtual(item) || !amount.isPositive()) {
+            throw new IllegalArgumentException("Invalid virtual item delivery");
+        }
+        provider(item).deposit(player, item, amount);
     }
 
     @Override

@@ -3,11 +3,14 @@ package dev.vexsoft.core.paper.service.packets.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.v26_2.item.V26_2InventorySynchronization;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
@@ -15,7 +18,31 @@ import org.bukkit.entity.Player;
 @Dependencies
 public final class VexPacketTransportAdapterService implements PacketTransportAdapterService {
 
+    private final V26_2InventorySynchronization inventories = new V26_2InventorySynchronization();
+
     public VexPacketTransportAdapterService(final VexServiceRegistry services) {
+    }
+
+    @Override
+    public Runnable deferInventorySynchronization(final Player player) {
+        var handle = ((CraftPlayer) player).getHandle();
+        int containerId = handle.containerMenu.containerId;
+        return inventories.hold(player.getUniqueId(), containerId, () -> {
+            if (player.isOnline() && Bukkit.isOwnedByCurrentRegion(player)
+                && handle.containerMenu.containerId == containerId) {
+                player.updateInventory();
+            }
+        });
+    }
+
+    @Override
+    public Object filterInventorySynchronization(final UUID viewerId, final Object packet) {
+        return inventories.filter(viewerId, packet);
+    }
+
+    @Override
+    public void clearInventorySynchronization(final UUID viewerId) {
+        inventories.clear(viewerId);
     }
 
     @Override

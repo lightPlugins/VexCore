@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -26,6 +27,62 @@ import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.Test;
 
 final class ItemDepositViewTest {
+
+    @Test
+    void asynchronousDepositsKeepPredictionAndBlockASecondTransferUntilSettlement() {
+        var fixture = new Fixture();
+        fixture.persistence = new CompletableFuture<>();
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(1);
+
+        fixture.click(0, ClickType.LEFT);
+        fixture.click(0, ClickType.LEFT);
+
+        assertEquals(1, fixture.holds);
+        assertEquals(0, fixture.synchronizations);
+        assertTrue(fixture.session.inventory().isEmpty());
+        fixture.persistence.complete(null);
+        fixture.run();
+
+        assertTrue(fixture.data.cursor.isEmpty());
+        assertEquals(1, fixture.session.inventory().getItem(0).getAmount());
+        assertEquals(1, fixture.synchronizations);
+        assertEquals(1, fixture.refreshes);
+    }
+
+    @Test
+    void failedDepositsResynchronizeTheOriginalCursorWithoutMovingItems() {
+        var fixture = new Fixture();
+        fixture.persistence = new CompletableFuture<>();
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(1);
+        fixture.click(0, ClickType.LEFT);
+
+        fixture.persistence.completeExceptionally(new IllegalStateException("Save failed"));
+        fixture.run();
+
+        assertEquals(1, fixture.data.cursor.getAmount());
+        assertTrue(fixture.session.inventory().isEmpty());
+        assertEquals(1, fixture.synchronizations);
+        assertEquals(List.of(false), fixture.feedback);
+    }
+
+    @Test
+    void closeDuringADepositWaitsForSettlementBeforeReturningTheItems() {
+        var fixture = new Fixture();
+        fixture.persistence = new CompletableFuture<>();
+        fixture.data.cursor = new ItemSaleSessionTest.Stack(1);
+        fixture.click(0, ClickType.LEFT);
+
+        fixture.menu.onClose(fixture.context);
+        assertEquals(1, fixture.data.cursor.getAmount());
+        assertEquals(0, fixture.data.storage.count());
+        fixture.persistence.complete(null);
+        fixture.run();
+
+        assertTrue(fixture.data.cursor.isEmpty());
+        assertTrue(fixture.session.inventory().isEmpty());
+        assertEquals(1, fixture.data.storage.count());
+        assertEquals(1, fixture.synchronizations);
+    }
     @Test
     void feedbackReportsCommittedMovementAndRejectedTransfersOnce() {
         Fixture fixture = new Fixture();
@@ -290,15 +347,36 @@ final class ItemDepositViewTest {
         final List<Boolean> feedback = new ArrayList<>();
         int controls;
         int refreshes;
+        int holds;
+        int synchronizations;
+        CompletableFuture<Void> persistence = CompletableFuture.completedFuture(null);
         boolean accept = true;
         final ScheduleService scheduler = proxy(ScheduleService.class, (ignored, method, args) -> {
-            tasks.add((Runnable) args[2]);
+            tasks.add((Runnable) args[method.getName().equals("runForLater") ? 2 : 1]);
             return Optional.of(proxy(VexTask.class, (task, invoked, values) -> null));
         });
+        final InventoryService inventories = proxy(InventoryService.class, (ignored, method, args) -> {
+            if (method.getName().equals("deferSynchronization")) {
+                holds++;
+                return (Runnable) () -> {
+                    synchronizations++;
+                };
+            }
+            if (method.getName().equals("refresh")) {
+                refreshes++;
+            }
+            return method.getName().equals("getCurrentView") ? Optional.ofNullable(this.menu) : null;
+        });
         final VexServiceRegistry registry = proxy(VexServiceRegistry.class,
-            (ignored, method, args) -> args[0] == ScheduleService.class ? scheduler : data.services.require((Class) args[0]));
+            (ignored, method, args) -> args[0] == ScheduleService.class ? scheduler
+                : args[0] == InventoryService.class ? inventories : data.services.require((Class) args[0]));
         final ItemDepositView menu = new ItemDepositView(registry, InventoryKey.of("test:sale"), data.player,
             session, item -> accept) {
+            @Override
+            protected CompletableFuture<Void> commitTransfer(final Runnable mutation) {
+                return persistence.thenRun(() -> session.transfer(mutation));
+            }
+
             @Override
             protected void onItemInteraction(final boolean successful) {
                 feedback.add(successful);
@@ -309,12 +387,6 @@ final class ItemDepositViewTest {
                     (context, event) -> controls++));
             }
         };
-        final InventoryService inventories = proxy(InventoryService.class, (ignored, method, args) -> {
-            if (method.getName().equals("refresh")) {
-                refreshes++;
-            }
-            return method.getName().equals("getCurrentView") ? Optional.of(menu) : null;
-        });
         final InventoryContext context = new InventoryContext(registry, data.player, inventories);
         final Inventory top = proxy(Inventory.class, (ignored, method, args) -> 54);
         final org.bukkit.inventory.InventoryView view = proxy(org.bukkit.inventory.InventoryView.class,

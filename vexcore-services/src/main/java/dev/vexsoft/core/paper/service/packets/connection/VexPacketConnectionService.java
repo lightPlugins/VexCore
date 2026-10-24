@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.packets.internal.PacketInteractionInput;
 import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
 import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
 import dev.vexsoft.core.paper.packets.service.VirtualBlockService;
 import dev.vexsoft.core.paper.packets.service.VirtualPassengerOverlayService;
@@ -28,6 +29,7 @@ import org.bukkit.entity.Player;
 /** Coordinates player packet interception, virtual interactions, and item-presentation rewriting. */
 @Dependencies({
     PacketConnectionAdapterService.class,
+    PacketTransportAdapterService.class,
     HologramInteractionAdapterService.class,
     ItemMetaPacketAdapterService.class,
     InteractionTrackerService.class,
@@ -41,6 +43,7 @@ import org.bukkit.entity.Player;
 public final class VexPacketConnectionService implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
 
     private final PacketConnectionAdapterService connection;
+    private final PacketTransportAdapterService transport;
     private final HologramInteractionAdapterService interactions;
     private final ItemMetaPacketAdapterService itemMeta;
     private final InteractionTrackerService interactionsTracker;
@@ -55,6 +58,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
 
     public VexPacketConnectionService(final VexServiceRegistry services) {
         this.connection = services.require(PacketConnectionAdapterService.class);
+        this.transport = services.require(PacketTransportAdapterService.class);
         this.interactions = services.require(HologramInteractionAdapterService.class);
         this.itemMeta = services.require(ItemMetaPacketAdapterService.class);
         this.interactionsTracker = services.require(InteractionTrackerService.class);
@@ -90,6 +94,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
 
     @Override
     public void uninject(final Player player) {
+        transport.clearInventorySynchronization(player.getUniqueId());
         sessions.remove(player.getUniqueId());
         pending.remove(player.getUniqueId());
         virtualPassengers.removeViewer(player.getUniqueId());
@@ -99,8 +104,12 @@ public final class VexPacketConnectionService implements PacketConnectionService
 
     @Override
     public Object write(final UUID viewerId, final Object packet) {
+        Object visible = transport.filterInventorySynchronization(viewerId, packet);
+        if (visible == null) {
+            return null;
+        }
         Object rewritten = interactiveUi.preserveTarget(viewerId,
-            itemMeta.rewriteOutbound(viewerId, packet, itemMetaStore));
+            itemMeta.rewriteOutbound(viewerId, visible, itemMetaStore));
         return virtualBlockPackets.rewrite(viewerId, virtualPassengers.rewriteOutbound(viewerId, rewritten));
     }
 

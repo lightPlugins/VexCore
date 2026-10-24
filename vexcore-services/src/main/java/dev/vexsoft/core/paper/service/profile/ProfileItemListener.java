@@ -15,6 +15,7 @@ import java.util.logging.Level;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.bukkit.GameMode;
 import org.bukkit.block.Container;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
@@ -161,7 +162,8 @@ public final class ProfileItemListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void container(final PlayerInteractEvent event) {
         var block = event.getClickedBlock();
-        if (context(event.getPlayer()) != null && block != null && block.getState(false) instanceof Container) {
+        if (event.getPlayer().getGameMode() != GameMode.CREATIVE && context(event.getPlayer()) != null
+            && block != null && block.getState(false) instanceof Container) {
             event.setCancelled(true);
         }
     }
@@ -169,7 +171,8 @@ public final class ProfileItemListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void itemFrame(final PlayerInteractEntityEvent event) {
         if (context(event.getPlayer()) != null && (event.getRightClicked() instanceof ItemFrame
-            || event.getRightClicked() instanceof ArmorStand || event.getRightClicked() instanceof InventoryHolder)) {
+            || event.getRightClicked() instanceof ArmorStand || event.getRightClicked() instanceof InventoryHolder
+                && event.getPlayer().getGameMode() != GameMode.CREATIVE)) {
             event.setCancelled(true);
         }
     }
@@ -183,7 +186,8 @@ public final class ProfileItemListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void openPhysicalContainer(final InventoryOpenEvent event) {
-        if (event.getPlayer() instanceof Player player && context(player) != null
+        if (event.getPlayer() instanceof Player player && player.getGameMode() != GameMode.CREATIVE
+            && context(player) != null
             && (event.getInventory().getHolder(false) instanceof Container
                 || event.getInventory().getHolder(false) instanceof Entity)) {
             event.setCancelled(true);

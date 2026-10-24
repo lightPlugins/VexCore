@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.service.inventory;
 
 import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
+import dev.vexsoft.core.paper.inventory.PlayerInventoryTransfers;
 import dev.vexsoft.core.paper.inventory.SlotInventoryView;
 import dev.vexsoft.core.paper.inventory.element.CursorInventoryElement;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
@@ -57,7 +58,7 @@ final class VexSlotInventoryInteractions {
                 event.setCancelled(true);
 
                 if (event.getClickedInventory() == player.getInventory()) {
-                    shift(player.getInventory(), event.getSlot());
+                    PlayerInventoryTransfers.shift(player.getInventory(), event.getSlot());
                 }
             } else if (event.getClick() == ClickType.DOUBLE_CLICK) {
                 event.setCancelled(true);
@@ -121,6 +122,7 @@ final class VexSlotInventoryInteractions {
         Object ticket = new Object();
         UUID id = player.getUniqueId();
 
+        Runnable synchronize = context.getInventoryService().deferSynchronization(player);
         pendingDrags.put(id, ticket);
         // Bukkit restores a cancelled drag's cursor after the event. Exchange only afterwards.
         try {
@@ -129,21 +131,29 @@ final class VexSlotInventoryInteractions {
                 1L,
                 () -> {
                     if (!pendingDrags.remove(id, ticket)) {
+                        synchronize.run();
                         return;
                     }
 
                     if (context.getInventoryService().getCurrentView(id).orElse(null) == view
                         && player.getOpenInventory().getTopInventory() == inventory && player.getItemOnCursor()
                         .equals(expected)) {
-                        transfer(context, view, cursorSlot);
+                        transfer(context, view, cursorSlot, synchronize);
+                    } else {
+                        synchronize.run();
                     }
                 },
-                () -> pendingDrags.remove(id, ticket)
+                () -> {
+                    pendingDrags.remove(id, ticket);
+                    synchronize.run();
+                }
             ).isEmpty()) {
                 pendingDrags.remove(id, ticket);
+                synchronize.run();
             }
         } catch (RuntimeException failure) {
             pendingDrags.remove(id, ticket);
+            synchronize.run();
             throw failure;
         }
     }
@@ -154,35 +164,50 @@ final class VexSlotInventoryInteractions {
     }
 
     private void transfer(InventoryContext context, SlotInventoryView view, CursorInventoryElement element) {
+        transfer(context, view, element, context.getInventoryService().deferSynchronization(context.getViewer()));
+    }
+
+    private void transfer(InventoryContext context, SlotInventoryView view, CursorInventoryElement element,
+        Runnable synchronize) {
         var player = context.getViewer();
         var id = player.getUniqueId();
         var ticket = new Object();
         if (pendingExchanges.putIfAbsent(id, ticket) != null) {
+            synchronize.run();
             return;
         }
+        Runnable finish = () -> {
+            try {
+                if (pendingExchanges.remove(id, ticket)) {
+                    refresh(context, view);
+                }
+            } finally {
+                synchronize.run();
+            }
+        };
         try {
             var completion = element.transferAsync(context);
             if (completion.isDone()) {
-                pendingExchanges.remove(id, ticket);
-                refresh(context, view);
+                finish.run();
             } else {
                 completion.whenComplete((ignored, failure) -> {
                     try {
-                        var scheduled = schedules.runFor(player, () -> {
-                            if (pendingExchanges.remove(id, ticket)) {
-                                refresh(context, view);
-                            }
-                        }, () -> pendingExchanges.remove(id, ticket));
+                        var scheduled = schedules.runFor(player, finish, () -> {
+                            pendingExchanges.remove(id, ticket);
+                            synchronize.run();
+                        });
                         if (scheduled.isEmpty()) {
                             pendingExchanges.remove(id, ticket);
+                            synchronize.run();
                         }
                     } catch (RuntimeException rejected) {
                         pendingExchanges.remove(id, ticket);
+                        synchronize.run();
                     }
                 });
             }
         } catch (RuntimeException failure) {
-            pendingExchanges.remove(id, ticket);
+            finish.run();
             throw failure;
         }
     }
@@ -191,60 +216,6 @@ final class VexSlotInventoryInteractions {
         if (context.getInventoryService().getCurrentView(context.getViewer().getUniqueId()).orElse(null) == view) {
             context.getInventoryService().refresh(context.getViewer());
         }
-    }
-
-    /** Shift transfers stay between backpack and hotbar, never into rendered menu slots. */
-    private static void shift(PlayerInventory inventory, int source) {
-        if (source < 0 || source >= 36) {
-            return;
-        }
-
-        ItemStack original = inventory.getItem(source);
-
-        if (original == null || original.isEmpty()) {
-            return;
-        }
-
-        ItemStack remaining = original.clone();
-        int start = source < 9 ? 9 : 0;
-        int end = source < 9 ? 36 : 9;
-
-        for (int slotIndex = start; slotIndex < end && !remaining.isEmpty(); slotIndex++) {
-            ItemStack target = inventory.getItem(slotIndex);
-
-            if (target == null || !target.isSimilar(remaining)) {
-                continue;
-            }
-
-            int count = Math.min(remaining.getAmount(), Math.max(0, target.getMaxStackSize() - target.getAmount()));
-
-            if (count == 0) {
-                continue;
-            }
-
-            ItemStack updated = target.clone();
-
-            updated.setAmount(target.getAmount() + count);
-            inventory.setItem(slotIndex, updated);
-            remaining.setAmount(remaining.getAmount() - count);
-        }
-
-        for (int slotIndex = start; slotIndex < end && !remaining.isEmpty(); slotIndex++) {
-            ItemStack target = inventory.getItem(slotIndex);
-
-            if (target != null && !target.isEmpty()) {
-                continue;
-            }
-
-            int count = Math.min(remaining.getAmount(), remaining.getMaxStackSize());
-            ItemStack placed = remaining.clone();
-
-            placed.setAmount(count);
-            inventory.setItem(slotIndex, placed);
-            remaining.setAmount(remaining.getAmount() - count);
-        }
-
-        inventory.setItem(source, remaining.isEmpty() ? null : remaining);
     }
 
     /** Double-click collection reads player storage only; matching menu icons are not items. */

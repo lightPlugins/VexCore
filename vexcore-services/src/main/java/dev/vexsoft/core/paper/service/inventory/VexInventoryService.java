@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.inventory.InventoryDefinition;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryKey;
 import dev.vexsoft.core.paper.inventory.InventoryView;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -26,11 +27,12 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.plugin.Plugin;
 
 /** Renders inventories and manages each player's current view and navigation history. */
-@Dependencies({ScheduleService.class})
+@Dependencies({ScheduleService.class, PacketTransportAdapterService.class})
 public final class VexInventoryService implements InventoryService, AutoCloseable {
 
     private final VexServiceRegistry services;
     private final ScheduleService schedules;
+    private final PacketTransportAdapterService transport;
     private final VexInventoryRenderer renderer = new VexInventoryRenderer();
     private final Map<InventoryKey, InventoryDefinition> definitions = new LinkedHashMap<>();
     private final Map<UUID, VexInventorySession> sessions = new ConcurrentHashMap<>();
@@ -40,6 +42,7 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     public VexInventoryService(final VexServiceRegistry services) {
         this.services = Objects.requireNonNull(services, "services");
         this.schedules = services.require(ScheduleService.class);
+        this.transport = services.require(PacketTransportAdapterService.class);
 
         if (!(services.getOwner() instanceof Plugin)) {
             throw new IllegalArgumentException("InventoryService owner must be a Bukkit plugin");
@@ -102,6 +105,11 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
     @Override
     public void refresh(final Player player) {
         execute(player, () -> refreshNow(player));
+    }
+
+    @Override
+    public Runnable deferSynchronization(final Player player) {
+        return transport.deferInventorySynchronization(player);
     }
 
     @Override
@@ -233,6 +241,7 @@ public final class VexInventoryService implements InventoryService, AutoCloseabl
         if (!holder.isOwnedBy(this)) {
             return;
         }
+        transport.clearInventorySynchronization(player.getUniqueId());
 
         VexInventorySession session = sessions.get(holder.getViewerId());
 

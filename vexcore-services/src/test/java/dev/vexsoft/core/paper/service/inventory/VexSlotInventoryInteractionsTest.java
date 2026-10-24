@@ -36,6 +36,8 @@ public final class VexSlotInventoryInteractionsTest {
             }));
         fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
         fixture.handler.click(fixture.context, fixture.menu, elements, fixture.click(11, ClickType.LEFT));
+        assertEquals(1, fixture.holds);
+        assertEquals(0, fixture.synchronizations);
         var lower = fixture.click(60, ClickType.LEFT);
         fixture.handler.click(fixture.context, fixture.menu, elements, lower);
         assertTrue(lower.isCancelled());
@@ -44,6 +46,7 @@ public final class VexSlotInventoryInteractionsTest {
         completion.complete(null);
         fixture.runScheduled();
         assertEquals(1, fixture.refreshedItems.size());
+        assertEquals(1, fixture.synchronizations);
         var resumed = fixture.click(60, ClickType.LEFT);
         fixture.handler.click(fixture.context, fixture.menu, elements, resumed);
         assertFalse(resumed.isCancelled());
@@ -242,6 +245,8 @@ public final class VexSlotInventoryInteractionsTest {
         final ItemStack[] storage = new ItemStack[36];
         ItemStack cursor = new Stack("empty", 0);
         boolean rejectScheduling;
+        int holds;
+        int synchronizations;
         final List<Runnable> scheduled = new ArrayList<>();
         final Inventory top = proxy(
             Inventory.class,
@@ -308,6 +313,12 @@ public final class VexSlotInventoryInteractionsTest {
         final InventoryService service = proxy(
             InventoryService.class,
             (proxyObject, invokedMethod, arguments) -> {
+                if (invokedMethod.getName().equals("deferSynchronization")) {
+                    holds++;
+                    return (Runnable) () -> {
+                        synchronizations++;
+                    };
+                }
                 if (invokedMethod.getName().equals("getCurrentView")) {
                     return Optional.of(menu);
                 }

@@ -5,16 +5,19 @@ import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.number.WholeAmount;
+import dev.vexsoft.core.number.WholeAmountFormatter;
 import dev.vexsoft.core.paper.service.reward.RewardItemService;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
+import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import org.bukkit.entity.Player;
@@ -44,12 +47,15 @@ public final class ItemReward implements Reward {
             Object amount = map.get("amount");
             Map<?, ?> range = amount instanceof ConfigurationSection section ? section.getValues(false)
                 : amount instanceof Map<?, ?> values ? values : Map.of();
-            int minimum = range.isEmpty() ? integer(amount == null ? 1 : amount) : integer(range.get("min"));
-            int maximum = range.isEmpty() ? minimum : integer(range.get("max"));
-            if (minimum < 1 || maximum < minimum || maximum > 1_000_000) {
-                throw new IllegalArgumentException("Item amounts must be between 1 and 1000000");
+            WholeAmount minimum = quantity(range.isEmpty() ? amount == null ? 1 : amount : range.get("min"));
+            WholeAmount maximum = range.isEmpty() ? minimum : quantity(range.get("max"));
+            if (!minimum.isPositive() || maximum.compareTo(minimum) < 0) {
+                throw new IllegalArgumentException("Item amounts require a positive, ordered range");
             }
             items.validate(reference);
+            if (!items.isVirtual(reference) && maximum.compareTo(WholeAmount.of(1_000_000)) > 0) {
+                throw new IllegalArgumentException("Physical item amounts must not exceed 1000000");
+            }
             definitions.add(new Definition(reference, minimum, maximum));
         }
         if (definitions.isEmpty()) {
@@ -65,16 +71,43 @@ public final class ItemReward implements Reward {
         return number.intValue();
     }
 
+    private static WholeAmount quantity(final Object value) {
+        if (!(value instanceof Number) && !(value instanceof String)) {
+            throw new IllegalArgumentException("Item amount must be a whole amount");
+        }
+        return WholeAmountFormatter.parse(value.toString());
+    }
+
+    private static WholeAmount select(final Definition definition) {
+        BigInteger width = definition.maximum().subtract(definition.minimum()).toBigInteger().add(BigInteger.ONE);
+        if (width.equals(BigInteger.ONE)) {
+            return definition.minimum();
+        }
+        BigInteger selected;
+        do {
+            selected = new BigInteger(width.bitLength(), ThreadLocalRandom.current());
+        } while (selected.compareTo(width) >= 0);
+        return definition.minimum().add(WholeAmount.of(selected));
+    }
+
     private static Component join(final List<Component> descriptions) {
         // Separators inherit the consumer's quantity color, rather than the surrounding menu heading.
         Component result = Component.join(JoinConfiguration.commas(true), descriptions);
         return descriptions.isEmpty() ? result : result.color(descriptions.getFirst().color());
     }
 
-    private record Definition(RewardItem item, int minimum, int maximum) {
+    private record Definition(RewardItem item, WholeAmount minimum, WholeAmount maximum) {
+    }
+
+    private record VirtualGrant(RewardItem item, WholeAmount amount) {
     }
 
     private record Configured(List<Definition> definitions, RewardItemService items) implements CompiledReward {
+
+        @Override
+        public boolean changesInventory() {
+            return definitions.stream().anyMatch(definition -> !items.isVirtual(definition.item()));
+        }
 
         @Override
         public RewardBehavior getBehavior() {
@@ -89,13 +122,23 @@ public final class ItemReward implements Reward {
         @Override
         public CompiledReward prepare(final PlayerExecutionContext context) {
             List<ItemStack> stacks = new ArrayList<>();
+            List<RewardItem> physical = new ArrayList<>();
+            List<VirtualGrant> virtual = new ArrayList<>();
             List<Component> descriptions = new ArrayList<>();
             Player viewer = context.player().requirePlatformPlayer(Player.class);
             for (Definition definition : definitions) {
-                int amount = ThreadLocalRandom.current().nextInt(definition.minimum(), definition.maximum() + 1);
+                WholeAmount amount = select(definition);
+                descriptions.add(items.describe(viewer, definition.item(), WholeAmountFormatter.format(amount)));
+                if (items.isVirtual(definition.item())) {
+                    virtual.add(new VirtualGrant(definition.item(), amount));
+                    continue;
+                }
+                if (definition.maximum().compareTo(WholeAmount.of(1_000_000)) > 0) {
+                    throw new IllegalArgumentException("Physical item amounts must not exceed 1000000");
+                }
                 ItemStack prototype = items.create(definition.item());
-                descriptions.add(items.describe(viewer, definition.item(), Integer.toString(amount)));
-                int remaining = amount;
+                physical.add(definition.item());
+                int remaining = amount.intValueExact();
                 while (remaining > 0) {
                     ItemStack stack = prototype.clone();
                     int count = Math.min(remaining, prototype.getMaxStackSize());
@@ -104,7 +147,8 @@ public final class ItemReward implements Reward {
                     remaining -= count;
                 }
             }
-            return new Prepared(List.copyOf(stacks), List.copyOf(descriptions), items);
+            return new Prepared(List.copyOf(stacks), List.copyOf(physical), List.copyOf(virtual),
+                List.copyOf(descriptions), items);
         }
 
         @Override
@@ -116,17 +160,26 @@ public final class ItemReward implements Reward {
         public Component describe(final PlayerExecutionContext context) {
             Player viewer = context.player().requirePlatformPlayer(Player.class);
             return join(definitions.stream()
-                .map(definition -> items.describe(viewer, definition.item(), definition.minimum() == definition.maximum()
-                    ? Integer.toString(definition.minimum()) : definition.minimum() + "\u2013" + definition.maximum()))
+                .map(definition -> items.describe(viewer, definition.item(), definition.minimum().equals(definition.maximum())
+                    ? WholeAmountFormatter.format(definition.minimum())
+                    : WholeAmountFormatter.format(definition.minimum()) + "\u2013"
+                        + WholeAmountFormatter.format(definition.maximum())))
                 .toList());
         }
     }
 
-    private record Prepared(List<ItemStack> stacks, List<Component> descriptions,
+    private record Prepared(List<ItemStack> stacks, List<RewardItem> physical, List<VirtualGrant> virtual,
+                            List<Component> descriptions,
                             RewardItemService items) implements PreparedItemReward {
 
         @Override
+        public boolean changesInventory() {
+            return !stacks.isEmpty();
+        }
+
+        @Override
         public List<ItemStack> preparedItems() {
+            validatePhysical();
             return stacks.stream().map(ItemStack::clone).toList();
         }
 
@@ -142,7 +195,19 @@ public final class ItemReward implements Reward {
 
         @Override
         public RewardResult grant(final PlayerExecutionContext context) {
-            items.deliver(context.player(), stacks);
+            validatePhysical();
+            grantVirtual(context);
+            if (!stacks.isEmpty()) {
+                items.deliver(context.player(), stacks);
+            }
+            return RewardResult.success();
+        }
+
+        @Override
+        public RewardResult grantVirtual(final PlayerExecutionContext context) {
+            for (VirtualGrant grant : virtual) {
+                items.deliverVirtual(context.player(), grant.item(), grant.amount());
+            }
             return RewardResult.success();
         }
 
@@ -155,6 +220,14 @@ public final class ItemReward implements Reward {
         public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
             return descriptions.stream().map(description -> new ExecutionDescription("", Map.of(), description))
                 .toList();
+        }
+
+        private void validatePhysical() {
+            for (RewardItem item : physical) {
+                if (items.isVirtual(item)) {
+                    throw new IllegalStateException("Prepared physical item changed its storage mode");
+                }
+            }
         }
     }
 }

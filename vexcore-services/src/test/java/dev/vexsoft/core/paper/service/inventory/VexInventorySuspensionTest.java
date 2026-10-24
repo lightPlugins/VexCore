@@ -11,6 +11,7 @@ import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryKey;
 import dev.vexsoft.core.paper.inventory.InventoryView;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -202,7 +203,10 @@ final class VexInventorySuspensionTest {
                 (object, method, arguments) -> null);
             ScheduleService schedules = proxy(ScheduleService.class, (object, method, arguments) -> null);
             var registry = proxy(VexServiceRegistry.class, (object, method, arguments) ->
-                method.getName().equals("getOwner") ? plugin : schedules);
+                method.getName().equals("getOwner") ? plugin
+                    : arguments[0] == PacketTransportAdapterService.class
+                        ? proxy(PacketTransportAdapterService.class,
+                            (target, call, values) -> null) : schedules);
             service = new VexInventoryService(registry);
         }
 

@@ -23,11 +23,22 @@ import java.util.function.Consumer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Block;
+import org.bukkit.block.Container;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.minecart.StorageMinecart;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -37,6 +48,38 @@ import org.junit.jupiter.api.Test;
 class ProfileItemListenerTest {
 
     private static final ProfileDomain DOMAIN = new ProfileDomain("test:game");
+
+    @Test
+    void creativePlayersCanOpenPhysicalContainersWhileOtherProfileModesRemainProtected() {
+        for (var mode : GameMode.values()) {
+            var fixture = new Fixture();
+            fixture.mode = mode;
+            var container = proxy(Container.class, (object, method, arguments) -> null);
+            var block = proxy(Block.class, (object, method, arguments) -> container);
+            var interact = new PlayerInteractEvent(fixture.platform, Action.RIGHT_CLICK_BLOCK, null, block,
+                org.bukkit.block.BlockFace.UP);
+            fixture.listener.container(interact);
+            assertEquals(mode != GameMode.CREATIVE, interact.isCancelled(), mode.name());
+
+            for (var holder : new InventoryHolder[]{container,
+                proxy(StorageMinecart.class, (object, method, arguments) -> null)}) {
+                var inventory = proxy(Inventory.class, (object, method, arguments) -> holder);
+                var view = proxy(InventoryView.class, (object, method, arguments) -> switch (method.getName()) {
+                    case "getPlayer" -> fixture.platform;
+                    case "getTopInventory" -> inventory;
+                    default -> throw new AssertionError(method.getName());
+                });
+                var open = new InventoryOpenEvent(view);
+                fixture.listener.openPhysicalContainer(open);
+                assertEquals(mode != GameMode.CREATIVE, open.isCancelled(), mode.name());
+            }
+
+            var minecart = proxy(StorageMinecart.class, (object, method, arguments) -> null);
+            var entity = new PlayerInteractEntityEvent(fixture.platform, minecart);
+            fixture.listener.itemFrame(entity);
+            assertEquals(mode != GameMode.CREATIVE, entity.isCancelled(), mode.name());
+        }
+    }
 
     @Test
     void singleAndWholeStackDropsLeaveTheNativeSourceRemovalUntouched() {
@@ -173,10 +216,14 @@ class ProfileItemListenerTest {
         private boolean mobPickup = true;
         private boolean projection;
         private boolean participating = true;
+        private GameMode mode = GameMode.ADVENTURE;
         private int collections;
 
         private Fixture() {
             platform = proxy(Player.class, (object, method, arguments) -> {
+                if (method.getName().equals("getGameMode")) {
+                    return mode;
+                }
                 if (method.getName().equals("getUniqueId")) {
                     return owner.getUniqueId();
                 }

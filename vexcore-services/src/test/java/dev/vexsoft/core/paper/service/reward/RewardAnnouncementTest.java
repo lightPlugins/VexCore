@@ -71,6 +71,7 @@ final class RewardAnnouncementTest {
         var items = (RewardItemService) Proxy.newProxyInstance(RewardItemService.class.getClassLoader(),
             new Class<?>[]{RewardItemService.class}, (instance, method, arguments) -> switch (method.getName()) {
                 case "validate" -> null;
+                case "isVirtual" -> false;
                 case "create" -> new Stack();
                 case "name", "describe" -> {
                     Component name = ((RewardItem) arguments[1]).key().equals("vexisles:chestplate")

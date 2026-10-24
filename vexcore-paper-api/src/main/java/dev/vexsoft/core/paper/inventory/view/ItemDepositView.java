@@ -7,7 +7,9 @@ import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryKey;
 import dev.vexsoft.core.paper.inventory.ItemSaleSession;
 import dev.vexsoft.core.paper.inventory.MutableInventoryView;
+import dev.vexsoft.core.paper.service.inventory.InventoryService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,8 +28,12 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
     private final ItemSaleSession session;
     private final Predicate<ItemStack> accepted;
     private final ScheduleService schedules;
+    private final InventoryService inventories;
     private boolean pending;
+    private boolean committing;
     private boolean closed;
+    private Runnable synchronization;
+    private long transferRevision;
 
     /** Binds an escrow to the first inputSlots slots of a fixed-size menu. */
     protected ItemDepositView(
@@ -45,6 +51,7 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
             throw new IllegalArgumentException("Input inventory must not overlap the footer");
         }
         schedules = services.require(ScheduleService.class);
+        inventories = services.require(InventoryService.class);
         for (int slot = 0; slot < session.inventory().getSize(); slot++) {
             int index = slot;
             addElement(slot, new RefreshableInventoryElement(context -> session.inventory().getItem(index)));
@@ -56,14 +63,73 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         return session;
     }
 
+    /** Returns whether an input interaction is waiting for its backing store or deferred drag. */
+    protected final boolean isTransferPending() {
+        return pending;
+    }
+
     /** Reports a completed or rejected item interaction; controls provide their own feedback. */
     protected void onItemInteraction(final boolean successful) {
     }
 
     /** Executes an escrow transfer; participating games can delay completion until their durable write succeeds. */
-    protected void transferItems(final Runnable mutation, final Runnable completed) {
+    protected CompletableFuture<Void> commitTransfer(final Runnable mutation) {
         session.transfer(mutation);
-        completed.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    /** Locks input and retains client prediction until the backing transfer has settled or rolled back. */
+    protected final void transferItems(final Runnable mutation, final Runnable completed) {
+        if (pending || closed || session.isLocked()) {
+            onItemInteraction(false);
+            return;
+        }
+        Runnable synchronize = holdSynchronization();
+        pending = true;
+        committing = true;
+        transferRevision++;
+        CompletableFuture<Void> operation;
+        try {
+            operation = Objects.requireNonNull(commitTransfer(mutation), "transfer completion");
+        } catch (RuntimeException failure) {
+            pending = false;
+            committing = false;
+            finishSynchronization(synchronize);
+            throw failure;
+        }
+        boolean immediate = operation.isDone();
+        operation.whenComplete((ignored, failure) -> {
+            Runnable finish = () -> {
+                pending = false;
+                committing = false;
+                try {
+                    if (closed) {
+                        session.close();
+                    } else {
+                        if (failure == null) {
+                            completed.run();
+                        } else {
+                            onItemInteraction(false);
+                        }
+                        inventories.refresh(player);
+                    }
+                } finally {
+                    finishSynchronization(synchronize);
+                }
+            };
+            if (immediate) {
+                finish.run();
+            } else {
+                Runnable retired = () -> finishSynchronization(synchronize);
+                try {
+                    if (schedules.runFor(player, finish, retired).isEmpty()) {
+                        retired.run();
+                    }
+                } catch (RuntimeException rejected) {
+                    retired.run();
+                }
+            }
+        });
     }
 
     @Override
@@ -113,11 +179,9 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         ItemStack previous = source.getItem(slot);
         ItemStack before = previous == null ? null : previous.clone();
         ItemStack cursorBefore = player.getItemOnCursor().clone();
-        // Cancelled clicks may be applied synchronously. Only cancelled drags restore the cursor
-        // after dispatch and require a deferred transfer. Render before the click correction.
+        // Retain client prediction until asynchronous backing stores have settled the transfer.
         try {
             transferItems(() -> transfer(top, slot, click), () -> {
-                context.getInventoryService().refresh(player);
                 onItemInteraction(!Objects.equals(before, source.getItem(slot))
                     || !cursorBefore.equals(player.getItemOnCursor()));
             });
@@ -167,13 +231,16 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         ItemStack oldCursor = event.getOldCursor().clone();
         ItemStack cursor = event.getCursor();
         ItemStack newCursor = cursor == null ? null : cursor.clone();
+        Runnable synchronize = holdSynchronization();
         defer(context, () -> {
             if (!player.getItemOnCursor().equals(oldCursor)) {
+                finishSynchronization(synchronize);
                 onItemInteraction(false);
                 return;
             }
             for (var entry : before.entrySet()) {
                 if (!Objects.equals(entry.getValue(), itemAt(entry.getKey()))) {
+                    finishSynchronization(synchronize);
                     onItemInteraction(false);
                     return;
                 }
@@ -201,11 +268,13 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
                 pending = false;
             }
             if (closed || context.getInventoryService().getCurrentView(player.getUniqueId()).orElse(null) != this) {
+                finishSynchronization(synchronization);
                 return;
             }
             try {
+                long before = transferRevision;
                 transfer.run();
-                if (!closed) {
+                if (!closed && before == transferRevision) {
                     context.getInventoryService().refresh(player);
                 }
             } catch (RuntimeException failure) {
@@ -216,10 +285,12 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
         }, () -> {
             if (blockInteractions) {
                 pending = false;
+                finishSynchronization(synchronization);
             }
         }).isPresent();
         if (!scheduled && blockInteractions) {
             pending = false;
+            finishSynchronization(synchronization);
         }
         return scheduled;
     }
@@ -299,6 +370,20 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
             : player.getInventory().getItem(encoded - getSize());
     }
 
+    private Runnable holdSynchronization() {
+        if (synchronization == null) {
+            synchronization = inventories.deferSynchronization(player);
+        }
+        return synchronization;
+    }
+
+    private void finishSynchronization(final Runnable expected) {
+        if (expected != null && synchronization == expected) {
+            synchronization = null;
+            expected.run();
+        }
+    }
+
     private void setItemAt(final int encoded, final ItemStack item) {
         if (encoded < getSize()) {
             session.inventory().setItem(encoded, item);
@@ -310,7 +395,10 @@ public abstract class ItemDepositView extends AbstractInventoryView implements M
     @Override
     public void onClose(final InventoryContext context) {
         closed = true;
-        session.close();
+        finishSynchronization(synchronization);
+        if (!committing) {
+            session.close();
+        }
         super.onClose(context);
     }
 }

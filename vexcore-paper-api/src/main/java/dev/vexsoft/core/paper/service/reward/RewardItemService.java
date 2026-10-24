@@ -2,13 +2,14 @@ package dev.vexsoft.core.paper.service.reward;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
+import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.paper.reward.item.RewardItem;
-import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
 import dev.vexsoft.core.paper.reward.item.RewardItemPresentation;
+import dev.vexsoft.core.paper.reward.item.RewardItemProvider;
 import java.util.List;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import net.kyori.adventure.text.Component;
 
 /** Resolves item providers and delivers inventory overflow privately to its owner. */
 public interface RewardItemService extends VexService {
@@ -24,6 +25,16 @@ public interface RewardItemService extends VexService {
 
     /** Creates a fresh physical reward item. */
     ItemStack create(RewardItem item);
+
+    /** Returns whether the current provider routes this reference into persistent virtual storage. */
+    default boolean isVirtual(RewardItem item) {
+        return false;
+    }
+
+    /** Credits a prepared virtual quantity inside the caller's existing player transaction. */
+    default void deliverVirtual(VexPlayer player, RewardItem item, WholeAmount amount) {
+        throw new IllegalStateException("Virtual reward delivery is unavailable");
+    }
 
     /** Resolves the provider's localized item name. */
     Component name(Player viewer, RewardItem item);

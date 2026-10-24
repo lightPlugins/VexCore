@@ -8,6 +8,7 @@ import dev.vexsoft.core.paper.inventory.InventoryContext;
 import dev.vexsoft.core.paper.inventory.InventoryElement;
 import dev.vexsoft.core.paper.inventory.InventoryKey;
 import dev.vexsoft.core.paper.inventory.MutableInventoryView;
+import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.lang.reflect.Proxy;
 import java.util.Map;
@@ -171,7 +172,10 @@ public final class VexInventoryListenerOwnershipTest {
             VexServiceRegistry.class,
             (proxyObject, invokedMethod, arguments) -> switch (invokedMethod.getName()) {
                 case "getOwner" -> plugin;
-                case "require" -> arguments[0] == ScheduleService.class ? schedules : inventory[0];
+                case "require" -> arguments[0] == ScheduleService.class ? schedules
+                    : arguments[0] == PacketTransportAdapterService.class
+                        ? proxy(PacketTransportAdapterService.class,
+                            (object, method, values) -> null) : inventory[0];
                 default -> null;
             }
         );
