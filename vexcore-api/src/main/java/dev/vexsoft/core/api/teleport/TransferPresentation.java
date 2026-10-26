@@ -20,6 +20,7 @@ public record TransferPresentation(String loadingTitle, String failedTitle, Stri
     /** Validated arrival audio; volume zero silences it without changing the transfer presentation. */
     public record Sound(String type, float volume, float pitch) {
 
+        /** Validates the namespaced sound ID and supported volume and pitch ranges. */
         public Sound {
             if (type == null || !type.matches("[a-z0-9._-]+:[a-z0-9/._-]+")
                 || !Float.isFinite(volume) || volume < 0 || volume > 10

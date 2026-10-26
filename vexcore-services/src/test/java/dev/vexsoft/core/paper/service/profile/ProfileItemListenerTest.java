@@ -24,6 +24,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
@@ -55,7 +56,8 @@ class ProfileItemListenerTest {
             var fixture = new Fixture();
             fixture.mode = mode;
             var container = proxy(Container.class, (object, method, arguments) -> null);
-            var block = proxy(Block.class, (object, method, arguments) -> container);
+            var block = proxy(Block.class, (object, method, arguments) -> method.getName().equals("getState")
+                ? container : new Location(null, 0, 0, 0));
             var interact = new PlayerInteractEvent(fixture.platform, Action.RIGHT_CLICK_BLOCK, null, block,
                 org.bukkit.block.BlockFace.UP);
             fixture.listener.container(interact);
@@ -63,7 +65,8 @@ class ProfileItemListenerTest {
 
             for (var holder : new InventoryHolder[]{container,
                 proxy(StorageMinecart.class, (object, method, arguments) -> null)}) {
-                var inventory = proxy(Inventory.class, (object, method, arguments) -> holder);
+                var inventory = proxy(Inventory.class, (object, method, arguments) -> method.getName().equals("getHolder")
+                    ? holder : new Location(null, 0, 0, 0));
                 var view = proxy(InventoryView.class, (object, method, arguments) -> switch (method.getName()) {
                     case "getPlayer" -> fixture.platform;
                     case "getTopInventory" -> inventory;
@@ -254,6 +257,7 @@ class ProfileItemListenerTest {
                 throw new AssertionError("Native item movement must not transact: " + method.getName());
             });
             var worldItems = proxy(ProfileWorldItemService.class, (object, method, arguments) -> switch (method.getName()) {
+                case "allowsContainer" -> false;
                 case "isProjection" -> projection;
                 case "collect" -> {
                     assertTrue(projection, "Only an existing journal projection may enter persistence");

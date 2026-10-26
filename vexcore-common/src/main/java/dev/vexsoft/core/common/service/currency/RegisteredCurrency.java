@@ -27,7 +27,8 @@ final class RegisteredCurrency implements Currency {
     }
 
     void update(final CurrencyDefinition updatedDefinition) {
-        if (!definition.getDataScope().domain().equals(updatedDefinition.getDataScope().domain())) {
+        if (!definition.getDataScope().domain().equals(updatedDefinition.getDataScope().domain())
+            || definition.isSharedProfile() != updatedDefinition.isSharedProfile()) {
             throw new IllegalArgumentException("Changing a registered currency scope requires an offline migration");
         }
         definition = Objects.requireNonNull(updatedDefinition, "updatedDefinition");

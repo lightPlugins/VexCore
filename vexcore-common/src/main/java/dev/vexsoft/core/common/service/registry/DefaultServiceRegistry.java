@@ -8,10 +8,12 @@ import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.Value;
 
 /** Stores owner-bound services, resolves scoped lookups, and closes services when they are removed. */
@@ -19,6 +21,7 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
 
     private final ConcurrentHashMap<Class<? extends VexService>, List<Registration<?>>> registrations =
         new ConcurrentHashMap<>();
+    private final AtomicLong registrationSequence = new AtomicLong();
 
     @Override
     public VexServiceRegistry scoped(final ServiceOwner owner) {
@@ -51,13 +54,13 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
     public void unregisterOwnedBy(final ServiceOwner owner) {
         Objects.requireNonNull(owner, "owner");
 
-        List<VexService> removedServices = new ArrayList<>();
+        List<Registration<?>> removedServices = new ArrayList<>();
 
         registrations.forEach((serviceType, serviceRegistrations) -> {
             synchronized (serviceRegistrations) {
                 serviceRegistrations.removeIf(registration -> {
                     if (registration.getOwner() == owner) {
-                        removedServices.add(registration.getImplementation());
+                        removedServices.add(registration);
 
                         return true;
                     }
@@ -126,7 +129,7 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
                 }
             }
 
-            serviceRegistrations.add(new Registration<>(owner, implementation));
+            serviceRegistrations.add(new Registration<>(owner, implementation, registrationSequence.incrementAndGet()));
         }
     }
 
@@ -140,12 +143,12 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
             return;
         }
 
-        List<VexService> removedServices = new ArrayList<>();
+        List<Registration<?>> removedServices = new ArrayList<>();
 
         synchronized (serviceRegistrations) {
             serviceRegistrations.removeIf(registration -> {
                 if (registration.getOwner() == owner) {
-                    removedServices.add(registration.getImplementation());
+                    removedServices.add(registration);
 
                     return true;
                 }
@@ -161,11 +164,13 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
         closeServices(removedServices);
     }
 
-    private void closeServices(final List<VexService> services) {
+    private void closeServices(final List<Registration<?>> services) {
         RuntimeException cleanupFailure = null;
 
-        for (VexService service : services.reversed()) {
-            if (!(service instanceof AutoCloseable closeableService)) {
+        // Map iteration does not preserve dependency creation order. Consumers must close before their resources.
+        services.sort(Comparator.comparingLong((Registration<?> registration) -> registration.getSequence()).reversed());
+        for (Registration<?> registration : services) {
+            if (!(registration.getImplementation() instanceof AutoCloseable closeableService)) {
                 continue;
             }
 
@@ -191,5 +196,6 @@ public final class DefaultServiceRegistry implements ServiceRegistry {
 
         ServiceOwner owner;
         T implementation;
+        long sequence;
     }
 }

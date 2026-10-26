@@ -2,6 +2,7 @@ package dev.vexsoft.core.common.service.currency;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.service.currency.SharedCurrencyService;
 import dev.vexsoft.core.currency.Currency;
 import dev.vexsoft.core.currency.CurrencyBatchTransaction;
 import dev.vexsoft.core.currency.CurrencyContainer;
@@ -16,15 +17,26 @@ import java.util.Objects;
 public final class VexCurrencyContainer implements CurrencyContainer {
 
     private final VexPlayer player;
+    private final SharedCurrencyService shared;
 
     /** Binds currency access to one loaded Vex player. */
     public VexCurrencyContainer(final VexPlayer player) {
+        this(player, null);
+    }
+
+    /** Binds optional shared accounts without changing existing personal currency persistence. */
+    public VexCurrencyContainer(final VexPlayer player, final SharedCurrencyService shared) {
         this.player = Objects.requireNonNull(player, "player");
+        this.shared = shared;
     }
 
     @Override
     public WholeAmount getBalance(final Currency currency) {
         Currency checked = requireAvailable(currency);
+
+        if (checked.getDefinition().isSharedProfile()) {
+            return shared == null ? checked.getDefinition().getDefaultBalance() : shared.balance(player, checked);
+        }
 
         return player.read(CurrencyPlayerData.key(checked), data -> balance(data, checked));
     }
@@ -39,6 +51,10 @@ public final class VexCurrencyContainer implements CurrencyContainer {
 
         if (amount == null || !amount.isPositive()) {
             return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+        }
+
+        if (checked.getDefinition().isSharedProfile()) {
+            return setBalance(checked, getBalance(checked).add(amount));
         }
 
         return player.update(
@@ -70,6 +86,9 @@ public final class VexCurrencyContainer implements CurrencyContainer {
     public CurrencyTransaction depositOnce(final Currency currency, final WholeAmount amount, final String operationId) {
         Objects.requireNonNull(currency, "currency");
         Objects.requireNonNull(amount, "amount");
+        if (currency.getDefinition().isSharedProfile()) {
+            return failed(CurrencyTransaction.Status.UNAVAILABLE, "shared-deposit-requires-document-receipt");
+        }
         if (operationId == null || operationId.isBlank() || operationId.length() > 160) {
             throw new IllegalArgumentException("Invalid currency operation id");
         }
@@ -124,9 +143,15 @@ public final class VexCurrencyContainer implements CurrencyContainer {
                 }
                 updated.put(currency.getKey(), balance);
             }
-            checkedAmounts.keySet().forEach(currency -> player.update(CurrencyPlayerData.key(currency), data -> {
-                data.getBalances().put(currency.getKey().toString(), updated.get(currency.getKey()).toString());
-            }));
+            Map<Currency, WholeAmount> before = new LinkedHashMap<>();
+            for (Currency currency : checkedAmounts.keySet()) {
+                before.put(currency, getBalance(currency));
+                var result = setBalance(currency, updated.get(currency.getKey()));
+                if (!result.successful()) {
+                    before.forEach(this::setBalance);
+                    return new CurrencyBatchTransaction(false, result.message(), Map.of());
+                }
+            }
             return new CurrencyBatchTransaction(true, "", updated);
         }
     }
@@ -140,6 +165,13 @@ public final class VexCurrencyContainer implements CurrencyContainer {
 
         if (amount == null || !amount.isPositive()) {
             return failed(CurrencyTransaction.Status.INVALID_AMOUNT, "invalid-amount");
+        }
+
+        if (checked.getDefinition().isSharedProfile()) {
+            WholeAmount previous = getBalance(checked);
+            return previous.compareTo(amount) < 0
+                ? transaction(CurrencyTransaction.Status.INSUFFICIENT_BALANCE, previous, previous, "insufficient-balance")
+                : setBalance(checked, previous.subtract(amount));
         }
 
         return player.update(
@@ -179,6 +211,11 @@ public final class VexCurrencyContainer implements CurrencyContainer {
 
         if (checked.getDefinition().getMaximumBalance().map(maximum -> balance.compareTo(maximum) > 0).orElse(false)) {
             return failed(CurrencyTransaction.Status.MAXIMUM_EXCEEDED, "maximum-exceeded");
+        }
+
+        if (checked.getDefinition().isSharedProfile()) {
+            return shared == null ? failed(CurrencyTransaction.Status.UNAVAILABLE, "shared-wallet-unavailable")
+                : shared.set(player, checked, balance);
         }
 
         return player.update(

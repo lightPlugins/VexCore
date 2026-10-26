@@ -29,6 +29,25 @@ class VexPublishedConfigurationServiceTest {
     private static final String COMMIT = "a".repeat(40);
 
     @Test
+    void explicitRefreshRecoversMissedNotificationsAndDoesNotRepublishOrRepeatListeners() throws Exception {
+        var fixture = new StoreFixture();
+        try (var service = service(fixture.store())) {
+            service.register(Snapshot.class, "gardens");
+            service.readiness().join();
+            var changes = new AtomicInteger();
+            service.subscribe(Snapshot.class, ignored -> changes.incrementAndGet());
+            fixture.values.put("published_gardens", new StoredGlobalData(
+                "{\"commit\":\"" + COMMIT + "\",\"data\":{\"value\":42}}", 1));
+            assertTrue(service.find(Snapshot.class).isEmpty());
+            service.refresh(Snapshot.class).join();
+            assertEquals(42, service.require(Snapshot.class).value());
+            service.refresh(Snapshot.class).join();
+            assertEquals(1, changes.get());
+            assertTrue(fixture.writes.isEmpty());
+        }
+    }
+
+    @Test
     void aRenamedSystemCanReadTheLegacySnapshotWithoutWritingEitherKey() throws Exception {
         var fixture = new StoreFixture();
         var legacy = new StoredGlobalData("{\"commit\":\"" + COMMIT + "\",\"data\":{\"value\":42}}", 7);

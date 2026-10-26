@@ -5,12 +5,13 @@ import dev.vexsoft.core.common.data.redis.RedisPlayerDataStore;
 import io.lettuce.core.Limit;
 import io.lettuce.core.Range;
 import io.lettuce.core.ScriptOutputType;
-import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.async.RedisAsyncCommands;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,12 +39,18 @@ public final class RedisMessageChannel implements AutoCloseable {
     private final Predicate<UUID> ownsPlayer;
     private final String token = UUID.randomUUID().toString();
     private final CopyOnWriteArrayList<Consumer<MessageEnvelope>> receivers = new CopyOnWriteArrayList<>();
-    private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor(
-        Thread.ofVirtual().name("VexCore-Redis-messages").factory());
+    private volatile Thread workerThread;
+    private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = Thread.ofVirtual().name("VexCore-Redis-messages").unstarted(task);
+        workerThread = thread;
+        return thread;
+    });
     private final Logger logger = Logger.getLogger(RedisMessageChannel.class.getName());
     private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean closed = new AtomicBoolean();
     private CompletableFuture<Void> ready = CompletableFuture.completedFuture(null);
     private RedisAsyncCommands<String, String> commands;
+    private RedisMessageEndpointLease endpoint;
     private String position;
 
     public RedisMessageChannel(
@@ -59,19 +66,28 @@ public final class RedisMessageChannel implements AutoCloseable {
 
     /** Acquires the endpoint lease and starts reading control messages from this process's own cursor. */
     public void start() {
-        if (!started.compareAndSet(false, true)) {
+        if (closed.get() || !started.compareAndSet(false, true)) {
             return;
         }
-        ready = backend.messageCommands().thenAcceptAsync(connection -> {
-            commands = connection;
-            if (!"OK".equals(commands.set(node(), token, SetArgs.Builder.nx().px(15000)).toCompletableFuture().join())) {
-                throw new IllegalStateException("Duplicate Redis network endpoint: " + node());
+        ready = backend.messageCommands().thenCompose(connection -> {
+            synchronized (this) {
+                if (closed.get()) {
+                    return CompletableFuture.failedFuture(new IllegalStateException("Redis messaging channel closed"));
+                }
+                commands = connection;
+                endpoint = new RedisMessageEndpointLease(connection, node(), token, worker);
+                return endpoint.acquire(Duration.ofSeconds(20));
             }
-            var tail = commands.xrevrange(stream(), Range.unbounded(), Limit.from(1)).toCompletableFuture().join();
+        }).thenRunAsync(() -> {
+            if (closed.get()) {
+                return;
+            }
+            var tail = commands.xrevrange(stream(), Range.unbounded(), Limit.from(1)).toCompletableFuture()
+                .orTimeout(5, TimeUnit.SECONDS).join();
             position = tail.isEmpty() ? "0-0" : tail.getFirst().getId();
             worker.scheduleWithFixedDelay(this::poll, 0, 250, TimeUnit.MILLISECONDS);
         }, worker).whenComplete((ignored, failure) -> {
-            if (failure != null) {
+            if (failure != null && !closed.get()) {
                 backend.fence(failure);
                 logger.log(Level.SEVERE, "Redis messaging could not acquire its unique network endpoint", failure);
             }
@@ -111,28 +127,49 @@ public final class RedisMessageChannel implements AutoCloseable {
 
     @Override
     public void close() {
+        RedisMessageEndpointLease lease;
+        synchronized (this) {
+            if (!closed.compareAndSet(false, true)) {
+                return;
+            }
+            lease = endpoint;
+        }
         started.set(false);
         worker.shutdownNow();
-        if (commands != null) {
-            commands.eval("if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0",
-                ScriptOutputType.INTEGER, new String[]{node()}, token);
+        try {
+            if (lease != null) {
+                lease.close();
+            }
+        } finally {
+            receivers.clear();
+            if (Thread.currentThread() != workerThread) {
+                worker.close();
+            }
         }
-        receivers.clear();
     }
 
     private void poll() {
+        if (closed.get()) {
+            return;
+        }
         try {
             Long owned = commands.<Long>eval(RENEW, ScriptOutputType.INTEGER,
                 new String[]{backend.namespace() + "epoch", node()}, backend.liveEpoch(), token)
-                .toCompletableFuture().join();
+                .toCompletableFuture().get();
+            if (closed.get()) {
+                return;
+            }
             if (owned != 1) {
                 backend.fence(new IllegalStateException("Redis network endpoint ownership was lost"));
                 worker.shutdown();
                 return;
             }
             var messages = commands.xrange(stream(), Range.create('(' + position, "+"), Limit.from(256))
-                .toCompletableFuture().join();
+                .toCompletableFuture().get();
             for (var entry : messages) {
+                if (closed.get()) {
+                    return;
+                }
                 position = entry.getId();
                 try {
                     MessageEnvelope message = codec.decode(Base64.getDecoder().decode(entry.getBody().get("payload")));
@@ -143,8 +180,12 @@ public final class RedisMessageChannel implements AutoCloseable {
                     logger.log(Level.WARNING, "Ignoring an invalid or failed Redis control message", failure);
                 }
             }
-        } catch (RuntimeException failure) {
-            logger.log(Level.WARNING, "Redis control-message connection is unavailable", failure);
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException | RuntimeException failure) {
+            if (!closed.get()) {
+                logger.log(Level.WARNING, "Redis control-message connection is unavailable", failure);
+            }
         }
     }
 

@@ -8,9 +8,21 @@ import org.bukkit.entity.Item;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
+import java.util.function.BiPredicate;
 
 /** Keeps optional profile world items authoritative in storage while native entities remain projections. */
 public interface ProfileWorldItemService extends VexService {
+
+    /** Adds an owner-managed storage realm; close the registration before unloading its runtime. */
+    default AutoCloseable registerContainerAccess(final BiPredicate<Player, Location> policy) {
+        throw new UnsupportedOperationException("Managed profile containers are unavailable");
+    }
+
+    /** Checks registered storage realms locally; public containers remain denied by default. */
+    default boolean allowsContainer(final Player player, final Location location) {
+        return false;
+    }
 
     /** Removes exact native possessions and records their world destination in the same profile transaction. */
     CompletableFuture<Void> drop(VexPlayer player, List<ItemStack> items, Location location);

@@ -94,6 +94,7 @@ flowchart TD
 - A built-in proxy ping diagnostic with localized results
 - Velocity-backed online-player directory lookups
 - Cross-server player transfers with destination-server arrival handoff
+- [Lobby fallback after controlled backend shutdown](docs/server-shutdown-fallback.md), after confirmed player saves
 
 > [!NOTE]
 > Paper and Velocity run in separate processes and therefore keep separate service registries. Messaging connects those registries without pretending that Java service instances can be shared across process boundaries.

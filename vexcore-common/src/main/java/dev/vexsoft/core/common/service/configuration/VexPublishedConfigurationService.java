@@ -169,6 +169,21 @@ public final class VexPublishedConfigurationService implements PublishedConfigur
         registrations.clear();
     }
 
+    @Override
+    public CompletableFuture<Void> refresh(final Class<?> type) {
+        return refreshRegistration(registration(type));
+    }
+
+    private <T> CompletableFuture<Void> refreshRegistration(final Registration<T> registration) {
+        return store.loadGlobalData(owner, registration.key).thenAccept(stored -> {
+            if (registrations.get(registration.type) == registration && stored.isPresent()
+                && stored.orElseThrow().revision() > registration.revision) {
+                var current = stored.orElseThrow();
+                registration.install(read(registration, current), current.revision());
+            }
+        });
+    }
+
     private <T> CompletableFuture<PublishedConfigurationVersion> publish(
         final Registration<T> registration,
         final T value,

@@ -14,6 +14,10 @@ import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.globaldata.GlobalDataService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.network.AdmissionService;
+import dev.vexsoft.core.api.service.network.NetworkPresenceService;
+import dev.vexsoft.core.common.service.network.VexNetworkPresenceService;
+import dev.vexsoft.core.velocity.service.directory.NetworkPresencePublisherService;
+import dev.vexsoft.core.velocity.service.directory.VexNetworkPresencePublisherService;
 import dev.vexsoft.core.api.service.player.PlayerIdentityService;
 import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
@@ -94,8 +98,9 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
             coreServices.register(PlayerIdentityService.class, VexPlayerIdentityService.class);
             coreServices.register(MessagingService.class, VexMessagingService.class);
             coreServices.register(ProfileStorageService.class, VexProfileStorageService.class);
+            registerNetworkPresenceServices(coreServices);
             coreServices.register(AdmissionService.class, VexAdmissionService.class);
-            coreServices.register(ServerTransferService.class, VexServerTransferService.class);
+            registerServerTransferServices(coreServices);
             coreServices.register(ProxyPluginBootstrapService.class, VexProxyPluginBootstrapService.class);
             coreServices.registerQueuedServices();
             coreServices.require(MessagingService.class).register(VexProxyPingMessageHandler.class);
@@ -105,6 +110,7 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
             coreServices.require(MessagingService.class).register(VexPlayerDirectoryListRequestHandler.class);
             coreServices.require(MessageTransportService.class).start();
             coreServices.require(ServerTransferService.class).start();
+            coreServices.require(NetworkPresencePublisherService.class).start();
             String storageType = coreServices.require(PlayerDataStoreService.class).getStorageType();
 
             platformLogger.info(
@@ -132,6 +138,17 @@ public final class VexCoreVelocityPlugin implements VexVelocityCore, Configurati
             coreServices.unregisterOwnedServices();
             coreServices = null;
         }
+    }
+
+    /** Registers carrierless directory storage before the proxy-owned publishing lifecycle. */
+    public static void registerNetworkPresenceServices(final VexServiceRegistry services) {
+        services.register(NetworkPresenceService.class, VexNetworkPresenceService.class);
+        services.register(NetworkPresencePublisherService.class, VexNetworkPresencePublisherService.class);
+    }
+
+    /** Registers the proxy transfer gate and controlled-shutdown fallback through the managed service contract. */
+    public static void registerServerTransferServices(final VexServiceRegistry services) {
+        services.register(ServerTransferService.class, VexServerTransferService.class);
     }
 
     @Override

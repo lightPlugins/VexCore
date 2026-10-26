@@ -15,4 +15,9 @@ public interface PlayerDirectoryService extends VexService {
 
     /** Returns a short-lived cached snapshot of players connected through Velocity. */
     List<NetworkPlayer> getOnlinePlayers();
+
+    /** Requests a fresh proxy snapshot; failure must not be interpreted as everybody being offline. */
+    default CompletableFuture<List<NetworkPlayer>> snapshot() {
+        return CompletableFuture.failedFuture(new UnsupportedOperationException("Fresh directory snapshots unavailable"));
+    }
 }

@@ -25,8 +25,11 @@ import dev.vexsoft.core.paper.service.world.WorldService;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.BiPredicate;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +68,7 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
     private final Set<UUID> collecting = ConcurrentHashMap.newKeySet();
     private final VexCache<UUID, Boolean> attempts;
     private volatile boolean closed;
+    private final List<BiPredicate<Player, Location>> containerAccess = new CopyOnWriteArrayList<>();
 
     public VexProfileWorldItemService(final VexServiceRegistry services) {
         this(services, ItemStack::deserializeBytes);
@@ -123,6 +127,18 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
                 return new ProfileMutation<Void>(null, List.of(change));
             });
         }));
+    }
+
+    @Override
+    public AutoCloseable registerContainerAccess(final BiPredicate<Player, Location> policy) {
+        Objects.requireNonNull(policy, "policy");
+        containerAccess.add(policy);
+        return () -> containerAccess.remove(policy);
+    }
+
+    @Override
+    public boolean allowsContainer(final Player player, final Location location) {
+        return !closed && location != null && containerAccess.stream().anyMatch(policy -> policy.test(player, location));
     }
 
     @Override
@@ -196,7 +212,8 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
                 return new ProfileMutation<Void>(null, List.of(new ProfileDocumentChange(key, index.revision(),
                     changed.value(), drop.expiresAt())));
             });
-        })).whenComplete((ignored, failure) -> collecting.remove(id));
+        })).whenComplete((ignored, failure) -> collecting.remove(id))
+            .exceptionallyCompose(VexProfileWorldItemService::deferBusyPickup);
     }
 
     @Override
@@ -277,6 +294,7 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
 
     @Override
     public void close() {
+        containerAccess.clear();
         closed = true;
         attempts.invalidateAll();
         projections.values().forEach(item -> schedules.runFor(item, item::remove));
@@ -364,7 +382,20 @@ public final class VexProfileWorldItemService implements ProfileWorldItemService
                 return new ProfileMutation<Void>(null,
                     List.of(new ProfileDocumentChange(key, revision, receipt, source.expiresAt())));
             });
-        })).whenComplete((ignored, failure) -> collecting.remove(id));
+        })).whenComplete((ignored, failure) -> collecting.remove(id))
+            .exceptionallyCompose(VexProfileWorldItemService::deferBusyPickup);
+    }
+
+    private static CompletableFuture<Void> deferBusyPickup(final Throwable failure) {
+        Throwable cause = failure;
+        while (cause instanceof CompletionException && cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        if (cause instanceof ProfileSessionBusyException) {
+            // Readiness can change during the journal read. Leave ownership untouched for the next pickup event.
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.failedFuture(failure);
     }
 
     private CompletableFuture<Void> expirePublic(final Item projection) {

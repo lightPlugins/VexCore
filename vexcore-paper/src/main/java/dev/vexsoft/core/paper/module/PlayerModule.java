@@ -3,6 +3,8 @@ package dev.vexsoft.core.paper.module;
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.player.PlayerService;
+import dev.vexsoft.core.api.service.network.NetworkPresenceService;
+import dev.vexsoft.core.common.service.network.VexNetworkPresenceService;
 import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -38,6 +40,7 @@ public final class PlayerModule implements VexModule, ConfigurationOwner, LocalS
         services.register(ConfigurationService.class, VexConfigurationService.class);
         services.register(PlayerDataStoreService.class, VexPlayerDataStoreService.class);
         services.register(ProfileStorageService.class, VexProfileStorageService.class);
+        services.register(NetworkPresenceService.class, VexNetworkPresenceService.class);
         services.register(PlayerTransferStoreService.class, VexPlayerTransferStoreService.class);
         services.register(ProfileLeaseService.class, VexProfileLeaseService.class);
         services.register(PlayerDataCoordinatorService.class, VexPlayerDataCoordinatorService.class);

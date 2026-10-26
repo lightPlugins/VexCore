@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper;
 
 import dev.vexsoft.core.api.configuration.ConfigurationOwner;
 import dev.vexsoft.core.api.localization.LocalizationOwner;
+import dev.vexsoft.core.api.network.BackendShutdown;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
 import dev.vexsoft.core.api.service.configuration.PublishedConfigurationService;
@@ -188,12 +189,14 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
@@ -396,8 +399,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         if (services != null) {
             services.find(PlayerDataCoordinatorService.class).ifPresent(players -> {
                 ProfileSessionService profiles = coreServices.require(ProfileSessionService.class);
-                drainPlayerData(players, profiles, services.require(PlayerDataStoreService.class),
+                boolean saved = drainPlayerData(players, profiles, services.require(PlayerDataStoreService.class),
                     services.require(ProfileLeaseService.class), exception -> recoverPlayers(players, exception));
+                disconnectStoppedPlayers(getServer().isStopping(), saved, getServer().getOnlinePlayers());
             });
         }
 
@@ -472,7 +476,18 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         reportWarning(message, cause);
     }
 
-    static void drainPlayerData(
+    static void disconnectStoppedPlayers(
+        final boolean stopping, final boolean saved, final Collection<? extends Player> online
+    ) {
+        if (!stopping || !saved) {
+            return;
+        }
+        // Native shutdown disconnects after plugins have closed. Signal the proxy while Core is available,
+        // after persistence, so fallback never depends on a request to this stopping backend.
+        List.copyOf(online).forEach(player -> player.kick(BackendShutdown.reason(), PlayerKickEvent.Cause.PLUGIN));
+    }
+
+    static boolean drainPlayerData(
         final PlayerDataCoordinatorService players,
         final ProfileSessionService profiles,
         final PlayerDataStoreService storage,
@@ -501,6 +516,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
 
         // Paper closes the plugin JAR after onDisable returns. Keep its classes and services available to the drain.
         recovered.join();
+        return !drain.isCompletedExceptionally();
     }
 
     private void recoverPlayers(final PlayerDataCoordinatorService players, final Throwable exception) {

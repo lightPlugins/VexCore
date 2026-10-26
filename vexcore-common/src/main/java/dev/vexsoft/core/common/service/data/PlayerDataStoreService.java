@@ -5,12 +5,19 @@ import dev.vexsoft.core.common.data.global.GlobalDataStore;
 import dev.vexsoft.core.common.data.identity.PlayerIdentityStore;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import java.time.Duration;
+import dev.vexsoft.core.common.data.sql.SharedDatabase;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * Provides the player data store configured for VexCore
  */
 public interface PlayerDataStoreService extends VexService {
+
+    /** Returns Core's durable PostgreSQL transaction boundary when PostgreSQL is configured. */
+    default Optional<SharedDatabase> getSharedDatabase() {
+        return Optional.empty();
+    }
 
     /** Makes backend closure wait for player/session drains and recovery export before returning. */
     default void drainBeforeClose(final CompletableFuture<Void> drain) {

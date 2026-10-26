@@ -5,7 +5,7 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.api.teleport.TransferPresentation;
 import java.util.UUID;
 
-/** Owns transfer loading displays on backends without the initiating game-entry plugin. */
+/** Owns request-scoped loading displays for backend actions and server transfers. */
 public interface TransferDisplayService extends VexService {
 
     /** Shows a loading bossbar only for the current native player binding. */

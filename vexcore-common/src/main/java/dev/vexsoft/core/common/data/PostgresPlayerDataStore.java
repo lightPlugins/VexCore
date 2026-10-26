@@ -2,6 +2,8 @@ package dev.vexsoft.core.common.data;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import dev.vexsoft.core.common.data.sql.JdbcSharedDatabase;
+import dev.vexsoft.core.common.data.sql.SharedDatabase;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.identity.PlayerIdentity;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
@@ -101,6 +103,11 @@ public final class PostgresPlayerDataStore implements PlayerDataStore, GlobalDat
         // This adapter is invoked exclusively by database executor tasks, never the server thread.
         initialization.join();
         return dataSource.getConnection();
+    }
+
+    /** Exposes transactions on the durable pool without exposing its credentials or lifecycle. */
+    public SharedDatabase sharedDatabase() {
+        return new JdbcSharedDatabase(this::connection, executor);
     }
 
     @Override

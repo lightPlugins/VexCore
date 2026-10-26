@@ -8,6 +8,7 @@ import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
 import dev.vexsoft.core.api.player.profile.ProfileDataSnapshot;
 import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.profile.ProfileMutation;
+import dev.vexsoft.core.api.service.currency.SharedCurrencyService;
 import dev.vexsoft.core.api.player.profile.ProfileSelection;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
@@ -338,13 +339,16 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                             if (!teleported) {
                                 return CompletableFuture.failedFuture(new IllegalStateException("Activation teleport failed"));
                             }
-                            return activationEntity(player, platform, session, previous == null, () -> {
+                            SharedCurrencyService shared = services.find(SharedCurrencyService.class).orElse(null);
+                            return (shared == null ? CompletableFuture.<Void>completedFuture(null)
+                                : shared.refresh(player, transition.target)).thenCompose(wallet ->
+                                activationEntity(player, platform, session, previous == null, () -> {
                                 if (transition.failed || session.retired || !player.isCurrentContext(transition.target)) {
                                     throw new IllegalStateException("Profile restoration retired before gameplay");
                                 }
                                 current.participant().restore(platform, transition.target);
                                 return null;
-                            });
+                            }));
                         });
                 });
             }).thenCompose(ignored -> previous == null ? CompletableFuture.completedFuture(null)
@@ -538,6 +542,7 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
         }
         PlayerProfileContext context = player.findProfileContext(current.participant().domain()).orElseThrow();
         DurableOperation<T> operation = new DurableOperation<>();
+        SharedCurrencyService shared = services.find(SharedCurrencyService.class).orElse(null);
         boolean live = backend.getStore().isLive();
         CompletableFuture<Void> baseline = live ? session.backgroundSave.handle((ignored, failure) -> {
             if (failure != null && indeterminate(failure)) {
@@ -553,7 +558,8 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             .thenCompose(ignored -> players.snapshotProfile(player, context))
             .thenCompose(before -> {
                 operation.before = before;
-                return entity(platform, () -> {
+                return (shared == null ? CompletableFuture.<Void>completedFuture(null) : shared.prepare(player, context))
+                    .thenCompose(ignored -> entity(platform, () -> {
                     if (session.retired) {
                         throw new ProfileSessionRetiredException();
                     }
@@ -566,10 +572,15 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                         operation.started = true;
                         operation.mutation = Objects.requireNonNull(player.inProfileMutation(context.domain(), mutation),
                             "mutation result");
+                        if (shared != null) {
+                            var changes = new ArrayList<>(operation.mutation.changes());
+                            changes.addAll(shared.changes(player));
+                            operation.mutation = new ProfileMutation<>(operation.mutation.result(), changes);
+                        }
                         capture(player, platform, current);
                     }
                     return operation.mutation;
-                });
+                }));
             }).thenCompose(prepared -> players.save(player.getUniqueId(), prepared.changes()))
             .thenCompose(ignored -> {
                 operation.committed = true;
@@ -631,6 +642,9 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
             }).thenCompose(ignored -> CompletableFuture.failedFuture(failure));
         });
         return settled.whenComplete((value, failure) -> {
+            if (shared != null) {
+                shared.finish(player, operation.committed);
+            }
             session.changing.set(false);
             if (session.poisoned) {
                 ready.completeExceptionally(new IllegalStateException("Profile rollback requires reconnect"));

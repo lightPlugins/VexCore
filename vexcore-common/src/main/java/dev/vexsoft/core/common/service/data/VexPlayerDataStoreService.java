@@ -18,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.Locale;
 import java.util.Objects;
 import lombok.Getter;
+import dev.vexsoft.core.common.data.sql.SharedDatabase;
+import java.util.Optional;
 
 /** Initializes the configured storage backend shared by player data, global data, and identities. */
 @Dependencies(ConfigurationService.class)
@@ -35,6 +37,7 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
     private final String loginKickMessage;
     @Getter
     private final CompletableFuture<Void> readiness;
+    private final Optional<SharedDatabase> sharedDatabase;
     private volatile CompletableFuture<Void> shutdownDrain = CompletableFuture.completedFuture(null);
 
     public VexPlayerDataStoreService(final VexServiceRegistry services) {
@@ -84,6 +87,8 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
             );
             default -> throw new IllegalArgumentException("Unsupported player data storage: " + storageType);
         };
+        sharedDatabase = durable instanceof PostgresPlayerDataStore postgres
+            ? Optional.of(postgres.sharedDatabase()) : Optional.empty();
         if (configuration.getBoolean("redis.enabled", false)) {
             if (!storageType.equals("postgresql") && !storageType.equals("sqlite")) {
                 durable.close();
@@ -107,6 +112,11 @@ public final class VexPlayerDataStoreService implements PlayerDataStoreService, 
     @Override
     public GlobalDataStore getGlobalStore() {
         return (GlobalDataStore) store;
+    }
+
+    @Override
+    public Optional<SharedDatabase> getSharedDatabase() {
+        return sharedDatabase;
     }
 
     @Override

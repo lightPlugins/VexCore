@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.network.BackendShutdown;
 import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.common.data.PlayerDataStore;
 import dev.vexsoft.core.common.service.data.PlayerDataCoordinatorService;
@@ -14,6 +15,7 @@ import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -24,9 +26,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerKickEvent;
+import net.kyori.adventure.text.Component;
 
 @Timeout(10)
 public final class PlayerShutdownDrainTest {
+
+    @Test
+    public void redirectsOnlyAStoppingServerWithConfirmedPersistence() {
+        var kicks = new ArrayList<Component>();
+        var player = stub(Player.class, (instance, method, arguments) -> {
+            assertEquals("kick", method.getName());
+            assertEquals(PlayerKickEvent.Cause.PLUGIN, arguments[1]);
+            kicks.add((Component) arguments[0]);
+            return null;
+        });
+        VexCorePlugin.disconnectStoppedPlayers(false, true, List.of(player));
+        VexCorePlugin.disconnectStoppedPlayers(true, false, List.of(player));
+        assertTrue(kicks.isEmpty());
+        VexCorePlugin.disconnectStoppedPlayers(true, true, List.of(player));
+        assertEquals(1, kicks.size());
+        assertTrue(BackendShutdown.matches(kicks.getFirst()));
+        assertFalse(BackendShutdown.matches(Component.text("Server closed")));
+    }
 
     @Test
     public void keepsPluginAvailableUntilRetirementSaveAndCheckpointFinish() throws Exception {
@@ -52,6 +75,7 @@ public final class PlayerShutdownDrainTest {
             shutdown.get(5, TimeUnit.SECONDS);
             assertEquals(List.of("retire", "save", "checkpoint", "unload"), fixture.operations);
             assertTrue(fixture.unloaded.get());
+            assertTrue(fixture.persisted.get());
         }
     }
 
@@ -77,6 +101,7 @@ public final class PlayerShutdownDrainTest {
             fixture.recovery.complete(null);
             shutdown.get(5, TimeUnit.SECONDS);
             assertEquals(List.of("retire", "save", "checkpoint", "recovery", "unload"), fixture.operations);
+            assertFalse(fixture.persisted.get());
         }
     }
 
@@ -122,6 +147,7 @@ public final class PlayerShutdownDrainTest {
         private final CompletableFuture<Void> checkpointing = new CompletableFuture<>();
         private final List<String> operations = new CopyOnWriteArrayList<>();
         private final AtomicBoolean unloaded = new AtomicBoolean();
+        private final AtomicBoolean persisted = new AtomicBoolean();
         private RuntimeException retirementFailure;
         private final VexPlayer player = new VexPlayer(UUID.randomUUID(), "Alex");
         private final PlayerDataStore backend = stub(PlayerDataStore.class, (instance, method, arguments) -> {
@@ -175,7 +201,7 @@ public final class PlayerShutdownDrainTest {
 
         private CompletableFuture<Void> shutdown(final Consumer<Throwable> recover) {
             return CompletableFuture.runAsync(() -> {
-                VexCorePlugin.drainPlayerData(players, profiles, storage, leases, recover);
+                persisted.set(VexCorePlugin.drainPlayerData(players, profiles, storage, leases, recover));
                 unloaded.set(true);
                 operations.add("unload");
             }, executor);

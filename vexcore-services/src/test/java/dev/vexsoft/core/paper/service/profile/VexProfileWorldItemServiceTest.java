@@ -31,6 +31,7 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +51,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.World;
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +59,73 @@ import org.junit.jupiter.api.Test;
 class VexProfileWorldItemServiceTest {
 
     private static final ProfileDomain DOMAIN = new ProfileDomain("test:game");
+
+    @Test
+    void publicPickupLosingAdmissionToAnotherProfileActionCanRetryWithoutLosingOrDuplicatingLoot() throws Exception {
+        try (var fixture = new Fixture()) {
+            var owner = fixture.owner(UUID.randomUUID(), 0, 64);
+            var item = fixture.item(UUID.randomUUID(), new Stack(5));
+            fixture.rejectNextTransactionBusy = true;
+            fixture.entity.submit(() -> fixture.service.collect(owner.player, item.platform)).get()
+                .get(5, TimeUnit.SECONDS);
+            assertEquals(0, fixture.entity.submit(owner::amount).get());
+            assertFalse(item.removed);
+            assertEquals(5, item.stack.getAmount());
+            assertFalse(fixture.commitReached.isDone());
+
+            TimeUnit.MILLISECONDS.sleep(300);
+            fixture.entity.submit(() -> fixture.service.collect(owner.player, item.platform)).get()
+                .get(5, TimeUnit.SECONDS);
+            assertEquals(5, fixture.entity.submit(owner::amount).get());
+            assertTrue(item.removed);
+        }
+    }
+
+    @Test
+    void journalPickupLosingAdmissionRetainsDurableDropUntilSuccessfulRetry() throws Exception {
+        try (var fixture = new Fixture()) {
+            var owner = fixture.owner(UUID.randomUUID(), 8, 64);
+            fixture.entity.submit(() -> fixture.service.drop(owner.player, List.of(new Stack(3)), fixture.location))
+                .get().get(5, TimeUnit.SECONDS);
+            var journal = fixture.journal(owner);
+            var before = fixture.memory.loadProfileDocuments(List.of(journal)).join().get(journal);
+            var entry = new ObjectMapper().readTree(before.value()).get("drops").properties().iterator().next();
+            UUID dropId = UUID.fromString(entry.getKey());
+            var stack = Stack.decode(java.util.Base64.getDecoder().decode(entry.getValue().get("stack").asText()));
+            var item = fixture.item(UUID.randomUUID(), stack);
+            fixture.entity.submit(() -> item.platform.getPersistentDataContainer().set(
+                new NamespacedKey("vexcore", "profile_world_drop"), PersistentDataType.STRING, dropId.toString())).get();
+
+            fixture.rejectNextTransactionBusy = true;
+            fixture.entity.submit(() -> fixture.service.collect(owner.player, item.platform)).get()
+                .get(5, TimeUnit.SECONDS);
+            assertEquals(5, fixture.entity.submit(owner::amount).get());
+            assertFalse(item.removed);
+            assertEquals(before, fixture.memory.loadProfileDocuments(List.of(journal)).join().get(journal));
+
+            TimeUnit.MILLISECONDS.sleep(300);
+            fixture.entity.submit(() -> fixture.service.collect(owner.player, item.platform)).get()
+                .get(5, TimeUnit.SECONDS);
+            assertEquals(8, fixture.entity.submit(owner::amount).get());
+            assertTrue(item.removed);
+            var after = fixture.memory.loadProfileDocuments(List.of(journal)).join().get(journal);
+            assertTrue(new ObjectMapper().readTree(after.value()).get("drops").isEmpty());
+        }
+    }
+
+    @Test
+    void pickupCommitFailureStillPropagatesAndRetainsNativeSource() throws Exception {
+        try (var fixture = new Fixture()) {
+            var owner = fixture.owner(UUID.randomUUID(), 0, 64);
+            var item = fixture.item(UUID.randomUUID(), new Stack(5));
+            fixture.rejectCommit = true;
+            var operation = fixture.entity.submit(() -> fixture.service.collect(owner.player, item.platform)).get();
+            assertThrows(ExecutionException.class, () -> operation.get(5, TimeUnit.SECONDS));
+            assertEquals(0, fixture.entity.submit(owner::amount).get());
+            assertFalse(item.removed);
+            assertEquals(5, item.stack.getAmount());
+        }
+    }
 
     @Test
     void failedDropCommitRestoresNativeSource() throws Exception {
@@ -195,6 +264,7 @@ class VexProfileWorldItemServiceTest {
         private final CompletableFuture<Void> secondCommitReached = new CompletableFuture<>();
         private CompletableFuture<Void> commitGate = CompletableFuture.completedFuture(null);
         private boolean rejectCommit;
+        private boolean rejectNextTransactionBusy;
         private VexProfileWorldItemService service;
 
         @SuppressWarnings("unchecked")
@@ -224,7 +294,13 @@ class VexProfileWorldItemServiceTest {
                 (object, method, arguments) -> switch (method.getName()) {
                     case "activeContext" -> Optional.of(owners.get(arguments[0]).context);
                     case "isReady", "persistItem" -> true;
-                    case "transact" -> transact(owners.get(arguments[0]), (Supplier<ProfileMutation<?>>) arguments[1]);
+                    case "transact" -> {
+                        if (rejectNextTransactionBusy) {
+                            rejectNextTransactionBusy = false;
+                            yield CompletableFuture.failedFuture(new CompletionException(new ProfileSessionBusyException()));
+                        }
+                        yield transact(owners.get(arguments[0]), (Supplier<ProfileMutation<?>>) arguments[1]);
+                    }
                     default -> null;
                 }));
             dependencies.put(PlayerDataCoordinatorService.class, proxy(PlayerDataCoordinatorService.class,

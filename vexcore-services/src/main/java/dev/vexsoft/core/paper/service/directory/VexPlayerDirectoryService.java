@@ -29,4 +29,9 @@ public final class VexPlayerDirectoryService implements PlayerDirectoryService {
     public List<NetworkPlayer> getOnlinePlayers() {
         return coordinator.getOnlinePlayers();
     }
+
+    @Override
+    public CompletableFuture<List<NetworkPlayer>> snapshot() {
+        return coordinator.snapshot();
+    }
 }

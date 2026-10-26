@@ -163,7 +163,8 @@ public final class ProfileItemListener implements Listener {
     public void container(final PlayerInteractEvent event) {
         var block = event.getClickedBlock();
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE && context(event.getPlayer()) != null
-            && block != null && block.getState(false) instanceof Container) {
+            && block != null && block.getState(false) instanceof Container
+            && !worldItems.allowsContainer(event.getPlayer(), block.getLocation())) {
             event.setCancelled(true);
         }
     }
@@ -172,14 +173,16 @@ public final class ProfileItemListener implements Listener {
     public void itemFrame(final PlayerInteractEntityEvent event) {
         if (context(event.getPlayer()) != null && (event.getRightClicked() instanceof ItemFrame
             || event.getRightClicked() instanceof ArmorStand || event.getRightClicked() instanceof InventoryHolder
-                && event.getPlayer().getGameMode() != GameMode.CREATIVE)) {
+                && event.getPlayer().getGameMode() != GameMode.CREATIVE)
+            && !worldItems.allowsContainer(event.getPlayer(), event.getRightClicked().getLocation())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void armorStand(final PlayerArmorStandManipulateEvent event) {
-        if (context(event.getPlayer()) != null) {
+        if (context(event.getPlayer()) != null
+            && !worldItems.allowsContainer(event.getPlayer(), event.getRightClicked().getLocation())) {
             event.setCancelled(true);
         }
     }
@@ -189,7 +192,8 @@ public final class ProfileItemListener implements Listener {
         if (event.getPlayer() instanceof Player player && player.getGameMode() != GameMode.CREATIVE
             && context(player) != null
             && (event.getInventory().getHolder(false) instanceof Container
-                || event.getInventory().getHolder(false) instanceof Entity)) {
+                || event.getInventory().getHolder(false) instanceof Entity)
+            && !worldItems.allowsContainer(player, event.getInventory().getLocation())) {
             event.setCancelled(true);
         }
     }

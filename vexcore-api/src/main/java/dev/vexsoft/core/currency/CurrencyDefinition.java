@@ -20,10 +20,16 @@ public final class CurrencyDefinition {
     private final String formatKey;
     @Getter
     private final PlayerDataScope dataScope;
+    @Getter
+    private final boolean sharedProfile;
 
     private CurrencyDefinition(final Builder builder) {
         key = builder.key;
         dataScope = builder.dataScope;
+        sharedProfile = builder.sharedProfile;
+        if (sharedProfile && dataScope.isAccount()) {
+            throw new IllegalArgumentException("Shared currencies require a profile domain");
+        }
         defaultBalance = Objects.requireNonNull(builder.defaultBalance, "defaultBalance");
         maximumBalance = builder.maximumBalance;
 
@@ -59,6 +65,7 @@ public final class CurrencyDefinition {
 
         private final CurrencyKey key;
         private PlayerDataScope dataScope = PlayerDataScope.ACCOUNT;
+        private boolean sharedProfile;
         private WholeAmount defaultBalance = WholeAmount.ZERO;
         private WholeAmount maximumBalance;
         private String nameKey;
@@ -73,6 +80,12 @@ public final class CurrencyDefinition {
         /** Sets the balance used when a player has no persisted entry yet. */
         public Builder dataScope(final PlayerDataScope scope) {
             dataScope = Objects.requireNonNull(scope, "scope");
+            return this;
+        }
+
+        /** Stores this currency on the shared profile rather than on its individual members. */
+        public Builder sharedProfile(final boolean shared) {
+            sharedProfile = shared;
             return this;
         }
 

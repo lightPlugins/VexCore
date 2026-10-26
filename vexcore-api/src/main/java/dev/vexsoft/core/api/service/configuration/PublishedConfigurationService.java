@@ -43,4 +43,9 @@ public interface PublishedConfigurationService extends VexService {
 
     /** Calls a listener after a new snapshot has been loaded locally. */
     <T> AutoCloseable subscribe(Class<T> type, Consumer<T> listener);
+
+    /** Reconciles a registered type with storage, recovering missed change notifications. */
+    default CompletableFuture<Void> refresh(final Class<?> type) {
+        return CompletableFuture.completedFuture(null);
+    }
 }

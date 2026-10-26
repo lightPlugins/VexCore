@@ -18,6 +18,9 @@ public interface PlayerDirectoryCoordinatorService extends VexService {
     /** Returns the last snapshot immediately and refreshes it asynchronously when necessary. */
     List<NetworkPlayer> getOnlinePlayers();
 
+    /** Requests an authoritative snapshot and fails when the proxy cannot answer. */
+    CompletableFuture<List<NetworkPlayer>> snapshot();
+
     /** Completes one pending directory request. */
     void complete(PlayerDirectoryResponse response);
 

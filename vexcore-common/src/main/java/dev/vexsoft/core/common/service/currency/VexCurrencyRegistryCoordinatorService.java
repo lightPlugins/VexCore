@@ -38,7 +38,7 @@ public final class VexCurrencyRegistryCoordinatorService implements CurrencyRegi
     public synchronized Currency register(final ServiceOwner owner, final CurrencyDefinition definition) {
         String ownerName = ownerName(owner);
         CurrencyDefinition checked = requireOwned(ownerName, definition);
-        if (checked.getDataScope().domain().isPresent()) {
+        if (checked.getDataScope().domain().isPresent() && !checked.isSharedProfile()) {
             services.require(PlayerDataCoordinatorService.class).register(storageOwner,
                 registry -> registry.register(CurrencyPlayerData.key(checked)));
         }

@@ -4,6 +4,7 @@ import dev.vexsoft.core.api.messaging.DeliveryResult;
 import dev.vexsoft.core.api.messaging.MessageTarget;
 import dev.vexsoft.core.api.network.NetworkPlayer;
 import dev.vexsoft.core.api.network.ServerId;
+import dev.vexsoft.core.api.service.network.NetworkPresenceService;
 import dev.vexsoft.core.api.service.cache.CacheService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
@@ -25,13 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /** Default request coordinator for Velocity-backed player lookups. */
-@Dependencies({CacheService.class, MessagingService.class})
+@Dependencies({CacheService.class, MessagingService.class, NetworkPresenceService.class})
 public final class VexPlayerDirectoryCoordinatorService implements PlayerDirectoryCoordinatorService, AutoCloseable {
 
     private static final long LOOKUP_TIMEOUT_SECONDS = 5L;
     private static final String ONLINE_PLAYERS_KEY = "all";
 
     private final MessagingService messages;
+    private final NetworkPresenceService presence;
     private final VexAsyncCache<String, List<NetworkPlayer>> onlinePlayerSnapshots;
     private final ConcurrentHashMap<UUID, CompletableFuture<Optional<NetworkPlayer>>> pending =
         new ConcurrentHashMap<>();
@@ -43,6 +45,7 @@ public final class VexPlayerDirectoryCoordinatorService implements PlayerDirecto
         VexServiceRegistry checked = Objects.requireNonNull(services, "services");
 
         messages = checked.require(MessagingService.class);
+        presence = checked.require(NetworkPresenceService.class);
         onlinePlayerSnapshots = checked.require(CacheService.class).createAsync(
             "network-online-players",
             VexCacheOptions.builder().maximumSize(1).expireAfterWrite(Duration.ofSeconds(2)).build(),
@@ -98,6 +101,24 @@ public final class VexPlayerDirectoryCoordinatorService implements PlayerDirecto
                 ));
 
         result.complete(player);
+    }
+
+    @Override
+    public CompletableFuture<List<NetworkPlayer>> snapshot() {
+        return presence.snapshot().exceptionallyCompose(failure -> requestProxySnapshot());
+    }
+
+    private CompletableFuture<List<NetworkPlayer>> requestProxySnapshot() {
+        UUID requestId = UUID.randomUUID();
+        CompletableFuture<List<NetworkPlayer>> result = new CompletableFuture<>();
+        pendingLists.put(requestId, result);
+        DeliveryResult delivery = messages.send(MessageTarget.proxy(), PlayerDirectoryMessages.LIST_REQUEST,
+            new PlayerDirectoryListRequest(requestId));
+        if (delivery != DeliveryResult.SENT && delivery != DeliveryResult.QUEUED) {
+            result.completeExceptionally(new IllegalStateException("Proxy directory is unavailable"));
+        }
+        return result.orTimeout(LOOKUP_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .thenApply(List::copyOf).whenComplete((ignored, failure) -> pendingLists.remove(requestId));
     }
 
     @Override

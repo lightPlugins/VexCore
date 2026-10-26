@@ -4,6 +4,8 @@ import dev.vexsoft.core.api.service.cost.CostRegistry;
 import dev.vexsoft.core.api.service.cost.CostService;
 import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
 import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
+import dev.vexsoft.core.api.service.currency.SharedCurrencyService;
+import dev.vexsoft.core.common.service.currency.VexSharedCurrencyService;
 import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.level.LevelClaimService;
 import dev.vexsoft.core.api.service.level.LevelService;
@@ -78,6 +80,7 @@ public final class GameplayModule implements VexModule {
         services.register(PlayerContainerService.class, VexPlayerContainerService.class);
         services.register(StatRegistryCoordinatorService.class, VexStatRegistryCoordinatorService.class);
         services.register(CurrencyRegistryCoordinatorService.class, VexCurrencyRegistryCoordinatorService.class);
+        services.register(SharedCurrencyService.class, VexSharedCurrencyService.class);
         services.register(ExecutionComponentCoordinatorService.class, VexExecutionComponentCoordinatorService.class);
         services.register(StatContributionCoordinatorService.class, VexStatContributionCoordinatorService.class);
         services.register(StatRegistry.class, VexStatRegistry.class);
@@ -112,7 +115,8 @@ public final class GameplayModule implements VexModule {
                 StatContainer.class,
                 player -> new VexStatContainer(player, coordinator)
             );
-        services.require(PlayerContainerService.class).register(CurrencyContainer.class, VexCurrencyContainer::new);
+        services.require(PlayerContainerService.class).register(CurrencyContainer.class,
+            player -> new VexCurrencyContainer(player, services.require(SharedCurrencyService.class)));
         registerBuiltInTypes();
     }
 

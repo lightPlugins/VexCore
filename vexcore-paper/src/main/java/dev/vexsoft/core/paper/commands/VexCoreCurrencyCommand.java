@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.commands;
 import dev.vexsoft.core.api.localization.LanguageContainer;
 import dev.vexsoft.core.api.localization.LanguageKey;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.player.profile.ProfileMutation;
 import dev.vexsoft.core.api.service.currency.CurrencyLocalizationService;
 import dev.vexsoft.core.api.service.currency.CurrencyRegistry;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
@@ -21,6 +22,7 @@ import dev.vexsoft.core.paper.command.CommandRoot;
 import dev.vexsoft.core.paper.command.Suggest;
 import dev.vexsoft.core.paper.command.VexCommandSource;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
+import dev.vexsoft.core.paper.service.profile.ProfileSessionService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import java.util.Map;
 import org.bukkit.Bukkit;
@@ -41,8 +43,10 @@ public final class VexCoreCurrencyCommand {
     private final LocalizationService texts;
     private final PlaceholderService placeholders;
     private final ScheduleService schedules;
+    private final VexServiceRegistry services;
 
     public VexCoreCurrencyCommand(final VexServiceRegistry services) {
+        this.services = services;
         currencies = services.require(CurrencyRegistry.class);
         currencyTexts = services.require(CurrencyLocalizationService.class);
         players = services.require(PlayerService.class);
@@ -116,19 +120,37 @@ public final class VexCoreCurrencyCommand {
                 sendUnavailable(source, target.getName());
                 return;
             }
-            CurrencyTransaction result = player.getContainer(CurrencyContainer.class).deposit(currency, amount);
-            if (!result.successful()) {
-                String error = result.status() == CurrencyTransaction.Status.MAXIMUM_EXCEEDED
-                    ? "maximum-exceeded" : "unavailable";
-                send(source.getSender(), () -> messages.send(source.getSender(), TEXT + error, true));
+            if (currency.getDefinition().isSharedProfile()) {
+                services.require(ProfileSessionService.class).transact(player, () ->
+                    ProfileMutation.of(
+                        player.getContainer(CurrencyContainer.class).deposit(currency, amount)))
+                    .whenComplete((result, failure) -> schedules.runFor(target, () -> {
+                        if (failure != null) {
+                            sendUnavailable(source, target.getName());
+                        } else {
+                            reportGive(source, currency, amount, target, result);
+                        }
+                    }));
                 return;
             }
-            if (!target.equals(source.getSender())) {
-                sendValue(target, "received", currency, amount, target.getName());
-            }
-            send(source.getSender(), () -> sendValue(source.getSender(), "given", currency, amount, target.getName()));
+            CurrencyTransaction result = player.getContainer(CurrencyContainer.class).deposit(currency, amount);
+            reportGive(source, currency, amount, target, result);
         }, () -> sendUnavailable(source, target.getName()));
         return 1;
+    }
+
+    private void reportGive(final VexCommandSource source, final Currency currency, final WholeAmount amount,
+                            final Player target, final CurrencyTransaction result) {
+        if (!result.successful()) {
+            String error = result.status() == CurrencyTransaction.Status.MAXIMUM_EXCEEDED
+                ? "maximum-exceeded" : "unavailable";
+            send(source.getSender(), () -> messages.send(source.getSender(), TEXT + error, true));
+            return;
+        }
+        if (!target.equals(source.getSender())) {
+            sendValue(target, "received", currency, amount, target.getName());
+        }
+        send(source.getSender(), () -> sendValue(source.getSender(), "given", currency, amount, target.getName()));
     }
 
     private int showBalance(final VexCommandSource source, final String key, final Player target) {
