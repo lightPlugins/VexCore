@@ -37,6 +37,36 @@ import org.junit.jupiter.api.Test;
 class VexAdmissionServiceTest {
 
     @Test
+    void farmingMapPoolsShareBackendCapacityAndOnlySelectLoadedDestinationWorlds() {
+        try (var storage = new Storage()) {
+            var hub = new VexAdmissionService(storage);
+            var farming = new VexAdmissionService(storage);
+            hub.configure(farmingPool("mine"), 1).join();
+            hub.configure(farmingPool("fields"), 1).join();
+            hub.heartbeat(new BackendPresence(new ServerId("farming-1"), UUID.randomUUID(), Set.of(),
+                Set.of("test:mine"), "test:game", true, 0)).join();
+            hub.heartbeat(new BackendPresence(new ServerId("farming-2"), UUID.randomUUID(), Set.of(),
+                Set.of("test:mine", "test:fields"), "test:game", true, 0)).join();
+
+            UUID firstPlayer = UUID.randomUUID();
+            var mine = hub.enqueue(UUID.randomUUID(), firstPlayer, "hub", "isles_ws_mine").join();
+            assertEquals("farming-1", mine.destination().server().value());
+            var fields = farming.enqueue(UUID.randomUUID(), UUID.randomUUID(), "hub", "isles_ws_fields").join();
+            assertEquals("farming-2", fields.destination().server().value());
+            var waitingFields = hub.enqueue(UUID.randomUUID(), UUID.randomUUID(), "hub", "isles_ws_fields").join();
+            var waitingMine = farming.enqueue(UUID.randomUUID(), UUID.randomUUID(), "hub", "isles_ws_mine").join();
+            assertEquals(AdmissionStage.WAITING, waitingFields.stage());
+            assertEquals(AdmissionStage.WAITING, waitingMine.stage());
+
+            assertTrue(hub.cancel(mine.requestId(), firstPlayer).join());
+            var allocated = farming.pulse(List.of(waitingFields.requestId(), waitingMine.requestId())).join();
+            assertEquals(AdmissionStage.WAITING, allocated.get(waitingFields.requestId()).stage());
+            assertEquals(AdmissionStage.RESERVED, allocated.get(waitingMine.requestId()).stage());
+            assertEquals("farming-1", allocated.get(waitingMine.requestId()).destination().server().value());
+        }
+    }
+
+    @Test
     void twentyConcurrentPlayersBalanceAcrossThreeBackendsWithoutOverbooking() {
         try (var storage = new Storage()) {
             var first = new VexAdmissionService(storage);
@@ -178,6 +208,12 @@ class VexAdmissionServiceTest {
         var endpoints = Arrays.stream(servers).map(server -> new AdmissionEndpoint(
             new ServerPosition(new ServerId(server), WorldKey.parse("test:spawn"), 0, 80, 0, 0, 0), maximum, parallel)).toList();
         return new AdmissionPool("isles", "test:game", endpoints, 512, 30000, 10000);
+    }
+
+    private static AdmissionPool farmingPool(final String map) {
+        var endpoints = List.of("farming-1", "farming-2").stream().map(server -> new AdmissionEndpoint(
+            new ServerPosition(new ServerId(server), WorldKey.parse("test:" + map), 0, 80, 0, 0, 0), 1, 1)).toList();
+        return new AdmissionPool("isles_ws_" + map, "test:game", endpoints, 512, 30000, 10000);
     }
 
     private static BackendPresence presence(final String server, final UUID instance, final Set<UUID> players) {
