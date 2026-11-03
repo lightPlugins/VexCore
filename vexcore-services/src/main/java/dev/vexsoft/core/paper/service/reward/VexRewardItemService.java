@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -69,6 +70,15 @@ public final class VexRewardItemService implements RewardItemService {
     }
 
     @Override
+    public ItemStack preview(final RewardItem item, final String model) {
+        validate(item);
+        var key = Objects.requireNonNull(NamespacedKey.fromString(model), "preview model");
+        var preview = new ItemStack(Material.NAME_TAG);
+        preview.setData(DataComponentTypes.ITEM_MODEL, key);
+        return preview;
+    }
+
+    @Override
     public boolean isVirtual(final RewardItem item) {
         validate(item);
         return provider(item).isVirtual(item);
@@ -84,7 +94,15 @@ public final class VexRewardItemService implements RewardItemService {
 
     @Override
     public Component name(final Player viewer, final RewardItem item) {
-        return provider(item).name(viewer, item);
+        Component name = provider(item).name(viewer, item);
+        var key = Objects.requireNonNull(NamespacedKey.fromString(item.key()));
+        var formatting = presentations.get(key.getNamespace());
+        return formatting == null ? name : formatting.name(viewer, item, name);
+    }
+
+    @Override
+    public String icon(final Player viewer, final RewardItem item) {
+        return provider(item).icon(viewer, item);
     }
 
     @Override

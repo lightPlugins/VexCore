@@ -1,6 +1,7 @@
 package dev.vexsoft.core.common.reward.level;
 
 import dev.vexsoft.core.api.service.expression.ExpressionService;
+import dev.vexsoft.core.api.localization.LanguageContainer;
 import dev.vexsoft.core.api.service.level.LevelInstanceService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
@@ -13,6 +14,8 @@ import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
+import dev.vexsoft.core.reward.RewardNotification;
+import java.util.List;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Objects;
@@ -76,6 +79,14 @@ public final class LevelExperienceReward implements Reward {
                 localizations, levels, context, id, "levels.reward",
                 Map.of("amount", BigDecimal.valueOf(evaluate(context)).stripTrailingZeros().toPlainString())
             );
+        }
+
+        @Override
+        public List<RewardNotification> notifications(final PlayerExecutionContext context) {
+            var language = context.player().getContainer(LanguageContainer.class).getLanguage().getKey();
+            return List.of(new RewardNotification("level-xp:" + id,
+                localizations.resolve(language, levels.require(id).nameKey(), Map.of()).getComponent(),
+                "minecraft:experience_bottle", BigDecimal.valueOf(evaluate(context))));
         }
 
         private double evaluate(final PlayerExecutionContext context) {

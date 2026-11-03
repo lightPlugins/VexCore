@@ -1,4 +1,4 @@
-// VexCore shader protocol 9. Constants are filled from protocol.properties at build time.
+// VexCore shader protocol 10. Constants are filled from protocol.properties at build time.
 // 26.2 BakedSheetGlyph emits TL, BL, BR, TR. Every quad starts on a multiple of four.
 #define VEX_BASE @base@
 #define VEX_STRIDE @stride@

@@ -18,6 +18,11 @@ public interface RewardItemProvider {
     /** Returns the localized, styled name used in reward announcements. */
     Component name(Player viewer, RewardItem item);
 
+    /** Returns the item-model identity whose build-generated preview is used by reward cards. */
+    default String icon(Player viewer, RewardItem item) {
+        return item.key();
+    }
+
     /** Returns whether this reference is delivered as a data-backed balance rather than a native stack. */
     default boolean isVirtual(RewardItem item) {
         return false;

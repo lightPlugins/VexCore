@@ -116,6 +116,7 @@ public final class GenerateInteractiveUiPack {
         String vertex = Files.readString(screenPack.resolve("assets/minecraft/shaders/core/text.vsh"));
         vertex = replaceOnce(vertex, "#moj_import <vexcore:screen_ui/v26_2.glsl>",
             "#moj_import <vexcore:screen_ui/v26_2.glsl>\n#moj_import <vexcore:interactive_ui/v26_2.glsl>");
+        vertex = replaceOnce(vertex, "vexRewardAge = -1.0;", "vexRewardAge = -1.0;\n    interactiveKind = -1;");
         vertex = replaceOnce(vertex, "position = vex_screen_ui_position(position, UV0, gl_VertexID);",
             "position = interactive_ui_position(position, UV0, gl_VertexID);\n"
                 + "    if (interactiveKind < 0) position = vex_screen_ui_position(position, UV0, gl_VertexID);");
@@ -133,6 +134,8 @@ public final class GenerateInteractiveUiPack {
         write(output, "assets/minecraft/shaders/core/text.fsh", fragment);
         write(output, "assets/vexcore/shaders/include/screen_ui/v26_2.glsl",
             Files.readString(screenPack.resolve("assets/vexcore/shaders/include/screen_ui/v26_2.glsl")));
+        write(output, "assets/vexcore/shaders/include/reward_cards/v26_2.glsl",
+            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/reward_cards/v26_2.glsl")));
     }
 
     private static String replaceOnce(String source, String expected, String replacement) {

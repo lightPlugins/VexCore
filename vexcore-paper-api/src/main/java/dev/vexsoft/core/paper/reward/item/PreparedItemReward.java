@@ -12,6 +12,11 @@ public interface PreparedItemReward extends CompiledReward {
     /** Returns independent copies of the selected stacks, preserving their amounts and identities. */
     List<ItemStack> preparedItems();
 
+    /** Returns cosmetic previews of physical and virtual rewards without delivering any items. */
+    default List<ItemStack> displayItems() {
+        return preparedItems();
+    }
+
     /** Grants only prepared virtual balances when a consumer routes physical stacks elsewhere. */
     default RewardResult grantVirtual(PlayerExecutionContext context) {
         return RewardResult.success();

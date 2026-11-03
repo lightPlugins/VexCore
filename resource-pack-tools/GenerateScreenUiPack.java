@@ -36,7 +36,12 @@ public final class GenerateScreenUiPack {
         Files.createDirectories(musicTarget.getParent());
         Files.write(musicTarget, Files.readAllBytes(musicFile));
         write(root, "assets/vexcore/sounds.json",
-            "{\"upgrade.background\":{\"sounds\":[{\"name\":\"vexcore:upgrade/upgrader_background\",\"stream\":true}]}}");
+            "{\"upgrade.background\":{\"sounds\":[{\"name\":\"vexcore:upgrade/upgrader_background\",\"stream\":true}]},"
+                + "\"ui.collect\":{\"sounds\":[{\"name\":\"vexcore:ui/collect\",\"stream\":false}]},"
+                + "\"ui.pick-up\":{\"sounds\":[{\"name\":\"vexcore:ui/pick-up\",\"stream\":false}]},"
+                + "\"ui.level-up\":{\"sounds\":[{\"name\":\"vexcore:ui/level-up\",\"stream\":false}]},"
+                + "\"ui.upgrade-success\":{\"sounds\":[{\"name\":\"vexcore:ui/upgrade-success\",\"stream\":false}]},"
+                + "\"ui.upgrade-failed\":{\"sounds\":[{\"name\":\"vexcore:ui/upgrade-failed\",\"stream\":false}]}}");
         write(
             root,
             "pack.mcmeta",

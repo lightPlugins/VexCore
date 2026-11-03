@@ -1,0 +1,24 @@
+# Values are logical GUI pixels; Minecraft applies the viewer's selected GUI scale.
+layout:
+  width: 480
+  columns: 3
+  page-size: 9
+  gap: 4
+  card-height: 36
+
+# Only sprites registered in the format-1 VexUI pack are valid here.
+categories:
+  farming: [POTATO, CARROT, WHEAT, SUGAR_CANE, BEETROOT, APPLE, BREAD, MELON_SLICE, PUMPKIN_PIE, SWEET_BERRIES, COOKIE, GOLDEN_CARROT]
+  materials: [DIAMOND, EMERALD, IRON_INGOT, GOLD_INGOT, COPPER_INGOT, COAL, REDSTONE, LAPIS_LAZULI, AMETHYST_SHARD, QUARTZ, FLINT, NETHERITE_INGOT]
+  tools: [IRON_SWORD, DIAMOND_SWORD, IRON_PICKAXE, DIAMOND_PICKAXE, IRON_AXE, DIAMOND_AXE, IRON_SHOVEL, DIAMOND_SHOVEL, IRON_HOE, DIAMOND_HOE, SHEARS, FISHING_ROD]
+
+# Illustrative prices only: no wallet, balance or economy transaction is used.
+prices:
+  potato: 8
+  carrot: 8
+  wheat: 6
+  diamond: 120
+  emerald: 96
+  iron_ingot: 24
+  gold_ingot: 32
+  netherite_ingot: 500

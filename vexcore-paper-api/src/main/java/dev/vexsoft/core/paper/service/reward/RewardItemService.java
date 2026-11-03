@@ -26,6 +26,11 @@ public interface RewardItemService extends VexService {
     /** Creates a fresh physical reward item. */
     ItemStack create(RewardItem item);
 
+    /** Creates a one-item cosmetic model preview, including for virtual rewards, without domain item identity. */
+    default ItemStack preview(final RewardItem item, final String model) {
+        throw new UnsupportedOperationException("Cosmetic reward previews are unavailable");
+    }
+
     /** Returns whether the current provider routes this reference into persistent virtual storage. */
     default boolean isVirtual(RewardItem item) {
         return false;
@@ -38,6 +43,11 @@ public interface RewardItemService extends VexService {
 
     /** Resolves the provider's localized item name. */
     Component name(Player viewer, RewardItem item);
+
+    /** Resolves a model identity without creating or delivering another gameplay item. */
+    default String icon(Player viewer, RewardItem item) {
+        return item.key();
+    }
 
     /** Describes a quantity or range, preserving provider names and client translations. */
     default Component describe(Player viewer, RewardItem item, String amount) {

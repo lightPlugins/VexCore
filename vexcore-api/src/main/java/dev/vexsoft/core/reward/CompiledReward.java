@@ -45,6 +45,14 @@ public interface CompiledReward {
     /** Renders this reward for chat, lore, or menus. */
     Component describe(PlayerExecutionContext context);
 
+    /** Describes frozen granted values for the personal HUD; override to supply quantities and model identities. */
+    default List<RewardNotification> notifications(final PlayerExecutionContext context) {
+        return describeEntries(context).stream().map(entry -> new RewardNotification(
+            "custom:" + getClass().getName(), entry.fallback() == null ? describe(context) : entry.fallback(),
+            "minecraft:paper", null
+        )).toList();
+    }
+
     /** Supplies localization-ready entries; implementations may expand one map into multiple lines. */
     default List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
         Component fallback = describe(context);

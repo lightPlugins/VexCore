@@ -27,6 +27,18 @@
   <!-- Framework contracts intentionally expose their managed runtime object. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP"/>
+    <Class name="dev.vexsoft.core.paper.vexui.runtime.VexUISessionState"/>
+    <Field name="player"/>
+  </Match>
+  <!-- VexUI also retains immutable Adventure components in snapshots and measured render results. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    <Class name="~dev\.vexsoft\.core\.paper\.vexui\..*"/>
+    <Field type="net.kyori.adventure.text.Component"/>
+  </Match>
+
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP"/>
     <Or>
       <Class name="dev.vexsoft.core.paper.VexCorePlugin"/>
       <!-- Placeholder contexts deliberately carry the managed VexPlayer for one resolution. -->

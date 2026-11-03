@@ -118,6 +118,7 @@ val documentedApiProjects = setOf(
     ":vexcore-packets:common",
     ":vexcore-paper-api",
     ":vexcore-velocity-api",
+    ":vexcore-ui:api",
 )
 
 tasks.register("publishVexCoreApisToMavenLocal") {

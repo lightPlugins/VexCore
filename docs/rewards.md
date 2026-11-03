@@ -1,5 +1,8 @@
 # Shared reward preparation and delivery
 
+Personal animated cards observe committed grants independently of rare-drop announcements.
+See [reward notifications](reward-notifications.md) for the API, resource pack and alternate delivery destinations.
+
 `RewardService` accepts both legacy sections keyed by handler type and named reward envelopes:
 
 ```yaml

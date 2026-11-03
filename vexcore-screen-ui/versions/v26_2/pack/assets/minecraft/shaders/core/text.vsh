@@ -32,7 +32,11 @@ out vec2 vexPanelPoint;
 flat out vec2 vexPanelSize;
 flat out float vexPanelRadius;
 flat out float vexSolidPixel;
+out vec2 vexRewardPoint;
+flat out float vexRewardFrame;
+flat out float vexRewardAge;
 #moj_import <vexcore:screen_ui/v26_2.glsl>
+#moj_import <vexcore:reward_cards/v26_2.glsl>
 #endif
 
 void main() {
@@ -42,7 +46,13 @@ void main() {
     vexPanelSize = vec2(0.0);
     vexPanelRadius = 0.0;
     vexSolidPixel = 0.0;
-    position = vex_screen_ui_position(position, UV0, gl_VertexID);
+    vexRewardPoint = vec2(0.0);
+    vexRewardFrame = 0.0;
+    vexRewardAge = -1.0;
+    position = vex_reward_card_position(position, UV0, gl_VertexID);
+    if (vexOwned < 0.5) {
+        position = vex_screen_ui_position(position, UV0, gl_VertexID);
+    }
 #endif
     gl_Position = ProjMat * position;
 

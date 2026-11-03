@@ -1,0 +1,6 @@
+previous: '<tailwind:zinc:4>< Zurück'
+next: '<tailwind:zinc:4>Weiter >'
+page: '<tailwind:zinc:4>Seite %page% / %pages%'
+close: 'Schließen'
+back: 'Zurück'
+apply: 'Anwenden'

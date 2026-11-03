@@ -1,6 +1,6 @@
 # Screen UI backend: Minecraft 26.2
 
-Owns resource-pack format 88.0 and shader protocol 9. Deploy its matching client pack.
+Owns resource-pack format 88.0 and shader protocol 10. Deploy its matching client pack.
 The shared API, layout and lifecycle are described in the root `SCREEN_UI.md`.
 
 Font ascent encodes a kind and one of nine anchors. Zero-net horizontal advances transport
@@ -18,6 +18,11 @@ Kinds 85..90 render opaque 3x3 avatar pixels at the same scales with advance 4.
 Top anchors cap scale to `(guiWidth / 3 - 8) / 272`, shared by every primitive. This keeps the
 default three-lane layout separated on narrow windows without client viewport messages.
 All shader changes are guarded by the owned-glyph marker; ordinary text retains vanilla behavior.
+
+Protocol 10 adds an independent reward-card carrier range, 65536..98304, dispatched before the screen UI.
+Four primitives and sixteen current/previous slot pairs encode shared transforms. RGB carries two modulo-120 clocks,
+a pulse bit and 3-bit tint channels. `RewardCardAssets` generates marked fixed-width menu text, model previews and
+the VexUI frame. Existing anchored font kinds remain unchanged.
 
 Generated-font tests verify kind/anchor recovery after integer-to-float conversion, marker
 pixels, measured dimensions and opacity payloads. Client acceptance testing is separate.

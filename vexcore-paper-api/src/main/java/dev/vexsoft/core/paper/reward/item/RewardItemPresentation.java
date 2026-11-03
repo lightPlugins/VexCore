@@ -7,6 +7,11 @@ import org.bukkit.entity.Player;
 @FunctionalInterface
 public interface RewardItemPresentation {
 
+    /** Styles the standalone item name used by HUD cards without adding a quantity. */
+    default Component name(Player viewer, RewardItem item, Component name) {
+        return name;
+    }
+
     /** Formats one item amount or range without preparing, creating, or delivering its reward. */
     Component describe(Player viewer, RewardItem item, String amount, Component name);
 }

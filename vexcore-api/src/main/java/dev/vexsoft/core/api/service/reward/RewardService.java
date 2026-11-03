@@ -8,6 +8,7 @@ import dev.vexsoft.core.reward.CompiledRewards;
 import dev.vexsoft.core.reward.RewardContributions;
 import dev.vexsoft.core.reward.RewardExecutionReport;
 import dev.vexsoft.core.reward.PreparedRewards;
+import dev.vexsoft.core.reward.RewardDeliveryObserver;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -15,6 +16,19 @@ import net.kyori.adventure.text.Component;
 
 /** Compiles, executes, evaluates, and presents extensible reward sections. */
 public interface RewardService extends VexService {
+
+    /** Subscribes to committed grants; close the handle when the presentation owner shuts down. */
+    default AutoCloseable observeDeliveries(RewardDeliveryObserver observer) {
+        return () -> {
+        };
+    }
+
+    /**
+     * Records a successfully routed prepared selection, such as rewards stored in a pet inventory.
+     * Call inside its transaction, once, instead of grantPrepared; this method does not grant anything.
+     */
+    default void notifyDelivered(PreparedRewards rewards, PlayerExecutionContext context) {
+    }
 
     /** Compiles every direct key in a reward section. */
     CompiledRewards compile(ConfigurationSection section);

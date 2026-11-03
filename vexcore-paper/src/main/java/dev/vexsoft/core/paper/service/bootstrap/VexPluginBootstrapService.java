@@ -129,6 +129,9 @@ import dev.vexsoft.core.paper.service.effect.ParticleEffectService;
 import dev.vexsoft.core.paper.service.effect.VexParticleEffectService;
 import dev.vexsoft.core.paper.service.upgrade.UpgradeAnimationService;
 import dev.vexsoft.core.paper.service.upgrade.VexUpgradeAnimationService;
+import dev.vexsoft.core.paper.vexui.runtime.VexUIRegistration;
+import dev.vexsoft.core.paper.service.reward.RewardNotificationService;
+import dev.vexsoft.core.paper.service.reward.VexRewardNotificationService;
 import java.util.Objects;
 
 /** Registers the standard owner-bound services and listeners for Paper plugins. */
@@ -158,6 +161,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         checkedServices.register(SignalService.class, VexSignalService.class);
         checkedServices.register(ListenerService.class, VexListenerService.class);
         checkedServices.register(DialogService.class, VexDialogService.class);
+        VexUIRegistration.owner(checkedServices);
         checkedServices.register(ItemService.class, VexItemService.class);
         checkedServices.register(DataService.class, VexDataService.class);
         checkedServices.register(PlayerContainerService.class, VexPlayerContainerService.class);
@@ -176,6 +180,7 @@ public final class VexPluginBootstrapService implements PluginBootstrapService {
         checkedServices.register(ExpressionService.class, VexExpressionService.class);
         checkedServices.register(RewardRegistry.class, VexRewardRegistry.class);
         checkedServices.register(RewardService.class, VexRewardService.class);
+        checkedServices.register(RewardNotificationService.class, VexRewardNotificationService.class);
         checkedServices.register(CostRegistry.class, VexCostRegistry.class);
         checkedServices.register(CostService.class, VexCostService.class);
         checkedServices.register(RequirementRegistry.class, VexRequirementRegistry.class);

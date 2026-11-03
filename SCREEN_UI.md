@@ -1,7 +1,7 @@
 # VexCore Screen UI
 
 Owner-scoped screen UI for Minecraft Java 26.2, using the shared m5x7 metrics and shader
-protocol 9. Plugins provide localized content and gameplay data. VexCore owns measurement,
+protocol 10. Plugins provide localized content and gameplay data. VexCore owns measurement,
 word wrapping, groups, rounded backgrounds, avatar rendering and screen lifetime.
 
 ## Panels
@@ -98,6 +98,10 @@ and neutral fallback. Apply completed data from the caller's existing player ref
 `UiToastStack` retains merging, bounded waiting, expiry and oldest-at-bottom ordering, and now
 uses the same content-sized panel style. Its notifications are static while visible; fixed-card
 entrance/fade animation is not used by the new panel presentation.
+
+The personal reward feed uses a separate `ScreenUi.rewardCard` primitive and shared `RewardToastService`.
+Complete pixel-framed cards support client-frame entry, rotation, reflow, quantity pulses, shine and exit.
+See [animated reward cards](docs/reward-notifications.md) for API use and transaction/acceptance contracts.
 
 `prepareDialogue` still pre-wraps immutable pages; `show(page, visibleCodePoints)` retains
 typewriter reveal. Pass `UiPanelStyle` to `openDialogue` to share a plugin's configured style.

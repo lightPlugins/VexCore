@@ -76,6 +76,8 @@ import dev.vexsoft.core.paper.packets.service.FakeItemMetaService;
 import dev.vexsoft.core.paper.packets.service.InteractableHologramService;
 import dev.vexsoft.core.paper.packets.service.InteractionPacketService;
 import dev.vexsoft.core.paper.packets.service.ItemDisplayPacketService;
+import dev.vexsoft.core.paper.service.effect.ItemCollectionEffectService;
+import dev.vexsoft.core.paper.service.effect.VexItemCollectionEffectService;
 import dev.vexsoft.core.paper.packets.service.LightningPacketService;
 import dev.vexsoft.core.paper.packets.service.MobGlowPacketService;
 import dev.vexsoft.core.paper.packets.service.MobHitPacketService;
@@ -161,7 +163,14 @@ import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.scheduler.VexScheduleService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiCoordinatorService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.vexui.runtime.VexUIRegistration;
+import dev.vexsoft.core.paper.vexui.runtime.VexUIListener;
+import dev.vexsoft.core.paper.commands.VexUICommand;
 import dev.vexsoft.core.paper.service.screenui.VexScreenUiCoordinatorService;
+import dev.vexsoft.core.paper.service.reward.RewardToastService;
+import dev.vexsoft.core.paper.service.reward.VexRewardToastService;
+import dev.vexsoft.core.paper.service.reward.RewardNotificationService;
+import dev.vexsoft.core.paper.service.reward.VexRewardNotificationService;
 import dev.vexsoft.core.paper.service.screenui.VexScreenUiListener;
 import dev.vexsoft.core.paper.service.screenui.VexScreenUiService;
 import dev.vexsoft.core.paper.service.sidebar.SidebarCoordinatorService;
@@ -283,6 +292,9 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
         coreServices.register(InteractiveUiDemoService.class, VexInteractiveUiDemoService.class);
         coreServices.register(DialogService.class, VexDialogService.class);
+        VexUIRegistration.core(coreServices);
+        coreServices.register(RewardToastService.class, VexRewardToastService.class);
+        coreServices.register(RewardNotificationService.class, VexRewardNotificationService.class);
         coreServices.register(InventoryService.class, VexInventoryService.class);
         coreServices.register(LocalizationEditorUiService.class, VexLocalizationEditorUiService.class);
         coreServices.register(ItemService.class, VexItemService.class);
@@ -290,6 +302,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(PaperPlayerService.class, VexPaperPlayerService.class);
         coreServices.register(TextDisplayPacketService.class, VexTextDisplayPacketService.class);
         coreServices.register(ItemDisplayPacketService.class, VexItemDisplayPacketService.class);
+        coreServices.register(ItemCollectionEffectService.class, VexItemCollectionEffectService.class);
         coreServices.register(BlockDisplayPacketService.class, VexBlockDisplayPacketService.class);
         coreServices.register(SkinService.class, VexSkinService.class);
         coreServices.register(PlayerDummyService.class, VexPlayerDummyService.class);
@@ -317,6 +330,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(CommandService.class).register(VexCoreCurrencyCommand.class);
         coreServices.require(CommandService.class).register(VexCoreLanguageCommand.class);
         coreServices.require(CommandService.class).register(VexCoreDebugCommand.class);
+        coreServices.require(CommandService.class).register(VexUICommand.class);
         coreServices.require(CommandService.class).register(VexCoreUiCommand.class);
         coreServices.require(CommandService.class).register(VexCoreInteractiveUiCommand.class);
         coreServices.require(CommandService.class).register(VexCoreResetCommand.class);
@@ -344,6 +358,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(ServerPerformanceService.class).start();
         coreServices.require(PerformanceBossBarService.class).start();
         coreServices.require(ListenerService.class).register(VexScreenUiListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(VexUIListener.class, coreServices);
         getLogger().info("Network server ID initialized as " + coreServices.require(ServerIdentityService.class)
             .getServerId()
             .value());

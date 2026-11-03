@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.player.TransactionalPlayerData;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.service.execution.ExecutionComponentCoordinatorService;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
@@ -26,6 +27,80 @@ public final class VexRewardTransactionTest {
 
     private static final DataContainerKey<Balance> BALANCE =
         DataContainerKey.of("balance", Balance.class, Balance::new);
+
+    @Test
+    void deliveryReceiptsWaitForBothTransactionAndDurabilityAndUnsubscribe() throws Exception {
+        var player = new VexPlayer(UUID.randomUUID(), "Alex");
+        var context = new PlayerExecutionContext(player, Map.of());
+        var service = service();
+        var selected = service.prepareActions(new CompiledRewards(List.of(
+            new CompiledRewards.Entry("item", reward(ignored -> RewardResult.success())))), context);
+        var deliveries = new AtomicInteger();
+        var subscription = service.observeDeliveries((entries, ignored) -> deliveries.addAndGet(entries.size()));
+        assertFalse(service.executeAtomically(context, () -> {
+            service.grantPrepared(selected, context);
+            assertEquals(0, deliveries.get());
+            return false;
+        }));
+        assertEquals(0, deliveries.get());
+        player.beginDurableEffects();
+        service.executeAtomically(context, () -> service.grantPrepared(selected, context).isSuccessful());
+        assertEquals(0, deliveries.get());
+        player.finishDurableEffects(false);
+        assertEquals(0, deliveries.get());
+        player.beginDurableEffects();
+        service.executeAtomically(context, () -> service.grantPrepared(selected, context).isSuccessful());
+        player.finishDurableEffects(true);
+        assertEquals(1, deliveries.get());
+        subscription.close();
+        service.grantPrepared(selected, context);
+        assertEquals(1, deliveries.get());
+    }
+
+    @Test
+    void failingObserversDoNotTurnSuccessfulGrantsIntoFailures() {
+        var context = new PlayerExecutionContext(new VexPlayer(UUID.randomUUID(), "Alex"), Map.of());
+        var service = service();
+        service.observeDeliveries((entries, ignored) -> {
+            throw new IllegalStateException("Disconnected UI");
+        });
+        var result = service.grantActions(new CompiledRewards(List.of(
+            new CompiledRewards.Entry("item", reward(ignored -> RewardResult.success())))), context);
+        org.junit.jupiter.api.Assertions.assertTrue(result.isSuccessful());
+    }
+
+    @Test
+    public void directSnapshotsCopyOnlyOnceAndStillRestoreEveryWriteOnFailure() {
+        var player = new VexPlayer(UUID.randomUUID(), "Alex");
+        var key = DataContainerKey.of("direct", DirectData.class, DirectData::new);
+        player.install(key, new DirectData());
+        DirectData.copies.set(0);
+        assertFalse(service().executeAtomically(new PlayerExecutionContext(player, Map.of()), () -> {
+            player.update(key, data -> {
+                data.amount = 12;
+            });
+            player.update(key, data -> {
+                data.amount = 24;
+            });
+            return false;
+        }));
+        assertEquals(1, DirectData.copies.get());
+        assertEquals(0, player.read(key, data -> data.amount).intValue());
+    }
+
+    public static final class DirectData implements TransactionalPlayerData<DirectData> {
+
+        private static final AtomicInteger copies = new AtomicInteger();
+        private int amount;
+
+        @Override
+        public DirectData copyForTransaction() {
+            copies.incrementAndGet();
+            var copy = new DirectData();
+            copy.amount = amount;
+            return copy;
+        }
+    }
 
     @Test
     public void failedSecondRewardRollsBackFirstRewardAndNotifications() {

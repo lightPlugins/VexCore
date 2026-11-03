@@ -1,0 +1,7 @@
+received: 'Erhalten'
+overflow:
+  - ''
+  - '  <tailwind:violet:5>Belohnung erhalten'
+  - ''
+  - '  <tailwind:zinc:4>%reward% <tailwind:violet:5>%amount%'
+  - ' '

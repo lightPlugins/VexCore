@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":vexcore-ui:common"))
     api(project(":vexcore-paper-api"))
     implementation(project(":vexcore-common"))
     implementation(project(":vexcore-services"))
@@ -67,6 +68,10 @@ val screenUiResourcePack = tasks.register<Zip>("screenUiResourcePack") {
     group = "build"
     dependsOn(generateScreenUiPack)
     from(screenUiPackDirectory)
+    dependsOn(":vexcore-ui:pack:generateVexUIPack")
+    from(project(":vexcore-ui:pack").layout.buildDirectory.dir("generated/pack")) {
+        exclude("pack.mcmeta", "assets/vexcore/sounds.json")
+    }
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     archiveBaseName.set("VexCore-ResourcePack")
     archiveVersion.set(project.version.toString())
@@ -74,6 +79,7 @@ val screenUiResourcePack = tasks.register<Zip>("screenUiResourcePack") {
     isReproducibleFileOrder = true
 }
 tasks.assemble { dependsOn(screenUiResourcePack) }
+tasks.assemble { dependsOn(":vexcore-ui:pack:vexUIResourcePack") }
 
 val interactiveUiPackDirectory = layout.buildDirectory.dir("generated/interactive-ui-pack")
 val interactiveUiPackGenerator = rootProject.layout.projectDirectory.file("resource-pack-tools/GenerateInteractiveUiPack.java")

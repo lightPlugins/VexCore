@@ -7,6 +7,8 @@ import dev.vexsoft.core.paper.scheduler.VexTask;
 import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.RewardCard;
+import dev.vexsoft.core.paper.screenui.RewardCardLayout;
 import dev.vexsoft.core.paper.screenui.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.TextureLayout;
 import dev.vexsoft.core.paper.screenui.UiNode;
@@ -270,6 +272,11 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         private final Map<String, Element> elements = new LinkedHashMap<>();
         @Getter(onMethod_ = @Override)
         private volatile boolean closed;
+
+        @Override
+        public void rewardCard(String id, RewardCard card, Component subtitle, RewardCardLayout layout) {
+            put(id, new Element(30, RewardCardRenderer.render(card, subtitle, layout), null));
+        }
 
         private void put(String id, Element value) {
             validId(id);

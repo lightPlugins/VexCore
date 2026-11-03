@@ -14,7 +14,7 @@ import java.util.Set;
 import lombok.NoArgsConstructor;
 import net.kyori.adventure.key.Key;
 
-/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 9. */
+/** Minecraft 26.2, resource-pack format 88.0, VexCore shader protocol 10. */
 @NoArgsConstructor
 @Dependencies
 public final class V26_2ScreenUiVersionDefinition implements ScreenUiVersionDefinition {

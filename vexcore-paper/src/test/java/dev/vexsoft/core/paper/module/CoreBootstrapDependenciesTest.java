@@ -24,6 +24,7 @@ class CoreBootstrapDependenciesTest {
         "(?:coreServices|services)\\.register\\(\\s*(\\w+)\\.class\\s*,\\s*([^;]+?)\\);"
             + "|(?:coreServices|services)\\.registerQueuedServices\\(\\);"
             + "|modules\\.enable\\(new (\\w+)\\([^;]*?\\)\\);"
+            + "|(?:VexUIRegistration\\.)?(core|owner)\\((?:coreServices|services)\\);"
     );
     private static final Pattern IMPORTS = Pattern.compile("import ([\\w.]+);");
 
@@ -34,7 +35,19 @@ class CoreBootstrapDependenciesTest {
     }
 
     private static void verify(final String type, final String method, final Set<Class<?>> available) throws Exception {
-        String source = Files.readString(SOURCES.resolve(type.replace('.', '/') + ".java"));
+        var queued = new LinkedHashMap<Class<?>, List<Class<?>>>();
+        registrations(type, method, available, queued);
+        assertTrue(queued.isEmpty(), () -> type + " leaves services queued at the end of " + method);
+    }
+
+    private static void registrations(final String type, final String method, final Set<Class<?>> available,
+                                      final Map<Class<?>, List<Class<?>>> queued) throws Exception {
+        String relative = type.replace('.', '/') + ".java";
+        Path file = SOURCES.resolve(relative);
+        if (!Files.isRegularFile(file)) {
+            file = Path.of("../vexcore-ui/common/src/main/java").resolve(relative);
+        }
+        String source = Files.readString(file);
         var names = new LinkedHashMap<String, String>();
         var imports = IMPORTS.matcher(source);
         while (imports.find()) {
@@ -42,7 +55,6 @@ class CoreBootstrapDependenciesTest {
             names.put(imported.substring(imported.lastIndexOf('.') + 1), imported);
         }
         String packageName = type.substring(0, type.lastIndexOf('.'));
-        var queued = new LinkedHashMap<Class<?>, List<Class<?>>>();
         var events = EVENTS.matcher(body(source, method));
         while (events.find()) {
             if (events.group(1) != null) {
@@ -60,11 +72,13 @@ class CoreBootstrapDependenciesTest {
                 queued.put(service, dependencies);
             } else if (events.group(3) != null) {
                 verify(resolve(names, packageName, events.group(3)).getName(), "enable", available);
+            } else if (events.group(4) != null) {
+                registrations("dev.vexsoft.core.paper.vexui.runtime.VexUIRegistration",
+                    events.group(4), available, queued);
             } else {
                 flush(type, queued, available);
             }
         }
-        assertTrue(queued.isEmpty(), () -> type + " leaves services queued at the end of " + method);
     }
 
     private static void flush(
@@ -95,6 +109,9 @@ class CoreBootstrapDependenciesTest {
 
     private static String body(final String source, final String method) throws IOException {
         int declaration = source.indexOf("public void " + method + '(');
+        if (declaration < 0) {
+            declaration = source.indexOf("public static void " + method + '(');
+        }
         if (declaration < 0) {
             throw new IOException("Missing bootstrap method: " + method);
         }

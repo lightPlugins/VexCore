@@ -27,12 +27,100 @@ import org.junit.jupiter.api.Test;
 final class ItemRewardPreparationTest {
 
     @Test
+    void cosmeticVirtualPreviewsNeverDeliverOrChangeThePreparedAmount() {
+        var deliveries = new AtomicInteger();
+        var items = proxy(RewardItemService.class, (instance, method, arguments) -> switch (method.getName()) {
+            case "validate" -> null;
+            case "isVirtual" -> true;
+            case "name", "describe" -> Component.text("Refined wood");
+            case "icon" -> "vexisles:refined_wood";
+            case "preview" -> {
+                assertEquals("vexisles:refined_wood", arguments[1]);
+                yield new Stack(1);
+            }
+            case "deliverVirtual" -> {
+                assertEquals(WholeAmount.of(5), arguments[2]);
+                deliveries.incrementAndGet();
+                yield null;
+            }
+            default -> throw new AssertionError(method.getName());
+        });
+        var registry = proxy(VexServiceRegistry.class, (instance, method, arguments) -> items);
+        var owner = new VexPlayer(UUID.randomUUID(), "Alex");
+        owner.bindPlatformPlayer(proxy(Player.class, (instance, method, arguments) -> null));
+        var context = new PlayerExecutionContext(owner, Map.of());
+        var prepared = assertInstanceOf(PreparedItemReward.class, new ItemReward(registry)
+            .compile(Map.of("key", "vexisles:refined_wood", "amount", 5)).prepare(context));
+        assertEquals(List.of(), prepared.preparedItems());
+        assertEquals(1, prepared.displayItems().size());
+        prepared.displayItems().getFirst().setAmount(64);
+        assertEquals(1, prepared.displayItems().getFirst().getAmount());
+        assertEquals(0, deliveries.get());
+        assertEquals(RewardResult.Status.SUCCESS, prepared.grant(context).status());
+        assertEquals(1, deliveries.get());
+    }
+
+    @Test
+    void unstackableRewardBatchesCreateIndependentPersistentItemIdentities() {
+        var creations = new AtomicInteger();
+        var items = proxy(RewardItemService.class, (instance, method, arguments) -> switch (method.getName()) {
+            case "validate" -> null;
+            case "isVirtual" -> false;
+            case "name", "describe" -> Component.text("Equipment");
+            case "icon" -> "vexisles:tool";
+            case "create" -> {
+                creations.incrementAndGet();
+                yield new Stack(1, 1, UUID.randomUUID());
+            }
+            default -> throw new AssertionError(method.getName());
+        });
+        var registry = proxy(VexServiceRegistry.class, (instance, method, arguments) -> items);
+        var owner = new VexPlayer(UUID.randomUUID(), "Alex");
+        owner.bindPlatformPlayer(proxy(Player.class, (instance, method, arguments) -> null));
+        var prepared = assertInstanceOf(PreparedItemReward.class, new ItemReward(registry)
+            .compile(Map.of("key", "vexisles:tool", "amount", 3)).prepare(new PlayerExecutionContext(owner, Map.of())));
+        assertEquals(3, creations.get());
+        assertEquals(3, prepared.preparedItems().stream().map(stack -> ((Stack) stack).identity).distinct().count());
+        assertEquals(List.of(1, 1, 1), prepared.preparedItems().stream().map(ItemStack::getAmount).toList());
+    }
+
+    @Test
+    void gatheringMultiplierIsFrozenWithThePreparedVirtualRewardAndCannotChangeOnRetry() {
+        WholeAmount[] deposited = {WholeAmount.ZERO};
+        var items = proxy(RewardItemService.class, (instance, method, arguments) -> switch (method.getName()) {
+            case "validate" -> null;
+            case "isVirtual" -> true;
+            case "describe" -> Component.text(arguments[2] + " Ore");
+            case "name" -> Component.text("Ore");
+            case "icon" -> "vexisles:ore";
+            case "deliverVirtual" -> {
+                deposited[0] = deposited[0].add((WholeAmount) arguments[2]);
+                yield null;
+            }
+            default -> throw new AssertionError(method.getName());
+        });
+        var registry = proxy(VexServiceRegistry.class, (instance, method, arguments) -> items);
+        var owner = new VexPlayer(UUID.randomUUID(), "Alex");
+        owner.bindPlatformPlayer(proxy(Player.class, (instance, method, arguments) -> null));
+        var configured = new ItemReward(registry).compile(Map.of("key", "vexisles:ore", "amount", "100zz"));
+        var initial = new PlayerExecutionContext(owner, Map.of("item-reward-multiplier", WholeAmount.of(4)));
+        var frozen = configured.prepare(initial);
+        var retry = new PlayerExecutionContext(owner, Map.of("item-reward-multiplier", WholeAmount.of(10)));
+        assertEquals(RewardResult.Status.SUCCESS, frozen.grant(retry).status());
+        assertEquals(WholeAmountFormatter.parse("400zz"), deposited[0]);
+        assertEquals(frozen.describe(initial), frozen.describe(retry));
+        assertThrows(IllegalArgumentException.class, () -> configured.prepare(
+            new PlayerExecutionContext(owner, Map.of("item-reward-multiplier", WholeAmount.ZERO))));
+    }
+
+    @Test
     void storageModeReloadCannotMaterializeAnUnboundedPreviouslyVirtualReward() {
         var virtual = new AtomicBoolean(true);
         var items = proxy(RewardItemService.class, (instance, method, arguments) -> switch (method.getName()) {
             case "validate" -> null;
             case "isVirtual" -> virtual.get();
-            case "describe" -> Component.text("Ore");
+            case "name", "describe" -> Component.text("Ore");
+            case "icon" -> "vexisles:ore";
             default -> throw new AssertionError("Unexpected native access: " + method.getName());
         });
         var registry = proxy(VexServiceRegistry.class, (instance, method, arguments) -> items);
@@ -50,6 +138,7 @@ final class ItemRewardPreparationTest {
             case "validate" -> null;
             case "isVirtual" -> true;
             case "name" -> Component.text("Ore");
+            case "icon" -> "vexisles:ore";
             case "describe" -> Component.text(arguments[2] + " Ore");
             case "deliverVirtual" -> {
                 deposited[0] = deposited[0].add((WholeAmount) arguments[2]);
@@ -66,6 +155,9 @@ final class ItemRewardPreparationTest {
         assertEquals(List.of(), prepared.preparedItems());
         var description = prepared.describe(context);
         assertEquals(description, prepared.describe(context));
+        assertEquals(Component.text("vexisles:ore"), prepared.describeEntries(context).getFirst()
+            .placeholders().get("item_key"));
+        assertEquals(description, prepared.describeEntries(context).getFirst().fallback());
         assertEquals(WholeAmount.ZERO, deposited[0]);
         assertEquals(RewardResult.Status.SUCCESS, prepared.grant(context).status());
         org.junit.jupiter.api.Assertions.assertTrue(deposited[0].compareTo(WholeAmountFormatter.parse("3zz")) >= 0);
@@ -81,6 +173,7 @@ final class ItemRewardPreparationTest {
             case "isVirtual" -> false;
             case "create" -> new Stack(1);
             case "name" -> Component.text("Iron");
+            case "icon" -> "minecraft:raw_iron";
             case "describe" -> Component.text(arguments[2] + "× ")
                 .append(Component.translatable("item.minecraft.raw_iron"));
             case "deliver" -> {
@@ -96,8 +189,13 @@ final class ItemRewardPreparationTest {
         var owner = new VexPlayer(UUID.randomUUID(), "Alex");
         owner.bindPlatformPlayer(proxy(Player.class, (instance, method, arguments) -> null));
         var context = new PlayerExecutionContext(owner, Map.of());
-        var prepared = assertInstanceOf(PreparedItemReward.class,
-            new ItemReward(registry).compile(Map.of("key", "minecraft:raw_iron", "amount", 80)).prepare(context));
+        var configured = new ItemReward(registry).compile(Map.of("key", "minecraft:raw_iron", "amount", 80));
+        var prepared = assertInstanceOf(PreparedItemReward.class, configured.prepare(context));
+        assertEquals(new java.math.BigDecimal("80"), prepared.notifications(context).getFirst().amount());
+        assertEquals(Component.text("Iron"), prepared.notifications(context).getFirst().name());
+        assertEquals(Component.text("minecraft:raw_iron"), configured.describeEntries(context).getFirst()
+            .placeholders().get("item_key"));
+        assertEquals(configured.describe(context), configured.describeEntries(context).getFirst().fallback());
         assertEquals(List.of(64, 16), prepared.preparedItems().stream().map(ItemStack::getAmount).toList());
         prepared.preparedItems().getFirst().setAmount(1);
         assertEquals(List.of(64, 16), prepared.preparedItems().stream().map(ItemStack::getAmount).toList());
@@ -114,9 +212,17 @@ final class ItemRewardPreparationTest {
     private static final class Stack extends ItemStack {
 
         private int amount;
+        private final int maximum;
+        private final UUID identity;
 
         private Stack(final int amount) {
+            this(amount, 64, UUID.randomUUID());
+        }
+
+        private Stack(final int amount, final int maximum, final UUID identity) {
             this.amount = amount;
+            this.maximum = maximum;
+            this.identity = identity;
         }
 
         @Override
@@ -131,12 +237,12 @@ final class ItemRewardPreparationTest {
 
         @Override
         public int getMaxStackSize() {
-            return 64;
+            return maximum;
         }
 
         @Override
         public Stack clone() {
-            return new Stack(amount);
+            return new Stack(amount, maximum, identity);
         }
     }
 }

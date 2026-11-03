@@ -14,6 +14,7 @@ tasks.test {
 }
 
 dependencies {
+    implementation(project(":vexcore-ui:common"))
     implementation(project(":vexcore-screen-ui:common"))
     testImplementation(project(":vexcore-screen-ui:versions:v26_2"))
     api(project(":vexcore-paper-api"))

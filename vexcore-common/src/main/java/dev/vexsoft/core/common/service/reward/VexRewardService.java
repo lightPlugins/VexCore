@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
+import dev.vexsoft.core.api.player.TransactionalPlayerData;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.service.reward.RewardService;
@@ -23,6 +24,9 @@ import dev.vexsoft.core.reward.RewardExecutionReport;
 import dev.vexsoft.core.reward.RewardResult;
 import dev.vexsoft.core.reward.RewardOptions;
 import dev.vexsoft.core.reward.PreparedRewards;
+import dev.vexsoft.core.reward.RewardDeliveryObserver;
+import dev.vexsoft.core.reward.RewardNotification;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -37,27 +41,73 @@ import net.kyori.adventure.text.Component;
 
 /** Default registry-backed reward compiler and executor. */
 @Dependencies(ExecutionComponentCoordinatorService.class)
-public final class VexRewardService implements RewardService {
+public final class VexRewardService implements RewardService, AutoCloseable {
 
+    private final List<RewardDeliveryObserver> deliveryObservers = new CopyOnWriteArrayList<>();
     private final ExecutionComponentCoordinatorService components;
     private final ObjectMapper transactionMapper = new ObjectMapper().registerModule(new JavaTimeModule())
-        .setVisibility(
-            PropertyAccessor.ALL,
-            JsonAutoDetect.Visibility.NONE
-        )
-        .setVisibility(
-            PropertyAccessor.FIELD,
-            JsonAutoDetect.Visibility.ANY
-        );
-
-    @Override
-    public boolean executeAtomically(final PlayerExecutionContext context, final BooleanSupplier operation) {
-        return context.player().atomic(value -> transactionMapper.convertValue(value, value.getClass()), operation);
-    }
+        .setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE)
+        .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 
     /** Captures the shared component registry. */
     public VexRewardService(final VexServiceRegistry services) {
         components = Objects.requireNonNull(services, "services").require(ExecutionComponentCoordinatorService.class);
+    }
+
+    @Override
+    public AutoCloseable observeDeliveries(final RewardDeliveryObserver observer) {
+        deliveryObservers.add(Objects.requireNonNull(observer, "observer"));
+        return () -> deliveryObservers.remove(observer);
+    }
+
+    @Override
+    public void notifyDelivered(final PreparedRewards rewards, final PlayerExecutionContext context) {
+        if (deliveryObservers.isEmpty() || rewards.entries().isEmpty()) {
+            return;
+        }
+        // Freeze presentation while the operation still owns its context; never reroll in the observer.
+        List<RewardNotification> receipt;
+        try {
+            receipt = rewards.entries().stream()
+                .filter(entry -> entry.reward().getBehavior() == RewardBehavior.ACTION)
+                .flatMap(entry -> entry.reward().notifications(context).stream()).toList();
+        } catch (RuntimeException failure) {
+            // An optional presentation must never change the outcome of an otherwise valid grant.
+            System.getLogger(VexRewardService.class.getName()).log(
+                System.Logger.Level.ERROR, "Cannot prepare reward presentation", failure
+            );
+            return;
+        }
+        if (receipt.isEmpty()) {
+            return;
+        }
+        var profileContexts = context.player().profileContexts();
+        context.player().afterCommit(() -> {
+            if (!profileContexts.equals(context.player().profileContexts())) {
+                return;
+            }
+            for (RewardDeliveryObserver observer : deliveryObservers) {
+                try {
+                    observer.delivered(receipt, context);
+                } catch (RuntimeException failure) {
+                    System.getLogger(VexRewardService.class.getName()).log(
+                        System.Logger.Level.ERROR, "Committed reward presentation failed", failure
+                    );
+                }
+            }
+        });
+    }
+
+    @Override
+    public void close() {
+        deliveryObservers.clear();
+    }
+
+    @Override
+    public boolean executeAtomically(final PlayerExecutionContext context, final BooleanSupplier operation) {
+        return context.player().atomic(value -> value instanceof TransactionalPlayerData<?> data
+            ? value.getClass().cast(Objects.requireNonNull(data.copyForTransaction(), "Transaction snapshot"))
+            : transactionMapper.convertValue(value, value.getClass()), operation);
     }
 
     @Override
@@ -122,7 +172,11 @@ public final class VexRewardService implements RewardService {
             }
         }
 
-        return new RewardExecutionReport(results);
+        var report = new RewardExecutionReport(results);
+        if (report.isSuccessful()) {
+            notifyDelivered(rewards, context);
+        }
+        return report;
     }
 
     private static Map<String, Object> envelope(final Object value) {

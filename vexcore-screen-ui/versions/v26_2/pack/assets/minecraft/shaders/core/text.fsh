@@ -23,6 +23,9 @@ in vec2 vexPanelPoint;
 flat in vec2 vexPanelSize;
 flat in float vexPanelRadius;
 flat in float vexSolidPixel;
+in vec2 vexRewardPoint;
+flat in float vexRewardFrame;
+flat in float vexRewardAge;
 #endif
 
 void main() {
@@ -45,6 +48,15 @@ void main() {
         color = vertexColor * ColorModulator;
     }
     if (vexSolidPixel > 0.5) color = vertexColor * ColorModulator;
+    if (vexRewardFrame > 0.5) {
+        float edge = min(min(vexRewardPoint.x, 224.0 - vexRewardPoint.x),
+            min(vexRewardPoint.y, 40.0 - vexRewardPoint.y));
+        float sweep = mix(-32.0, 280.0, clamp((vexRewardAge - 3.0) / 11.0, 0.0, 1.0));
+        float band = 1.0 - smoothstep(0.0, 28.0, abs(vexRewardPoint.x + vexRewardPoint.y * 0.65 - sweep));
+        float shine = band * (1.0 - step(4.0, edge)) * step(3.0, vexRewardAge)
+            * (1.0 - step(14.0, vexRewardAge));
+        color.rgb = min(vec3(1.0), color.rgb + vec3(0.50, 0.40, 0.64) * shine);
+    }
 #endif
     float cutoff = 0.1;
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)

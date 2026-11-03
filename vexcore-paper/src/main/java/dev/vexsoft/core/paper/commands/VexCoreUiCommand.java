@@ -16,25 +16,53 @@ import dev.vexsoft.core.paper.screenui.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.VerticalAlignment;
 import dev.vexsoft.core.paper.service.messages.SendMessageService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.service.reward.RewardToastService;
+import dev.vexsoft.core.paper.screenui.RewardCard;
+import dev.vexsoft.core.paper.vexui.VexUIService;
+import dev.vexsoft.core.reward.RewardNotification;
+import java.math.BigDecimal;
+import java.util.List;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import java.util.Locale;
 import java.util.Map;
 import org.bukkit.entity.Player;
 
 /** Opt-in visual acceptance test; does not change gameplay or ArcaneMonolith dialogs. */
 @CommandRoot(name = "vexcore", description = "Manages VexCore")
-@Dependencies({ScreenUiService.class, LocalizationService.class, PlayerService.class, SendMessageService.class})
+@Dependencies({ScreenUiService.class, LocalizationService.class, PlayerService.class, SendMessageService.class,
+    RewardToastService.class, VexUIService.class})
 public final class VexCoreUiCommand {
 
     private final ScreenUiService screens;
     private final LocalizationService localization;
     private final PlayerService players;
     private final SendMessageService messages;
+    private final RewardToastService rewardToasts;
+    private final VexUIService menuUi;
 
     public VexCoreUiCommand(VexServiceRegistry services) {
         screens = services.require(ScreenUiService.class);
         localization = services.require(LocalizationService.class);
         players = services.require(PlayerService.class);
         messages = services.require(SendMessageService.class);
+        rewardToasts = services.require(RewardToastService.class);
+        menuUi = services.require(VexUIService.class);
+    }
+
+    /** Shows real card rendering and large quantities without granting gameplay rewards. */
+    @Command(value = "debug ui rewards", permission = "vexcore.command.debug.ui", playerOnly = true)
+    public int rewards(VexCommandSource source) {
+        Player player = (Player) source.getSender();
+        var definitions = Map.of("diamond", "3", "wheat", "500", "gold_nugget", "52000000000000000");
+        var cards = List.of("diamond", "wheat", "gold_nugget").stream().map(item -> new RewardCard(
+            new RewardNotification("debug:" + item,
+                menuUi.resolveText(Component.translatable("item.minecraft." + item), player.locale()),
+                "minecraft:" + item, new BigDecimal(definitions.get(item))),
+            Key.key("vexcore:reward/icon/vanilla/" + item)
+        )).toList();
+        rewardToasts.show(players.require(player.getUniqueId()), cards);
+        return 1;
     }
 
     @Command(value = "debug ui dialogue", permission = "vexcore.command.debug.ui", playerOnly = true)

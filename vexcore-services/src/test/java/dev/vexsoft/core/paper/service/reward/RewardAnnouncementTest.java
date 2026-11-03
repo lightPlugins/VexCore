@@ -73,6 +73,7 @@ final class RewardAnnouncementTest {
                 case "validate" -> null;
                 case "isVirtual" -> false;
                 case "create" -> new Stack();
+                case "icon" -> ((dev.vexsoft.core.paper.reward.item.RewardItem) arguments[1]).key();
                 case "name", "describe" -> {
                     Component name = ((RewardItem) arguments[1]).key().equals("vexisles:chestplate")
                         ? Component.text("Chestplate +5", NamedTextColor.GOLD)

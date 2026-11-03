@@ -66,7 +66,7 @@ final class ScreenUiShaderContractTest {
         try (var input = Files.newInputStream(pack.resolve("vexcore-screen-ui.properties"))) {
             protocol.load(input);
         }
-        assertEquals("9", protocol.getProperty("protocol"));
+        assertEquals("10", protocol.getProperty("protocol"));
         int stride = Integer.parseInt(protocol.getProperty("stride"));
         int base = Integer.parseInt(protocol.getProperty("base"));
         int count = Integer.parseInt(protocol.getProperty("maxY")) - Integer.parseInt(protocol.getProperty("minY")) + 1;

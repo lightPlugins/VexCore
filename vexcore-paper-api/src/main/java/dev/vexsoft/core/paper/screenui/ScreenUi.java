@@ -6,6 +6,11 @@ import net.kyori.adventure.text.Component;
 /** Owner-scoped screen handle. Updates are copied, validated and coalesced before display. */
 public interface ScreenUi extends AutoCloseable {
 
+    /** Atomically replaces an animated reward card; requires matching protocol-10 resource-pack assets. */
+    default void rewardCard(String id, RewardCard card, Component subtitle, RewardCardLayout layout) {
+        throw new UnsupportedOperationException("Animated reward cards are unavailable");
+    }
+
     /** Measures a panel without changing screen contents, for admission and placement decisions. */
     default UiPanelBounds measurePanel(UiNode content, UiPanelLayout layout) {
         throw new UnsupportedOperationException("Panel measurement is not implemented by this screen");

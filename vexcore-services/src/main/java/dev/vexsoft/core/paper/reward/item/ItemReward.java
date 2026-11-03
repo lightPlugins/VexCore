@@ -12,6 +12,8 @@ import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
+import dev.vexsoft.core.reward.RewardNotification;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +101,7 @@ public final class ItemReward implements Reward {
     private record Definition(RewardItem item, WholeAmount minimum, WholeAmount maximum) {
     }
 
-    private record VirtualGrant(RewardItem item, WholeAmount amount) {
+    private record VirtualGrant(RewardItem item, WholeAmount amount, String icon) {
     }
 
     private record Configured(List<Definition> definitions, RewardItemService items) implements CompiledReward {
@@ -125,22 +127,37 @@ public final class ItemReward implements Reward {
             List<RewardItem> physical = new ArrayList<>();
             List<VirtualGrant> virtual = new ArrayList<>();
             List<Component> descriptions = new ArrayList<>();
+            List<RewardNotification> notifications = new ArrayList<>();
             Player viewer = context.player().requirePlatformPlayer(Player.class);
             for (Definition definition : definitions) {
                 WholeAmount amount = select(definition);
+                Object factor = context.getVariable("item-reward-multiplier");
+                if (factor != null) {
+                    if (!(factor instanceof WholeAmount multiplier) || !multiplier.isPositive()) {
+                        throw new IllegalArgumentException("Item reward multiplier must be a positive whole amount");
+                    }
+                    amount = amount.multiply(multiplier.toBigInteger());
+                }
                 descriptions.add(items.describe(viewer, definition.item(), WholeAmountFormatter.format(amount)));
+                notifications.add(new RewardNotification(
+                    "item:" + definition.item().key() + ":" + definition.item().upgradeLevel(),
+                    items.name(viewer, definition.item()), items.icon(viewer, definition.item()),
+                    new BigDecimal(amount.toBigInteger())
+                ));
                 if (items.isVirtual(definition.item())) {
-                    virtual.add(new VirtualGrant(definition.item(), amount));
+                    virtual.add(new VirtualGrant(definition.item(), amount, notifications.getLast().icon()));
                     continue;
                 }
-                if (definition.maximum().compareTo(WholeAmount.of(1_000_000)) > 0) {
+                if (amount.compareTo(WholeAmount.of(1_000_000)) > 0) {
                     throw new IllegalArgumentException("Physical item amounts must not exceed 1000000");
                 }
                 ItemStack prototype = items.create(definition.item());
                 physical.add(definition.item());
-                int remaining = amount.intValueExact();
+                int total = amount.intValueExact();
+                int remaining = total;
                 while (remaining > 0) {
-                    ItemStack stack = prototype.clone();
+                    ItemStack stack = prototype.getMaxStackSize() == 1 && remaining != total
+                        ? items.create(definition.item()) : prototype.clone();
                     int count = Math.min(remaining, prototype.getMaxStackSize());
                     stack.setAmount(count);
                     stacks.add(stack);
@@ -148,7 +165,8 @@ public final class ItemReward implements Reward {
                 }
             }
             return new Prepared(List.copyOf(stacks), List.copyOf(physical), List.copyOf(virtual),
-                List.copyOf(descriptions), items);
+                List.copyOf(descriptions), definitions.stream().map(definition -> definition.item().key()).toList(),
+                List.copyOf(notifications), items);
         }
 
         @Override
@@ -166,11 +184,27 @@ public final class ItemReward implements Reward {
                         + WholeAmountFormatter.format(definition.maximum())))
                 .toList());
         }
+
+        @Override
+        public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
+            Player viewer = context.player().requirePlatformPlayer(Player.class);
+            return definitions.stream().map(definition -> new ExecutionDescription("",
+                Map.of("item_key", Component.text(definition.item().key())),
+                items.describe(viewer, definition.item(), definition.minimum().equals(definition.maximum())
+                    ? WholeAmountFormatter.format(definition.minimum())
+                    : WholeAmountFormatter.format(definition.minimum()) + "\u2013"
+                        + WholeAmountFormatter.format(definition.maximum())))).toList();
+        }
     }
 
     private record Prepared(List<ItemStack> stacks, List<RewardItem> physical, List<VirtualGrant> virtual,
-                            List<Component> descriptions,
-                            RewardItemService items) implements PreparedItemReward {
+                            List<Component> descriptions, List<String> itemKeys,
+                            List<RewardNotification> notifications, RewardItemService items) implements PreparedItemReward {
+
+        @Override
+        public List<RewardNotification> notifications(final PlayerExecutionContext context) {
+            return notifications;
+        }
 
         @Override
         public boolean changesInventory() {
@@ -181,6 +215,17 @@ public final class ItemReward implements Reward {
         public List<ItemStack> preparedItems() {
             validatePhysical();
             return stacks.stream().map(ItemStack::clone).toList();
+        }
+
+        @Override
+        public List<ItemStack> displayItems() {
+            List<ItemStack> previews = new ArrayList<>(preparedItems());
+            for (VirtualGrant grant : virtual) {
+                ItemStack preview = items.preview(grant.item(), grant.icon());
+                preview.setAmount(1);
+                previews.add(preview);
+            }
+            return List.copyOf(previews);
         }
 
         @Override
@@ -218,8 +263,12 @@ public final class ItemReward implements Reward {
 
         @Override
         public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
-            return descriptions.stream().map(description -> new ExecutionDescription("", Map.of(), description))
-                .toList();
+            List<ExecutionDescription> result = new ArrayList<>();
+            for (int index = 0; index < descriptions.size(); index++) {
+                result.add(new ExecutionDescription("", Map.of("item_key", Component.text(itemKeys.get(index))),
+                    descriptions.get(index)));
+            }
+            return List.copyOf(result);
         }
 
         private void validatePhysical() {

@@ -14,18 +14,22 @@ import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.expression.ConstantExpression;
+import dev.vexsoft.core.expression.EvaluationContext;
 import dev.vexsoft.core.number.WholeAmount;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.QuantifiedReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
+import dev.vexsoft.core.reward.RewardNotification;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import net.kyori.adventure.text.Component;
 
 /** Persistent {@code currencies} action reward backed by the player's currency container. */
@@ -57,10 +61,54 @@ public final class CurrencyReward implements Reward {
 
         configured.forEach((key, amount) -> compiled.put(
             currencies.require(CurrencyKey.parse(key)),
-            expressions.compile(Objects.toString(amount))
+            amount(amount)
         ));
 
         return new Compiled(Map.copyOf(compiled), localizations);
+    }
+
+    private CompiledExpression amount(final Object configured) {
+        if (!(configured instanceof Map<?, ?>) && !(configured instanceof ConfigurationSection)) {
+            return expressions.compile(Objects.toString(configured));
+        }
+        Map<String, Object> range = values(configured);
+        if (!range.keySet().equals(java.util.Set.of("min", "max"))) {
+            throw new IllegalArgumentException("Currency amount ranges require only min and max");
+        }
+        try {
+            WholeAmount minimum = WholeAmount.parse(Objects.toString(range.get("min")));
+            WholeAmount maximum = WholeAmount.parse(Objects.toString(range.get("max")));
+            if (!minimum.isPositive() || maximum.compareTo(minimum) < 0) {
+                throw new IllegalArgumentException("Currency amount ranges must be positive and ordered");
+            }
+            return new AmountRange(minimum.toBigInteger(), maximum.toBigInteger());
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Invalid currency amount range", exception);
+        }
+    }
+
+    /** Preparation freezes this inclusive whole-number selection before grant and receipt rendering. */
+    private record AmountRange(BigInteger minimum, BigInteger maximum) implements CompiledExpression {
+
+        @Override
+        public BigDecimal evaluateDecimal(final EvaluationContext context) {
+            BigInteger width = maximum.subtract(minimum).add(BigInteger.ONE);
+            BigInteger selected;
+            do {
+                selected = new BigInteger(width.bitLength(), ThreadLocalRandom.current());
+            } while (selected.compareTo(width) >= 0);
+            return new BigDecimal(minimum.add(selected));
+        }
+
+        @Override
+        public boolean evaluateBoolean(final EvaluationContext context) {
+            return true;
+        }
+
+        @Override
+        public String evaluateString(final EvaluationContext context) {
+            return evaluateDecimal(context).toPlainString();
+        }
     }
 
     private static Map<String, Object> values(final Object value) {
@@ -136,6 +184,15 @@ public final class CurrencyReward implements Reward {
             }
 
             return result;
+        }
+
+        @Override
+        public List<RewardNotification> notifications(final PlayerExecutionContext context) {
+            return evaluate(context).entrySet().stream().map(entry -> new RewardNotification(
+                "currency:" + entry.getKey().getKey(),
+                localizations.getName(context.player(), entry.getKey().getKey()), "minecraft:gold_nugget",
+                new BigDecimal(entry.getValue().toBigInteger())
+            )).toList();
         }
 
         @Override
