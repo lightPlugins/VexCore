@@ -140,8 +140,9 @@ public final class V26_2RandomMovementGoal extends Goal {
 
             Location candidate = findGround(world, x, z, current.getBlockY());
 
-            if (candidate != null && handle.getNavigation() instanceof V26_2FlightNavigation navigation) {
-                double minimum = FlightPositionSafety.minimumY(candidate, navigation.minimumHeight());
+            double flightHeight = flightHeight();
+            if (candidate != null && flightHeight > 0) {
+                double minimum = FlightPositionSafety.minimumY(candidate, flightHeight);
                 if (!Double.isFinite(minimum)) {
                     continue;
                 }
@@ -227,8 +228,7 @@ public final class V26_2RandomMovementGoal extends Goal {
 
         int minimumY = origin.getBlockY() + spec.minimumYOffset();
         int maximumY = origin.getBlockY() + spec.maximumYOffset();
-        double flightHeight = handle.getNavigation() instanceof V26_2FlightNavigation navigation
-            ? navigation.minimumHeight() : 0.0D;
+        double flightHeight = flightHeight();
         maximumY += (int) Math.ceil(flightHeight);
 
         for (Location point : path.getPoints()) {
@@ -255,6 +255,14 @@ public final class V26_2RandomMovementGoal extends Goal {
         }
 
         return true;
+    }
+
+    private double flightHeight() {
+        var flight = V26_2FlightMoveControl.find(handle);
+        if (flight != null) {
+            return flight.minimumHeight();
+        }
+        return handle.getNavigation() instanceof V26_2FlightNavigation navigation ? navigation.minimumHeight() : 0;
     }
 
     private int randomIdleTicks() {

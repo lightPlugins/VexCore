@@ -1,29 +1,29 @@
 package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import dev.vexsoft.core.api.mob.MobMeleeAttackSequence;
-import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
-import java.util.EnumSet;
-import java.util.Objects;
+import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
-import org.bukkit.entity.Projectile;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.bukkit.util.Vector;
-import org.bukkit.craftbukkit.entity.CraftMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.craftbukkit.entity.CraftMob;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 
 /** Scoped melee AI using native goal scheduling and throttled Paper pathfinding. */
 public final class V26_2OwnerMeleeGoal extends Goal {
@@ -331,6 +331,10 @@ public final class V26_2OwnerMeleeGoal extends Goal {
             entity.getMoveControl().setWantedPosition(entity.getX(), entity.getY(), entity.getZ(), 0);
         }
 
+        if (mob instanceof CraftMob craftMob
+            && V26_2FlightMoveControl.find(craftMob.getHandle()) != null) {
+            return;
+        }
         Vector velocity = mob.getVelocity();
         if (velocity.getX() != 0.0D || velocity.getZ() != 0.0D) {
             mob.setVelocity(new Vector(0.0D, velocity.getY(), 0.0D));
@@ -370,6 +374,10 @@ public final class V26_2OwnerMeleeGoal extends Goal {
     }
 
     private boolean tryLeap() {
+        if (mob instanceof CraftMob craftMob
+            && V26_2FlightMoveControl.find(craftMob.getHandle()) != null) {
+            return false;
+        }
         var leap = spec.leap();
         boolean fromWater = mob.isInWater() && leap.waterEnabled();
         if (target.getLocation().getY() - mob.getLocation().getY() > (fromWater ? 4.0D : 1.0D)) {

@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.service.mob;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -177,6 +179,22 @@ public final class VexMobService implements MobService, Listener, AutoCloseable 
     @Override
     public MobSnapshot setVelocity(final MobHandle handle, final Vector velocity) {
         return runtime.setVelocity(owner, handle, velocity);
+    }
+
+    @Override
+    public FlightState flyTo(final MobHandle handle, final Location destination, final double speed) {
+        return runtime.flyTo(owner, handle, destination, speed);
+    }
+
+    @Override
+    public FlightState flyTo(final MobHandle handle, final Location destination,
+        final double speed, final FlightBounds bounds) {
+        return runtime.flyTo(owner, handle, destination, speed, bounds);
+    }
+
+    @Override
+    public void releaseFlight(final MobHandle handle) {
+        runtime.releaseFlight(owner, handle);
     }
 
     @Override

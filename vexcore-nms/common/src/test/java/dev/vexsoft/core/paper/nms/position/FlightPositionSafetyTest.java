@@ -31,6 +31,17 @@ final class FlightPositionSafetyTest {
     }
 
     @Test
+    void desiredHoverHeightCanDescendToLocalTerrainWhileMinimumClearanceCannot() {
+        World world = world(true, false);
+        assertEquals(65, FlightPositionSafety.hoverY(new Location(world, 0.5, 68, 0.5), 1.5));
+        assertEquals(68, FlightPositionSafety.minimumY(new Location(world, 0.5, 68, 0.5), 1.5));
+        assertEquals(65.5, FlightPositionSafety.hoverY(new Location(world(true, true), 0.5, 68, 0.5), 1.5));
+        assertTrue(Double.isNaN(FlightPositionSafety.hoverY(new Location(world, 0.5, 10, 0.5), 1)));
+        assertTrue(Double.isNaN(FlightPositionSafety.hoverY(
+            new Location(world(false, false), 0.5, 68, 0.5), 1)));
+    }
+
+    @Test
     void recoveryRequiresClearanceForTheEntireCarrierAndStaysInsideWorldBounds() {
         World world = world(true, false);
         assertTrue(FlightPositionSafety.isClear(new Location(world, 0.5, 65.75, 0.5), 0.7, 0.6));

@@ -5,12 +5,13 @@ import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
 import dev.vexsoft.core.paper.nms.position.FlightPositionSafety;
 import java.util.EnumSet;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.function.Consumer;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
-import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
+import net.minecraft.world.phys.Vec3;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.entity.CraftMob;
@@ -31,6 +32,8 @@ public final class V26_2FollowOwnerGoal extends Goal {
     private int refreshTicks;
     private int stalledTicks;
     private Location previousPosition;
+    private Vector followOffset;
+    private Location previousOwnerPosition;
 
     public V26_2FollowOwnerGoal(final Mob mob, final NmsFollowOwnerSpec settings) {
         this(mob, settings, Bukkit::getPlayer, owner -> {
@@ -38,11 +41,19 @@ public final class V26_2FollowOwnerGoal extends Goal {
             ((CraftMob) mob).getHandle().getLookControl().setLookAt(target.getX(), target.getY(), target.getZ());
         }, isFlying(mob), (target, speed) -> {
             var handle = ((CraftMob) mob).getHandle();
-            var moved = handle.getBoundingBox().move(target.getX() - handle.getX(),
-                target.getY() - handle.getY(), target.getZ() - handle.getZ());
-            if (handle.level().noCollision(handle, handle.getBoundingBox().minmax(moved))) {
-                mob.getPathfinder().stopPathfinding();
-                handle.getMoveControl().setWantedPosition(target.getX(), target.getY(), target.getZ(), speed);
+            var flight = flightControl(mob);
+            if (flight != null) {
+                Player owner = Bukkit.getPlayer(settings.ownerId());
+                Vector movement = owner == null ? new Vector() : owner.getVelocity();
+                if (owner != null && owner.isOnGround()) {
+                    movement.setY(0);
+                }
+                if (!flight.track(target, new Vec3(
+                    movement.getX(), movement.getY(), movement.getZ()), speed)
+                    && target.getWorld().isChunkLoaded(target.getBlockX() >> 4, target.getBlockZ() >> 4)
+                    && (handle.tickCount % settings.pathIntervalTicks() == 0 || !mob.getPathfinder().hasPath())) {
+                    mob.getPathfinder().moveTo(target, speed);
+                }
             }
         });
     }
@@ -73,14 +84,12 @@ public final class V26_2FollowOwnerGoal extends Goal {
     @Override
     public boolean canUse() {
         owner = owners.apply(settings.ownerId());
-        return validOwner() && (distanceSquared() > settings.startDistance() * settings.startDistance()
-            || needsHeightCorrection());
+        return validOwner() && (flying || distanceSquared() > settings.startDistance() * settings.startDistance());
     }
 
     @Override
     public boolean canContinueToUse() {
-        return validOwner() && (distanceSquared() > settings.stopDistance() * settings.stopDistance()
-            || needsHeightCorrection());
+        return validOwner() && (flying || distanceSquared() > settings.stopDistance() * settings.stopDistance());
     }
 
     @Override
@@ -97,19 +106,16 @@ public final class V26_2FollowOwnerGoal extends Goal {
         }
         look.accept(owner);
         Location target = targetLocation();
-        if (flying && horizontalDistanceSquared(mob.getLocation(), target)
-            <= settings.stopDistance() * settings.stopDistance()) {
-            // Resolve fractional heights directly through native flight controls after arriving near the owner.
-            Location verticalTarget = mob.getLocation();
-            verticalTarget.setY(target.getY());
-            hover.accept(verticalTarget, settings.speed());
+        if (flying) {
+            hover.accept(target, settings.speed());
         }
         if (refreshTicks-- > 0) {
             return;
         }
         refreshTicks = settings.pathIntervalTicks() - 1;
         Location position = mob.getLocation();
-        stalledTicks = previousPosition != null && position.distanceSquared(previousPosition) < 0.04D
+        stalledTicks = (!flying || position.distanceSquared(target) > 0.0625D)
+            && previousPosition != null && position.distanceSquared(previousPosition) < 0.04D
             ? stalledTicks + settings.pathIntervalTicks() : 0;
         previousPosition = position;
         if (distanceSquared() >= settings.teleportDistance() * settings.teleportDistance()
@@ -117,8 +123,7 @@ public final class V26_2FollowOwnerGoal extends Goal {
             recover(target);
             return;
         }
-        if (!flying || horizontalDistanceSquared(position, target)
-            > settings.stopDistance() * settings.stopDistance()) {
+        if (!flying) {
             mob.getPathfinder().moveTo(target, settings.speed());
         }
     }
@@ -126,8 +131,12 @@ public final class V26_2FollowOwnerGoal extends Goal {
     @Override
     public void stop() {
         mob.getPathfinder().stopPathfinding();
-        if (validOwner() && distanceSquared() <= settings.stopDistance() * settings.stopDistance()) {
-            // Flying carriers retain momentum after navigation stops; brake once when the owner is reached.
+        var flight = flightControl(mob);
+        if (flight != null) {
+            flight.stopTracking();
+        }
+        if (!flying && validOwner() && distanceSquared() <= settings.stopDistance() * settings.stopDistance()) {
+            // Retain the existing one-time braking behavior for ground followers.
             mob.setVelocity(mob.getVelocity().multiply(0.5D));
         }
         owner = null;
@@ -150,27 +159,59 @@ public final class V26_2FollowOwnerGoal extends Goal {
     }
 
     private Location targetLocation() {
-        return owner.getLocation().add(0.0D, flying ? settings.flightYOffset() : 0.0D, 0.0D);
+        Location target = owner.getLocation();
+        if (!flying) {
+            return target;
+        }
+        Vector movement = owner.getVelocity().setY(0);
+        if (followOffset == null) {
+            // Retain the chosen spawn side until the owner actually changes position.
+            followOffset = mob.getLocation().toVector().subtract(target.toVector()).setY(0);
+            if (followOffset.lengthSquared() < 0.0001) {
+                followOffset = formationOffset(target);
+            } else {
+                followOffset.normalize().multiply(settings.stopDistance());
+            }
+        } else if (previousOwnerPosition != null
+            && (Math.abs(target.getX() - previousOwnerPosition.getX()) > 0.000001
+                || Math.abs(target.getZ() - previousOwnerPosition.getZ()) > 0.000001)) {
+            // Looking at the companion must not move it; only walking updates the formation.
+            followOffset = formationOffset(target);
+        }
+        previousOwnerPosition = target.clone();
+        Vector prediction = movement.multiply(2);
+        double maximumPrediction = settings.stopDistance() / 4;
+        if (prediction.lengthSquared() > maximumPrediction * maximumPrediction) {
+            // Fast forward motion must not shift the rear-side slot into the owner's view.
+            prediction.normalize().multiply(maximumPrediction);
+        }
+        target.add(followOffset).add(prediction).add(0, settings.flightYOffset(), 0);
+        var flight = flightControl(mob);
+        if (flight != null) {
+            return flight.resolveTrackingTarget(target);
+        }
+        return target;
     }
 
-    private boolean needsHeightCorrection() {
-        Location position = mob.getLocation();
-        Location target = targetLocation();
-        return flying && settings.flightYOffset() > 0.0D && Math.abs(position.getY() - target.getY()) > 0.25D
-            && horizontalDistanceSquared(position, target) <= settings.startDistance() * settings.startDistance();
-    }
-
-    private static double horizontalDistanceSquared(final Location first, final Location second) {
-        double x = first.getX() - second.getX();
-        double z = first.getZ() - second.getZ();
-        return x * x + z * z;
+    private Vector formationOffset(final Location target) {
+        double yaw = Math.toRadians(target.getYaw());
+        var right = new Vector(Math.cos(yaw), 0, Math.sin(yaw));
+        Vector relative = mob.getLocation().toVector().subtract(target.toVector()).setY(0);
+        double side = relative.dot(right) < -0.1 ? -1 : 1;
+        // Sixty degrees from the rear leaves room beside the owner and outside the forward view.
+        return right.multiply(side * Math.sqrt(3) / 2)
+            .add(new Vector(Math.sin(yaw) / 2, 0, -Math.cos(yaw) / 2))
+            .multiply(settings.stopDistance());
     }
 
     private static boolean isFlying(final Mob mob) {
         var handle = ((CraftMob) mob).getHandle();
-        return handle.getMoveControl() instanceof FlyingMoveControl<?>
-            || handle.getMoveControl() instanceof V26_2FlightMoveControl
+        return flightControl(mob) != null || handle.getMoveControl() instanceof FlyingMoveControl<?>
             || handle.getNavigation() instanceof FlyingPathNavigation;
+    }
+
+    private static V26_2FlightMoveControl flightControl(final Mob mob) {
+        return mob instanceof CraftMob craftMob ? V26_2FlightMoveControl.find(craftMob.getHandle()) : null;
     }
 
     private void recover(final Location target) {
@@ -191,9 +232,18 @@ public final class V26_2FollowOwnerGoal extends Goal {
                 }
                 mob.getPathfinder().stopPathfinding();
                 if (mob.teleport(candidate)) {
-                    mob.setVelocity(new Vector());
+                    var flight = flightControl(mob);
+                    if (flight != null) {
+                        flight.resetAfterPlacement();
+                    } else {
+                        mob.setVelocity(new Vector());
+                    }
                     stalledTicks = 0;
                     previousPosition = candidate;
+                    if (flying) {
+                        // Placement invalidates every old order; publish the live owner target again this tick.
+                        hover.accept(targetLocation(), settings.speed());
+                    }
                     return;
                 }
             }

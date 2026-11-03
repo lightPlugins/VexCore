@@ -99,7 +99,7 @@ public final class VexUIModelPackGenerator implements AutoCloseable {
             ImageIO.write(image, "PNG", png.toFile());
             RewardCardAssets.icon(output, parts[0] + ":reward/model/" + parts[1], image);
             int ink = inkWidth(image);
-            for (int pixels : new int[]{16, 32, 48}) {
+            for (int pixels : new int[]{14, 16, 32, 48}) {
                 String font = parts[0] + ":vexui/models/" + parts[1] + "/" + pixels;
                 for (int offset = 0; offset < 9; offset++) {
                     var provider = json.createObjectNode().put("type", "bitmap").put("file", texture)

@@ -1,20 +1,23 @@
 package dev.vexsoft.core.paper.nms.v26_2;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightProfile;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FollowOwnerGoal;
+import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2MobLookControl;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerAmphibiousNavigation;
-import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightMoveControl;
 import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightNavigation;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FollowOwnerGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2MobLookControl;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerAmphibiousNavigation;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal;
+import dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Objects;
@@ -28,10 +31,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PositionMoveRotation;
 import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
-import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
@@ -83,6 +86,7 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
     public void neutralize(final Mob mob) {
         CraftMob craftMob = handle(mob);
 
+        V26_2FlightMoveControl.forget(craftMob.getHandle());
         craftMob.getHandle().getNavigation().stop();
         selector(craftMob, GOAL_SELECTOR).removeAllGoals(goal -> true);
         selector(craftMob, TARGET_SELECTOR).removeAllGoals(goal -> true);
@@ -105,15 +109,15 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
     }
 
     @Override
-    public void configureFlight(final Mob mob, final double minimumHeight) {
+    public void configureFlight(final Mob mob, final double minimumHeight, final FlightProfile profile) {
         var entity = handle(mob).getHandle();
         if (!(entity.getMoveControl() instanceof FlyingMoveControl<?>
             || entity.getNavigation() instanceof FlyingPathNavigation)) {
             return;
         }
         try {
-            MOVE_CONTROL.set(entity, new V26_2FlightMoveControl(entity, minimumHeight));
-            if (minimumHeight > 0.0D && entity.getNavigation() instanceof FlyingPathNavigation previous) {
+            MOVE_CONTROL.set(entity, new V26_2FlightMoveControl(entity, minimumHeight, profile));
+            if (entity.getNavigation() instanceof FlyingPathNavigation previous) {
                 var navigation = new V26_2FlightNavigation(entity, entity.level(), minimumHeight);
                 var original = previous.getNodeEvaluator();
                 var replacement = navigation.getNodeEvaluator();
@@ -126,6 +130,23 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
             }
         } catch (IllegalAccessException exception) {
             throw new IllegalStateException("Unable to configure native flight clearance", exception);
+        }
+    }
+
+    @Override
+    public FlightState flyTo(final Mob mob, final Location destination, final double speed, final FlightBounds bounds) {
+        var flight = V26_2FlightMoveControl.find(handle(mob).getHandle());
+        if (flight == null) {
+            throw new IllegalArgumentException("Carrier does not support managed flight");
+        }
+        return flight.flyTo(destination, speed, bounds);
+    }
+
+    @Override
+    public void releaseFlight(final Mob mob) {
+        var flight = V26_2FlightMoveControl.find(handle(mob).getHandle());
+        if (flight != null) {
+            flight.release();
         }
     }
 

@@ -1,8 +1,11 @@
 package dev.vexsoft.core.paper.nms.service;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightProfile;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import java.util.List;
@@ -25,7 +28,23 @@ public interface NmsMobAdapterService extends VexService {
     void neutralize(Mob mob);
 
     /** Configures native flight speed handling and optional terrain clearance; ground movement is unchanged. */
-    void configureFlight(Mob mob, double minimumHeight);
+    default void configureFlight(Mob mob, double minimumHeight) {
+        configureFlight(mob, minimumHeight, FlightProfile.defaults());
+    }
+
+    /** Installs the authoritative controller on supported flying carriers. */
+    void configureFlight(Mob mob, double minimumHeight, FlightProfile profile);
+
+    /** Replaces the explicit destination in blocks/second, retaining motion between orders. */
+    default FlightState flyTo(Mob mob, Location destination, double speed) {
+        return flyTo(mob, destination, speed, null);
+    }
+
+    /** Replaces an order and its optional movement volume. */
+    FlightState flyTo(Mob mob, Location destination, double speed, FlightBounds bounds);
+
+    /** Releases an explicit order without resetting momentum or teleporting the carrier. */
+    void releaseFlight(Mob mob);
 
     /** Installs one native random movement goal. */
     void addRandomMovement(Mob mob, NmsRandomMovementSpec spec);

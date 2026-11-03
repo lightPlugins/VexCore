@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.service.mob;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -14,17 +16,17 @@ import dev.vexsoft.core.paper.mob.MobSnapshot;
 import dev.vexsoft.core.paper.mob.MobSpawnRequest;
 import dev.vexsoft.core.paper.mob.event.MobDamageEvent;
 import dev.vexsoft.core.paper.mob.event.MobRemovedEvent;
+import dev.vexsoft.core.paper.mob.goal.FollowOwnerGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.LookAtPlayerGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.MobGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.OwnerMeleeGoalDefinition;
-import dev.vexsoft.core.paper.mob.goal.FollowOwnerGoalDefinition;
-import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
+import dev.vexsoft.core.paper.nms.goal.NmsFollowOwnerSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsLookAtPlayerSpec;
-import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
-import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeLeapSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsMeleeRangedSpec;
+import dev.vexsoft.core.paper.nms.goal.NmsMobGoalControl;
+import dev.vexsoft.core.paper.nms.goal.NmsOwnerMeleeSpec;
 import dev.vexsoft.core.paper.nms.goal.NmsRandomMovementSpec;
 import dev.vexsoft.core.paper.nms.service.NmsMobAdapterService;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
@@ -65,8 +67,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -202,13 +204,50 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         RuntimeMob runtime = requireOwned(owner, handle);
         // Goal-less carriers are neutralized with NoAI during spawn. Re-enable their native tick
         // before applying an explicit launch so Paper actually advances the requested velocity.
-        if (runtime.definition.goals().isEmpty()) {
+        if (!runtime.entity.hasAI()) {
             nms.activateGoals(runtime.entity);
         }
 
         runtime.entity.setVelocity(checkedVelocity);
 
         return snapshot(runtime);
+    }
+
+    @Override
+    public FlightState flyTo(final ServiceOwner owner, final MobHandle handle, final Location destination,
+        final double speed) {
+        return flyTo(owner, handle, destination, speed, null);
+    }
+
+    @Override
+    public FlightState flyTo(final ServiceOwner owner, final MobHandle handle, final Location destination,
+        final double speed, final FlightBounds bounds) {
+        Objects.requireNonNull(destination, "destination").checkFinite();
+        if (!Double.isFinite(speed) || speed < 0) {
+            throw new IllegalArgumentException("Flight speed must be finite and non-negative");
+        }
+        RuntimeMob runtime = requireOwned(owner, handle);
+        if (!runtime.entity.getWorld().equals(destination.getWorld())) {
+            throw new IllegalArgumentException("Flight destination must be in the carrier's world");
+        }
+        if (bounds != null && !bounds.contains(destination.getX(), destination.getY(), destination.getZ())) {
+            throw new IllegalArgumentException("Flight destination is outside its allowed volume");
+        }
+        FlightState state = nms.flyTo(runtime.entity, destination.clone(), speed, bounds);
+        if (!NmsMobGoalControl.isPaused(runtime.entity)) {
+            setGoalsPaused(owner, handle, true);
+        }
+        if (!runtime.entity.hasAI()) {
+            nms.activateGoals(runtime.entity);
+        }
+        return state;
+    }
+
+    @Override
+    public void releaseFlight(final ServiceOwner owner, final MobHandle handle) {
+        RuntimeMob runtime = requireOwned(owner, handle);
+        nms.releaseFlight(runtime.entity);
+        setGoalsPaused(owner, handle, false);
     }
 
     @Override
@@ -623,7 +662,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
 
         mob.setHealth(maxHealth.getValue());
         nms.neutralize(mob);
-        nms.configureFlight(mob, definition.minimumFlightHeight());
+        nms.configureFlight(mob, definition.minimumFlightHeight(), definition.flightProfile());
     }
 
     private void synchronizeCarrierHealth(final RuntimeMob runtime) {
@@ -715,7 +754,8 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
             }
         }
 
-        if (!runtime.definition.goals().isEmpty() || runtime.definition.minimumFlightHeight() > 0.0D) {
+        if (!runtime.definition.goals().isEmpty() || runtime.definition.minimumFlightHeight() > 0.0D
+            || runtime.entity instanceof org.bukkit.entity.Bee) {
             nms.activateGoals(runtime.entity);
         }
     }

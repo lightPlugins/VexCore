@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.mob;
 
+import dev.vexsoft.core.api.mob.flight.FlightProfile;
 import dev.vexsoft.core.paper.mob.goal.MobGoalDefinition;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ public final class MobDefinition {
     private final double scale;
     private final double movementSpeed;
     private final double minimumFlightHeight;
+    private final FlightProfile flightProfile;
     private final double rotationSpeed;
     private final double knockbackResistance;
     private final boolean baby;
@@ -49,6 +51,7 @@ public final class MobDefinition {
         scale = positiveFinite(builder.scale, "scale");
         movementSpeed = nonNegativeFinite(builder.movementSpeed, "movementSpeed");
         minimumFlightHeight = nonNegativeFinite(builder.minimumFlightHeight, "minimumFlightHeight");
+        flightProfile = Objects.requireNonNull(builder.flightProfile, "flightProfile");
         rotationSpeed = nonNegativeFinite(builder.rotationSpeed, "rotationSpeed");
         knockbackResistance = builder.knockbackResistance;
 
@@ -83,6 +86,7 @@ public final class MobDefinition {
             .scale(scale)
             .movementSpeed(movementSpeed)
             .minimumFlightHeight(minimumFlightHeight)
+            .flightProfile(flightProfile)
             .rotationSpeed(rotationSpeed)
             .knockbackResistance(knockbackResistance)
             .baby(baby)
@@ -139,6 +143,11 @@ public final class MobDefinition {
     /** Returns the minimum clearance above terrain for flying carriers; zero retains native height behavior. */
     public double minimumFlightHeight() {
         return minimumFlightHeight;
+    }
+
+    /** Returns physical flight limits shared by goals and explicit destination orders. */
+    public FlightProfile flightProfile() {
+        return flightProfile;
     }
 
     /** Returns the maximum rotation speed in degrees per second. */
@@ -218,6 +227,7 @@ public final class MobDefinition {
         private double scale = 1.0D;
         private double movementSpeed;
         private double minimumFlightHeight;
+        private FlightProfile flightProfile = FlightProfile.defaults();
         private double rotationSpeed = 180.0D;
         private double knockbackResistance = 1.0D;
         private boolean baby;
@@ -271,6 +281,12 @@ public final class MobDefinition {
         /** Sets the minimum clearance above terrain, applied only to flying carriers. */
         public Builder minimumFlightHeight(final double value) {
             minimumFlightHeight = value;
+            return this;
+        }
+
+        /** Sets physical flight limits shared by goals and explicit destination orders. */
+        public Builder flightProfile(final FlightProfile value) {
+            flightProfile = Objects.requireNonNull(value, "value");
             return this;
         }
 

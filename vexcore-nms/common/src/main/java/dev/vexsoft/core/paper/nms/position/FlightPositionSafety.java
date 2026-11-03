@@ -32,6 +32,26 @@ public final class FlightPositionSafety {
         return position.getY();
     }
 
+    /** Returns a local terrain-relative target height, or NaN over unavailable terrain or a void. */
+    public static double hoverY(final Location position, final double height) {
+        World world = position.getWorld();
+        if (world == null || !world.isChunkLoaded(position.getBlockX() >> 4, position.getBlockZ() >> 4)
+            || position.getY() < world.getMinHeight() || position.getY() >= world.getMaxHeight()) {
+            return Double.NaN;
+        }
+        int top = Math.min(world.getMaxHeight() - 1, position.getBlockY());
+        for (int y = top; y >= Math.max(world.getMinHeight(), top - 32); y--) {
+            var block = world.getBlockAt(position.getBlockX(), y, position.getBlockZ());
+            if (block.isLiquid()) {
+                return y + 1.0D + height;
+            }
+            if (!block.isPassable()) {
+                return block.getBoundingBox().getMaxY() + height;
+            }
+        }
+        return Double.NaN;
+    }
+
     /** Checks all blocks occupied by an airborne carrier before a recovery teleport. */
     public static boolean isClear(final Location feet, final double width, final double height) {
         World world = feet.getWorld();

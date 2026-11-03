@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.service.mob;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.mob.MobDamageResult;
 import dev.vexsoft.core.paper.mob.MobHandle;
@@ -57,6 +59,19 @@ public interface MobService extends VexService {
 
     /** Applies a finite launch velocity to an owned mob without exposing its native carrier. */
     MobSnapshot setVelocity(MobHandle handle, Vector velocity);
+
+    /**
+     * Replaces an owned flyer's destination and pauses its goals; speed is in blocks/second.
+     * Call on the entity thread. Zero speed brakes in place. Orders last until replaced, released or removed.
+     * Ground carriers reject flight orders.
+     */
+    FlightState flyTo(MobHandle handle, Location destination, double speed);
+
+    /** Restricts both direct movement and native detours to the supplied optional volume. */
+    FlightState flyTo(MobHandle handle, Location destination, double speed, FlightBounds bounds);
+
+    /** Releases explicit flight to goals, preserving momentum through the transition. */
+    void releaseFlight(MobHandle handle);
 
     /** Sets or replaces the viewer-specific default glow. */
     MobSnapshot setGlow(MobHandle handle, DisplayGlowColor color);

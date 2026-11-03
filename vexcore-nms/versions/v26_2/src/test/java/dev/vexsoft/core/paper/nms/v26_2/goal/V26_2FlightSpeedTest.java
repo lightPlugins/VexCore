@@ -1,97 +1,173 @@
 package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-import org.junit.jupiter.api.BeforeAll;
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import org.junit.jupiter.api.Test;
 
-/** Checks pursuit factors against Minecraft's actual input normalization rather than only pathfinder arguments. */
+/** Runs actual motor ticks, including native motion fields, arrival and obstacle rejection. */
 final class V26_2FlightSpeedTest {
 
-    @BeforeAll
-    static void bootstrapMinecraft() {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-    }
-
     @Test
-    void highMeleeSpeedIncreasesActualAirAccelerationPastTheVanillaLimit() {
-        Vec3 slow = input(0.6, new Vec3(100, 0, 0));
-        Vec3 fast = input(6.3, new Vec3(100, 0, 0));
-        Vec3 vanillaFast = NativeInput.movement(fast, 0.02F, 0);
-        assertEquals(0.02D, vanillaFast.z, 1.0E-8D, "Vanilla clamps even a 10.5 pursuit multiplier");
-        Vec3 slowImpulse = impulse(slow, 0);
-        Vec3 fastImpulse = impulse(fast, 0);
-        assertEquals(10.5D, fastImpulse.z / slowImpulse.z, 1.0E-5D);
-        assertTrue(fastImpulse.z > vanillaFast.z * 6);
-    }
-
-    @Test
-    void petSpeedFactorsRemainProportionalAfterMultipleNativeDragTicks() {
-        double baselineDistance = distance(1.0D);
-        assertEquals(1.5D, distance(1.5D) / baselineDistance, 1.0E-5D);
-        assertEquals(3.0D, distance(3.0D) / baselineDistance, 1.0E-5D);
-        assertEquals(10.0D, distance(10.0D) / baselineDistance, 1.0E-5D);
-    }
-
-    @Test
-    void correctionPreservesNativeYawAndDoesNotAccelerateIdleInput() {
-        Vec3 forward = impulse(new Vec3(0, 0, 6), 90);
-        assertEquals(-0.12D, forward.x, 1.0E-7D);
-        assertEquals(0.0D, forward.z, 1.0E-7D);
-        assertEquals(Vec3.ZERO, impulse(Vec3.ZERO, 90));
-        assertEquals(0.0F, V26_2FlightMoveControl.additionalAirAcceleration(new Vec3(0, 0, 0.6)));
-    }
-
-    @Test
-    void hoveringDoesNotProduceForwardDriftOrFullVerticalInputAtEqualHeight() {
-        Vec3 nativeInput = new Vec3(0, -6, 6);
-        assertEquals(new Vec3(0, 0, 6),
-            V26_2FlightMoveControl.airInput(nativeInput, new Vec3(100, 0, 0), 6));
-        assertEquals(new Vec3(0, 0.1, 0),
-            V26_2FlightMoveControl.airInput(nativeInput, new Vec3(0, 0.1, 0), 6));
-        assertEquals(new Vec3(0, -0.1, 0),
-            V26_2FlightMoveControl.airInput(nativeInput, new Vec3(0, -0.1, 0), 6));
-        assertEquals(0.0D, impulse(input(6, new Vec3(0, 3, 0)), 0).horizontalDistanceSqr());
-    }
-
-    private static Vec3 input(final double speed, final Vec3 targetDelta) {
-        return V26_2FlightMoveControl.airInput(new Vec3(0, -speed, speed), targetDelta, speed);
-    }
-
-    private static Vec3 impulse(final Vec3 input, final float yaw) {
-        return NativeInput.movement(input, 0.02F, yaw).add(NativeInput.movement(input,
-            V26_2FlightMoveControl.additionalAirAcceleration(input), yaw));
-    }
-
-    private static double distance(final double factor) {
-        Vec3 input = input(0.6D * factor, new Vec3(100, 0, 0));
-        Vec3 velocity = Vec3.ZERO;
-        double distance = 0.0D;
-        for (int tick = 0; tick < 60; tick++) {
-            velocity = velocity.add(impulse(input, 0));
-            distance += velocity.z;
-            velocity = velocity.scale(0.91F);
+    void nativeDragDoesNotChangeTheConfiguredTimeToCruisingSpeed() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            flight.control.flyTo(flight.position.clone().add(20, 0, 0), 8);
+            for (int tick = 1; tick <= 4; tick++) {
+                flight.tick();
+                assertEquals(tick * 0.1 * 0.91, flight.nativeMob.getDeltaMovement().x, 0.000001);
+                assertEquals(0, flight.nativeMob.xxa);
+                assertEquals(0, flight.nativeMob.yya);
+                assertEquals(0, flight.nativeMob.zza);
+            }
+            assertEquals(1.5, flight.position.getX(), 0.000001);
         }
-        return distance;
     }
 
-    /** Exposes the same protected rotation and normalization used by Entity.moveRelative without spawning a carrier. */
-    private abstract static class NativeInput extends Entity {
-
-        private NativeInput(final EntityType<?> type, final Level level) {
-            super(type, level);
+    @Test
+    void lateNavigationWaypointsCannotReplaceTheCurrentFollowTarget() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var oldTarget = flight.position.clone();
+            var followTarget = oldTarget.clone().add(8, 0, 0);
+            flight.control.track(oldTarget, net.minecraft.world.phys.Vec3.ZERO, 8);
+            flight.tick();
+            for (int tick = 0; tick < 20; tick++) {
+                flight.control.track(followTarget, net.minecraft.world.phys.Vec3.ZERO, 8);
+                // Minecraft ticks navigation after goals, so a queued path may still submit an old waypoint.
+                flight.control.setWantedPosition(oldTarget.getX(), oldTarget.getY(), oldTarget.getZ(), 8);
+                flight.tick();
+            }
+            assertTrue(flight.position.getX() > oldTarget.getX() + 5,
+                "Following must retain its current target after the navigation phase");
         }
+    }
 
-        private static Vec3 movement(final Vec3 input, final float acceleration, final float yaw) {
-            return getInputVector(input, acceleration, yaw);
+    @Test
+    void failedNewPursuitBrakesInsteadOfContinuingTowardThePreviousPoint() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var oldTarget = flight.position.clone().add(0, 0, 6);
+            flight.control.track(oldTarget, net.minecraft.world.phys.Vec3.ZERO, 8);
+            for (int tick = 0; tick < 10; tick++) {
+                flight.tick();
+            }
+            flight.wall = true;
+            var blockedAt = flight.position.clone();
+            assertFalse(flight.control.track(blockedAt.clone().add(4, 0, 0),
+                net.minecraft.world.phys.Vec3.ZERO, 8));
+            for (int tick = 0; tick < 20; tick++) {
+                flight.tick();
+            }
+            assertTrue(flight.position.distance(blockedAt) <= 0.46,
+                "A failed new target may brake, but must not continue chasing the old target");
+        }
+    }
+
+    @Test
+    void stoppingThePreviousFollowGoalCannotCancelTheNewExplicitOrder() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            flight.control.track(flight.position.clone().add(-6, 0, 0),
+                net.minecraft.world.phys.Vec3.ZERO, 8);
+            flight.tick();
+            var target = flight.position.clone().add(8, 0, 0);
+            flight.control.flyTo(target, 8);
+            // The goal selector stops the old follow goal after the gathering order has taken ownership.
+            flight.control.stopTracking();
+            for (int tick = 0; tick < 20; tick++) {
+                flight.tick();
+            }
+            assertTrue(flight.position.getX() > target.getX() - 3);
+        }
+    }
+
+    @Test
+    void recoveryPlacementRetiresAllPreviousOrdersInsteadOfFlyingBack() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var oldTarget = flight.position.clone().add(4, 0, 0);
+            flight.control.flyTo(oldTarget, 8);
+            flight.tick();
+            flight.position.add(20, 0, 0);
+            var recovered = flight.position.clone();
+            flight.control.resetAfterPlacement();
+            for (int tick = 0; tick < 10; tick++) {
+                flight.tick();
+            }
+            assertEquals(recovered.getX(), flight.position.getX(), 0.000001,
+                "A recovery teleport must retire the previous flight destination");
+        }
+    }
+
+    @Test
+    void repeatedOrdersSettleWithoutTeleportingOrResettingAcceleration() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var target = flight.position.clone().add(4, 0, 0);
+            FlightState state = FlightState.MOVING;
+            for (int tick = 0; tick < 200 && state != FlightState.ARRIVED; tick++) {
+                state = flight.control.flyTo(target, 8);
+                flight.tick();
+                assertTrue(flight.position.getX() <= target.getX() + 0.000001);
+            }
+            assertEquals(FlightState.ARRIVED, state);
+            assertTrue(flight.position.distance(target) <= 0.050001);
+        }
+    }
+
+    @Test
+    void explicitNativeImpulsesArePreservedAndThenControlledByTheSameAccelerationLimits() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            flight.control.flyTo(flight.position.clone().add(10, 0, 0), 8);
+            flight.tick();
+            flight.nativeMob.setDeltaMovement(new net.minecraft.world.phys.Vec3(-0.3, 0, 0));
+            flight.nativeMob.hurtMarked = true;
+            flight.tick();
+            assertTrue(flight.nativeMob.getDeltaMovement().x < 0,
+                "A native knockback/launch must not disappear when the motor ticks");
+            assertEquals(-0.2 * 0.91, flight.nativeMob.getDeltaMovement().x, 0.000001);
+        }
+    }
+
+    @Test
+    void smallRetargetsInvalidateArrivedStateAndHoldingBrakesGradually() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var target = flight.position.clone();
+            assertEquals(FlightState.ARRIVED, flight.control.flyTo(target, 8));
+            assertEquals(FlightState.MOVING, flight.control.flyTo(target.clone().add(0.09, 0, 0), 8));
+            flight.control.flyTo(target.clone().add(10, 0, 0), 8);
+            for (int tick = 0; tick < 4; tick++) {
+                flight.tick();
+            }
+            flight.control.flyTo(flight.position, 0);
+            flight.tick();
+            assertEquals(0.275 * 0.91, flight.nativeMob.getDeltaMovement().x, 0.000001);
+        }
+    }
+
+    @Test
+    void boundedOrdersNeverLeaveTheirConfiguredVolume() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            var bounds = new FlightBounds(0.5, 0.5, 1, 64, 66);
+            var target = flight.position.clone().add(4, 0, 0);
+            flight.control.flyTo(target, 8, bounds);
+            flight.tick();
+            assertEquals(0.5, flight.position.getX(), 0.000001);
+            assertEquals(FlightState.BLOCKED, flight.control.flyTo(target, 8, bounds));
+        }
+    }
+
+    @Test
+    void unavailableOrObstructedRoutesNeverFlyThroughBlocks() throws Exception {
+        for (boolean loaded : new boolean[]{false, true}) {
+            try (var flight = new FlightFixture(0)) {
+                flight.loaded = loaded;
+                flight.wall = loaded;
+                var target = flight.position.clone().add(4, 0, 0);
+                flight.control.flyTo(target, 8);
+                flight.tick();
+                assertEquals(0.5, flight.position.getX(), 0.000001);
+                assertEquals(FlightState.BLOCKED, flight.control.flyTo(target, 8));
+                assertEquals(loaded ? 1 : 0, flight.pathRequests);
+            }
         }
     }
 }

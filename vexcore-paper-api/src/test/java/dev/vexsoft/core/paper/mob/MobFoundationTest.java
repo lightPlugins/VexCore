@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.api.mob.flight.FlightProfile;
 import dev.vexsoft.core.paper.mob.goal.LookAtPlayerGoalDefinition;
 import dev.vexsoft.core.paper.mob.goal.RandomMovementGoalDefinition;
 import dev.vexsoft.core.paper.packets.display.DisplayBillboard;
@@ -66,8 +67,11 @@ class MobFoundationTest {
     @Test
     void flightClearanceSurvivesDefinitionCopiesAndRejectsInvalidHeights() {
         MobDefinition definition = MobDefinition.builder(MobKey.of("test", "bee"), EntityType.BEE)
-            .minimumFlightHeight(1.5D).build();
+            .minimumFlightHeight(1.5D)
+            .flightProfile(new FlightProfile(7, 35, 45, 500, 0.04, 1))
+            .build();
         assertEquals(1.5D, definition.withKey(MobKey.of("test", "bee/spawner")).minimumFlightHeight());
+        assertEquals(definition.flightProfile(), definition.withKey(MobKey.of("test", "bee/spawner")).flightProfile());
         for (double height : new double[]{-1.0D, Double.NaN, Double.POSITIVE_INFINITY}) {
             assertThrows(IllegalArgumentException.class, () -> MobDefinition
                 .builder(MobKey.of("test", "invalid"), EntityType.BEE).minimumFlightHeight(height).build());

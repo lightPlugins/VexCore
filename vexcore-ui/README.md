@@ -224,7 +224,7 @@ need corresponding measurements. Native inputs use the client's normal styling.
 
 `VexUIModelPackGenerator` in the pack module resolves ordinary `minecraft:model` item definitions, inherited JSON
 models, cuboids, face UVs, element rotations, GUI transforms and layered generated textures. It writes a pack
-fragment and `vexui-models.properties` with exact advances and 16/32/48 pixel font variants. Resource-pack roots
+fragment and `vexui-models.properties` with exact advances and 14/16/32/48 pixel font variants. Resource-pack roots
 are ordered from base to override; the official client supplies missing vanilla parents and textures.
 Additional `--item=minecraft:oak_log` arguments bake explicitly requested vanilla item definitions without copying
 the original vanilla assets into the pack. Dynamic definitions are reported so callers can choose flat fallbacks.

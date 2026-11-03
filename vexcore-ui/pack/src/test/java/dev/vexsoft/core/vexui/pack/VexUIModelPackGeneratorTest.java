@@ -31,7 +31,7 @@ public final class VexUIModelPackGeneratorTest {
         try (var input = Files.newInputStream(manifest)) {
             properties.load(input);
         }
-        assertEquals("9", properties.getProperty("count"));
+        assertEquals("12", properties.getProperty("count"));
         assertTrue(Files.readString(manifest.resolveSibling("vexui-model-unsupported.txt")).isBlank());
         for (String item : List.of("iron_chestplate", "fishing_rod", "compass")) {
             var image = ImageIO.read(output.resolve("assets/minecraft/textures/vexui/models/" + item + ".png").toFile());
@@ -66,13 +66,13 @@ public final class VexUIModelPackGeneratorTest {
         try (var input = Files.newInputStream(manifest)) {
             properties.load(input);
         }
-        assertEquals("6", properties.getProperty("count"));
+        assertEquals("8", properties.getProperty("count"));
         var cube = ImageIO.read(output.resolve("assets/test/textures/vexui/models/block.png").toFile());
         assertEquals(48, cube.getWidth());
         assertNotEquals(0, cube.getRGB(24, 24) >>> 24);
         assertEquals(0, cube.getRGB(0, 0) >>> 24);
         assertNotEquals(cube.getRGB(14, 26), cube.getRGB(34, 26), "Cube faces retain directional shading");
-        for (int pixels : List.of(16, 32, 48)) {
+        for (int pixels : List.of(14, 16, 32, 48)) {
             for (int offset = 0; offset < 9; offset++) {
                 assertTrue(Files.readString(output.resolve("assets/test/font/vexui/models/block/" + pixels
                     + "/y_" + offset + ".json")).contains("\"ascent\":" + (7 - offset)));

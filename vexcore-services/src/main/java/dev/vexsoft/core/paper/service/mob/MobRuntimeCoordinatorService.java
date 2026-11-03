@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.service.mob;
 
+import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.mob.MobDamageResult;
@@ -12,6 +14,7 @@ import dev.vexsoft.core.paper.mob.MobSpawnRequest;
 import dev.vexsoft.core.paper.packets.display.DisplayGlowColor;
 import java.util.Collection;
 import java.util.Optional;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
@@ -44,6 +47,16 @@ public interface MobRuntimeCoordinatorService extends VexService {
 
     /** Applies a finite velocity without exposing the native carrier. */
     MobSnapshot setVelocity(ServiceOwner owner, MobHandle handle, Vector velocity);
+
+    /** Replaces an owned flyer's destination through the shared controller, in blocks/second. */
+    FlightState flyTo(ServiceOwner owner, MobHandle handle, Location destination, double speed);
+
+    /** Restricts an owned flight order to a caller-supplied volume. */
+    FlightState flyTo(ServiceOwner owner, MobHandle handle, Location destination,
+        double speed, FlightBounds bounds);
+
+    /** Releases explicit flight back to goals without discarding momentum. */
+    void releaseFlight(ServiceOwner owner, MobHandle handle);
 
     /** Sets or replaces the viewer-specific default glow. */
     MobSnapshot setGlow(ServiceOwner owner, MobHandle handle, DisplayGlowColor color);

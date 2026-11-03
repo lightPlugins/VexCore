@@ -30,6 +30,10 @@ public final class V26_2MobLookControl extends LookControl {
 
     @Override
     public void tick() {
+        var flight = mob == null ? null : V26_2FlightMoveControl.find(mob);
+        if (flight != null && flight.isMoving()) {
+            return;
+        }
         float previousPitch = pitchReader.get();
         boolean looking = delegate.isLookingAtTarget();
         delegate.tick();

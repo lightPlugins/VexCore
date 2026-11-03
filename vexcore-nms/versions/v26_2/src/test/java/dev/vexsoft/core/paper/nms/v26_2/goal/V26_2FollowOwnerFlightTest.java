@@ -31,7 +31,7 @@ final class V26_2FollowOwnerFlightTest {
         assertTrue(goal.canUse());
         goal.start();
         goal.tick();
-        assertEquals(new Location(fixture.world, 6, 65.75, 0), fixture.pathTarget);
+        assertEquals(new Location(fixture.world, 4, 65.75, 0), fixture.hoverTarget);
         assertEquals(2.5D, fixture.speed);
         assertEquals(64.0D, fixture.ownerPosition.getY(), "Building a target must not mutate the owner's position");
     }
@@ -44,15 +44,60 @@ final class V26_2FollowOwnerFlightTest {
         assertTrue(goal.canUse());
         goal.start();
         goal.tick();
-        assertEquals(new Location(fixture.world, 0, 72.75, 0), fixture.hoverTarget);
+        assertEquals(new Location(fixture.world, -1, 72.75, 0), fixture.hoverTarget);
         assertEquals(1.8D, fixture.speed);
         assertNull(fixture.pathTarget);
         fixture.position.setY(72.75);
-        assertFalse(goal.canContinueToUse());
+        assertTrue(goal.canContinueToUse(), "Moving targets stay active even inside the old dead zone");
         goal.stop();
-        assertFalse(goal.canUse(), "Distance must be measured to the offset target, not the owner's feet");
+        assertTrue(goal.canUse(), "Flying followers must react without waiting for the old start distance");
         fixture.ownerPosition.setY(65);
         assertTrue(goal.canUse(), "An owner moving vertically must refresh the pet's height even nearby");
+    }
+
+    @Test
+    void anArrivedFollowerDoesNotRepeatedlyTeleportWhileItsOwnerStandsStill() {
+        var fixture = new Follower();
+        var goal = fixture.goal(true, 2, 8);
+        assertTrue(goal.canUse());
+        goal.start();
+        goal.tick();
+        fixture.position.setX(fixture.hoverTarget.getX());
+        fixture.position.setY(fixture.hoverTarget.getY());
+        fixture.position.setZ(fixture.hoverTarget.getZ());
+        for (int tick = 0; tick < 200; tick++) {
+            goal.tick();
+        }
+        assertNull(fixture.teleported, "Idle tracking is not a stuck pursuit");
+    }
+
+    @Test
+    void movingOwnerTargetsRefreshEveryTickInsideTheFormerStartDistance() {
+        var fixture = new Follower();
+        var goal = fixture.goal(true, 2, 8);
+        assertTrue(goal.canUse());
+        goal.start();
+        for (int tick = 0; tick < 5; tick++) {
+            fixture.ownerPosition.setX(tick * 0.1);
+            goal.tick();
+            assertEquals(Math.sqrt(3), Math.abs(fixture.hoverTarget.getX() - tick * 0.1), 0.000001);
+            assertEquals(-1, fixture.hoverTarget.getZ(), 0.000001);
+        }
+    }
+
+    @Test
+    void fastForwardPredictionCannotPullTheFormationInFrontOfTheOwner() {
+        var fixture = new Follower();
+        fixture.movement.setZ(1.2);
+        var goal = fixture.goal(true, 1, 8);
+        assertTrue(goal.canUse());
+        goal.start();
+        goal.tick();
+        fixture.ownerPosition.add(0, 0, 1.2);
+        goal.tick();
+        Vector offset = fixture.hoverTarget.toVector().subtract(fixture.ownerPosition.toVector());
+        assertTrue(offset.dot(fixture.ownerPosition.getDirection()) < 0);
+        assertTrue(Math.abs(offset.getX()) > 1.5);
     }
 
     @Test
@@ -127,6 +172,7 @@ final class V26_2FollowOwnerFlightTest {
         });
         private final Location position = new Location(world, 0, 64, 0);
         private final Location ownerPosition = new Location(world, 0, 64, 0);
+        private final Vector movement = new Vector();
         private Location pathTarget;
         private Location hoverTarget;
         private Location teleported;
@@ -163,6 +209,7 @@ final class V26_2FollowOwnerFlightTest {
         });
         private final Player owner = proxy(Player.class, (instance, method, arguments) -> switch (method.getName()) {
             case "getLocation" -> ownerPosition.clone();
+            case "getVelocity" -> movement.clone();
             case "getWorld" -> world;
             case "isOnline" -> true;
             case "isDead" -> false;
