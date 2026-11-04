@@ -1,0 +1,12 @@
+package dev.vexsoft.core.paper.mob.service.runtime;
+
+import dev.vexsoft.core.paper.mob.MobHandle;
+import dev.vexsoft.core.paper.mob.MobRemovalReason;
+
+/** Receives idempotent internal notifications after a runtime mob leaves the registry. */
+@FunctionalInterface
+public interface MobRuntimeRemovalListener {
+
+    /** Handles a runtime mob's removal and its recorded removal reason. */
+    void onRemoved(MobHandle handle, MobRemovalReason reason);
+}

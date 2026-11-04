@@ -3,8 +3,8 @@ package dev.vexsoft.core.vexui.pack;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.vexsoft.core.paper.screenui.RewardCardLayout;
-import dev.vexsoft.core.paper.vexui.VexUITheme;
+import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
+import dev.vexsoft.core.paper.vexui.style.VexUITheme;
 import java.awt.AlphaComposite;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 
@@ -158,14 +159,14 @@ public final class RewardCardAssets {
         }
         String[] location = key.split(":", 2);
         Path target = root.resolve("assets/" + location[0] + "/font/" + location[1] + ".json");
-        Files.createDirectories(target.getParent());
+        Files.createDirectories(Objects.requireNonNull(target.getParent(), "Generated asset directory"));
         Files.writeString(target, JSON.writeValueAsString(definition));
     }
 
     private static void png(Path root, String key, BufferedImage image) throws IOException {
         String[] location = key.split(":", 2);
         Path target = root.resolve("assets/" + location[0] + "/textures/" + location[1]);
-        Files.createDirectories(target.getParent());
+        Files.createDirectories(Objects.requireNonNull(target.getParent(), "Generated asset directory"));
         ImageIO.write(image, "PNG", target.toFile());
     }
 }

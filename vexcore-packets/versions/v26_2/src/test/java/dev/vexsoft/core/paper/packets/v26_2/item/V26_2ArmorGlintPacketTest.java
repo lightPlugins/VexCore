@@ -173,7 +173,7 @@ final class V26_2ArmorGlintPacketTest {
             Pair.of(EquipmentSlot.MAINHAND, original)));
         var result = (ClientboundSetEquipmentPacket) animatedRewriter.rewrite(viewer, packet, lookup(animatedRule));
         var shown = result.getSlots().getFirst().getSecond();
-        assertEquals(animation.frames().get(1).asString(), shown.get(DataComponents.EQUIPPABLE).assetId()
+        assertEquals(animation.frames().get(1).asString(), java.util.Objects.requireNonNull(shown.get(DataComponents.EQUIPPABLE)).assetId()
             .orElseThrow().identifier().toString());
         assertFalse(shown.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE));
         assertEquals(canonical, original.get(DataComponents.EQUIPPABLE));

@@ -1,12 +1,12 @@
 package dev.vexsoft.core.common.reward.level;
 
-import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.localization.LanguageContainer;
+import dev.vexsoft.core.api.service.expression.ExpressionService;
 import dev.vexsoft.core.api.service.level.LevelInstanceService;
 import dev.vexsoft.core.api.service.localization.LocalizationService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.common.service.level.LevelExecutionText;
+import dev.vexsoft.core.common.level.service.LevelExecutionText;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
 import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.expression.ConstantExpression;
@@ -14,9 +14,9 @@ import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
-import dev.vexsoft.core.reward.RewardNotification;
-import java.util.List;
+import dev.vexsoft.core.reward.notification.RewardNotification;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;

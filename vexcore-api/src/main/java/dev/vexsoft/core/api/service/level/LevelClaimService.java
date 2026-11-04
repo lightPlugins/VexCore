@@ -2,13 +2,13 @@ package dev.vexsoft.core.api.service.level;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.level.CompiledLevelDefinition;
-import dev.vexsoft.core.level.LevelProgressAccess;
-import dev.vexsoft.core.level.LevelState;
 import dev.vexsoft.core.level.claim.LevelClaimBatchResult;
 import dev.vexsoft.core.level.claim.LevelClaimPreview;
 import dev.vexsoft.core.level.claim.LevelClaimResult;
-import dev.vexsoft.core.reward.RewardContributions;
+import dev.vexsoft.core.level.compiled.CompiledLevelDefinition;
+import dev.vexsoft.core.level.progress.LevelProgressAccess;
+import dev.vexsoft.core.level.progress.LevelState;
+import dev.vexsoft.core.reward.contribution.RewardContributions;
 import java.util.Map;
 
 /** Previews and executes sequential manual or automatic level claims. */

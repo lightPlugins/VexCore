@@ -3,7 +3,7 @@ package dev.vexsoft.core.stats.contribution;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.vexsoft.core.reward.RewardContribution;
+import dev.vexsoft.core.reward.contribution.RewardContribution;
 import dev.vexsoft.core.stats.StatKey;
 import dev.vexsoft.core.stats.StatModifier;
 import java.util.Map;

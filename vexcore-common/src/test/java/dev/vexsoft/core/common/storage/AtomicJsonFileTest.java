@@ -42,5 +42,9 @@ final class AtomicJsonFileTest {
     }
 
     public record Snapshot(List<String> origins) {
+
+        public Snapshot {
+            origins = List.copyOf(origins);
+        }
     }
 }

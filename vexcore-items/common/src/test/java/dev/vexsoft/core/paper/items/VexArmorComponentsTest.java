@@ -2,6 +2,10 @@ package dev.vexsoft.core.paper.items;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import dev.vexsoft.core.paper.items.appearance.VexTooltipDisplay;
+import dev.vexsoft.core.paper.items.component.VexComponentData;
+import dev.vexsoft.core.paper.items.component.VexComponentKey;
+import dev.vexsoft.core.paper.items.component.VexComponentTarget;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;

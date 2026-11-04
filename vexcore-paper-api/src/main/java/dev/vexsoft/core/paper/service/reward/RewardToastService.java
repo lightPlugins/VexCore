@@ -2,7 +2,7 @@ package dev.vexsoft.core.paper.service.reward;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.paper.screenui.RewardCard;
+import dev.vexsoft.core.paper.screenui.reward.RewardCard;
 import java.util.List;
 
 /** Core-owned, bounded personal reward feed shared across plugin scopes. */

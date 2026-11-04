@@ -12,7 +12,7 @@ import dev.vexsoft.core.expression.CompiledExpression;
 import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
-import dev.vexsoft.core.reward.RewardContribution;
+import dev.vexsoft.core.reward.contribution.RewardContribution;
 import dev.vexsoft.core.stats.Stat;
 import dev.vexsoft.core.stats.StatKey;
 import dev.vexsoft.core.stats.StatModifier;

@@ -1,7 +1,7 @@
 package dev.vexsoft.core.vexui.pack;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.vexsoft.core.paper.screenui.RewardCardLayout;
+import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.RenderingHints;
@@ -78,7 +78,10 @@ public final class PreviewRewardCards {
                 14 + index * (heightOnScreen + 4), widthOnScreen, heightOnScreen, null);
         }
         graphics.dispose();
-        Files.createDirectories(output.toAbsolutePath().getParent());
+        Path directory = output.toAbsolutePath().getParent();
+        if (directory != null) {
+            Files.createDirectories(directory);
+        }
         ImageIO.write(image, "PNG", output.toFile());
     }
 

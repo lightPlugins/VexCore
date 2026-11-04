@@ -6,6 +6,7 @@ public record UpgradeAnimationPacing(
     int minLongPauseTicks, int maxLongPauseTicks
 ) {
 
+    /** Validates chance thresholds and sufficient tick budgets for each animation phase. */
     public UpgradeAnimationPacing {
         if (!Double.isFinite(minimumSuccessChance) || minimumSuccessChance < 0 || minimumSuccessChance > 1
             || minSteps < 2 || maxSteps < minSteps || maxSteps > 16

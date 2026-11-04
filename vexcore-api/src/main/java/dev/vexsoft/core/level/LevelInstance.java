@@ -1,6 +1,7 @@
 package dev.vexsoft.core.level;
 
 import dev.vexsoft.core.api.player.profile.PlayerDataScope;
+import dev.vexsoft.core.level.compiled.CompiledLevelDefinition;
 import java.util.Objects;
 
 /** One named progression definition; its name is always a localization key. */

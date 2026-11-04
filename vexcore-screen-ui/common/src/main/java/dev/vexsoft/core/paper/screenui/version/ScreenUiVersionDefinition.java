@@ -1,9 +1,9 @@
 package dev.vexsoft.core.paper.screenui.version;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.paper.screenui.ScreenAnchor;
 import dev.vexsoft.core.paper.screenui.UiTexture;
-import dev.vexsoft.core.paper.screenui.UiTransition;
+import dev.vexsoft.core.paper.screenui.animation.UiTransition;
+import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
 import java.util.Set;
 import net.kyori.adventure.key.Key;
 

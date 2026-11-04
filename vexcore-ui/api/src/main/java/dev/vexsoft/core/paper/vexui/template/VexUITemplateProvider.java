@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.vexui.template;
 
-import dev.vexsoft.core.paper.vexui.VexUIObservable;
+import dev.vexsoft.core.paper.vexui.state.VexUIObservable;
 
 /** Plugin-owned presentation adapter; gameplay and persistence remain outside the template. */
 public interface VexUITemplateProvider<T> extends VexUIObservable<T>, VexUITemplateText, AutoCloseable {

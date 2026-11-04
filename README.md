@@ -530,6 +530,9 @@ The technical APIs and module boundaries are documented in the architecture and 
 for developers who want to understand how VexCore operates. They are not intended as a general
 third-party plugin development framework.
 
+The [Java package structure](docs/package-structure.md) describes feature ownership, nested responsibilities,
+API boundaries, and the corresponding test and resource locations.
+
 ## Platforms
 
 VexCore is built for modern Paper servers, supports Folia from the start, and provides a dedicated Velocity plugin for proxy-side infrastructure. Platform-specific behavior is hidden behind shared services, while `VexPlugin` and `VexProxyPlugin` provide the appropriate lifecycle for each environment.

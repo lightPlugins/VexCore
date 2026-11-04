@@ -2,10 +2,10 @@ package dev.vexsoft.core.paper.screenui.v26_2;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
-import dev.vexsoft.core.paper.screenui.ScreenAnchor;
-import dev.vexsoft.core.paper.screenui.UiScale;
 import dev.vexsoft.core.paper.screenui.UiTexture;
-import dev.vexsoft.core.paper.screenui.UiTransition;
+import dev.vexsoft.core.paper.screenui.animation.UiTransition;
+import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.layout.UiScale;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import java.io.IOException;
 import java.util.Locale;

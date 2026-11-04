@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.TestAbortedException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -27,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Exercises both SQL layouts; PostgreSQL uses an isolated database per test and requires VEXCORE_TEST_POSTGRES. */
 class JdbcCheckpointTablesTest {
@@ -373,8 +373,9 @@ class JdbcCheckpointTablesTest {
 
     private static void assertState(final Map<String, String> expected, final Map<String, String> actual) throws Exception {
         assertEquals(expected.keySet(), actual.keySet());
-        for (String key : expected.keySet()) {
-            var left = MAPPER.readTree(expected.get(key));
+        for (var entry : expected.entrySet()) {
+            String key = entry.getKey();
+            var left = MAPPER.readTree(entry.getValue());
             var right = MAPPER.readTree(actual.get(key));
             assertEquals(left.path("revision"), right.path("revision"));
             if (key.startsWith("n|")) {
@@ -399,7 +400,9 @@ class JdbcCheckpointTablesTest {
             databaseName = "checkpoint_test_" + UUID.randomUUID().toString().replace("-", "");
             administrativeUrl = postgres ? System.getenv("VEXCORE_TEST_POSTGRES") : null;
             if (postgres) {
-                assumeTrue(administrativeUrl != null && !administrativeUrl.isBlank(), "Set VEXCORE_TEST_POSTGRES");
+                if (administrativeUrl == null || administrativeUrl.isBlank()) {
+                    throw new TestAbortedException("Set VEXCORE_TEST_POSTGRES");
+                }
                 String[] parts = administrativeUrl.split("\\?", 2);
                 url = parts[0].substring(0, parts[0].lastIndexOf('/') + 1) + databaseName
                     + (parts.length == 2 ? '?' + parts[1] : "");

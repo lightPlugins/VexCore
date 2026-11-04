@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.vexui;
 
+import dev.vexsoft.core.paper.vexui.element.VexUITexture;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashMap;

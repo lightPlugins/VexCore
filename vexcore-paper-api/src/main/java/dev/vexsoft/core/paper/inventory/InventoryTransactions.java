@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.inventory;
 
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -12,7 +13,7 @@ public final class InventoryTransactions {
 
     /** Restores copied contents on failure or exception; invoke only on the player's owning thread. */
     public static boolean withRollback(final PlayerInventory inventory, final BooleanSupplier operation) {
-        ItemStack[] before = inventory.getContents().clone();
+        ItemStack[] before = Objects.requireNonNull(inventory.getContents(), "Inventory contents").clone();
 
         for (int index = 0; index < before.length; index++) {
             ItemStack item = before[index];

@@ -3,8 +3,8 @@ package dev.vexsoft.core.paper.items.v26_2;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.paper.items.service.ItemComponentAdapterService;
+import dev.vexsoft.core.paper.items.service.v26_2.VexItemComponentAdapterService;
 import dev.vexsoft.core.paper.items.version.ItemVersionDefinition;
-import dev.vexsoft.core.paper.service.items.v26_2.VexItemComponentAdapterService;
 import java.util.Set;
 
 @Dependencies

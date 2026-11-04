@@ -6,6 +6,7 @@ import java.util.Objects;
 /** Viewer-local background track with a fixed tempo and an optional repeat interval. */
 public record UpgradeAnimationMusic(Sound sound, int durationTicks, boolean loop) {
 
+    /** Requires an original-pitch sound and a bounded track duration. */
     public UpgradeAnimationMusic {
         Objects.requireNonNull(sound, "sound");
         if (sound.pitch() != 1.0F || durationTicks < 20 || durationTicks > 12000) {

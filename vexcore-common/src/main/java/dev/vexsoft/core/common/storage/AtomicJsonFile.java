@@ -31,7 +31,10 @@ public final class AtomicJsonFile<T> {
 
     /** Flushes a replacement snapshot before atomically exchanging it with the previous file. */
     public void write(final T snapshot) throws IOException {
-        Files.createDirectories(path.toAbsolutePath().getParent());
+        Path directory = path.toAbsolutePath().getParent();
+        if (directory != null) {
+            Files.createDirectories(directory);
+        }
         Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
         byte[] bytes = mapper.writeValueAsBytes(snapshot);
         try (FileChannel channel = FileChannel.open(temporary, StandardOpenOption.CREATE,

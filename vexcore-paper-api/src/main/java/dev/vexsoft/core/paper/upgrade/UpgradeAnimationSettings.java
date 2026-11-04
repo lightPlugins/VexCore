@@ -30,6 +30,7 @@ public record UpgradeAnimationSettings(
         this(chargeTicks, holdTicks, finishTicks, resolutionTimeoutTicks, sounds, instantSuccessChance, pacing, null);
     }
 
+    /** Copies sound sequences and validates timings, chance, and ordered pacing thresholds. */
     public UpgradeAnimationSettings {
         if (chargeTicks < 40 || chargeTicks > 400 || holdTicks < 1 || holdTicks > 100
             || finishTicks < 20 || finishTicks > 200 || resolutionTimeoutTicks < 20
@@ -50,8 +51,8 @@ public record UpgradeAnimationSettings(
         if (!Double.isFinite(instantSuccessChance) || instantSuccessChance < 0 || instantSuccessChance > 1) {
             throw new IllegalArgumentException("Visual breakthrough chance must be within 0..1");
         }
-        pacing = pacing == null ? List.of() : pacing.stream()
-            .sorted(Comparator.comparingDouble(UpgradeAnimationPacing::minimumSuccessChance).reversed()).toList();
+        pacing = List.copyOf(pacing == null ? List.of() : pacing.stream()
+            .sorted(Comparator.comparingDouble(UpgradeAnimationPacing::minimumSuccessChance).reversed()).toList());
         if (!pacing.isEmpty() && (pacing.getLast().minimumSuccessChance() != 0
             || pacing.stream().map(UpgradeAnimationPacing::minimumSuccessChance).distinct().count() != pacing.size()
             || pacing.size() > 16)) {

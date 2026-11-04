@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.packets.hologram;
 
-import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
+import dev.vexsoft.core.paper.packets.display.text.FakeTextDisplayRequest;
 import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Builder;

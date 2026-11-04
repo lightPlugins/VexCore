@@ -5,6 +5,8 @@ import org.bukkit.NamespacedKey;
 
 /** Grounded native break durations for physical materials, independent of the player's current target. */
 public record VexMiningTool(Map<NamespacedKey, Double> ticks) {
+
+    /** Copies mining rules and validates their physical block keys and positive durations. */
     public VexMiningTool {
         ticks = Map.copyOf(ticks);
         ticks.forEach((key, duration) -> {

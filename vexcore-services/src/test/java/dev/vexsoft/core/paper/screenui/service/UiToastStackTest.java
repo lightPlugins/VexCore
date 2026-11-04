@@ -1,0 +1,201 @@
+package dev.vexsoft.core.paper.screenui.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import dev.vexsoft.core.paper.screenui.ScreenUi;
+import dev.vexsoft.core.paper.screenui.UiNode;
+import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.layout.TextBlockLayout;
+import dev.vexsoft.core.paper.screenui.layout.TextureLayout;
+import dev.vexsoft.core.paper.screenui.panel.UiPanelBounds;
+import dev.vexsoft.core.paper.screenui.panel.UiPanelLayout;
+import dev.vexsoft.core.paper.screenui.render.ScreenUiPanelRenderer;
+import dev.vexsoft.core.paper.screenui.reward.UiToastStack;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.Getter;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.junit.jupiter.api.Test;
+
+public class UiToastStackTest {
+
+    @Test
+    void explicitScaleReachesToastTextAndBackground() {
+        RecordingScreen screen = new RecordingScreen();
+        var stack = new UiToastStack<Long>(
+            screen,
+            ScreenAnchor.BOTTOM_RIGHT,
+            -8,
+            -8,
+            4,
+            5,
+            0.7,
+            Long::sum,
+            screenId -> Component.text("+" + screenId),
+            ignored -> NamedTextColor.AQUA
+        );
+
+        stack.push("stone", 2L, 0);
+        stack.tick(0);
+
+        assertEquals(0.7, screen.text.get("toast-0.text").scale());
+        assertEquals(0.7, screen.textureScale);
+    }
+
+    private UiToastStack<Long> stack(RecordingScreen screen) {
+        return new UiToastStack<>(
+            screen,
+            ScreenAnchor.BOTTOM_RIGHT,
+            -8,
+            -8,
+            4,
+            5,
+            Long::sum,
+            screenId -> Component.text("+" + screenId),
+            ignored -> NamedTextColor.AQUA
+        );
+    }
+
+    @Test
+    void boundedQueuePreservesOldestAtBottomAndDrains() {
+        RecordingScreen screen = new RecordingScreen();
+        var stack = stack(screen);
+
+        for (int toastIndex = 0; toastIndex < 5; toastIndex++) {
+            assertTrue(stack.push("item" + toastIndex, 1L, 23998));
+        }
+
+        stack.tick(23998);
+
+        assertEquals(5, screen.text.size());
+        assertTrue(screen.text.get("toast-0.text").y() > screen.text.get("toast-4.text").y());
+
+        for (int toastIndex = 5; toastIndex < 69; toastIndex++) {
+            assertTrue(stack.push("item" + toastIndex, 1L, 23999));
+        }
+
+        assertFalse(stack.push("overflow", 1L, 23999));
+
+        for (long tick = 23999; tick < 26000; tick++) {
+            stack.tick(tick);
+
+            assertTrue(screen.text.size() <= 5);
+        }
+
+        assertTrue(stack.isEmpty());
+        assertTrue(screen.text.isEmpty());
+    }
+
+    @Test
+    void sustainedAcquisitionCoalescesWithoutImmortalMessagesOrIdleWrites() {
+        RecordingScreen screen = new RecordingScreen();
+        var stack = stack(screen);
+
+        for (int tick = 0; tick < 10000; tick++) {
+            for (int drop = 0; drop < 10; drop++) {
+                assertTrue(stack.push("stone", 1L, tick));
+            }
+
+            stack.tick(tick);
+
+            assertTrue(screen.text.size() <= 5);
+        }
+
+        for (int tick = 10000; tick < 11000; tick++) {
+            stack.tick(tick);
+        }
+
+        assertTrue(stack.isEmpty());
+
+        int writes = screen.writes;
+
+        for (int tick = 11000; tick < 12000; tick++) {
+            stack.tick(tick);
+        }
+
+        assertEquals(writes, screen.writes);
+
+        stack.close();
+
+        assertTrue(screen.closed);
+        assertFalse(stack.push("late", 1L, 12001));
+        assertTrue(stack.isEmpty());
+    }
+
+    @Test
+    void wrappedNotificationsWaitForSpaceInsteadOfOverlappingOrBeingLost() {
+        var screen = new RecordingScreen();
+        var stack = new UiToastStack<Long>(
+            screen, ScreenAnchor.BOTTOM_RIGHT, -8, -8, 4, 5, 0.7,
+            Long::sum, amount -> Component.text("Long notification with several words ".repeat(4)),
+            ignored -> NamedTextColor.WHITE
+        );
+        for (int index = 0; index < 5; index++) {
+            assertTrue(stack.push("item" + index, 1L, 0));
+        }
+        stack.tick(0);
+        assertTrue(screen.text.size() < 5);
+        assertFalse(screen.text.isEmpty());
+        for (int tick = 1; tick < 1000; tick++) {
+            stack.tick(tick);
+        }
+        assertTrue(stack.isEmpty());
+    }
+
+    public static final class RecordingScreen implements ScreenUi {
+
+        private final Map<String, TextBlockLayout> text = new HashMap<>();
+        @Getter(onMethod_ = @Override)
+        private boolean closed;
+        private int writes;
+        private double textureScale;
+
+        @Override
+        public UiPanelBounds measurePanel(UiNode content, UiPanelLayout layout) {
+            return ScreenUiPanelRenderer.measure(content, layout);
+        }
+
+        @Override
+        public UiPanelBounds panel(String id, UiNode content, UiPanelLayout layout) {
+            var measured = ScreenUiPanelRenderer.measure(content, layout);
+            text.put(
+                id + ".text", TextBlockLayout.builder().anchor(layout.anchor()).x(measured.x())
+                    .y(measured.y()).scale(layout.scale()).build()
+            );
+            textureScale = layout.scale();
+            writes++;
+            return measured;
+        }
+
+        @Override
+        public void textBlock(String id, List<Component> lines, TextBlockLayout layout) {
+            text.put(id, layout);
+            writes++;
+        }
+
+        @Override
+        public void textureBlock(String id, UiTexture texture, TextureLayout layout) {
+            writes++;
+            textureScale = layout.scale();
+        }
+
+        @Override
+        public void setLines(String id, List<Component> lines) {
+            writes++;
+        }
+
+        @Override
+        public void remove(String id) {
+            text.remove(id + ".text");
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+            text.clear();
+        }
+    }
+}

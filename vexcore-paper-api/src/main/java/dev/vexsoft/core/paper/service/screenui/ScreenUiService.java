@@ -1,13 +1,13 @@
 package dev.vexsoft.core.paper.service.screenui;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.paper.screenui.DialoguePanel;
-import dev.vexsoft.core.paper.screenui.DialoguePanelLayout;
-import dev.vexsoft.core.paper.screenui.DialoguePanelSkin;
-import dev.vexsoft.core.paper.screenui.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.UiNode;
-import dev.vexsoft.core.paper.screenui.UiPanelStyle;
+import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanel;
+import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelLayout;
+import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelSkin;
+import dev.vexsoft.core.paper.screenui.dialogue.PreparedDialogue;
+import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;

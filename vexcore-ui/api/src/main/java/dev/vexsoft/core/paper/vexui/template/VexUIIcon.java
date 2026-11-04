@@ -1,7 +1,7 @@
 package dev.vexsoft.core.paper.vexui.template;
 
-import dev.vexsoft.core.paper.vexui.VexUIElement;
-import dev.vexsoft.core.paper.vexui.VexUIItemIcon;
+import dev.vexsoft.core.paper.vexui.element.VexUIElement;
+import dev.vexsoft.core.paper.vexui.element.VexUIItemIcon;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 

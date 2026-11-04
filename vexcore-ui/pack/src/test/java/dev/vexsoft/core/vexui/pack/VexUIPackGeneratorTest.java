@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
+import dev.vexsoft.core.paper.vexui.style.VexUITheme;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -12,11 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.vexsoft.core.paper.screenui.RewardCardLayout;
-import dev.vexsoft.core.paper.vexui.VexUITheme;
 import javax.imageio.ImageIO;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

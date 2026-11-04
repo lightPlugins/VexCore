@@ -1,20 +1,20 @@
 package dev.vexsoft.core.paper.module;
 
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.mob.service.VexMobService;
+import dev.vexsoft.core.paper.mob.service.registry.MobRegistryCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.registry.VexMobRegistry;
+import dev.vexsoft.core.paper.mob.service.registry.VexMobRegistryCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.runtime.MobRuntimeCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.runtime.VexMobRuntimeCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.spawner.MobSpawnerRegistryCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.spawner.MobSpawnerRuntimeCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.spawner.VexMobSpawnerRegistry;
+import dev.vexsoft.core.paper.mob.service.spawner.VexMobSpawnerRegistryCoordinatorService;
+import dev.vexsoft.core.paper.mob.service.spawner.VexMobSpawnerRuntimeCoordinatorService;
 import dev.vexsoft.core.paper.service.mob.MobRegistry;
-import dev.vexsoft.core.paper.service.mob.MobRegistryCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.MobRuntimeCoordinatorService;
 import dev.vexsoft.core.paper.service.mob.MobService;
 import dev.vexsoft.core.paper.service.mob.MobSpawnerRegistry;
-import dev.vexsoft.core.paper.service.mob.MobSpawnerRegistryCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.MobSpawnerRuntimeCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.VexMobRegistry;
-import dev.vexsoft.core.paper.service.mob.VexMobRegistryCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.VexMobRuntimeCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.VexMobService;
-import dev.vexsoft.core.paper.service.mob.VexMobSpawnerRegistry;
-import dev.vexsoft.core.paper.service.mob.VexMobSpawnerRegistryCoordinatorService;
-import dev.vexsoft.core.paper.service.mob.VexMobSpawnerRuntimeCoordinatorService;
 
 /** Installs the non-persistent custom mob registry and runtime. */
 public final class MobModule implements VexModule {

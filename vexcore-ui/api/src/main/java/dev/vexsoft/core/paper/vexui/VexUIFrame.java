@@ -1,5 +1,8 @@
 package dev.vexsoft.core.paper.vexui;
 
+import dev.vexsoft.core.paper.vexui.action.VexUIAction;
+import dev.vexsoft.core.paper.vexui.action.VexUIClickSound;
+import dev.vexsoft.core.paper.vexui.element.VexUIElement;
 import java.util.Map;
 import java.util.Objects;
 import net.kyori.adventure.text.Component;

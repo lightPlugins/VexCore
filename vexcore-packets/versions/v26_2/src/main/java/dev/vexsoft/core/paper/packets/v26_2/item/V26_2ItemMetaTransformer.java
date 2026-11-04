@@ -86,6 +86,8 @@ public final class V26_2ItemMetaTransformer {
         return false;
     }
 
+    // Bukkit and Minecraft ItemStack coexist at this conversion boundary.
+    @SuppressWarnings("checkstyle:fullyQualifiedTypeName")
     private ItemStack rewrite(final ItemStack item, final FakeItemMetaRule rule, final boolean worn, final int frame) {
         ItemStack copy = item.copy();
 
@@ -220,6 +222,7 @@ public final class V26_2ItemMetaTransformer {
         return combined;
     }
 
+    @SuppressWarnings("checkstyle:fullyQualifiedTypeName")
     private static void hideVanillaDetails(final org.bukkit.inventory.ItemStack item) {
         TooltipDisplay existing = item.getData(DataComponentTypes.TOOLTIP_DISPLAY);
         Set<DataComponentType> hidden = new HashSet<>(item.getDataTypes());

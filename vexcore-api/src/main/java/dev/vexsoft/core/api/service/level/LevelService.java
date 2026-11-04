@@ -2,8 +2,8 @@ package dev.vexsoft.core.api.service.level;
 
 import dev.vexsoft.core.api.configuration.ConfigurationSection;
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.level.CompiledLevelDefinition;
-import dev.vexsoft.core.level.LevelDefinition;
+import dev.vexsoft.core.level.compiled.CompiledLevelDefinition;
+import dev.vexsoft.core.level.definition.LevelDefinition;
 
 /** Compiles reusable level curves and their claim rules. */
 public interface LevelService extends VexService {

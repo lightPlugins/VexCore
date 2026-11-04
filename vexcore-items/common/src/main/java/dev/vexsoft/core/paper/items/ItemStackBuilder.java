@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.items;
 
+import dev.vexsoft.core.paper.items.component.VexComponentData;
+import dev.vexsoft.core.paper.items.component.VexFlagComponentData;
 import org.bukkit.inventory.ItemStack;
 
 /**

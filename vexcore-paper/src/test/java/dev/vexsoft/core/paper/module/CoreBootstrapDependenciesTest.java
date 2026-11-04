@@ -73,7 +73,7 @@ class CoreBootstrapDependenciesTest {
             } else if (events.group(3) != null) {
                 verify(resolve(names, packageName, events.group(3)).getName(), "enable", available);
             } else if (events.group(4) != null) {
-                registrations("dev.vexsoft.core.paper.vexui.runtime.VexUIRegistration",
+                registrations("dev.vexsoft.core.paper.vexui.service.VexUIRegistration",
                     events.group(4), available, queued);
             } else {
                 flush(type, queued, available);

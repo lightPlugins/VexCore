@@ -17,6 +17,7 @@ public record UpgradeAnimationRequest(
         this(texts, settings, resolve, 0.5);
     }
 
+    /** Requires presentation, settings, a resolver, and a finite frozen success chance. */
     public UpgradeAnimationRequest {
         Objects.requireNonNull(texts);
         Objects.requireNonNull(settings);

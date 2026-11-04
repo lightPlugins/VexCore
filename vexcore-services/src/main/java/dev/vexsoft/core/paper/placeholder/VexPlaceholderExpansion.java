@@ -2,7 +2,7 @@ package dev.vexsoft.core.paper.placeholder;
 
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.player.PlayerService;
-import dev.vexsoft.core.paper.service.placeholder.VexPaperPlaceholderService;
+import dev.vexsoft.core.paper.placeholder.service.VexPaperPlaceholderService;
 import dev.vexsoft.core.placeholder.PlaceholderContext;
 import dev.vexsoft.core.placeholder.PlaceholderNames;
 import java.util.Objects;

@@ -4,7 +4,7 @@ import com.destroystokyo.paper.profile.ProfileProperty;
 import com.mojang.datafixers.util.Pair;
 import dev.vexsoft.core.paper.packets.display.FakeDisplayHandle;
 import dev.vexsoft.core.paper.packets.dummy.SkinTexture;
-import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.connection.PacketTransportAdapterService;
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import java.util.ArrayList;
 import java.util.List;

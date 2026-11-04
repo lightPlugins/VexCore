@@ -94,7 +94,7 @@ public final class VexUIPackGenerator {
         for (String name : List.of("collect", "pick-up", "level-up", "upgrade-success", "upgrade-failed")) {
             String resource = "assets/vexcore/sounds/ui/" + name + ".ogg";
             Path target = root.resolve(resource);
-            Files.createDirectories(target.getParent());
+            Files.createDirectories(Objects.requireNonNull(target.getParent(), "Generated asset directory"));
             try (var input = VexUIPackGenerator.class.getResourceAsStream("/pack/" + resource)) {
                 if (input == null) {
                     throw new IOException("Missing shared UI sound: " + name);
@@ -247,7 +247,7 @@ public final class VexUIPackGenerator {
                 var properties = new StringBuilder();
                 entries.forEach((key, value) -> properties.append(property(key)).append('=')
                     .append(property(value)).append('\n'));
-                write(metricsRoot, "dev/vexsoft/core/paper/vexui/runtime/vanilla/" + locale + ".properties",
+                write(metricsRoot, "dev/vexsoft/core/paper/vexui/render/vanilla/" + locale + ".properties",
                     properties.toString());
             }
         }

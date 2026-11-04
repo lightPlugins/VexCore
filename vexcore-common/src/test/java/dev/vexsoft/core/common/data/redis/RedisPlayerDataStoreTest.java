@@ -1,23 +1,29 @@
 package dev.vexsoft.core.common.data.redis;
 
-import dev.vexsoft.core.api.player.DataContainerKey;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
 import dev.vexsoft.core.api.messaging.MessageKey;
 import dev.vexsoft.core.api.messaging.MessageTarget;
+import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.profile.PlayerDataAddress;
 import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
 import dev.vexsoft.core.common.data.SqlitePlayerDataStore;
-import io.lettuce.core.RedisClient;
+import dev.vexsoft.core.common.messaging.service.MessageEnvelope;
+import dev.vexsoft.core.common.messaging.service.RedisMessageChannel;
+import dev.vexsoft.core.common.messaging.service.VexMessageCodecService;
+import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import io.lettuce.core.AclSetuserArgs;
+import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.protocol.CommandType;
-import dev.vexsoft.core.common.service.messaging.RedisMessageChannel;
-import dev.vexsoft.core.common.service.messaging.MessageEnvelope;
-import dev.vexsoft.core.common.service.messaging.VexMessageCodecService;
-import dev.vexsoft.core.common.service.registry.DefaultServiceRegistry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -31,12 +37,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Exercises the real Redis scripts through independent backend connections; requires VEXCORE_TEST_REDIS. */
 class RedisPlayerDataStoreTest {

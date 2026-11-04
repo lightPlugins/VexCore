@@ -7,6 +7,7 @@ import org.bukkit.NamespacedKey;
 /** Client-only equipment assets for a repeating animation, with a canonical asset for Creative restoration. */
 public record FakeItemEquipmentAnimation(NamespacedKey original, List<NamespacedKey> frames, int ticksPerFrame) {
 
+    /** Copies animation frames and validates the canonical asset and frame timing. */
     public FakeItemEquipmentAnimation {
         Objects.requireNonNull(original, "original");
         frames = List.copyOf(frames);

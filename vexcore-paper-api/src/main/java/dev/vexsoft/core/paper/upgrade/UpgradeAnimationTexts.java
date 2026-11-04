@@ -17,6 +17,7 @@ public record UpgradeAnimationTexts(
         this(title, subject, upgrade, progress, charging, holding, success, failure, Component.empty());
     }
 
+    /** Requires localized animation content and defaults an absent skip hint to empty text. */
     public UpgradeAnimationTexts {
         Objects.requireNonNull(title);
         Objects.requireNonNull(subject);

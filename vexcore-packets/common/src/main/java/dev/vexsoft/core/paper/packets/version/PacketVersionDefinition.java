@@ -1,14 +1,14 @@
 package dev.vexsoft.core.paper.packets.version;
 
-import dev.vexsoft.core.paper.packets.service.DisplayPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.EntityEffectPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.HologramInteractionAdapterService;
-import dev.vexsoft.core.paper.packets.service.InteractiveUiPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.ItemMetaPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.PacketConnectionAdapterService;
-import dev.vexsoft.core.paper.packets.service.PacketTransportAdapterService;
-import dev.vexsoft.core.paper.packets.service.RecipeBookPacketAdapterService;
-import dev.vexsoft.core.paper.packets.service.VirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.block.VirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.connection.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.connection.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.display.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.effect.EntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.interaction.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.interactiveui.InteractiveUiPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.item.ItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.item.RecipeBookPacketAdapterService;
 import java.util.Map;
 import java.util.Set;
 

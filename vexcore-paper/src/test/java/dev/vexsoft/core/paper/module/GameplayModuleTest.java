@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.reward.listener.PrivateRewardItemListener;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
-import dev.vexsoft.core.paper.service.reward.PrivateRewardItemListener;
 import dev.vexsoft.core.paper.service.reward.RewardItemService;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;

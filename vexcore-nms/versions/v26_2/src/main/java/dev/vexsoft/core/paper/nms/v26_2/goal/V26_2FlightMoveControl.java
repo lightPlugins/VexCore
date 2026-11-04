@@ -19,6 +19,8 @@ import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
 /** Authoritative flight motor: native navigation supplies waypoints, never acceleration or velocity. */
+// Bukkit and Minecraft both expose Mob; keep the native controller type unambiguous.
+@SuppressWarnings("checkstyle:fullyQualifiedTypeName")
 public final class V26_2FlightMoveControl extends MoveControl<Mob> {
 
     // Model plugins decorate the native controller after installation. Keep its identity independently

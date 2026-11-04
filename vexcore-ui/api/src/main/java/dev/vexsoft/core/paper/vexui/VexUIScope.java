@@ -1,5 +1,7 @@
 package dev.vexsoft.core.paper.vexui;
 
+import dev.vexsoft.core.paper.vexui.state.VexUISubscription;
+
 /** Lifetime of the currently visible view; navigation, search and session retirement invalidate it. */
 public interface VexUIScope {
 

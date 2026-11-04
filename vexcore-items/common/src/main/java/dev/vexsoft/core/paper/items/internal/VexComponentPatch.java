@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.items.internal;
 
-import dev.vexsoft.core.paper.items.VexComponentData;
+import dev.vexsoft.core.paper.items.component.VexComponentData;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.Getter;

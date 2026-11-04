@@ -3,7 +3,7 @@ package dev.vexsoft.core.paper.items.internal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.vexsoft.core.paper.items.VexComponentData;
+import dev.vexsoft.core.paper.items.component.VexComponentData;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

@@ -1,9 +1,9 @@
 package dev.vexsoft.core.paper.packets.v26_2.display;
 
-import dev.vexsoft.core.paper.packets.display.FakeBlockDisplayUpdate;
-import dev.vexsoft.core.paper.packets.display.FakeItemDisplayUpdate;
-import dev.vexsoft.core.paper.packets.display.FakeTextDisplayRequest;
-import dev.vexsoft.core.paper.packets.display.FakeTextDisplayUpdate;
+import dev.vexsoft.core.paper.packets.display.block.FakeBlockDisplayUpdate;
+import dev.vexsoft.core.paper.packets.display.item.FakeItemDisplayUpdate;
+import dev.vexsoft.core.paper.packets.display.text.FakeTextDisplayRequest;
+import dev.vexsoft.core.paper.packets.display.text.FakeTextDisplayUpdate;
 import io.papermc.paper.adventure.PaperAdventure;
 import lombok.experimental.UtilityClass;
 import net.minecraft.world.entity.Display;

@@ -12,6 +12,7 @@ public record RingBurst(
     int fountains
 ) {
 
+    /** Validates the ring geometry, particle bounds, and optional fountain settings. */
     public RingBurst {
         if (!Double.isFinite(radius) || radius < 0.1 || radius > 16
             || !Double.isFinite(offsetY) || Math.abs(offsetY) > 16

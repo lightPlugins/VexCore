@@ -392,11 +392,11 @@ public final class RedisPlayerDataStore
     @Override
     public synchronized CompletableFuture<Void> checkpoint() {
         if (!checkpointRunning.compareAndSet(false, true)) {
-            return checkpointFuture;
+            return checkpointFuture.copy();
         }
         checkpointFuture = readiness().thenRunAsync(this::writeCheckpoint, worker).whenComplete((ignored, failure) ->
             checkpointRunning.set(false));
-        return checkpointFuture;
+        return checkpointFuture.copy();
     }
 
     @Override

@@ -12,7 +12,7 @@ import dev.vexsoft.core.reward.CompiledReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
-import dev.vexsoft.core.reward.RewardNotification;
+import dev.vexsoft.core.reward.notification.RewardNotification;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -200,6 +200,10 @@ public final class ItemReward implements Reward {
     private record Prepared(List<ItemStack> stacks, List<RewardItem> physical, List<VirtualGrant> virtual,
                             List<Component> descriptions, List<String> itemKeys,
                             List<RewardNotification> notifications, RewardItemService items) implements PreparedItemReward {
+
+        private Prepared {
+            notifications = List.copyOf(notifications);
+        }
 
         @Override
         public List<RewardNotification> notifications(final PlayerExecutionContext context) {

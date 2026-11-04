@@ -2,6 +2,8 @@ package dev.vexsoft.core.reward;
 
 import dev.vexsoft.core.execution.ExecutionDescription;
 import dev.vexsoft.core.execution.PlayerExecutionContext;
+import dev.vexsoft.core.reward.contribution.RewardContribution;
+import dev.vexsoft.core.reward.notification.RewardNotification;
 import java.util.List;
 import java.util.Map;
 import net.kyori.adventure.text.Component;

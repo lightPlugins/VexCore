@@ -1,9 +1,9 @@
 package dev.vexsoft.core.paper.items.service;
 
 import dev.vexsoft.core.api.service.registry.VexService;
-import dev.vexsoft.core.paper.items.VexArmorTrim;
 import dev.vexsoft.core.paper.items.VexAdventureBlocks;
 import dev.vexsoft.core.paper.items.VexMiningTool;
+import dev.vexsoft.core.paper.items.appearance.VexArmorTrim;
 import dev.vexsoft.core.paper.items.internal.VexComponentPatch;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;

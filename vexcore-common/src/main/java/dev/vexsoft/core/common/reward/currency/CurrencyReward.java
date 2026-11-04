@@ -21,7 +21,7 @@ import dev.vexsoft.core.reward.QuantifiedReward;
 import dev.vexsoft.core.reward.Reward;
 import dev.vexsoft.core.reward.RewardBehavior;
 import dev.vexsoft.core.reward.RewardResult;
-import dev.vexsoft.core.reward.RewardNotification;
+import dev.vexsoft.core.reward.notification.RewardNotification;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import net.kyori.adventure.text.Component;
 
@@ -72,7 +73,7 @@ public final class CurrencyReward implements Reward {
             return expressions.compile(Objects.toString(configured));
         }
         Map<String, Object> range = values(configured);
-        if (!range.keySet().equals(java.util.Set.of("min", "max"))) {
+        if (!range.keySet().equals(Set.of("min", "max"))) {
             throw new IllegalArgumentException("Currency amount ranges require only min and max");
         }
         try {

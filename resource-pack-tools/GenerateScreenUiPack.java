@@ -126,7 +126,7 @@ public final class GenerateScreenUiPack {
         metrics.append("9632=9\n9633=9\n");
         graphics.dispose();
         png(root, "assets/vexcore/textures/ui/text.png", atlas);
-        write(metricsRoot, "dev/vexsoft/core/paper/service/screenui/m5x7.properties", metrics.toString());
+        write(metricsRoot, "dev/vexsoft/core/paper/screenui/render/m5x7.properties", metrics.toString());
         // Draw one quarter at the final pixel-art resolution, then reflect it on both axes.
         // This keeps corner brackets and side crystals exactly symmetric without resampling.
         BufferedImage quarter = new BufferedImage(70, 24, BufferedImage.TYPE_INT_ARGB);

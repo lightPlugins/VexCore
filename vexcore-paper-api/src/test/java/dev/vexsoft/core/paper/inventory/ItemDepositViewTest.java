@@ -394,7 +394,7 @@ final class ItemDepositViewTest {
                 case "getPlayer" -> data.player;
                 case "getTopInventory" -> top;
                 case "getInventory" -> (int) args[0] >= 54 ? data.storage.inventory : top;
-                case "convertSlot" -> (int) args[0] >= 54 ? (int) args[0] - 54 : (int) args[0];
+                case "convertSlot" -> (int) args[0] >= 54 ? (Object) ((int) args[0] - 54) : args[0];
                 default -> null;
             });
 

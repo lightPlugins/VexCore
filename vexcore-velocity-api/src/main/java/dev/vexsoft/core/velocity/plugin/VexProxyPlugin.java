@@ -11,7 +11,7 @@ import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.velocity.VexVelocityCore;
-import dev.vexsoft.core.velocity.service.bootstrap.ProxyPluginBootstrapService;
+import dev.vexsoft.core.velocity.bootstrap.service.ProxyPluginBootstrapService;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Objects;

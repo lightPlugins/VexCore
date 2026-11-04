@@ -2,7 +2,7 @@ package dev.vexsoft.core.paper.items.service;
 
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.items.ItemStackBuilder;
-import dev.vexsoft.core.paper.items.VexArmorTrim;
+import dev.vexsoft.core.paper.items.appearance.VexArmorTrim;
 import java.util.Optional;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;

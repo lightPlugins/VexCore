@@ -55,7 +55,11 @@ class RedisCommandTimeoutTest {
                 int arguments = Integer.parseInt(header.substring(1));
                 var command = new ArrayList<String>();
                 for (int index = 0; index < arguments; index++) {
-                    int length = Integer.parseInt(input.readLine().substring(1));
+                    String argument = input.readLine();
+                    if (argument == null) {
+                        throw new IOException("Peer closed before a command argument");
+                    }
+                    int length = Integer.parseInt(argument.substring(1));
                     var value = new char[length];
                     int offset = 0;
                     while (offset < length) {

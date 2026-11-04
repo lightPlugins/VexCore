@@ -12,7 +12,7 @@
   </Match>
   <Match>
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
-    <Class name="dev.vexsoft.core.paper.service.items.VexItemStackBuilder"/>
+    <Class name="dev.vexsoft.core.paper.items.service.VexItemStackBuilder"/>
   </Match>
 
   <!-- Adventure Components are immutable values despite not being annotated for SpotBugs. -->
@@ -27,14 +27,26 @@
   <!-- Framework contracts intentionally expose their managed runtime object. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP"/>
-    <Class name="dev.vexsoft.core.paper.vexui.runtime.VexUISessionState"/>
+    <Class name="dev.vexsoft.core.paper.vexui.session.VexUISessionState"/>
     <Field name="player"/>
   </Match>
-  <!-- VexUI also retains immutable Adventure components in snapshots and measured render results. -->
+  <!-- The internal session factory retains the managed player and shared coordinator by identity. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+    <Class name="dev.vexsoft.core.paper.vexui.session.VexUISessionState"/>
+    <Or>
+      <Field name="player"/>
+      <Field name="coordinator"/>
+    </Or>
+  </Match>
+  <!-- Adventure Components and Styles are immutable, including in UI and reward snapshots. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
-    <Class name="~dev\.vexsoft\.core\.paper\.vexui\..*"/>
-    <Field type="net.kyori.adventure.text.Component"/>
+    <Class name="~dev\.vexsoft\.core\..*"/>
+    <Or>
+      <Field type="net.kyori.adventure.text.Component"/>
+      <Field type="net.kyori.adventure.text.format.Style"/>
+    </Or>
   </Match>
 
   <Match>
@@ -46,7 +58,7 @@
       <!-- Execution contexts deliberately carry the managed VexPlayer for one operation. -->
       <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
       <Class name="dev.vexsoft.core.paper.plugin.VexPlugin"/>
-      <Class name="dev.vexsoft.core.paper.service.inventory.VexInventoryHolder"/>
+      <Class name="dev.vexsoft.core.paper.inventory.service.VexInventoryHolder"/>
       <!-- The input view must edit its managed inventory; returning a copy would detach the menu. -->
       <Class name="dev.vexsoft.core.paper.inventory.ItemSaleSession"/>
     </Or>
@@ -72,7 +84,7 @@
   <!-- The request stores an immutable Set.copyOf result. -->
   <Match>
     <Bug pattern="EI_EXPOSE_REP"/>
-    <Class name="dev.vexsoft.core.paper.packets.display.FakeItemDisplayRequest"/>
+    <Class name="dev.vexsoft.core.paper.packets.display.item.FakeItemDisplayRequest"/>
     <Method name="getLifecycle"/>
   </Match>
 
@@ -85,9 +97,109 @@
   <Match>
     <Bug pattern="EI_EXPOSE_REP2"/>
     <Or>
-      <Class name="dev.vexsoft.core.paper.screenui.UiPanelSet"/>
-      <Class name="dev.vexsoft.core.paper.screenui.UiToastStack"/>
+      <Class name="dev.vexsoft.core.paper.screenui.panel.UiPanelSet"/>
+      <Class name="dev.vexsoft.core.paper.screenui.reward.UiToastStack"/>
     </Or>
     <Field name="screen"/>
+  </Match>
+  <!-- Managed collaborators and failure causes are intentionally retained by identity. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+    <Or>
+      <Class name="dev.vexsoft.core.common.currency.service.VexCurrencyContainer"/>
+      <Class name="dev.vexsoft.core.common.messaging.service.RedisMessageChannel"/>
+      <Class name="dev.vexsoft.core.common.storage.AtomicJsonFile"/>
+      <Class name="dev.vexsoft.core.common.data.redis.RedisPlayerDataStore"/>
+      <Class name="dev.vexsoft.core.paper.reward.service.RewardToastQueue"/>
+      <Class name="dev.vexsoft.core.paper.screenui.dialogue.VexDialoguePanel"/>
+    </Or>
+    <Or>
+      <Field name="shared"/>
+      <Field name="backend"/>
+      <Field name="mapper"/>
+      <Field name="fencingFailure"/>
+      <Field name="screen"/>
+    </Or>
+  </Match>
+
+  <!-- Redis connection options are internal bootstrap settings, configured before opening a backend. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    <Class name="dev.vexsoft.core.common.data.redis.RedisSettings"/>
+    <Field name="uri"/>
+  </Match>
+
+  <!-- Only regex-validated quoted identifiers are interpolated; all stored values use bound parameters. -->
+  <Match>
+    <Bug pattern="SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
+    <Or>
+      <Class name="dev.vexsoft.core.common.data.PostgresPlayerDataStore"/>
+      <Class name="dev.vexsoft.core.common.data.SqlitePlayerDataStore"/>
+    </Or>
+    <Method name="writeOwner"/>
+  </Match>
+
+  <!-- Native movement and goal updates run on the same owning entity thread, not concurrent worker threads. -->
+  <Match>
+    <Bug pattern="AT_NONATOMIC_64BIT_PRIMITIVE,AT_STALE_THREAD_WRITE_OF_PRIMITIVE"/>
+    <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightMoveControl"/>
+  </Match>
+
+  <!-- The final per-session cursor monitor is allocated internally and never supplied by a caller. -->
+  <Match>
+    <Bug pattern="USO_UNSAFE_OBJECT_SYNCHRONIZATION"/>
+    <Class name="dev.vexsoft.core.paper.interactiveui.service.VexInteractiveUiCoordinatorService"/>
+    <Field name="cursorLock"/>
+  </Match>
+
+  <!-- Test providers deliberately expose completion futures and managed fixture identities. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP"/>
+    <Or>
+      <Class name="dev.vexsoft.core.common.player.service.data.VexPlayerDataCoordinatorServiceTest$DelayedPlayerDataStore"/>
+      <Class name="dev.vexsoft.core.paper.vexui.session.VexUICraftingTemplateTest$Provider"/>
+      <Class name="dev.vexsoft.core.paper.vexui.session.VexUIProfessionTemplateTest$Provider"/>
+      <Class name="dev.vexsoft.core.paper.vexui.session.VexUITestScheduleService"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.FlightFixture$NativeMob"/>
+    </Or>
+  </Match>
+
+  <!-- Native fixture allocation bypasses server bootstrap solely inside this test harness. -->
+  <Match>
+    <Bug pattern="UNS_UNSAFE_CALL"/>
+    <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.FlightFixture"/>
+  </Match>
+
+  <!-- Minimal item test doubles exercise inventory operations without redefining native value equality. -->
+  <Match>
+    <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS"/>
+    <Or>
+      <Class name="dev.vexsoft.core.paper.inventory.PlayerInventoryTransfersTest$Stack"/>
+      <Class name="dev.vexsoft.core.paper.profile.listener.ProfileItemListenerTest$Stack"/>
+      <Class name="dev.vexsoft.core.paper.profile.service.PaperProfileStateCodecTest$Stack"/>
+      <Class name="dev.vexsoft.core.paper.reward.item.ItemRewardPreparationTest$Stack"/>
+      <Class name="dev.vexsoft.core.paper.reward.service.RewardAnnouncementTest$Stack"/>
+    </Or>
+  </Match>
+
+  <!-- FriendlyByteBuf.writeInt mutates the fixture wire buffer; its fluent return is intentionally ignored. -->
+  <Match>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
+    <Or>
+      <Class name="dev.vexsoft.core.paper.packets.service.v26_2.VexVirtualBlockPacketAdapterServiceTest"/>
+      <Class name="dev.vexsoft.core.paper.packets.v26_2.interactiveui.V26_2InteractiveUiTargetPreserverTest"/>
+    </Or>
+    <Method name="chunk"/>
+  </Match>
+  <!-- These player/session-only event fixtures omit native items to avoid starting Bukkit's item registry. -->
+  <Match>
+    <Bug pattern="NP_NONNULL_PARAM_VIOLATION"/>
+    <Class name="dev.vexsoft.core.paper.inventory.service.VexInventoryListenerOwnershipTest"/>
+    <Method name="foreignDragEventsRemainMovable"/>
+  </Match>
+  <Match>
+    <Bug pattern="NP_NONNULL_PARAM_VIOLATION"/>
+    <Class name="dev.vexsoft.core.paper.profile.listener.ProfileReadinessListenerTest$Fixture"/>
+    <Method name="&lt;init&gt;"/>
   </Match>
 </FindBugsFilter>

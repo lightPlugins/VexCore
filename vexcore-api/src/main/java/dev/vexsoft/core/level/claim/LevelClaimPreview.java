@@ -2,7 +2,7 @@ package dev.vexsoft.core.level.claim;
 
 import dev.vexsoft.core.cost.CostExecutionResult;
 import dev.vexsoft.core.execution.TypedExecutionDescription;
-import dev.vexsoft.core.level.LevelState;
+import dev.vexsoft.core.level.progress.LevelState;
 import dev.vexsoft.core.requirement.RequirementExecutionResult;
 import java.util.List;
 import net.kyori.adventure.text.Component;
