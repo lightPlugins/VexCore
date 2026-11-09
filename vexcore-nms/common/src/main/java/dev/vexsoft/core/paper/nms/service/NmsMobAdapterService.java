@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.nms.service;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightProfile;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.VexService;
@@ -42,6 +43,15 @@ public interface NmsMobAdapterService extends VexService {
 
     /** Replaces an order and its optional movement volume. */
     FlightState flyTo(Mob mob, Location destination, double speed, FlightBounds bounds);
+
+    /** Applies an explicit order's terrain exclusions to the authoritative flight motor. */
+    default FlightState flyTo(Mob mob, Location destination, double speed, FlightBounds bounds,
+        FlightObstacles obstacles) {
+        if (obstacles != FlightObstacles.SOLID) {
+            throw new UnsupportedOperationException("Selective flight collisions are unavailable");
+        }
+        return flyTo(mob, destination, speed, bounds);
+    }
 
     /** Releases an explicit order without resetting momentum or teleporting the carrier. */
     void releaseFlight(Mob mob);

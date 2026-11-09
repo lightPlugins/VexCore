@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.mob.service.runtime;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
@@ -226,6 +227,13 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
     @Override
     public FlightState flyTo(final ServiceOwner owner, final MobHandle handle, final Location destination,
         final double speed, final FlightBounds bounds) {
+        return flyTo(owner, handle, destination, speed, bounds, FlightObstacles.SOLID);
+    }
+
+    @Override
+    public FlightState flyTo(final ServiceOwner owner, final MobHandle handle, final Location destination,
+        final double speed, final FlightBounds bounds, final FlightObstacles obstacles) {
+        Objects.requireNonNull(obstacles, "obstacles");
         Objects.requireNonNull(destination, "destination").checkFinite();
         if (!Double.isFinite(speed) || speed < 0) {
             throw new IllegalArgumentException("Flight speed must be finite and non-negative");
@@ -237,7 +245,7 @@ public final class VexMobRuntimeCoordinatorService implements MobRuntimeCoordina
         if (bounds != null && !bounds.contains(destination.getX(), destination.getY(), destination.getZ())) {
             throw new IllegalArgumentException("Flight destination is outside its allowed volume");
         }
-        FlightState state = nms.flyTo(runtime.entity, destination.clone(), speed, bounds);
+        FlightState state = nms.flyTo(runtime.entity, destination.clone(), speed, bounds, obstacles);
         if (!NmsMobGoalControl.isPaused(runtime.entity)) {
             setGoalsPaused(owner, handle, true);
         }

@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.service.mob;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.mob.MobDamageResult;
@@ -69,6 +70,10 @@ public interface MobService extends VexService {
 
     /** Restricts both direct movement and native detours to the supplied optional volume. */
     FlightState flyTo(MobHandle handle, Location destination, double speed, FlightBounds bounds);
+
+    /** Selects per-order terrain exclusions; native movement still checks all remaining solid blocks. */
+    FlightState flyTo(MobHandle handle, Location destination, double speed, FlightBounds bounds,
+        FlightObstacles obstacles);
 
     /** Releases explicit flight to goals, preserving momentum through the transition. */
     void releaseFlight(MobHandle handle);

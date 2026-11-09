@@ -16,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.type.Leaves;
 import org.bukkit.craftbukkit.entity.CraftMob;
 import org.bukkit.util.Vector;
 import org.bukkit.util.BoundingBox;
@@ -32,6 +33,8 @@ final class FlightFixture implements AutoCloseable {
     Location position;
     boolean loaded = true;
     boolean wall;
+    boolean leaves;
+    boolean liquid;
     double ceiling = Double.POSITIVE_INFINITY;
     int pathRequests;
     int recoveries;
@@ -56,8 +59,9 @@ final class FlightFixture implements AutoCloseable {
                 int y = (int) arguments[1];
                 int z = (int) arguments[2];
                 yield proxy(Block.class, (block, call, values) -> switch (call.getName()) {
-                    case "isLiquid" -> false;
-                    case "isPassable" -> y >= 64 && y < ceiling && !(wall && x == 2);
+                    case "isLiquid" -> liquid && x == 2;
+                    case "getBlockData" -> leaves && x == 2 ? proxy(Leaves.class, (i, m, a) -> null) : null;
+                    case "isPassable" -> y >= 64 && y < ceiling && !((wall || leaves) && x == 2);
                     case "getBoundingBox" -> new BoundingBox(x, y, z, x + 1, y + 1, z + 1);
                     default -> throw new AssertionError(call.getName());
                 });

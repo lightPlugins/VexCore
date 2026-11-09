@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.nms.v26_2.goal;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightMotion;
 import dev.vexsoft.core.api.mob.flight.FlightProfile;
 import dev.vexsoft.core.api.mob.flight.FlightState;
@@ -38,6 +39,9 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
     private boolean trackingDirect;
     private Location destination;
     private FlightBounds bounds;
+    private FlightObstacles obstacles = FlightObstacles.SOLID;
+    private boolean ownsPhysics;
+    private boolean previousPhysics;
     private Location idle;
     private Location previousPosition;
     private FlightState state = FlightState.MOVING;
@@ -68,6 +72,10 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
 
     /** Retires controller lookup state when the native carrier is neutralized or removed. */
     public static void forget(final Mob mob) {
+        var controller = find(mob);
+        if (controller != null) {
+            controller.restorePhysics();
+        }
         CONTROLLERS.remove(mob);
     }
 
@@ -84,8 +92,8 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
     /** Resolves the same local minimum clearance for goals, orders and arrival checks. */
     public Location resolveTarget(final Location target) {
         Location resolved = target.clone();
-        if (minimumHeight > 0) {
-            double floor = FlightPositionSafety.minimumY(resolved, minimumHeight);
+        if (minimumHeight > 0 && bounds == null) {
+            double floor = FlightPositionSafety.minimumY(resolved, minimumHeight, obstacles);
             if (Double.isFinite(floor)) {
                 resolved.setY(Math.max(resolved.getY(), floor));
             }
@@ -118,7 +126,19 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
 
     /** Replaces an order together with its optional allowed volume. */
     public FlightState flyTo(final Location target, final double speed, final FlightBounds bounds) {
+        return flyTo(target, speed, bounds, FlightObstacles.SOLID);
+    }
+
+    /** Keeps selective collision checks and actual native travel under the same order. */
+    public FlightState flyTo(final Location target, final double speed, final FlightBounds bounds,
+        final FlightObstacles obstacles) {
         stopTracking();
+        Objects.requireNonNull(obstacles, "obstacles");
+        if (this.obstacles != obstacles) {
+            restorePhysics();
+            routeAfter = 0;
+        }
+        this.obstacles = obstacles;
         if (!Objects.equals(this.bounds, bounds)) {
             routeAfter = 0;
         }
@@ -159,6 +179,8 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
 
     /** Releases caller-owned flight without injecting a stop or restarting acceleration. */
     public void release() {
+        restorePhysics();
+        obstacles = FlightObstacles.SOLID;
         destination = null;
         bounds = null;
         trackingTarget = null;
@@ -228,6 +250,7 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
         mob.setZza(0);
         mob.setSpeed(0);
         if (mob.isPassenger() || mob.isFallFlying()) {
+            restorePhysics();
             return;
         }
         if (NmsMobGoalControl.isPaused(carrier) && destination == null && waypointTick != mob.tickCount) {
@@ -277,12 +300,12 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
                 }
             }
         }
-        if (minimumHeight > 0) {
-            double floor = FlightPositionSafety.minimumY(target, minimumHeight);
+        if (minimumHeight > 0 && bounds == null) {
+            double floor = FlightPositionSafety.minimumY(target, minimumHeight, obstacles);
             if (Double.isFinite(floor)) {
                 target.setY(Math.max(target.getY(), floor));
             }
-            double currentFloor = FlightPositionSafety.minimumY(current, minimumHeight);
+            double currentFloor = FlightPositionSafety.minimumY(current, minimumHeight, obstacles);
             if (Double.isFinite(currentFloor) && current.getY() < currentFloor) {
                 target.setY(Math.max(target.getY(), currentFloor));
             }
@@ -290,7 +313,7 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
         var delta = new FlightVector(target.getX() - current.getX(), target.getY() - current.getY(),
             target.getZ() - current.getZ());
         // Adopt collision feedback and explicit native impulses (damage/launch), but never integrate ordinary drag.
-        if (mob.horizontalCollision || mob.verticalCollision || mob.hurtMarked) {
+        if (!ownsPhysics && (mob.horizontalCollision || mob.verticalCollision) || mob.hurtMarked) {
             Vec3 actual = mob.getDeltaMovement();
             velocity = new FlightVector(actual.x, actual.y, actual.z);
         }
@@ -320,6 +343,17 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
         previousPosition = current.clone();
         // Native travel still handles collisions and drag after this tick's commanded displacement.
         // The next motor tick supplies the next displacement, so drag never becomes a feature-specific multiplier.
+        // Native collision cannot exclude one block family. Only bypass it after the full swept body
+        // has passed our solid/liquid/loaded-chunk checks; every commanded tick is checked again.
+        if (destination != null && obstacles == FlightObstacles.IGNORE_LEAVES) {
+            if (!ownsPhysics) {
+                previousPhysics = mob.noPhysics;
+                ownsPhysics = true;
+            }
+            mob.noPhysics = true;
+        } else {
+            restorePhysics();
+        }
         mob.setDeltaMovement(new Vec3(velocity.x(), velocity.y(), velocity.z()));
         if (velocity.length() > 0.0001) {
             Location facing = current.clone().setDirection(
@@ -334,7 +368,12 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
     private Location externalWaypoint(final Location current) {
         if (mob.tickCount >= routeAfter) {
             routeAfter = mob.tickCount + 5;
-            direct = clearLine(current, destination);
+            Location probe = destination;
+            if (obstacles == FlightObstacles.IGNORE_LEAVES && current.distanceSquared(destination) > 256) {
+                // Long canopy orders use bounded lookahead instead of a full-area ray or native leaf avoidance.
+                probe = current.clone().add(destination.toVector().subtract(current.toVector()).normalize().multiply(16));
+            }
+            direct = clearLine(current, probe);
             if (direct) {
                 carrier.getPathfinder().stopPathfinding();
                 clearRoute = true;
@@ -371,10 +410,17 @@ public final class V26_2FlightMoveControl extends MoveControl<Mob> {
             Location point = from.clone().add((to.getX() - from.getX()) * fraction,
                 (to.getY() - from.getY()) * fraction, (to.getZ() - from.getZ()) * fraction);
             if (this.bounds != null && !this.bounds.contains(point.getX(), point.getY(), point.getZ())
-                || !FlightPositionSafety.isClear(point, width, bounds.getHeight())) {
+                || !FlightPositionSafety.isClear(point, width, bounds.getHeight(), obstacles)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private void restorePhysics() {
+        if (ownsPhysics) {
+            mob.noPhysics = previousPhysics;
+            ownsPhysics = false;
+        }
     }
 }

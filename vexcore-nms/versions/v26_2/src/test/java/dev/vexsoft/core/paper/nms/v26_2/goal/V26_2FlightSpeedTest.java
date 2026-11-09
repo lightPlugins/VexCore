@@ -5,11 +5,72 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import org.junit.jupiter.api.Test;
 
 /** Runs actual motor ticks, including native motion fields, arrival and obstacle rejection. */
 final class V26_2FlightSpeedTest {
+
+    @Test
+    void longCanopyOrdersKeepFlyingBeyondTheNativeDirectRouteLimit() throws Exception {
+        try (var flight = new FlightFixture(0)) {
+            flight.leaves = true;
+            var target = flight.position.clone().add(40, 0, 0);
+            flight.control.flyTo(target, 8, new FlightBounds(20.5, 0.5, 40, 64, 70),
+                FlightObstacles.IGNORE_LEAVES);
+            for (int tick = 0; tick < 140; tick++) {
+                flight.tick();
+            }
+            assertTrue(flight.position.distance(target) < 0.051);
+            assertEquals(0, flight.pathRequests);
+        }
+    }
+
+    @Test
+    void leafOrdersUseNativePhysicsOverrideButStillRejectWallsLiquidsAndUnloadedChunks() throws Exception {
+        try (var flight = new FlightFixture(1)) {
+            flight.leaves = true;
+            var bounds = new FlightBounds(0.5, 0.5, 10, 64, 70);
+            var target = flight.position.clone().add(4, 0, 0);
+            flight.control.flyTo(target, 8, bounds, FlightObstacles.IGNORE_LEAVES);
+            for (int tick = 0; tick < 50; tick++) {
+                flight.tick();
+            }
+            assertTrue(flight.position.distance(target) < 0.051);
+            assertTrue(flight.nativeMob.noPhysics, "Native travel must actually pass the leaves");
+            assertEquals(65, flight.position.getY(), 0.000001);
+            flight.control.release();
+            assertFalse(flight.nativeMob.noPhysics, "Releasing work must restore the previous native physics");
+        }
+        for (int obstruction = 0; obstruction < 3; obstruction++) {
+            try (var flight = new FlightFixture(0)) {
+                flight.wall = obstruction == 0;
+                flight.leaves = obstruction == 1;
+                flight.liquid = obstruction == 1;
+                flight.loaded = obstruction != 2;
+                flight.control.flyTo(flight.position.clone().add(4, 0, 0), 8, null,
+                    FlightObstacles.IGNORE_LEAVES);
+                for (int tick = 0; tick < 30; tick++) {
+                    flight.tick();
+                }
+                assertTrue(flight.position.getX() < 1.7);
+            }
+        }
+    }
+
+    @Test
+    void boundedWorkHoldsDoNotGetLiftedByTheFollowHoverClearance() throws Exception {
+        try (var flight = new FlightFixture(1)) {
+            flight.position.setY(64);
+            var bounds = new FlightBounds(0.5, 0.5, 10, 64, 70);
+            flight.control.flyTo(flight.position.clone().add(4, 0, 0), 8, bounds);
+            for (int tick = 0; tick < 30; tick++) {
+                flight.tick();
+            }
+            assertEquals(64, flight.position.getY(), 0.000001);
+        }
+    }
 
     @Test
     void nativeDragDoesNotChangeTheConfiguredTimeToCruisingSpeed() throws Exception {

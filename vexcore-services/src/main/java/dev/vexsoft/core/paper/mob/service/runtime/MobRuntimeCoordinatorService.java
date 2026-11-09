@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.mob.service.runtime;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
@@ -54,6 +55,10 @@ public interface MobRuntimeCoordinatorService extends VexService {
     /** Restricts an owned flight order to a caller-supplied volume. */
     FlightState flyTo(ServiceOwner owner, MobHandle handle, Location destination,
         double speed, FlightBounds bounds);
+
+    /** Applies the owned order's terrain exclusions to planning and native movement together. */
+    FlightState flyTo(ServiceOwner owner, MobHandle handle, Location destination,
+        double speed, FlightBounds bounds, FlightObstacles obstacles);
 
     /** Releases explicit flight back to goals without discarding momentum. */
     void releaseFlight(ServiceOwner owner, MobHandle handle);

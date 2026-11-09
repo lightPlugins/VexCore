@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.nms.v26_2;
 
 import dev.vexsoft.core.api.mob.flight.FlightBounds;
+import dev.vexsoft.core.api.mob.flight.FlightObstacles;
 import dev.vexsoft.core.api.mob.flight.FlightProfile;
 import dev.vexsoft.core.api.mob.flight.FlightState;
 import dev.vexsoft.core.api.service.registry.Dependencies;
@@ -135,11 +136,17 @@ public final class VexNmsMobAdapterService implements NmsMobAdapterService {
 
     @Override
     public FlightState flyTo(final Mob mob, final Location destination, final double speed, final FlightBounds bounds) {
+        return flyTo(mob, destination, speed, bounds, FlightObstacles.SOLID);
+    }
+
+    @Override
+    public FlightState flyTo(final Mob mob, final Location destination, final double speed, final FlightBounds bounds,
+        final FlightObstacles obstacles) {
         var flight = V26_2FlightMoveControl.find(handle(mob).getHandle());
         if (flight == null) {
             throw new IllegalArgumentException("Carrier does not support managed flight");
         }
-        return flight.flyTo(destination, speed, bounds);
+        return flight.flyTo(destination, speed, bounds, obstacles);
     }
 
     @Override
