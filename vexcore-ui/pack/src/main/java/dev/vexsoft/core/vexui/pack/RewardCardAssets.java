@@ -3,6 +3,7 @@ package dev.vexsoft.core.vexui.pack;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
 import dev.vexsoft.core.paper.vexui.style.VexUITheme;
 import java.awt.AlphaComposite;
@@ -84,6 +85,9 @@ public final class RewardCardAssets {
                 fonts(root, "vexcore:reward/text/" + layout.variant(), marked, layout.ascent(0));
                 fonts(root, "vexcore:reward/quantity/" + layout.variant(), marked, layout.ascent(3));
             }
+        }
+        for (int part = 0; part < ProgressionLayout.PARTS; part++) {
+            fonts(root, ProgressionLayout.font(part), marked, ProgressionLayout.ascent(part));
         }
         frame(root);
     }

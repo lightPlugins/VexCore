@@ -136,6 +136,8 @@ public final class GenerateInteractiveUiPack {
             Files.readString(screenPack.resolve("assets/vexcore/shaders/include/screen_ui/v26_2.glsl")));
         write(output, "assets/vexcore/shaders/include/reward_cards/v26_2.glsl",
             Files.readString(screenPack.resolve("assets/vexcore/shaders/include/reward_cards/v26_2.glsl")));
+        write(output, "assets/vexcore/shaders/include/progression/v26_2.glsl",
+            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/progression/v26_2.glsl")));
     }
 
     private static String replaceOnce(String source, String expected, String replacement) {

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
+import dev.vexsoft.core.paper.screenui.render.ProgressionRenderer;
 import dev.vexsoft.core.paper.screenui.render.RewardCardRenderer;
 import dev.vexsoft.core.paper.screenui.reward.RewardCard;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
@@ -53,6 +56,24 @@ public final class RewardCardProtocolTest {
             assertTrue(fonts(rendered).contains("reward/quantity/0_0"));
             assertFalse(fonts(rendered).contains("minecraft:default"));
         }
+    }
+
+    @Test
+    void progressionKeepsZeroNetAdvanceAndSeparateCarriersAcrossClockWrap() {
+        var notice = new ProgressionNotice(Component.text("Äußerst gründlicher Bergbau"),
+            Component.text("Berufslevel erreicht"), Component.text("Kohle abbauen"), 9999, 10000);
+        Component rendered = ProgressionRenderer.render(notice, 24001);
+        assertEquals(0, advance(rendered));
+        for (int part = 0; part < ProgressionLayout.PARTS; part++) {
+            assertTrue(fonts(rendered).contains(ProgressionLayout.font(part)));
+            for (int offset = 0; offset < 300; offset++) {
+                float position = 8 - ProgressionLayout.ascent(part) + offset;
+                assertEquals(part, (int) Math.floor((position - 98304.0) / 512.0));
+            }
+        }
+        rendered.children().stream()
+            .filter(child -> child.font() != null && child.font().value().startsWith("progression/"))
+            .forEach(child -> assertEquals(1, child.color().value() & 127));
     }
 
     private static int advance(Component component) {

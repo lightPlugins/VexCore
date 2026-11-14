@@ -121,6 +121,45 @@ Install the matching schema-3 pack and plugin build together when upgrading from
 
 ## Reusable components
 
+### Compact tabbed menus
+
+`VexUITabbedMenuTemplate` composes a shared `VexUIMenuHeader`, attached `VexUITabs.Tab` choices,
+caller-owned content, and a footer. `Layout.compact(560, 176)` reserves the existing 18-pixel header,
+18-pixel tab row, 176-pixel content area, and 18-pixel footer within a 560 by 259 logical-pixel frame,
+including renderer padding. This is a compact layout profile, not a general VexUI canvas limit.
+
+The header separates `sections` (for example Equipment / Arkies / Combat) from the page's `tabs`.
+Equal flexible header sides center section navigation independently of title and Back/Close widths.
+Back uses the existing session navigation and a 66-pixel control with centered text; Close and Back
+can be disabled independently. Views supply localized labels, availability, action IDs, and click sounds.
+Register section and tab actions in the same frame action map before rendering. Keep active IDs and
+all gameplay operations in the viewer's existing view rather than in a shared template instance.
+
+```java
+var template = new VexUITabbedMenuTemplate(
+    VexUITabbedMenuTemplate.Layout.compact(560, 176),
+    new VexUITabbedMenuTemplate.Style(
+        session.styleSheet().selected(), session.styleSheet().normal().lightBorder(), 0xC5A164
+    )
+);
+var tabs = List.of(
+    new VexUITabs.Tab("tab.overview", localizedOverview, -1, true, null),
+    new VexUITabs.Tab("tab.materials", localizedMaterials, -1, true, null)
+);
+return template.render(session, localizedTitle, header, tabs, activeTab, content, footer, actions);
+```
+
+`VexUIMenuHeader` accepts the heading element, section options, active section ID, and localized
+`Controls`. Empty sections retain a simple title/Back/Close header. A template overload accepts a custom
+second row for column headings on detail pages. Both overloads retain the supplied content and footer
+elements and their exact reserved positions; no gameplay layout is rebuilt by the template.
+
+Attached tabs use rectangular outlines. Their active fill comes from the content panel's background,
+the active outline comes from the template style, and the bottom edge stays open. A width of `-1`
+shares remaining space; explicit widths retain compact tabs with longer labels. Existing
+`VexUITabs.controls` behavior is unchanged for other consumers. The template uses existing pack tiles
+and fonts, so these components require no new resource-pack schema.
+
 Components compose the existing row, column, grid and button primitives. They do not introduce a second layout
 engine or embed economy rules. Pass localized `Component` labels, the current stylesheet and a frame-local action
 map. Each component needs a unique action prefix; `VexUIActions.register` rejects collisions explicitly.

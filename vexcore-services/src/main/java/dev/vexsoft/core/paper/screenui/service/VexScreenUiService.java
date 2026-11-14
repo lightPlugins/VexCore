@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.screenui.service;
 
 import dev.vexsoft.core.api.service.cache.CacheService;
+import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -12,6 +13,7 @@ import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.dialogue.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.dialogue.VexDialoguePanel;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiAvatarLoader;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
 import java.util.List;
@@ -41,6 +43,13 @@ public final class VexScreenUiService implements ScreenUiService, AutoCloseable 
             throw new IllegalStateException("UI owner is closed");
         }
         return avatars.avatar(player);
+    }
+
+    @Override
+    public synchronized void showProgression(VexPlayer player, List<ProgressionNotice> notices) {
+        if (!closed && !notices.isEmpty()) {
+            coordinator.showProgression(owner, player, notices);
+        }
     }
 
     @Override

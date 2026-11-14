@@ -1,5 +1,8 @@
 package dev.vexsoft.core.paper.screenui.service;
 
+import dev.vexsoft.core.api.player.VexPlayer;
+import dev.vexsoft.core.api.player.profile.PlayerProfileContext;
+import dev.vexsoft.core.api.player.profile.ProfileDomain;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -13,6 +16,9 @@ import dev.vexsoft.core.paper.screenui.layout.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.layout.TextureLayout;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelBounds;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelLayout;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
+import dev.vexsoft.core.paper.screenui.render.ProgressionRenderer;
 import dev.vexsoft.core.paper.screenui.render.RewardCardRenderer;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiDialogueLayout;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiPanelRenderer;
@@ -21,6 +27,7 @@ import dev.vexsoft.core.paper.screenui.reward.RewardCard;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
+import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -42,6 +49,9 @@ import org.bukkit.entity.Player;
 @Dependencies({ScheduleService.class, ScreenUiVersionDefinition.class})
 public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorService, AutoCloseable {
 
+    private static final String PROGRESSION_SCREEN = "vexcore:progression";
+    private static final int MAX_PENDING_PROGRESSION = 8;
+
     // Handles and scheduled callbacks share one private monitor, independent of locks taken by callers.
     private final Object lock = new Object();
     private final ScheduleService schedules;
@@ -52,6 +62,76 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
     public VexScreenUiCoordinatorService(VexServiceRegistry services) {
         schedules = services.require(ScheduleService.class);
         version = services.require(ScreenUiVersionDefinition.class);
+    }
+
+    @Override
+    @Synchronized("lock")
+    public void showProgression(ServiceOwner owner, VexPlayer account, List<ProgressionNotice> notices) {
+        var viewer = account.findPlatformPlayer(Player.class).orElse(null);
+        if (closed || notices.isEmpty() || viewer == null || !viewer.isOnline()) {
+            return;
+        }
+
+        var active = (Handle) find(owner, viewer, PROGRESSION_SCREEN).orElse(null);
+        if (active != null && (active.progression == null || !active.progression.matches(account, viewer))) {
+            active.close();
+            active = null;
+        }
+        Session session = sessions.get(viewer.getUniqueId());
+        if (active == null && session != null && session.screens.size() >= 8) {
+            return;
+        }
+        if (active == null) {
+            active = (Handle) open(owner, viewer, PROGRESSION_SCREEN);
+            active.progression = new ProgressionBatch(account, viewer);
+        }
+        for (ProgressionNotice notice : notices) {
+            if (active.progression.pending.size() >= MAX_PENDING_PROGRESSION) {
+                active.progression.pending.removeFirst();
+            }
+            active.progression.pending.addLast(notice);
+        }
+        if (active.progression.task == null) {
+            startProgression(active);
+        }
+    }
+
+    private void startProgression(Handle handle) {
+        var batch = handle.progression;
+        var viewer = handle.session.player;
+        if (!batch.matches(batch.account, viewer) || batch.pending.isEmpty()) {
+            handle.close();
+            return;
+        }
+        long started = viewer.getWorld().getGameTime() + 2;
+        batch.ends = started + ProgressionLayout.LIFETIME;
+        try {
+            handle.put("notice", new Element(40, ProgressionRenderer.render(batch.pending.removeFirst(), started), null));
+            if (!handle.closed && batch.task == null) {
+                batch.task = schedules.runForTimer(viewer, 1, 1, () -> tickProgression(handle), handle::close)
+                    .orElse(null);
+                if (batch.task == null) {
+                    handle.close();
+                }
+            }
+        } catch (RuntimeException failure) {
+            handle.close();
+            throw failure;
+        }
+    }
+
+    @Synchronized("lock")
+    private void tickProgression(Handle handle) {
+        if (handle.closed) {
+            return;
+        }
+        var batch = handle.progression;
+        Player viewer = handle.session.player;
+        if (!batch.matches(batch.account, viewer)) {
+            handle.close();
+        } else if (viewer.getWorld().getGameTime() >= batch.ends) {
+            startProgression(handle);
+        }
     }
 
     @Override
@@ -136,6 +216,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         session.screens.values().forEach(handle -> {
             handle.closed = true;
             handle.elements.clear();
+            handle.clearProgression();
         });
         session.screens.clear();
 
@@ -263,6 +344,28 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
 
     }
 
+    private static final class ProgressionBatch {
+
+        private final VexPlayer account;
+        private final UUID world;
+        private final Map<ProfileDomain, PlayerProfileContext> contexts;
+        private final ArrayDeque<ProgressionNotice> pending = new ArrayDeque<>();
+        private VexTask task;
+        private long ends;
+
+        private ProgressionBatch(VexPlayer account, Player viewer) {
+            this.account = account;
+            world = viewer.getWorld().getUID();
+            contexts = Map.copyOf(account.profileContexts());
+        }
+
+        private boolean matches(VexPlayer candidate, Player viewer) {
+            return account == candidate && viewer.isOnline()
+                && account.findPlatformPlayer(Player.class).orElse(null) == viewer
+                && world.equals(viewer.getWorld().getUID()) && contexts.equals(account.profileContexts());
+        }
+    }
+
     /** Holds a player's screens, shared boss bar, and pending render task. */
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     public static final class Session {
@@ -283,8 +386,16 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         private final Session session;
         private final ScreenKey key;
         private final Map<String, Element> elements = new LinkedHashMap<>();
+        private ProgressionBatch progression;
         @Getter(onMethod_ = @Override)
         private volatile boolean closed;
+
+        private void clearProgression() {
+            if (progression != null && progression.task != null) {
+                progression.task.cancel();
+            }
+            progression = null;
+        }
 
         @Override
         public void rewardCard(String id, RewardCard card, Component subtitle, RewardCardLayout layout) {
@@ -388,6 +499,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
 
                 closed = true;
                 elements.clear();
+                clearProgression();
                 session.screens.remove(key, this);
 
                 if (session.screens.isEmpty()) {

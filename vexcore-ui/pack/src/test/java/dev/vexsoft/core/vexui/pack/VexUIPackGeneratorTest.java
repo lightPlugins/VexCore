@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
 import dev.vexsoft.core.paper.vexui.style.VexUITheme;
 import java.nio.charset.StandardCharsets;
@@ -63,6 +64,7 @@ public final class VexUIPackGeneratorTest {
             assertTrue(files.filter(path -> path.toString().endsWith(".png")).count() > 27);
         }
         assertTrue(properties.containsKey("text.10022"), "The rarity star must use its actual Unicode glyph");
+        assertTrue(properties.containsKey("text.9671"), "The unlock indicator needs the diamond glyph");
         var frame = ImageIO.read(first.resolve("assets/vexcore/textures/reward/frame.png").toFile());
         assertEquals(224, frame.getWidth());
         assertEquals(42, frame.getHeight());
@@ -91,6 +93,13 @@ public final class VexUIPackGeneratorTest {
                         assertEquals(layout.ascent(primitive), provider.get("ascent").asInt());
                     }
                 }
+            }
+        }
+        for (int part = 0; part < ProgressionLayout.PARTS; part++) {
+            var font = json.readTree(first.resolve("assets/vexcore/font/progression/" + part + ".json").toFile());
+            for (var provider : font.get("providers")) {
+                assertEquals(ProgressionLayout.ascent(part), provider.get("ascent").asInt());
+                assertTrue(provider.get("file").asText().startsWith("vexcore:reward/text/"));
             }
         }
     }

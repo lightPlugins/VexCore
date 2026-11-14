@@ -24,5 +24,13 @@ Four primitives and sixteen current/previous slot pairs encode shared transforms
 a pulse bit and 3-bit tint channels. `RewardCardAssets` generates marked fixed-width menu text, model previews and
 the VexUI frame. Existing anchored font kinds remain unchanged.
 
+Progression notices use carrier positions 98304–101887 and the same marked text atlas. The seven
+parts draw labels, the new level, four fragments of the previous level, and sparks. RGB carries
+the modulo-120 start tick, a text tone, compact sizing for long numbers, and a twinkle index for
+ambient sparks. The GUI text shader draws a glyph-shaped shadow and three shine passes across
+the visible text. The exit lifts the glyphs in a wave, dissolves their ink and shadow, and
+reuses the impact spark quads for an upward trail. It finishes by tick 102 and the server retires
+it at tick 104.
+
 Generated-font tests verify kind/anchor recovery after integer-to-float conversion, marker
 pixels, measured dimensions and opacity payloads. Client acceptance testing is separate.

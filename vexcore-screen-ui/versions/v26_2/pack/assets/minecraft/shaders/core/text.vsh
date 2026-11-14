@@ -35,8 +35,11 @@ flat out float vexSolidPixel;
 out vec2 vexRewardPoint;
 flat out float vexRewardFrame;
 flat out float vexRewardAge;
+out vec2 vexProgressionCell;
+flat out int vexProgressionPart;
 #moj_import <vexcore:screen_ui/v26_2.glsl>
 #moj_import <vexcore:reward_cards/v26_2.glsl>
+#moj_import <vexcore:progression/v26_2.glsl>
 #endif
 
 void main() {
@@ -49,7 +52,12 @@ void main() {
     vexRewardPoint = vec2(0.0);
     vexRewardFrame = 0.0;
     vexRewardAge = -1.0;
+    vexProgressionCell = vec2(0.0);
+    vexProgressionPart = -1;
     position = vex_reward_card_position(position, UV0, gl_VertexID);
+    if (vexOwned < 0.5) {
+        position = vex_progression_position(position, UV0, gl_VertexID);
+    }
     if (vexOwned < 0.5) {
         position = vex_screen_ui_position(position, UV0, gl_VertexID);
     }
