@@ -14,6 +14,7 @@ import dev.vexsoft.core.api.service.localization.LocalizedMessageService;
 import dev.vexsoft.core.api.service.localization.ThemeColorService;
 import dev.vexsoft.core.api.service.messaging.MessagingService;
 import dev.vexsoft.core.api.service.network.AdmissionService;
+import dev.vexsoft.core.api.service.network.JoinPreparationService;
 import dev.vexsoft.core.api.service.network.PlayerDirectoryService;
 import dev.vexsoft.core.api.service.placeholder.PlaceholderService;
 import dev.vexsoft.core.api.service.player.DataService;
@@ -23,6 +24,7 @@ import dev.vexsoft.core.api.service.player.profile.ProfileLeaseService;
 import dev.vexsoft.core.api.service.registry.ServiceRegistry;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.common.admission.service.VexAdmissionService;
+import dev.vexsoft.core.common.admission.service.VexJoinPreparationService;
 import dev.vexsoft.core.common.cache.service.VexCacheService;
 import dev.vexsoft.core.common.configuration.service.VexConfigurationService;
 import dev.vexsoft.core.common.configuration.service.VexPublishedConfigurationService;
@@ -252,6 +254,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(ServerIdentityService.class, VexServerIdentityService.class);
         // Gameplay rewards require native profile sessions during their own service registration phase.
         coreServices.register(AdmissionService.class, VexAdmissionService.class);
+        coreServices.register(JoinPreparationService.class, VexJoinPreparationService.class);
         coreServices.register(TransferDisplayService.class, VexTransferDisplayService.class);
         coreServices.register(ProfileSessionService.class, VexProfileSessionService.class);
         coreServices.register(PublishedConfigurationService.class, VexPublishedConfigurationService.class);

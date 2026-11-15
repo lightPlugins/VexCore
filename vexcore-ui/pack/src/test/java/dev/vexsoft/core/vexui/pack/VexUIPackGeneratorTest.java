@@ -40,7 +40,7 @@ public final class VexUIPackGeneratorTest {
         assertFalse(Files.exists(first.resolve("assets/minecraft")));
         assertTrue(Files.readString(first.resolve("assets/vexcore/font/vexui/icons/y_0.json"))
             .contains("minecraft:item/potato.png"));
-        assertTrue(Files.readString(first.resolve("pack.mcmeta")).contains("[88,0]"));
+        assertTrue(Files.readString(first.resolve("pack.mcmeta")).contains("[97,1]"));
         var properties = new Properties();
         try (var reader = Files.newBufferedReader(first.resolve("vexui-manifest.properties"))) {
             properties.load(reader);

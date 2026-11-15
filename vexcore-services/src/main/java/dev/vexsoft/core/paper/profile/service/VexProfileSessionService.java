@@ -1,6 +1,7 @@
 package dev.vexsoft.core.paper.profile.service;
 
 import dev.vexsoft.core.api.messaging.MessageTarget;
+import dev.vexsoft.core.api.network.ArrivalRecovery;
 import dev.vexsoft.core.api.player.DataContainerKey;
 import dev.vexsoft.core.api.player.VexPlayer;
 import dev.vexsoft.core.api.player.profile.PlayerDataScope;
@@ -18,6 +19,7 @@ import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
 import dev.vexsoft.core.api.teleport.TeleportStatus;
+import dev.vexsoft.core.api.teleport.TransferOptions;
 import dev.vexsoft.core.common.data.redis.IndeterminateCommitException;
 import dev.vexsoft.core.common.messaging.teleport.TeleportCompletion;
 import dev.vexsoft.core.common.messaging.teleport.TeleportMessages;
@@ -376,6 +378,9 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                         return null;
                     });
                 }
+            } else if (session.arrival != null && session.arrival.options().recoveryDestination() != null) {
+                // Finish the failed handover and release its lease before kicking for the recovery route.
+                recovery = CompletableFuture.completedFuture(null);
             } else {
                 recovery = entity(platform, () -> {
                     platform.kick(Component.text(backend.getLoginKickMessage()));
@@ -881,8 +886,32 @@ public final class VexProfileSessionService implements ProfileSessionService, Au
                     TeleportMessages.COMPLETION, new TeleportCompletion(ticket.requestId(),
                         failure == null ? TeleportStatus.SUCCESS : TeleportStatus.FAILED,
                         failure == null ? "" : "The destination could not restore the transferred profile"));
-                return failure == null ? CompletableFuture.completedFuture(null) : CompletableFuture.failedFuture(failure);
+                return failure == null ? CompletableFuture.completedFuture(null)
+                    : recoverArrival(player, ticket).thenCompose(recovered -> CompletableFuture.failedFuture(failure));
             }));
+    }
+
+    private CompletableFuture<Void> recoverArrival(final VexPlayer player, final PlayerTransferTicket ticket) {
+        var destination = ticket.options().recoveryDestination();
+        var platform = player.findPlatformPlayer(Player.class).orElse(null);
+        if (destination == null || platform == null || destination.server().value().equals(serverId)) {
+            return CompletableFuture.completedFuture(null);
+        }
+        var request = UUID.randomUUID();
+        return storage.databaseTime().thenCompose(now -> transfers.prepare(new PlayerTransferTicket(request,
+            ticket.playerId(), serverId, destination.server().value(), destination, ticket.profiles(),
+            now + TimeUnit.SECONDS.toMillis(30), null, false,
+            new TransferOptions(null, ticket.options().presentation(), false)))).thenCompose(ignored ->
+            this.<Void>entity(platform, () -> {
+                if (platform.isConnected()) {
+                    platform.kick(ArrivalRecovery.reason(destination.server()));
+                }
+                return null;
+            })).exceptionallyCompose(failure -> transfers.cancel(ticket.playerId(), request)
+                .handle((cancelled, ignored) -> {
+                    plugin.getLogger().log(Level.WARNING, "Unable to create the replacement arrival ticket", failure);
+                    return null;
+                }));
     }
 
     private CompletableFuture<Void> validateArrival(final PlayerTransferTicket ticket) {

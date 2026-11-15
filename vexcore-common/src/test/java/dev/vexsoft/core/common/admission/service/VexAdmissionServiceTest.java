@@ -16,6 +16,7 @@ import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentChange;
 import dev.vexsoft.core.api.player.profile.storage.ProfileDocumentKey;
 import dev.vexsoft.core.api.player.profile.storage.StoredProfileDocument;
 import dev.vexsoft.core.api.service.player.profile.ProfileStorageService;
+import dev.vexsoft.core.api.service.network.JoinPreparationService.Stage;
 import dev.vexsoft.core.api.world.ServerPosition;
 import dev.vexsoft.core.api.world.WorldKey;
 import java.util.ArrayList;
@@ -35,6 +36,29 @@ import org.junit.jupiter.api.Test;
 
 /** Exercises two independent lobby instances against atomic asynchronous storage and authoritative time. */
 class VexAdmissionServiceTest {
+
+    @Test
+    void gardenPreparationIsClaimedOnceAndLateResultsCannotReviveCancelledRequests() {
+        try (var storage = new Storage()) {
+            var lobby = new VexJoinPreparationService(storage);
+            var firstWorker = new VexJoinPreparationService(storage);
+            var secondWorker = new VexJoinPreparationService(storage);
+            var request = UUID.randomUUID();
+            var player = UUID.randomUUID();
+            var destination = new ServerPosition(new ServerId("garden"), WorldKey.parse("test:garden_1"),
+                0.5, 80, 0.5, 0, 0);
+            lobby.enqueue(request, player, "lobby", "isles", 20).join();
+            assertEquals(Stage.WAITING, lobby.status(List.of(request)).join().get(request).stage());
+            var first = firstWorker.claim("isles", 1);
+            var second = secondWorker.claim("isles", 1);
+            assertEquals(1, first.join().size() + second.join().size());
+            firstWorker.complete(request, destination).join();
+            assertEquals(destination, lobby.status(List.of(request)).join().get(request).destination());
+            lobby.cancel(request).join();
+            secondWorker.complete(request, destination).join();
+            assertTrue(lobby.status(List.of(request)).join().isEmpty());
+        }
+    }
 
     @Test
     void farmingMapPoolsShareBackendCapacityAndOnlySelectLoadedDestinationWorlds() {

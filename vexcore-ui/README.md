@@ -1,6 +1,6 @@
 # VexUI
 
-VexCore's dialog-based UI framework for Paper 26.2. Public classes use the `VexUI` prefix.
+VexCore's dialog-based UI framework for Paper 26.3. Public classes use the `VexUI` prefix.
 It runs inside VexCore and does not depend on VexIsles.
 
 ## Modules and versions
@@ -10,7 +10,7 @@ It runs inside VexCore and does not depend on VexIsles.
 - `:vexcore-ui:pack`: deterministic fonts, frame geometry, vanilla icon definitions and matching measurements.
 
 The Java artifacts follow VexCore's release version. API generation 2 and pack schema 3 are exposed through
-`VexUIFrame`; they are separate from the Minecraft resource-pack format (88 for this 26.2 profile).
+`VexUIFrame`; they are separate from the Minecraft resource-pack format (88 for this 26.3 profile).
 There is currently one Paper backend and no NMS dependency. Minecraft 26.3 has not been validated.
 API generation 2 removes the unused profession goal method and snapshot field. Plugins implementing the
 profession provider or constructing its snapshots must rebuild against this API. Schema 3 adds Unicode fallback
@@ -24,17 +24,17 @@ From the repository root:
 .\gradlew.bat :vexcore-ui:api:build :vexcore-ui:common:build :vexcore-ui:pack:build :vexcore-paper:build
 ```
 
-The first build downloads and SHA-1-verifies the pinned official 26.2 client to measure vanilla fonts and icons.
-For an offline build, provide `-PvexuiClientJar=C:/path/to/official-26.2-client.jar` once. The JAR is cached
+The first build downloads and SHA-1-verifies the pinned official 26.3 client to measure vanilla fonts and icons.
+For an offline build, provide `-PvexuiClientJar=C:/path/to/official-26.3-client.jar` once. The JAR is cached
 under `vexcore-ui/pack/build/minecraft`. Vanilla PNGs are read for measurements, not copied into our pack.
 The build also verifies and bundles the official English and German vanilla dictionaries as server resources.
 For a first offline build, supply the pinned German JSON through `-PvexuiGermanTranslations=C:/path/to/de_de.json`;
-subsequent builds reuse `.gradle/vexui/vanilla-de_de-26.2.json`. No dictionaries are downloaded during gameplay.
+subsequent builds reuse `.gradle/vexui/vanilla-de_de-26.3.json`. No dictionaries are downloaded during gameplay.
 
 Outputs:
 
 - `vexcore-paper/build/libs/VexCore-1.0.0-SNAPSHOT.jar`
-- `vexcore-ui/pack/build/libs/VexCore-VexUI-26.2.zip` (standalone, no shader changes)
+- `vexcore-ui/pack/build/libs/VexCore-VexUI-26.3.zip` (standalone, no shader changes)
 - `vexcore-paper/build/libs/VexCore-ResourcePack-1.0.0-SNAPSHOT.zip` (existing Core pack plus VexUI assets)
 
 Load the VexUI pack, or the updated combined Core pack, on the client before opening the shop:
@@ -348,7 +348,7 @@ preview decodes the actual generated fonts and checks every pixel's action targe
 The component integration tests also write `components.png` and `components-inspect.png` beside that shop preview.
 
 The CPU preview is not an in-game acceptance test. Verify the loaded pack, GUI scales, tooltips, cursor-preserving
-updates, search return, item grants, full inventory, Back/Close/Escape and disconnect on a Paper 26.2 test server.
+updates, search return, item grants, full inventory, Back/Close/Escape and disconnect on a Paper 26.3 test server.
 
 ## Rendering performance
 

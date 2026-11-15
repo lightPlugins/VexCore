@@ -16,17 +16,17 @@ tasks.test {
 dependencies {
     implementation(project(":vexcore-ui:common"))
     implementation(project(":vexcore-screen-ui:common"))
-    testImplementation(project(":vexcore-screen-ui:versions:v26_2"))
+    testImplementation(project(":vexcore-screen-ui:versions:v26_3"))
     api(project(":vexcore-paper-api"))
     implementation(project(":vexcore-common"))
     implementation(project(":vexcore-nms:common"))
 
-    compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
+    compileOnly("io.papermc.paper:paper-api:26.3.build.241-stable")
     compileOnly("me.clip:placeholderapi:2.12.2")
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.21.2")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
 
-    testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.241-stable")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

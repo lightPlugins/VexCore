@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.paper.screenui.UiTexture;
 import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
-import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +38,7 @@ final class UpgradeAnimationPackTest {
     @Test
     void everyRitualSpriteFits256PixelsAndHasItsOwnedFontAndMetadata() throws Exception {
         var pack = Path.of(System.getProperty("screenUiPackDirectory"));
-        var version = new V26_2ScreenUiVersionDefinition();
+        var version = new V26_3ScreenUiVersionDefinition();
         var names = new ArrayList<String>();
         names.add("frame");
         for (int frame = 0; frame < 16; frame++) {

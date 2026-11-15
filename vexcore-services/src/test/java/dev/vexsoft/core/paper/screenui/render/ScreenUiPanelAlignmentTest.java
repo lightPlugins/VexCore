@@ -10,7 +10,7 @@ import dev.vexsoft.core.paper.screenui.layout.HorizontalAlignment;
 import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelLayout;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
-import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -53,7 +53,7 @@ final class ScreenUiPanelAlignmentTest {
             var original = ScreenUiPanelRenderer.measure(content, base);
             for (HorizontalAlignment alignment : HorizontalAlignment.values()) {
                 var layout = base.toBuilder().textAlign(alignment).build();
-                var rendered = ScreenUiPanelRenderer.prepare(content, layout, new V26_2ScreenUiVersionDefinition());
+                var rendered = ScreenUiPanelRenderer.prepare(content, layout, new V26_3ScreenUiVersionDefinition());
                 assertEquals(original, rendered.bounds(), "Alignment must preserve panel size and track placement");
                 var lines = new ArrayList<RenderedLine>();
                 int[] advance = {0};
@@ -89,7 +89,7 @@ final class ScreenUiPanelAlignmentTest {
         );
         var layout = UiPanelLayout.builder().maxWidth(128).textAlign(HorizontalAlignment.RIGHT)
             .style(new UiPanelStyle(false, 0.15, 3, 4, 3)).build();
-        var rendered = ScreenUiPanelRenderer.prepare(content, layout, new V26_2ScreenUiVersionDefinition());
+        var rendered = ScreenUiPanelRenderer.prepare(content, layout, new V26_3ScreenUiVersionDefinition());
         var details = rendered.bounds().slots().get("details");
         var avatar = rendered.bounds().slots().get("avatar");
         var lines = new ArrayList<RenderedLine>();

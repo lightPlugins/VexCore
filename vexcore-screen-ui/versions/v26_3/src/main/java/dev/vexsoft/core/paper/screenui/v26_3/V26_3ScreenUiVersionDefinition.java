@@ -1,0 +1,244 @@
+package dev.vexsoft.core.paper.screenui.v26_3;
+
+import dev.vexsoft.core.api.service.registry.Dependencies;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.screenui.UiTexture;
+import dev.vexsoft.core.paper.screenui.animation.UiTransition;
+import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
+import dev.vexsoft.core.paper.screenui.layout.UiScale;
+import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
+import java.io.IOException;
+import java.util.Locale;
+import java.util.Properties;
+import java.util.Set;
+import lombok.NoArgsConstructor;
+import net.kyori.adventure.key.Key;
+
+/** Minecraft 26.3, resource-pack format 97.1, VexCore shader protocol 10. */
+@NoArgsConstructor
+@Dependencies
+public final class V26_3ScreenUiVersionDefinition implements ScreenUiVersionDefinition {
+
+    @Override
+    public Key panelFont(ScreenAnchor anchor, int y, double scale, int radius) {
+        UiScale.validate(scale);
+        if (radius < 0 || radius > 8) {
+            throw new IllegalArgumentException("Panel radius must be between zero and eight");
+        }
+        return font("rounded_" + Math.round(scale * 100), anchor, y);
+    }
+
+    @Override
+    public Key pixelFont(ScreenAnchor anchor, int y, double scale) {
+        UiScale.validate(scale);
+        return font("pixel_" + Math.round(scale * 100), anchor, y);
+    }
+
+    @Override
+    public Key transitionTextFont(ScreenAnchor anchor, int y, double scale, UiTransition transition) {
+        UiScale.validate(scale);
+        String kind = transition.kind() == UiTransition.Kind.MOVE_X ? "move" : "fade";
+        return font(
+            "transition_" + kind + "_" + transition.durationTicks() + "_"
+                + Math.round(scale * 100), anchor, y
+        );
+    }
+
+    @Override
+    public Key textFont(ScreenAnchor anchor, int y, boolean animated, double scale) {
+        return font(scalePrefix(scale) + (animated ? "toast_text" : "text"), anchor, y);
+    }
+
+    @Override
+    public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, double scale) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, animated, scale);
+        }
+        String prefix = scalePrefix(scale);
+
+        if (scale == 1.0) {
+            return textureFont(texture, anchor, y, animated, false);
+        }
+
+        if (!texture.equals(UiTexture.card(texture.height())) || animated && texture.height() != 20) {
+            throw new IllegalArgumentException("Scaled textures require matching card metrics");
+        }
+
+        return font(prefix + (animated ? "toast_card" : "card_" + texture.height()), anchor, y);
+    }
+
+    @Override
+    public Key iconFont(Key source, ScreenAnchor anchor, int y, boolean animated, double scale) {
+        horizontalTransport(y);
+
+        if (!source.value().startsWith("icon/")) {
+            throw new IllegalArgumentException("Invalid icon font");
+        }
+
+        return Key.key(
+            source.namespace(),
+            "ui/v26_3/" + source.value() + "/" + scalePrefix(scale) + (animated ? "toast_" : "") + anchor.name()
+                .toLowerCase(Locale.ROOT)
+        );
+    }
+
+    private static String scalePrefix(double scale) {
+        UiScale.validate(scale);
+
+        return scale == 1.0 ? "" : scale == 0.5 ? "compact_" : "scale_" + Math.round(scale * 100) + "_";
+    }
+
+    private static final Properties PROTOCOL = loadProtocol();
+
+    public V26_3ScreenUiVersionDefinition(VexServiceRegistry services) {
+    }
+
+    @Override
+    public String getAdapterVersion() {
+        return "v26_3";
+    }
+
+    @Override
+    public Set<String> getSupportedVersions() {
+        return Set.of("26.3");
+    }
+
+    @Override
+    public Key textFont(ScreenAnchor anchor, int y) {
+        return font("text", anchor, y);
+    }
+
+    @Override
+    public int horizontalTransport(int y) {
+        if (y < -256 || y > 256) {
+            throw new IllegalArgumentException("Anchored glyph origin must be within -256..256 GUI pixels");
+        }
+
+        return y * 4096;
+    }
+
+    @Override
+    public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, false, 1.0);
+        }
+        if (texture.equals(UiTexture.card(texture.height()))) {
+            return font("card_" + texture.height(), anchor, y);
+        }
+
+        if (!UiTexture.PANEL.equals(texture)) {
+            throw new IllegalArgumentException("Anchored textures currently require UiTexture.PANEL");
+        }
+
+        return font("panel", anchor, y);
+    }
+
+    @Override
+    public Key animatedTextFont(ScreenAnchor anchor, int y) {
+        return font("toast_text", anchor, y);
+    }
+
+    @Override
+    public Key textFont(ScreenAnchor anchor, int y, boolean animated, boolean compact) {
+        return font((compact ? "compact_" : "") + (animated ? "toast_text" : "text"), anchor, y);
+    }
+
+    @Override
+    public Key textureFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, boolean compact) {
+        if (texture.fontPrefix().value().startsWith("sprite/")) {
+            return spriteFont(texture, anchor, y, animated, compact ? 0.5 : 1.0);
+        }
+        if (!compact) {
+            return animated ? animatedTextureFont(texture, anchor, y) : textureFont(texture, anchor, y);
+        }
+
+        if (!texture.equals(UiTexture.card(texture.height()))) {
+            throw new IllegalArgumentException("Compact textures require matching card metrics");
+        }
+
+        if (animated && texture.height() != 20) {
+            throw new IllegalArgumentException("Animated texture requires toast card");
+        }
+
+        return font("compact_" + (animated ? "toast_card" : "card_" + texture.height()), anchor, y);
+    }
+
+    @Override
+    public Key iconFont(Key source, ScreenAnchor anchor, int y, boolean animated, boolean compact) {
+        if (!compact) {
+            return iconFont(source, anchor, y, animated);
+        }
+
+        if (!source.value().startsWith("icon/")) {
+            throw new IllegalArgumentException("Invalid icon font");
+        }
+
+        horizontalTransport(y);
+
+        return Key.key(
+            source.namespace(),
+            "ui/v26_3/" + source.value() + "/compact_" + (animated ? "toast_" : "") + anchor.name()
+                .toLowerCase(Locale.ROOT)
+        );
+    }
+
+    @Override
+    public Key iconFont(Key source, ScreenAnchor anchor, int y, boolean animated) {
+        horizontalTransport(y);
+
+        if (!source.value().startsWith("icon/")) {
+            throw new IllegalArgumentException("Invalid icon font");
+        }
+
+        return Key.key(
+            source.namespace(),
+            "ui/v26_3/" + source.value() + "/" + (animated ? "toast_" : "") + anchor.name().toLowerCase(Locale.ROOT)
+        );
+    }
+
+    @Override
+    public Key animatedTextureFont(UiTexture texture, ScreenAnchor anchor, int y) {
+        if (!texture.equals(UiTexture.card(20))) {
+            throw new IllegalArgumentException("Animated texture requires the toast card");
+        }
+
+        return font("toast_card", anchor, y);
+    }
+
+    private Key spriteFont(UiTexture texture, ScreenAnchor anchor, int y, boolean animated, double scale) {
+        UiScale.validate(scale);
+        horizontalTransport(y);
+        if (animated || texture.width() > 254 || texture.height() > 240 || texture.codePoint() != 0xE100
+            || texture.glyphOffsetX() != 0 || texture.glyphAdvance() != texture.width() + 1) {
+            throw new IllegalArgumentException("Invalid contributed sprite metrics or animation");
+        }
+        return Key.key(
+            texture.fontPrefix().namespace(), "ui/v26_3/" + texture.fontPrefix().value()
+                + "/" + Math.round(scale * 100) + "/" + anchor.name().toLowerCase(Locale.ROOT)
+        );
+    }
+
+    private static Key font(String kind, ScreenAnchor anchor, int y) {
+        if (y < -256 || y > 256) {
+            throw new IllegalArgumentException("Anchored glyph origin must be within -256..256 GUI pixels");
+        }
+
+        return Key.key("vexcore:ui/v26_3/" + kind + "/" + anchor.name().toLowerCase(Locale.ROOT) + "/y_0");
+    }
+
+    private static Properties loadProtocol() {
+        try (var input = V26_3ScreenUiVersionDefinition.class.getResourceAsStream("protocol.properties")) {
+            if (input == null) {
+                throw new IllegalStateException("Missing screen UI protocol manifest");
+            }
+
+            Properties result = new Properties();
+
+            result.load(input);
+
+            return result;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Cannot load screen UI protocol", exception);
+        }
+    }
+}

@@ -62,6 +62,6 @@ Automated checks cover rollback/durability, observer retirement, real scoped-reg
 task cancellation, bounded bursts, finite merging, zero-net advances, clock wrapping, carrier precision, the actual menu
 palette and reproducible assets.
 
-Client acceptance still requires Minecraft 26.2: high-FPS entry/exit/shine, sustained drops and reflow, long/localized
+Client acceptance still requires Minecraft 26.3: high-FPS entry/exit/shine, sustained drops and reflow, long/localized
 names, large quantities, GUI scales and narrow windows, existing menus/HUDs, pet storage, failed grants, profile changes,
 disconnect/reconnect and shutdown. Offline tests do not establish client visual acceptance.

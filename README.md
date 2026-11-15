@@ -3,7 +3,7 @@
   <p><strong>The shared infrastructure behind the VexSoft plugin ecosystem</strong></p>
   <p>
     <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?logo=coffeescript&logoColor=white">
-    <img alt="Paper 26.2" src="https://img.shields.io/badge/Paper-26.2-222222?logo=paperlessngx&logoColor=white">
+    <img alt="Paper 26.3" src="https://img.shields.io/badge/Paper-26.3-222222?logo=paperlessngx&logoColor=white">
     <img alt="Folia supported" src="https://img.shields.io/badge/Folia-supported-5C6BC0?logo=leaflet&logoColor=white">
     <img alt="Velocity 4.1" src="https://img.shields.io/badge/Velocity-4.1-1198D4?logo=velocity&logoColor=white">
     <img alt="Status" src="https://img.shields.io/badge/Status-Active_development-2E7D32?logo=githubactions&logoColor=white">
@@ -375,7 +375,7 @@ subclasses can override `renderPageItem` to render entries using their own state
 - Viewer-specific player hand-swing animations
 - Packet effects for hits, glowing entities, and lightning
 - Packet-based item names and lore
-- Initial support starts with Minecraft 26.2
+- Initial support starts with Minecraft 26.3
 
 ### Item Foundation
 
@@ -400,9 +400,9 @@ implementations so VexSoft projects only depend on the platform contracts they a
 | `vexcore-paper-api` | Public Paper and Folia contracts together with the `VexPlugin` foundation |
 | `vexcore-services` | Paper-only implementations for commands, inventories, dialogs, scheduling, gameplay events, and other stable services |
 | `vexcore-items:common` | Public item and Data Component contracts |
-| `vexcore-items:versions:v26_2` | Minecraft 26.2 Data Component implementation |
+| `vexcore-items:versions:v26_3` | Minecraft 26.3 Data Component implementation |
 | `vexcore-packets:common` | Public packet contracts |
-| `vexcore-packets:versions:v26_2` | Minecraft 26.2 packet implementation |
+| `vexcore-packets:versions:v26_3` | Minecraft 26.3 packet implementation |
 | `vexcore-paper` | The server plugin that connects and starts every module |
 | `vexcore-velocity-api` | Public Velocity contracts together with the `VexProxyPlugin` foundation |
 | `vexcore-velocity` | The proxy plugin that owns Velocity services and routes network messages |

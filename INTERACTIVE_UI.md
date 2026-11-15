@@ -1,6 +1,6 @@
 # VexCore Interactive UI
 
-An owner-scoped, inventory-independent interactive canvas for Minecraft Java 26.2. The initial
+An owner-scoped, inventory-independent interactive canvas for Minecraft Java 26.3. The initial
 implementation combines a fixed camera, a client-only mount, a synthetic mining target and a
 separate resource pack. Looking moves a virtual cursor; starting and aborting mining provide the
 left-button press and release edges. No client mod is required.
@@ -18,8 +18,8 @@ Build the separate pack from the VexCore repository:
 .\gradlew.bat :vexcore-paper:interactiveUiResourcePack
 ```
 
-The output is `vexcore-paper/build/libs/VexCore-InteractiveUI-26.2.zip`. The normal Paper `assemble`
-task also builds this archive. Install and enable it with the matching VexCore plugin on a Java 26.2
+The output is `vexcore-paper/build/libs/VexCore-InteractiveUI-26.3.zip`. The normal Paper `assemble`
+task also builds this archive. Install and enable it with the matching VexCore plugin on a Java 26.3
 client before opening the demo. The command does not download, push or verify the pack.
 
 The archive remains separate from the existing packs. When using VexCore Screen UI at the same
@@ -136,7 +136,7 @@ These effects still need observation with the real client.
 
 The pack reserves purple bossbar textures for invisible transport: **all vanilla purple bossbar bars
 become invisible while this pack is active**, including unrelated purple bars. Their ordinary titles
-remain visible. Other bossbar colors retain their normal appearance. The pack targets the 26.2
+remain visible. Other bossbar colors retain their normal appearance. The pack targets the 26.3
 renderer. Iris, OptiFine, alternative renderers, ViaVersion, Geyser and packs that replace the same
 shaders need separate validation. See `vexcore-interactive-ui/README.md` for renderer details.
 
@@ -147,7 +147,7 @@ positioning cannot recover a skipped bar. Begin testing without other bossbars; 
 not remove or reorder bars owned by other plugins.
 
 Java compilation and tests cannot establish in-game input or visual correctness. Before deployment,
-verify the matching plugin and pack together on a real 26.2 client: click versus drag, release outside
+verify the matching plugin and pack together on a real 26.3 client: click versus drag, release outside
 the target, Shift/right-click/hotbar close, reconnect, world transitions, resource-pack changes, GUI
 scale and window resizing. Check that exiting restores the camera and player presentation. No
 completed live client acceptance or multiplayer load test is claimed by this document.

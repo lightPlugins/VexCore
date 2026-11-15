@@ -123,9 +123,11 @@ final class InteractiveUiRendererTest {
     void generatedCompatibilityShaderRetainsBothDispatchersAndRejectsInvalidCursorData() throws Exception {
         String vertex = Files.readString(this.pack.resolve("assets/minecraft/shaders/core/text.vsh"));
         assertTrue(vertex.contains("if (interactiveKind < 0) position = vex_screen_ui_position"));
-        assertTrue(vertex.contains("#moj_import <vexcore:interactive_ui/v26_2.glsl>"));
-        assertTrue(Files.exists(this.pack.resolve("assets/vexcore/shaders/include/screen_ui/v26_2.glsl")));
-        String interactive = Files.readString(this.pack.resolve("assets/vexcore/shaders/include/interactive_ui/v26_2.glsl"));
+        assertTrue(vertex.contains("interactive_ui_position(position, UV0, gl_VertexIndex)"));
+        assertFalse(vertex.contains("gl_VertexID"));
+        assertTrue(vertex.contains("#include <vexcore:interactive_ui/v26_3.glsl>"));
+        assertTrue(Files.exists(this.pack.resolve("assets/vexcore/shaders/include/screen_ui/v26_3.glsl")));
+        String interactive = Files.readString(this.pack.resolve("assets/vexcore/shaders/include/interactive_ui/v26_3.glsl"));
         assertFalse(interactive.contains("GameTime"));
         assertFalse(interactive.contains("previousOffset"));
         assertThrows(IllegalArgumentException.class,

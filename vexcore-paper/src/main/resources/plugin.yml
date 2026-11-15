@@ -1,7 +1,7 @@
 name: VexCore
 version: ${version}
 main: dev.vexsoft.core.paper.VexCorePlugin
-api-version: "1.21"
+api-version: "26.3"
 load: STARTUP
 description: Modular infrastructure for VexSoft Paper plugins
 folia-supported: true

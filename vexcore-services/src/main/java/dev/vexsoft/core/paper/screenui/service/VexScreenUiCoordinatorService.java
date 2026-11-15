@@ -16,8 +16,9 @@ import dev.vexsoft.core.paper.screenui.layout.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.layout.TextureLayout;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelBounds;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelLayout;
+import dev.vexsoft.core.paper.screenui.progression.ExperienceGainNotice;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
-import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionOverlay;
 import dev.vexsoft.core.paper.screenui.render.ProgressionRenderer;
 import dev.vexsoft.core.paper.screenui.render.RewardCardRenderer;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiDialogueLayout;
@@ -66,7 +67,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
 
     @Override
     @Synchronized("lock")
-    public void showProgression(ServiceOwner owner, VexPlayer account, List<ProgressionNotice> notices) {
+    public void showProgression(ServiceOwner owner, VexPlayer account, List<? extends ProgressionOverlay> notices) {
         var viewer = account.findPlatformPlayer(Player.class).orElse(null);
         if (closed || notices.isEmpty() || viewer == null || !viewer.isOnline()) {
             return;
@@ -85,7 +86,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
             active = (Handle) open(owner, viewer, PROGRESSION_SCREEN);
             active.progression = new ProgressionBatch(account, viewer);
         }
-        for (ProgressionNotice notice : notices) {
+        for (ProgressionOverlay notice : notices) {
             if (active.progression.pending.size() >= MAX_PENDING_PROGRESSION) {
                 active.progression.pending.removeFirst();
             }
@@ -104,9 +105,11 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
             return;
         }
         long started = viewer.getWorld().getGameTime() + 2;
-        batch.ends = started + ProgressionLayout.LIFETIME;
+        var notice = batch.pending.removeFirst();
+        batch.ends = started + (notice instanceof ExperienceGainNotice
+            ? ProgressionLayout.EXPERIENCE_LIFETIME : ProgressionLayout.LIFETIME);
         try {
-            handle.put("notice", new Element(40, ProgressionRenderer.render(batch.pending.removeFirst(), started), null));
+            handle.put("notice", new Element(40, ProgressionRenderer.render(notice, started), null));
             if (!handle.closed && batch.task == null) {
                 batch.task = schedules.runForTimer(viewer, 1, 1, () -> tickProgression(handle), handle::close)
                     .orElse(null);
@@ -349,7 +352,7 @@ public final class VexScreenUiCoordinatorService implements ScreenUiCoordinatorS
         private final VexPlayer account;
         private final UUID world;
         private final Map<ProfileDomain, PlayerProfileContext> contexts;
-        private final ArrayDeque<ProgressionNotice> pending = new ArrayDeque<>();
+        private final ArrayDeque<ProgressionOverlay> pending = new ArrayDeque<>();
         private VexTask task;
         private long ends;
 

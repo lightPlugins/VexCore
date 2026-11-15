@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.vexsoft.core.paper.screenui.progression.ExperienceGainNotice;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
 import dev.vexsoft.core.paper.screenui.render.ProgressionRenderer;
@@ -65,15 +66,35 @@ public final class RewardCardProtocolTest {
         Component rendered = ProgressionRenderer.render(notice, 24001);
         assertEquals(0, advance(rendered));
         for (int part = 0; part < ProgressionLayout.PARTS; part++) {
-            assertTrue(fonts(rendered).contains(ProgressionLayout.font(part)));
+            assertEquals(part < ProgressionLayout.EXPERIENCE_TEXT_PART,
+                fonts(rendered).contains(ProgressionLayout.font(part)));
             for (int offset = 0; offset < 300; offset++) {
                 float position = 8 - ProgressionLayout.ascent(part) + offset;
                 assertEquals(part, (int) Math.floor((position - 98304.0) / 512.0));
             }
         }
         rendered.children().stream()
-            .filter(child -> child.font() != null && child.font().value().startsWith("progression/"))
+            .filter(child -> {
+                var font = child.font();
+                return font != null && font.value().startsWith("progression/");
+            })
             .forEach(child -> assertEquals(1, child.color().value() & 127));
+    }
+
+    @Test
+    void experienceBarCarriesBothEndpointsWithoutTakingBossbarWidth() {
+        var notice = new ExperienceGainNotice(Component.text("+100 Spieler-XP"),
+            Component.text("Meilenstein"), Component.text("100 / 150 XP"), 0.25, 0.75);
+        var rendered = ProgressionRenderer.render(notice, 24001);
+        assertEquals(0, advance(rendered));
+        assertTrue(fonts(rendered).contains(ProgressionLayout.font(ProgressionLayout.EXPERIENCE_TEXT_PART)));
+        var carrier = rendered.children().stream()
+            .filter(child -> Key.key(ProgressionLayout.font(ProgressionLayout.EXPERIENCE_BAR_PART)).equals(child.font()))
+            .findFirst().orElseThrow();
+        int payload = carrier.color().value();
+        assertEquals(1, payload & 127);
+        assertEquals(64, payload >> 7 & 255);
+        assertEquals(191, payload >> 15 & 255);
     }
 
     private static int advance(Component component) {

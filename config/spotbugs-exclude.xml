@@ -72,9 +72,9 @@
       <Class name="dev.vexsoft.core.paper.localization.VexPlayerLanguageChangeEvent"/>
       <Class name="dev.vexsoft.core.execution.PlayerExecutionContext"/>
       <!-- Native goals must retain their server-owned carrier for their short runtime lifetime. -->
-      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2LookAtPlayerGoal"/>
-      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2RandomMovementGoal"/>
-      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2OwnerMeleeGoal"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.V26_3LookAtPlayerGoal"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.V26_3RandomMovementGoal"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.V26_3OwnerMeleeGoal"/>
       <!-- Bukkit events deliberately retain the live causing entity, just like native events. -->
       <Class name="dev.vexsoft.core.paper.mob.event.MobDamageEvent"/>
       <Class name="dev.vexsoft.core.paper.mob.event.MobRemovedEvent"/>
@@ -142,7 +142,7 @@
   <!-- Native movement and goal updates run on the same owning entity thread, not concurrent worker threads. -->
   <Match>
     <Bug pattern="AT_NONATOMIC_64BIT_PRIMITIVE,AT_STALE_THREAD_WRITE_OF_PRIMITIVE"/>
-    <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.V26_2FlightMoveControl"/>
+    <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.V26_3FlightMoveControl"/>
   </Match>
 
   <!-- The final per-session cursor monitor is allocated internally and never supplied by a caller. -->
@@ -160,14 +160,14 @@
       <Class name="dev.vexsoft.core.paper.vexui.session.VexUICraftingTemplateTest$Provider"/>
       <Class name="dev.vexsoft.core.paper.vexui.session.VexUIProfessionTemplateTest$Provider"/>
       <Class name="dev.vexsoft.core.paper.vexui.session.VexUITestScheduleService"/>
-      <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.FlightFixture$NativeMob"/>
+      <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.FlightFixture$NativeMob"/>
     </Or>
   </Match>
 
   <!-- Native fixture allocation bypasses server bootstrap solely inside this test harness. -->
   <Match>
     <Bug pattern="UNS_UNSAFE_CALL"/>
-    <Class name="dev.vexsoft.core.paper.nms.v26_2.goal.FlightFixture"/>
+    <Class name="dev.vexsoft.core.paper.nms.v26_3.goal.FlightFixture"/>
   </Match>
 
   <!-- Minimal item test doubles exercise inventory operations without redefining native value equality. -->
@@ -186,8 +186,8 @@
   <Match>
     <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
     <Or>
-      <Class name="dev.vexsoft.core.paper.packets.service.v26_2.VexVirtualBlockPacketAdapterServiceTest"/>
-      <Class name="dev.vexsoft.core.paper.packets.v26_2.interactiveui.V26_2InteractiveUiTargetPreserverTest"/>
+      <Class name="dev.vexsoft.core.paper.packets.service.v26_3.VexVirtualBlockPacketAdapterServiceTest"/>
+      <Class name="dev.vexsoft.core.paper.packets.v26_3.interactiveui.V26_3InteractiveUiTargetPreserverTest"/>
     </Or>
     <Method name="chunk"/>
   </Match>

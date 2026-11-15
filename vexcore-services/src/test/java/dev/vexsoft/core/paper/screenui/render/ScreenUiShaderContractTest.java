@@ -9,7 +9,7 @@ import dev.vexsoft.core.paper.screenui.layout.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.layout.TextureLayout;
 import dev.vexsoft.core.paper.screenui.layout.UiScale;
 import dev.vexsoft.core.paper.screenui.layout.VerticalAlignment;
-import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 final class ScreenUiShaderContractTest {
 
     private final Path pack = Path.of(System.getProperty("screenUiPackDirectory"));
-    private final V26_2ScreenUiVersionDefinition version = new V26_2ScreenUiVersionDefinition();
+    private final V26_3ScreenUiVersionDefinition version = new V26_3ScreenUiVersionDefinition();
 
     @Test
     void contributedSpritesResolveNamespacedFontsAndRejectInvalidContracts() {
@@ -36,7 +36,7 @@ final class ScreenUiShaderContractTest {
         for (int tenth = 5; tenth <= 10; tenth++) {
             for (ScreenAnchor anchor : ScreenAnchor.values()) {
                 assertEquals(
-                    "demo:ui/v26_2/sprite/hud/frame/" + tenth * 10 + "/"
+                    "demo:ui/v26_3/sprite/hud/frame/" + tenth * 10 + "/"
                         + anchor.name().toLowerCase(Locale.ROOT),
                     version.textureFont(sprite, anchor, 8, false, tenth / 10.0).asString()
                 );
@@ -174,7 +174,7 @@ final class ScreenUiShaderContractTest {
                 "assets/vexcore/font/" + version.textureFont(UiTexture.PANEL, anchor, panelY).value() + ".json")));
         }
 
-        try (var files = Files.walk(pack.resolve("assets/vexcore/font/ui/v26_2"))) {
+        try (var files = Files.walk(pack.resolve("assets/vexcore/font/ui/v26_3"))) {
             assertEquals(1035, files.filter(Files::isRegularFile)
                 .filter(file -> !file.toString().replace('\\', '/').contains("/sprite/"))
                 .count(), "Scale and transition presets stay bounded independently of contributed sprites");

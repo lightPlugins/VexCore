@@ -6,7 +6,7 @@ import dev.vexsoft.core.api.service.registry.VexService;
 import dev.vexsoft.core.paper.screenui.ScreenUi;
 import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.dialogue.PreparedDialogue;
-import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionOverlay;
 import java.util.List;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 public interface ScreenUiCoordinatorService extends VexService {
 
     /** Enqueues notices in the owner's progression overlay. */
-    void showProgression(ServiceOwner owner, VexPlayer player, List<ProgressionNotice> notices);
+    void showProgression(ServiceOwner owner, VexPlayer player, List<? extends ProgressionOverlay> notices);
 
     /** Returns the owner's existing screen or creates a screen for the player and ID. */
     ScreenUi open(ServiceOwner owner, Player player, String id);

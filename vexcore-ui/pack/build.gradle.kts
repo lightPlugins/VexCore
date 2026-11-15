@@ -11,8 +11,8 @@ group = "dev.vexsoft.vexui"
 
 val packDirectory = layout.buildDirectory.dir("generated/pack")
 val metricsDirectory = layout.buildDirectory.dir("generated/metrics")
-val clientJar = layout.buildDirectory.file("minecraft/26.2-client.jar")
-val unicodeFont = layout.buildDirectory.file("unicode/unifont-26.2.zip")
+val clientJar = layout.buildDirectory.file("minecraft/26.3-client.jar")
+val unicodeFont = layout.buildDirectory.file("unicode/unifont-26.3.zip")
 val germanTranslations = layout.buildDirectory.file("translations/de_de.json")
 val prepareVexUITranslations = tasks.register("prepareVexUITranslations") {
     val supplied = providers.gradleProperty("vexuiGermanTranslations").map { rootProject.file(it) }
@@ -20,8 +20,8 @@ val prepareVexUITranslations = tasks.register("prepareVexUITranslations") {
     outputs.file(germanTranslations)
     doLast {
         val target = germanTranslations.get().asFile
-        val cache = rootProject.file(".gradle/vexui/vanilla-de_de-26.2.json")
-        val hash = "a9b76c1f25d74ef647ff6025849faf7e86e97973"
+        val cache = rootProject.file(".gradle/vexui/vanilla-de_de-26.3.json")
+        val hash = "3898b0f0dd8c716fd9aa364206acde766f8c675f"
         val source = supplied.orNull ?: if (cache.isFile) cache else run {
             check(!gradle.startParameter.isOffline) { "Build VexUI translations once online or provide a local file." }
             cache.parentFile.mkdirs()
@@ -33,7 +33,7 @@ val prepareVexUITranslations = tasks.register("prepareVexUITranslations") {
         }
         val actual = MessageDigest.getInstance("SHA-1").digest(source.readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 255) }
-        check(actual == hash) { "Unexpected Minecraft 26.2 German translation SHA-1" }
+        check(actual == hash) { "Unexpected Minecraft 26.3 German translation SHA-1" }
         cache.parentFile.mkdirs()
         target.parentFile.mkdirs()
         if (source != cache) Files.copy(source.toPath(), cache.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -48,7 +48,7 @@ val prepareVexUIUnicode = tasks.register("prepareVexUIUnicode") {
         val target = unicodeFont.get().asFile
         // Different composite-build Gradle versions may clean one another's task outputs. Keep downloaded
         // sources outside those outputs so a second offline build can restore its generated input safely.
-        val cache = rootProject.layout.projectDirectory.file(".gradle/vexui/unifont-26.2.zip").asFile
+        val cache = rootProject.layout.projectDirectory.file(".gradle/vexui/unifont-26.3.zip").asFile
         val source = if (target.isFile) target else supplied.orNull ?: if (cache.isFile) cache else run {
             check(!gradle.startParameter.isOffline) { "Build VexUI Unicode once online before using --offline." }
             cache.parentFile.mkdirs()
@@ -78,17 +78,17 @@ val prepareVexUIClient = tasks.register("prepareVexUIClient") {
         val target = clientJar.get().asFile
         val source = if (target.isFile) target else supplied.orNull ?: run {
             check(!gradle.startParameter.isOffline) {
-                "Build VexUI once online or pass -PvexuiClientJar=<official-26.2-client.jar>."
+                "Build VexUI once online or pass -PvexuiClientJar=<official-26.3-client.jar>."
             }
             target.parentFile.mkdirs()
             val partial = target.resolveSibling(target.name + ".part")
-            URI("https://piston-data.mojang.com/v1/objects/2dc72797acbc1b63fc16a11c4ac393605f453754/client.jar")
+            URI("https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar")
                 .toURL().openStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
             partial
         }
         val hash = MessageDigest.getInstance("SHA-1").digest(source.readBytes())
             .joinToString("") { "%02x".format(it.toInt() and 255) }
-        check(hash == "2dc72797acbc1b63fc16a11c4ac393605f453754") { "Unexpected Minecraft 26.2 client SHA-1" }
+        check(hash == "e877b6a07acd633fb3bb475002175cec036e7b87") { "Unexpected Minecraft 26.3 client SHA-1" }
         if (source != target) {
             target.parentFile.mkdirs()
             Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -127,7 +127,7 @@ val vexUIResourcePack = tasks.register<Zip>("vexUIResourcePack") {
     dependsOn(generateVexUIPack)
     from(packDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
-    archiveFileName.set("VexCore-VexUI-26.2.zip")
+    archiveFileName.set("VexCore-VexUI-26.3.zip")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }

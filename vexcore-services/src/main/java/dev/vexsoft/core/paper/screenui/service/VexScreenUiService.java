@@ -13,6 +13,7 @@ import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.dialogue.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.dialogue.VexDialoguePanel;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
+import dev.vexsoft.core.paper.screenui.progression.ExperienceGainNotice;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiAvatarLoader;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
@@ -49,6 +50,13 @@ public final class VexScreenUiService implements ScreenUiService, AutoCloseable 
     public synchronized void showProgression(VexPlayer player, List<ProgressionNotice> notices) {
         if (!closed && !notices.isEmpty()) {
             coordinator.showProgression(owner, player, notices);
+        }
+    }
+
+    @Override
+    public synchronized void showExperienceGain(VexPlayer player, ExperienceGainNotice notice) {
+        if (!closed) {
+            coordinator.showProgression(owner, player, List.of(notice));
         }
     }
 

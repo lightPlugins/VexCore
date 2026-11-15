@@ -37,7 +37,7 @@ class VerifyAnchorGpu {
         try {
             glfwMakeContextCurrent(window);
             GL.createCapabilities();
-            String include = Files.readString(pack.resolve("assets/vexcore/shaders/include/screen_ui/v26_2.glsl"));
+            String include = Files.readString(pack.resolve("assets/vexcore/shaders/include/screen_ui/v26_3.glsl"));
             int shader = glCreateShader(GL_VERTEX_SHADER);
 
             glShaderSource(

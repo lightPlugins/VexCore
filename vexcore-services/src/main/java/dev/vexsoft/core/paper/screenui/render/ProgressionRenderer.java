@@ -1,7 +1,9 @@
 package dev.vexsoft.core.paper.screenui.render;
 
+import dev.vexsoft.core.paper.screenui.progression.ExperienceGainNotice;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
+import dev.vexsoft.core.paper.screenui.progression.ProgressionOverlay;
 import dev.vexsoft.core.paper.vexui.render.VexUIMetrics;
 import dev.vexsoft.core.paper.vexui.render.VexUITextEngine;
 import net.kyori.adventure.key.Key;
@@ -30,7 +32,14 @@ public final class ProgressionRenderer {
     private ProgressionRenderer() {
     }
 
-    public static Component render(ProgressionNotice notice, long started) {
+    public static Component render(ProgressionOverlay notice, long started) {
+        return switch (notice) {
+            case ProgressionNotice level -> renderLevelUp(level, started);
+            case ExperienceGainNotice experience -> renderExperience(experience, started);
+        };
+    }
+
+    private static Component renderLevelUp(ProgressionNotice notice, long started) {
         var output = Component.text();
         var engine = new VexUITextEngine(METRICS);
         int clock = Math.floorMod(started, ProgressionLayout.CLOCK_PERIOD);
@@ -49,6 +58,20 @@ public final class ProgressionRenderer {
             int[] star = TWINKLES[index];
             glyph(output, '✦', star[0], star[1], 6, clock | GOLD | TWINKLE | (index << 11));
         }
+        return output.build();
+    }
+
+    private static Component renderExperience(ExperienceGainNotice notice, long started) {
+        var output = Component.text();
+        var engine = new VexUITextEngine(METRICS);
+        int clock = Math.floorMod(started, ProgressionLayout.CLOCK_PERIOD);
+        int part = ProgressionLayout.EXPERIENCE_TEXT_PART;
+        line(output, fit(engine, notice.amount()), -28, part, clock, 1);
+        line(output, fit(engine, notice.source()), -10, part, clock, 0);
+        line(output, fit(engine, notice.status()), 18, part, clock, 2);
+        int from = (int) Math.round(notice.previousProgress() * 255);
+        int to = (int) Math.round(notice.progress() * 255);
+        glyph(output, '✦', 0, 0, ProgressionLayout.EXPERIENCE_BAR_PART, clock | (from << 7) | (to << 15));
         return output.build();
     }
 

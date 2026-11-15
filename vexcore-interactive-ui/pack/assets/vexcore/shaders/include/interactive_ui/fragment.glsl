@@ -1,7 +1,8 @@
-flat in int interactiveKind;
-flat in vec4 interactiveColor;
-flat in vec2 interactiveSize;
-in vec2 interactivePixel;
+layout(location = 14) flat in int interactiveKind;
+layout(location = 15) flat in vec4 interactiveColor;
+// The GUI variant leaves the vanilla fog varyings unassigned.
+layout(location = 0) flat in vec2 interactiveSize;
+layout(location = 1) in vec2 interactivePixel;
 
 vec4 interactive_ui_fragment() {
     if (interactiveKind == 1) {

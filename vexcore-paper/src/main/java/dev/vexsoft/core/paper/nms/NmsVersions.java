@@ -1,6 +1,6 @@
 package dev.vexsoft.core.paper.nms;
 
-import dev.vexsoft.core.paper.nms.v26_2.V26_2NmsVersionDefinition;
+import dev.vexsoft.core.paper.nms.v26_3.V26_3NmsVersionDefinition;
 import dev.vexsoft.core.paper.nms.version.NmsVersionDefinition;
 import java.util.List;
 import lombok.AccessLevel;
@@ -11,7 +11,7 @@ import org.bukkit.Bukkit;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class NmsVersions {
 
-    private static final List<NmsVersionDefinition> DEFINITIONS = List.of(new V26_2NmsVersionDefinition());
+    private static final List<NmsVersionDefinition> DEFINITIONS = List.of(new V26_3NmsVersionDefinition());
 
     /** Returns the native definition for the running Minecraft version. */
     public static NmsVersionDefinition select() {

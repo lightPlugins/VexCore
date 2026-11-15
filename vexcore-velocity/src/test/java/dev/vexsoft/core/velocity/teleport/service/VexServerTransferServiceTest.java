@@ -97,6 +97,21 @@ class VexServerTransferServiceTest {
     }
 
     @Test
+    void failedArrivalRedirectsToItsPreparedFarmingTicketWithoutRecapturingTheFailedBackend() {
+        try (var fixture = new Fixture()) {
+            String name = fixture.target.getServerInfo().getName();
+            var failed = fixture.kicked(fixture.source,
+                dev.vexsoft.core.api.network.ArrivalRecovery.reason(new ServerId(name)), false);
+            fixture.service.onKicked(failed);
+            assertEquals(fixture.target,
+                assertInstanceOf(KickedFromServerEvent.RedirectPlayer.class, failed.getResult()).getServer());
+            fixture.current = null;
+            assertNull(fixture.service.onPreConnect(new ServerPreConnectEvent(fixture.player, fixture.target, fixture.source)));
+            assertTrue(fixture.sent.isEmpty());
+        }
+    }
+
+    @Test
     void controlledShutdownRedirectsToTheLobbyAfterTheSourceConnectionIsGoneWithoutAnotherSaveRequest() {
         try (var fixture = new Fixture()) {
             var kicked = fixture.kicked(fixture.source, BackendShutdown.reason(), false);

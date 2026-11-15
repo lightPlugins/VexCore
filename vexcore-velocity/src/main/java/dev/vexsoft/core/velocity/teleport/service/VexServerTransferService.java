@@ -14,6 +14,7 @@ import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import dev.vexsoft.core.api.messaging.DeliveryResult;
 import dev.vexsoft.core.api.messaging.MessageTarget;
+import dev.vexsoft.core.api.network.ArrivalRecovery;
 import dev.vexsoft.core.api.network.BackendShutdown;
 import dev.vexsoft.core.api.network.ServerId;
 import dev.vexsoft.core.api.service.configuration.ConfigurationService;
@@ -167,19 +168,26 @@ public final class VexServerTransferService implements ServerTransferService, Au
 
     @Subscribe(priority = Short.MIN_VALUE, async = false)
     public void onKicked(final KickedFromServerEvent event) {
-        if (!started.get() || event.kickedDuringServerConnect()
-            || event.getServer().getServerInfo().getName().equals(fallbackServer)
-            || !event.getServerKickReason().map(BackendShutdown::matches).orElse(false)) {
+        if (!started.get()) {
+            return;
+        }
+        var recovery = event.getServerKickReason().flatMap(ArrivalRecovery::target);
+        if (recovery.isEmpty() && (event.kickedDuringServerConnect()
+            || !event.getServerKickReason().map(BackendShutdown::matches).orElse(false))) {
+            return;
+        }
+        String fallbackName = recovery.map(ServerId::value).orElse(fallbackServer);
+        if (event.getServer().getServerInfo().getName().equals(fallbackName)) {
             return;
         }
         var player = event.getPlayer();
         var current = player.getCurrentServer().orElse(null);
-        if (current != null && !current.getServer().equals(event.getServer())) {
+        if (current != null && !current.getServer().equals(event.getServer()) && recovery.isEmpty()) {
             return;
         }
-        var target = proxy.getServer(fallbackServer).orElse(null);
+        var target = proxy.getServer(fallbackName).orElse(null);
         if (target == null) {
-            plugin.getPlatformLogger().warn("[VexCore] Shutdown fallback server is not registered: " + fallbackServer);
+            plugin.getPlatformLogger().warn("[VexCore] Fallback server is not registered: " + fallbackName);
             return;
         }
         Pending pending = players.get(player.getUniqueId());
@@ -189,7 +197,8 @@ public final class VexServerTransferService implements ServerTransferService, Au
             remove(pending);
             pending.approval.complete(false);
         }
-        fallbacks.put(player.getUniqueId(), new Fallback(player, event.getServer(), target));
+        var bypassSource = current == null ? event.getServer() : current.getServer();
+        fallbacks.put(player.getUniqueId(), new Fallback(player, bypassSource, target));
         event.setResult(KickedFromServerEvent.RedirectPlayer.create(target, Component.empty()));
     }
 

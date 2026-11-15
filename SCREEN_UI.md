@@ -1,6 +1,6 @@
 # VexCore Screen UI
 
-Owner-scoped screen UI for Minecraft Java 26.2, using the shared m5x7 metrics and shader
+Owner-scoped screen UI for Minecraft Java 26.3, using the shared m5x7 metrics and shader
 protocol 10. Plugins provide localized content and gameplay data. VexCore owns measurement,
 word wrapping, groups, rounded backgrounds, avatar rendering and screen lifetime.
 

@@ -11,7 +11,7 @@ class VerifyShader {
     static ZipFile client;
 
     static String expand(String source) throws Exception {
-        var matcher = Pattern.compile("#moj_import <([^>]+)>").matcher(source);
+        var matcher = Pattern.compile("#include <([^>]+)>").matcher(source);
         var result = new StringBuilder();
 
         while (matcher.find()) {
@@ -39,9 +39,9 @@ class VerifyShader {
         client = new ZipFile(args[1]);
         long compiler = shaderc_compiler_initialize(), options = shaderc_compile_options_initialize();
 
-        shaderc_compile_options_set_target_env(options, shaderc_target_env_opengl, shaderc_env_version_opengl_4_5);
+        shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
         shaderc_compile_options_set_auto_bind_uniforms(options, true);
-        shaderc_compile_options_set_auto_map_locations(options, true);
+        shaderc_compile_options_set_preserve_bindings(options, false);
 
         for (String defines : List.of(
             "",
@@ -49,7 +49,10 @@ class VerifyShader {
             "IS_SEE_THROUGH",
             "IS_GRAYSCALE",
             "IS_GUI,IS_GRAYSCALE",
-            "IS_SEE_THROUGH,IS_GRAYSCALE"
+            "IS_SEE_THROUGH,IS_GRAYSCALE",
+            "OIT,OIT_DEPTH_BOUNDS,OIT_ALPHA_ONLY",
+            "OIT,OIT_TRANSMITTANCE,OIT_ALPHA_ONLY",
+            "OIT,OIT_ACCUMULATE"
         )) {
             for (String extension : List.of("vsh", "fsh")) {
                 String resource = "assets/minecraft/shaders/core/text." + extension;
@@ -59,6 +62,11 @@ class VerifyShader {
                         java.nio.charset.StandardCharsets.UTF_8
                     );
                 String macros = defines.isEmpty() ? "" : "#define " + defines.replace(",", "\n#define ") + "\n";
+
+                if (defines.startsWith("OIT,")) {
+                    macros += "#define OIT_WAVELET_RANK 2\n#define OIT_COEFF_COUNT 8\n"
+                        + "#define OIT_COEFF_ATTACHMENT_COUNT 2\n";
+                }
 
                 source = expand(source).replace("#version 330", "#version 330\n" + macros);
                 long result = shaderc_compile_into_spv(

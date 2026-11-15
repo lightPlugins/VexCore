@@ -1,0 +1,109 @@
+package dev.vexsoft.core.paper.packets.v26_3;
+
+import dev.vexsoft.core.api.service.registry.Dependencies;
+import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.packets.service.block.VirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.connection.PacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.connection.PacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.display.DisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.effect.EntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.interaction.HologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.interactiveui.InteractiveUiPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.item.ItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.item.RecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexDisplayPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexEntityEffectPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexHologramInteractionAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexInteractiveUiPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexItemMetaPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexPacketConnectionAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexPacketTransportAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexRecipeBookPacketAdapterService;
+import dev.vexsoft.core.paper.packets.service.v26_3.VexVirtualBlockPacketAdapterService;
+import dev.vexsoft.core.paper.packets.version.MinecraftVersion;
+import dev.vexsoft.core.paper.packets.version.PacketCapability;
+import dev.vexsoft.core.paper.packets.version.PacketComponent;
+import dev.vexsoft.core.paper.packets.version.PacketVersionDefinition;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
+
+@Dependencies
+public class V26_3PacketVersionDefinition implements PacketVersionDefinition {
+
+    private static final MinecraftVersion VERSION = MinecraftVersion.of("26.3");
+
+    public V26_3PacketVersionDefinition(final VexServiceRegistry services) {
+    }
+
+    @Override
+    public MinecraftVersion getAdapterVersion() {
+        return VERSION;
+    }
+
+    @Override
+    public Set<MinecraftVersion> getSupportedVersions() {
+        return Set.of(VERSION);
+    }
+
+    @Override
+    public Set<PacketCapability> getCapabilities() {
+        return Set.copyOf(EnumSet.allOf(PacketCapability.class));
+    }
+
+    @Override
+    public Map<PacketComponent, MinecraftVersion> getComponentVersions() {
+        Map<PacketComponent, MinecraftVersion> versions = new EnumMap<>(PacketComponent.class);
+
+        for (PacketComponent component : PacketComponent.values()) {
+            versions.put(component, VERSION);
+        }
+
+        return Map.copyOf(versions);
+    }
+
+    @Override
+    public Class<? extends PacketTransportAdapterService> getTransportAdapter() {
+        return VexPacketTransportAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends DisplayPacketAdapterService> getDisplayAdapter() {
+        return VexDisplayPacketAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends EntityEffectPacketAdapterService> getEntityEffectAdapter() {
+        return VexEntityEffectPacketAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends PacketConnectionAdapterService> getConnectionAdapter() {
+        return VexPacketConnectionAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends ItemMetaPacketAdapterService> getItemMetaAdapter() {
+        return VexItemMetaPacketAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends HologramInteractionAdapterService> getHologramInteractionAdapter() {
+        return VexHologramInteractionAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends InteractiveUiPacketAdapterService> getInteractiveUiAdapter() {
+        return VexInteractiveUiPacketAdapterService.class;
+    }
+    @Override
+    public Class<? extends RecipeBookPacketAdapterService> getRecipeBookAdapter() {
+        return VexRecipeBookPacketAdapterService.class;
+    }
+
+    @Override
+    public Class<? extends VirtualBlockPacketAdapterService> getVirtualBlockAdapter() {
+        return VexVirtualBlockPacketAdapterService.class;
+    }
+}

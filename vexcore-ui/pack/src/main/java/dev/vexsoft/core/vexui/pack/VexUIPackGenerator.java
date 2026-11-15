@@ -47,7 +47,7 @@ public final class VexUIPackGenerator {
             args.length == 5 ? Path.of(args[4]) : null);
     }
 
-    /** Generates assets for Minecraft 26.2 using its original default-font bitmaps and built-in icon PNGs. */
+    /** Generates assets for Minecraft 26.3 using its original default-font bitmaps and built-in icon PNGs. */
     public static void generate(final Path root, final Path metricsRoot, final Path client, final Path unicode)
         throws Exception {
         generate(root, metricsRoot, client, unicode, null);
@@ -59,8 +59,8 @@ public final class VexUIPackGenerator {
     ) throws Exception {
         translations(metricsRoot, client, german);
         uiSounds(root);
-        write(root, "pack.mcmeta", "{\"pack\":{\"description\":\"VexUI - muted purple / format 3 / 26.2\","
-            + "\"min_format\":[88,0],\"max_format\":[88,0]}}\n");
+        write(root, "pack.mcmeta", "{\"pack\":{\"description\":\"VexUI - muted purple / format 3 / 26.3\","
+            + "\"min_format\":[97,1],\"max_format\":[97,1]}}\n");
         StringBuilder metrics = new StringBuilder("format=3\ntext.height=12\ntext.source=minecraft:default\n");
         List<String> textFonts = text(root, client, unicode, metrics);
         List<String> tileProviders = tiles(root, metrics);

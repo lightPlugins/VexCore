@@ -8,14 +8,14 @@ dependencies {
     api(project(":vexcore-paper-api"))
     implementation(project(":vexcore-common"))
     implementation(project(":vexcore-services"))
-    implementation(project(":vexcore-screen-ui:versions:v26_2"))
-    implementation(project(":vexcore-items:versions:v26_2"))
-    implementation(project(":vexcore-nms:versions:v26_2"))
-    implementation(project(":vexcore-packets:versions:v26_2"))
-    compileOnly("io.papermc.paper:paper-api:26.2.build.84-stable")
+    implementation(project(":vexcore-screen-ui:versions:v26_3"))
+    implementation(project(":vexcore-items:versions:v26_3"))
+    implementation(project(":vexcore-nms:versions:v26_3"))
+    implementation(project(":vexcore-packets:versions:v26_3"))
+    compileOnly("io.papermc.paper:paper-api:26.3.build.241-stable")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
 
-    testImplementation("io.papermc.paper:paper-api:26.2.build.84-stable")
+    testImplementation("io.papermc.paper:paper-api:26.3.build.241-stable")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -43,7 +43,7 @@ val screenUiPackDirectory = layout.buildDirectory.dir("generated/screen-ui-pack"
 val screenUiPackGenerator = rootProject.layout.projectDirectory.file("resource-pack-tools/GenerateScreenUiPack.java")
 val screenUiFontDirectory = rootProject.layout.projectDirectory.dir("resource-pack-tools/fonts")
 val screenUiMetricsDirectory = layout.buildDirectory.dir("generated/screen-ui-metrics")
-val screenUiVersionPack = rootProject.layout.projectDirectory.dir("vexcore-screen-ui/versions/v26_2/pack")
+val screenUiVersionPack = rootProject.layout.projectDirectory.dir("vexcore-screen-ui/versions/v26_3/pack")
 val generateScreenUiPack = tasks.register<Exec>("generateScreenUiPack") {
     group = "build"
     description = "Generates the standalone VexCore bossbar UI resource pack."
@@ -104,11 +104,11 @@ val generateInteractiveUiPack = tasks.register<Exec>("generateInteractiveUiPack"
 }
 val interactiveUiResourcePack = tasks.register<Zip>("interactiveUiResourcePack") {
     group = "build"
-    description = "Packages the independent Minecraft 26.2 interactive UI resource pack."
+    description = "Packages the independent Minecraft 26.3 interactive UI resource pack."
     dependsOn(generateInteractiveUiPack)
     from(interactiveUiPackDirectory)
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
-    archiveFileName.set("VexCore-InteractiveUI-26.2.zip")
+    archiveFileName.set("VexCore-InteractiveUI-26.3.zip")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }

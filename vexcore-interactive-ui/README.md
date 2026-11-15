@@ -1,9 +1,9 @@
 # Interactive UI resource pack
 
 Build the separate archive with `gradlew.bat :vexcore-paper:interactiveUiResourcePack`.
-The output is `vexcore-paper/build/libs/VexCore-InteractiveUI-26.2.zip`.
+The output is `vexcore-paper/build/libs/VexCore-InteractiveUI-26.3.zip`.
 
-The pack targets Minecraft Java 26.2, pack format 88. It provides its own fonts and procedural
+The pack targets Minecraft Java 26.3, pack format 97.1. It provides its own fonts and procedural
 rectangle/cursor shaders. It does not modify the source or generated output of the existing
 VexCore screen UI resource pack. Its text shader includes the existing screen UI dispatcher so
 both features can render when both packs are installed. Load the interactive pack **above** the

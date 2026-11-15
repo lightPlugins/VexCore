@@ -14,7 +14,7 @@ import dev.vexsoft.core.paper.screenui.panel.UiPanelDefinition;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelLayout;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelSet;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
-import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Proxy;
@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
 
 public final class ScreenUiPanelTest {
 
-    private final V26_2ScreenUiVersionDefinition version = new V26_2ScreenUiVersionDefinition();
+    private final V26_3ScreenUiVersionDefinition version = new V26_3ScreenUiVersionDefinition();
 
     @Test
     void longColoredQuestWrapsWithoutEllipsisAndMovesFollowingObjectives() {

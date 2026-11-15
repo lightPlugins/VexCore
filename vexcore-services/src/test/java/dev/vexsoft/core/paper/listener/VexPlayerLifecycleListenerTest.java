@@ -15,6 +15,7 @@ import io.papermc.paper.threadedregions.scheduler.EntityScheduler;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,7 +108,7 @@ public final class VexPlayerLifecycleListenerTest {
             default -> throw new AssertionError(method.getName());
         });
         var address = InetAddress.getLoopbackAddress();
-        listener.onPlayerPreLogin(new AsyncPlayerPreLoginEvent("Alex", address, address, playerId,
+        listener.onPlayerPreLogin(new AsyncPlayerPreLoginEvent("Alex", address, new InetSocketAddress(address, 25565), playerId,
             false, profile, "localhost", null));
         listener.onPlayerJoin(new PlayerJoinEvent(platform, Component.empty()));
         var failure = new IllegalStateException("Arrival world is unavailable");

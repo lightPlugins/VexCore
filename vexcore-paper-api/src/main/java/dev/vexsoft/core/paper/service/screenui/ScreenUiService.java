@@ -9,6 +9,7 @@ import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelLayout;
 import dev.vexsoft.core.paper.screenui.dialogue.DialoguePanelSkin;
 import dev.vexsoft.core.paper.screenui.dialogue.PreparedDialogue;
 import dev.vexsoft.core.paper.screenui.panel.UiPanelStyle;
+import dev.vexsoft.core.paper.screenui.progression.ExperienceGainNotice;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionNotice;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,11 @@ public interface ScreenUiService extends VexService {
     /** Queues time-limited progression overlays. Call on the viewer's entity scheduler after commit. */
     default void showProgression(VexPlayer player, List<ProgressionNotice> notices) {
         throw new UnsupportedOperationException("Progression overlays are unavailable");
+    }
+
+    /** Queues an XP overlay. Call on the viewer's entity scheduler after commit. */
+    default void showExperienceGain(VexPlayer player, ExperienceGainNotice notice) {
+        throw new UnsupportedOperationException("Experience overlays are unavailable");
     }
 
     /** Loads the viewer's skin face asynchronously using the shared bounded cache. */

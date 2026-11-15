@@ -46,8 +46,8 @@ public final class GenerateScreenUiPack {
             root,
             "pack.mcmeta",
             "{\"pack\":{\"description\":\"VexCore Screen UI (" + protocol.getProperty("minecraft")
-                + ")\",\"min_format\":[" + protocol.getProperty("packFormat") + ",0],\"max_format\":["
-                + protocol.getProperty("packFormat") + ",0]}}"
+                + ")\",\"min_format\":[" + protocol.getProperty("packFormat") + "],\"max_format\":["
+                + protocol.getProperty("packFormat") + "]}}"
         );
         final int cellWidth = 16;
         final int cellHeight = 12;

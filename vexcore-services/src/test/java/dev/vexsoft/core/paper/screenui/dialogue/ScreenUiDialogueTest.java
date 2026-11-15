@@ -8,7 +8,7 @@ import dev.vexsoft.core.paper.screenui.layout.ScreenAnchor;
 import dev.vexsoft.core.paper.screenui.layout.TextBlockLayout;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiDialogueLayout;
 import dev.vexsoft.core.paper.screenui.render.ScreenUiRenderer;
-import dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition;
+import dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +54,7 @@ public final class ScreenUiDialogueTest {
         );
         var prepared = ScreenUiDialogueLayout.prepare(
             Component.text("NPC"), List.of(Component.text("Hello")),
-            DialoguePanelLayout.defaults(), new V26_2ScreenUiVersionDefinition()
+            DialoguePanelLayout.defaults(), new V26_3ScreenUiVersionDefinition()
         );
         var texture = UiTexture.sprite(Key.key("test:frame"), 140, 96);
         var skin = new DialoguePanelSkin(
@@ -80,7 +80,7 @@ public final class ScreenUiDialogueTest {
             Component.text("NPC"),
             List.of(Component.text("First sentence. ").append(Component.text("Second sentence!"))),
             DialoguePanelLayout.defaults(),
-            new V26_2ScreenUiVersionDefinition()
+            new V26_3ScreenUiVersionDefinition()
         );
 
         assertEquals(2, prepared.pages().size());
@@ -91,7 +91,7 @@ public final class ScreenUiDialogueTest {
             Component.text("NPC"),
             List.of(Component.text("monolith ".repeat(35) + "end.")),
             DialoguePanelLayout.defaults(),
-            new V26_2ScreenUiVersionDefinition()
+            new V26_3ScreenUiVersionDefinition()
         );
 
         assertTrue(longSentence.pages().size() > 1);
@@ -108,7 +108,7 @@ public final class ScreenUiDialogueTest {
                 Component.text("Last")
             ),
             DialoguePanelLayout.defaults(),
-            new V26_2ScreenUiVersionDefinition()
+            new V26_3ScreenUiVersionDefinition()
         );
 
         assertEquals(3, prepared.pages().size());
@@ -203,12 +203,12 @@ public final class ScreenUiDialogueTest {
                 4,
                 2
             ),
-            new V26_2ScreenUiVersionDefinition()
+            new V26_3ScreenUiVersionDefinition()
         ));
 
         for (ScreenAnchor anchor : ScreenAnchor.values()) {
             for (int y = -256; y <= 256; y++) {
-                var version = new V26_2ScreenUiVersionDefinition();
+                var version = new V26_3ScreenUiVersionDefinition();
 
                 assertNotNull(version.textFont(anchor, y));
                 assertNotNull(version.textureFont(UiTexture.PANEL, anchor, y));

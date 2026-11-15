@@ -124,7 +124,7 @@ public final class ScreenUiLifecycleTest {
                 VexServiceRegistry.class.getClassLoader(),
                 new Class<?>[]{VexServiceRegistry.class},
                 (proxy, method, args) -> args[0] == ScheduleService.class ? schedules
-                    : new dev.vexsoft.core.paper.screenui.v26_2.V26_2ScreenUiVersionDefinition()
+                    : new dev.vexsoft.core.paper.screenui.v26_3.V26_3ScreenUiVersionDefinition()
             );
 
             coordinator = new VexScreenUiCoordinatorService(registry);

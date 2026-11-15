@@ -21,8 +21,8 @@ public final class GenerateInteractiveUiPack {
         Path fonts = Path.of(arguments[2]);
         Path screenPack = Path.of(arguments[3]);
         Files.createDirectories(output);
-        write(output, "pack.mcmeta", "{\"pack\":{\"description\":\"VexCore Interactive UI - Minecraft 26.2\","
-            + "\"min_format\":[88,0],\"max_format\":[88,0]}}\n");
+        write(output, "pack.mcmeta", "{\"pack\":{\"description\":\"VexCore Interactive UI - Minecraft 26.3\","
+            + "\"min_format\":[97,1],\"max_format\":[97,1]}}\n");
         write(output, "FONT-LICENSE.txt", Files.readString(fonts.resolve("LICENSE.txt")));
         write(output, "vexcore-interactive-ui.properties", Files.readString(source.resolve("protocol.properties")));
         copyTree(source.resolve("assets"), output.resolve("assets"));
@@ -114,30 +114,30 @@ public final class GenerateInteractiveUiPack {
 
     private static void generateShaders(Path output, Path screenPack) throws Exception {
         String vertex = Files.readString(screenPack.resolve("assets/minecraft/shaders/core/text.vsh"));
-        vertex = replaceOnce(vertex, "#moj_import <vexcore:screen_ui/v26_2.glsl>",
-            "#moj_import <vexcore:screen_ui/v26_2.glsl>\n#moj_import <vexcore:interactive_ui/v26_2.glsl>");
+        vertex = replaceOnce(vertex, "#include <vexcore:screen_ui/v26_3.glsl>",
+            "#include <vexcore:screen_ui/v26_3.glsl>\n#include <vexcore:interactive_ui/v26_3.glsl>");
         vertex = replaceOnce(vertex, "vexRewardAge = -1.0;", "vexRewardAge = -1.0;\n    interactiveKind = -1;");
-        vertex = replaceOnce(vertex, "position = vex_screen_ui_position(position, UV0, gl_VertexID);",
-            "position = interactive_ui_position(position, UV0, gl_VertexID);\n"
-                + "    if (interactiveKind < 0) position = vex_screen_ui_position(position, UV0, gl_VertexID);");
+        vertex = replaceOnce(vertex, "position = vex_screen_ui_position(position, UV0, gl_VertexIndex);",
+            "position = interactive_ui_position(position, UV0, gl_VertexIndex);\n"
+                + "    if (interactiveKind < 0) position = vex_screen_ui_position(position, UV0, gl_VertexIndex);");
         write(output, "assets/minecraft/shaders/core/text.vsh", vertex);
         String fragment = Files.readString(screenPack.resolve("assets/minecraft/shaders/core/text.fsh"));
-        fragment = replaceOnce(fragment, "flat in float vexUi;",
-            "flat in float vexUi;\n#moj_import <vexcore:interactive_ui/fragment.glsl>");
+        fragment = replaceOnce(fragment, "layout(location = 4) flat in float vexUi;",
+            "layout(location = 4) flat in float vexUi;\n#include <vexcore:interactive_ui/fragment.glsl>");
         fragment = replaceOnce(fragment, "void main() {", "void main() {\n"
-            + "#if defined(IS_GUI) && !defined(IS_GRAYSCALE)\n"
+            + "#if defined(IS_GUI) && !defined(IS_GRAYSCALE) && !defined(OIT_ALPHA_ONLY)\n"
             + "    if (interactiveKind >= 1) {\n"
             + "        fragColor = interactive_ui_fragment();\n"
             + "        return;\n"
             + "    }\n"
             + "#endif");
         write(output, "assets/minecraft/shaders/core/text.fsh", fragment);
-        write(output, "assets/vexcore/shaders/include/screen_ui/v26_2.glsl",
-            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/screen_ui/v26_2.glsl")));
-        write(output, "assets/vexcore/shaders/include/reward_cards/v26_2.glsl",
-            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/reward_cards/v26_2.glsl")));
-        write(output, "assets/vexcore/shaders/include/progression/v26_2.glsl",
-            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/progression/v26_2.glsl")));
+        write(output, "assets/vexcore/shaders/include/screen_ui/v26_3.glsl",
+            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/screen_ui/v26_3.glsl")));
+        write(output, "assets/vexcore/shaders/include/reward_cards/v26_3.glsl",
+            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/reward_cards/v26_3.glsl")));
+        write(output, "assets/vexcore/shaders/include/progression/v26_3.glsl",
+            Files.readString(screenPack.resolve("assets/vexcore/shaders/include/progression/v26_3.glsl")));
     }
 
     private static String replaceOnce(String source, String expected, String replacement) {
