@@ -1,9 +1,11 @@
 package dev.vexsoft.core.vexui.pack;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.paper.screenui.progression.ProgressionLayout;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
@@ -73,6 +75,18 @@ public final class VexUIPackGeneratorTest {
         assertEquals(VexUITheme.PANEL.background(), frame.getRGB(100, 20) & 0xFFFFFF);
         assertEquals(VexUITheme.PANEL.lightBorder(), frame.getRGB(100, 3) & 0xFFFFFF);
         var json = new ObjectMapper();
+        for (int offset : new int[]{0, 899}) {
+            var tiles = json.readTree(first.resolve("assets/vexcore/font/vexui/tiles/y_" + offset + ".json").toFile())
+                .get("providers");
+            assertEquals(16, tiles.size());
+            int glyphs = 0;
+            for (var tile : tiles) {
+                assertEquals(7 - offset, tile.get("ascent").asInt());
+                assertEquals(9, tile.get("height").asInt());
+                glyphs += tile.get("chars").size();
+            }
+            assertEquals(27, glyphs);
+        }
         var sounds = json.readTree(first.resolve("assets/vexcore/sounds.json").toFile());
         for (String name : List.of("collect", "pick-up", "level-up", "upgrade-success", "upgrade-failed")) {
             var event = sounds.get("ui." + name).get("sounds").get(0);
@@ -85,23 +99,79 @@ public final class VexUIPackGeneratorTest {
         for (int slot = 0; slot < 4; slot++) {
             for (int previous = 0; previous < 4; previous++) {
                 var layout = new RewardCardLayout(slot, previous, 0, 0, false);
-                for (String kind : new String[]{"text", "quantity", "frame"}) {
-                    var font = json.readTree(first.resolve("assets/vexcore/font/reward/" + kind + "/"
-                        + layout.variant() + ".json").toFile());
-                    int primitive = kind.equals("text") ? 0 : kind.equals("quantity") ? 3 : 1;
-                    for (var provider : font.get("providers")) {
-                        assertEquals(layout.ascent(primitive), provider.get("ascent").asInt());
-                    }
-                }
+                var frameFont = json.readTree(first.resolve("assets/vexcore/font/reward/frame/"
+                    + layout.variant() + ".json").toFile());
+                assertEquals(layout.ascent(1), frameFont.get("providers").get(0).get("ascent").asInt());
             }
         }
         for (int part = 0; part < ProgressionLayout.PARTS; part++) {
             var font = json.readTree(first.resolve("assets/vexcore/font/progression/" + part + ".json").toFile());
             for (var provider : font.get("providers")) {
                 assertEquals(ProgressionLayout.ascent(part), provider.get("ascent").asInt());
-                assertTrue(provider.get("file").asText().startsWith("vexcore:reward/text/"));
             }
         }
+        assertFalse(Files.exists(first.resolve("assets/vexcore/font/reward/text")));
+        assertFalse(Files.exists(first.resolve("assets/vexcore/font/reward/quantity")));
+        var full = json.readTree(first.resolve("assets/vexcore/font/reward/text.json").toFile()).get("providers");
+        for (var provider : full) {
+            assertEquals(RewardCardLayout.textAscent(false), provider.get("ascent").asInt());
+        }
+        var quantity = json.readTree(first.resolve("assets/vexcore/font/reward/quantity.json").toFile())
+            .get("providers").get(0);
+        assertEquals(RewardCardLayout.textAscent(true), quantity.get("ascent").asInt());
+        verifySubset(first, json, full, "reward/quantity", "0123456789+.abcdefghijklmnopqrstuvwxyz");
+        for (int part = 1; part <= 5; part++) {
+            verifySubset(first, json, full, "progression/" + part, "0123456789-◇");
+        }
+        verifySubset(first, json, full, "progression/6", "✦");
+        verifySubset(first, json, full, "progression/8", "✦");
+        for (int part : new int[]{0, ProgressionLayout.EXPERIENCE_TEXT_PART}) {
+            var providers = json.readTree(first.resolve("assets/vexcore/font/progression/" + part + ".json").toFile())
+                .get("providers");
+            assertEquals(full.size(), providers.size());
+            for (int index = 0; index < full.size(); index++) {
+                assertEquals(full.get(index).get("file"), providers.get(index).get("file"));
+            }
+        }
+    }
+
+    private static void verifySubset(
+        Path root, ObjectMapper json, JsonNode full, String font, String characters
+    ) throws Exception {
+        var providers = json.readTree(root.resolve("assets/vexcore/font/" + font + ".json").toFile()).get("providers");
+        assertEquals(1, providers.size());
+        var provider = providers.get(0);
+        assertEquals(characters, provider.get("chars").get(0).asText());
+        assertEquals(22, provider.get("height").asInt());
+        var atlas = ImageIO.read(texture(root, provider).toFile());
+        int[] codePoints = characters.codePoints().toArray();
+        assertEquals(codePoints.length * 18, atlas.getWidth());
+        assertEquals(22, atlas.getHeight());
+        for (int index = 0; index < codePoints.length; index++) {
+            assertArrayEquals(glyph(root, full, codePoints[index]),
+                atlas.getRGB(index * 18, 0, 18, 22, null, 0, 18));
+        }
+    }
+
+    private static int[] glyph(Path root, JsonNode providers, int point) throws Exception {
+        for (var provider : providers) {
+            var rows = provider.get("chars");
+            for (int row = 0; row < rows.size(); row++) {
+                int[] points = rows.get(row).asText().codePoints().toArray();
+                for (int column = 0; column < points.length; column++) {
+                    if (points[column] == point) {
+                        var atlas = ImageIO.read(texture(root, provider).toFile());
+                        return atlas.getRGB(column * 18, row * 22, 18, 22, null, 0, 18);
+                    }
+                }
+            }
+        }
+        throw new AssertionError("Missing original glyph " + point);
+    }
+
+    private static Path texture(Path root, JsonNode provider) {
+        String[] path = provider.get("file").asText().split(":", 2);
+        return root.resolve("assets/" + path[0] + "/textures/" + path[1]);
     }
 
     private Map<String, String> hashes(final Path root) throws Exception {

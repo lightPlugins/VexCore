@@ -21,10 +21,12 @@ import dev.vexsoft.core.paper.packets.service.player.CameraPacketService;
 import dev.vexsoft.core.paper.packets.service.player.PlayerAnimationPacketService;
 import dev.vexsoft.core.paper.packets.service.player.VexCameraPacketService;
 import dev.vexsoft.core.paper.packets.service.player.VexPlayerAnimationPacketService;
+import dev.vexsoft.core.paper.scene.service.VexSceneService;
 import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
 import dev.vexsoft.core.paper.service.effect.ParticleEffectService;
 import dev.vexsoft.core.paper.service.listeners.ListenerService;
 import dev.vexsoft.core.paper.service.placeholder.PlaceholderApiBridgeService;
+import dev.vexsoft.core.paper.service.scene.SceneService;
 import dev.vexsoft.core.paper.service.sidebar.SidebarService;
 import dev.vexsoft.core.paper.service.upgrade.UpgradeAnimationService;
 import dev.vexsoft.core.paper.sidebar.service.VexSidebarService;
@@ -51,6 +53,7 @@ public final class VexPluginBootstrapServiceTest {
         assertEquals(VexParticleEffectService.class, services.definitions.get(ParticleEffectService.class));
         assertEquals(VexUpgradeAnimationService.class, services.definitions.get(UpgradeAnimationService.class));
         assertEquals(VexSidebarService.class, services.definitions.get(SidebarService.class));
+        assertEquals(VexSceneService.class, services.definitions.get(SceneService.class));
 
         org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(VexInventoryListener.class));
         org.junit.jupiter.api.Assertions.assertTrue(services.listenerTypes.contains(dev.vexsoft.core.paper.packets.service.player.VexPlayerDummyListener.class));

@@ -66,7 +66,7 @@ public final class VexUIPackGenerator {
         List<String> tileProviders = tiles(root, metrics);
         List<String> iconProviders = icons(root, metrics, client);
         // All backgrounds share the first text baseline, preserving painter order across multiline foregrounds.
-        // White tiles are tinted at runtime, so these fonts share only 27 tiny source images.
+        // White tiles are tinted at runtime, so each baseline reuses the same width-grouped images.
         for (int y = 0; y < 900; y++) {
             String tileJson = String.join(",", tileProviders).replace("ASCENT", Integer.toString(7 - y));
             write(root, "assets/vexcore/font/vexui/tiles/y_" + y + ".json",
@@ -174,24 +174,38 @@ public final class VexUIPackGenerator {
     }
 
     private static List<String> tiles(final Path root, final StringBuilder metrics) throws IOException {
-        List<String> providers = new ArrayList<>();
+        var tilesByWidth = new TreeMap<Integer, List<Tile>>();
         int point = 0xE100;
         for (int kind = 0; kind < 3; kind++) {
             int[] widths = kind == 2 ? HIT_WIDTHS : WIDTHS;
             for (int width : widths) {
                 int imageWidth = kind == 2 ? width - 1 : width;
-                BufferedImage image = new BufferedImage(imageWidth, 9, BufferedImage.TYPE_INT_ARGB);
-                for (int y = 0; y < (kind == 1 ? 1 : 9); y++) {
-                    for (int x = 0; x < imageWidth; x++) {
-                        image.setRGB(x, y, 0xFFFFFFFF);
-                    }
-                }
+                tilesByWidth.computeIfAbsent(imageWidth, ignored -> new ArrayList<>())
+                    .add(new Tile(point, kind == 1 ? 1 : 9));
                 String id = kind + "_" + width;
-                png(root, "assets/vexcore/textures/vexui/tiles/" + id + ".png", image);
-                providers.add(bitmap("vexcore:vexui/tiles/" + id + ".png", 9, point));
                 metrics.append("tile.0_").append(id).append('=').append(point).append('\n');
                 point++;
             }
+        }
+        List<String> providers = new ArrayList<>();
+        for (var entry : tilesByWidth.entrySet()) {
+            int width = entry.getKey();
+            var tiles = entry.getValue();
+            var image = new BufferedImage(width, 9 * tiles.size(), BufferedImage.TYPE_INT_ARGB);
+            List<String> rows = new ArrayList<>();
+            for (int row = 0; row < tiles.size(); row++) {
+                Tile tile = tiles.get(row);
+                rows.add(quoted(tile.point()));
+                for (int y = 0; y < tile.inkHeight(); y++) {
+                    for (int x = 0; x < width; x++) {
+                        image.setRGB(x, row * 9 + y, 0xFFFFFFFF);
+                    }
+                }
+            }
+            String texture = "vexui/tiles/width_" + width + ".png";
+            png(root, "assets/vexcore/textures/" + texture, image);
+            providers.add("{\"type\":\"bitmap\",\"file\":\"vexcore:" + texture + "\",\"height\":9,\"ascent\":ASCENT,"
+                + "\"chars\":[" + String.join(",", rows) + "]}");
         }
         return providers;
     }
@@ -277,5 +291,8 @@ public final class VexUIPackGenerator {
         Path file = root.resolve(name);
         Files.createDirectories(Objects.requireNonNull(file.toAbsolutePath().getParent()));
         Files.writeString(file, value, StandardCharsets.UTF_8);
+    }
+
+    private record Tile(int point, int inkHeight) {
     }
 }

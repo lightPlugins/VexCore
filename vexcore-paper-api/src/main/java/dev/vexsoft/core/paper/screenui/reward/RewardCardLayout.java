@@ -17,6 +17,7 @@ public record RewardCardLayout(int slot, int previousSlot, long started, long mo
     public static final int CLOCK = 120;
     public static final int CARRIER_BASE = 65536;
     public static final int CARRIER_STRIDE = 512;
+    public static final int TEXT_Y_STRIDE = 32;
 
     /** Requires current and previous slots within the visible reward stack. */
     public RewardCardLayout {
@@ -43,6 +44,23 @@ public record RewardCardLayout(int slot, int previousSlot, long started, long mo
         if (primitive < 0 || primitive > 3) {
             throw new IllegalArgumentException("Invalid reward card primitive");
         }
-        return 8 - (CARRIER_BASE + (slot * 16 + previousSlot * 4 + primitive) * CARRIER_STRIDE + 128);
+        return carrierAscent((slot * CAPACITY + previousSlot) * 4 + primitive);
+    }
+
+    /** Returns the shared text or amount ascent. Slot transitions are carried horizontally. */
+    public static int textAscent(boolean quantity) {
+        return carrierAscent(quantity ? 3 : 0);
+    }
+
+    /** Encodes the local text Y coordinate and the current and previous card slots. */
+    public int textTransportY(int y) {
+        if (y < 0 || y >= TEXT_Y_STRIDE) {
+            throw new IllegalArgumentException("Invalid reward text Y coordinate");
+        }
+        return (slot * CAPACITY + previousSlot) * TEXT_Y_STRIDE + y;
+    }
+
+    private static int carrierAscent(int carrier) {
+        return 8 - (CARRIER_BASE + carrier * CARRIER_STRIDE + 128);
     }
 }

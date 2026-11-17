@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.packets.service.connection;
 
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
+import dev.vexsoft.core.paper.actionbar.service.ActionBarCoordinatorService;
 import dev.vexsoft.core.paper.interactiveui.service.InteractiveUiCoordinatorService;
 import dev.vexsoft.core.paper.packets.interaction.FakeInteraction;
 import dev.vexsoft.core.paper.packets.internal.PacketDuplexHandler;
@@ -36,7 +37,8 @@ import org.bukkit.entity.Player;
     InteractiveUiCoordinatorService.class,
     VirtualPassengerOverlayService.class,
     VirtualBlockService.class,
-    VirtualBlockPacketAdapterService.class
+    VirtualBlockPacketAdapterService.class,
+    ActionBarCoordinatorService.class
 })
 public final class VexPacketConnectionService implements PacketConnectionService, PacketDuplexHandler, AutoCloseable {
 
@@ -51,6 +53,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
     private final VirtualPassengerOverlayService virtualPassengers;
     private final VirtualBlockService virtualBlocks;
     private final VirtualBlockPacketAdapterService virtualBlockPackets;
+    private final ActionBarCoordinatorService actionBars;
     private final ConcurrentHashMap<UUID, PendingInput> pending = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, Object> sessions = new ConcurrentHashMap<>();
 
@@ -66,6 +69,7 @@ public final class VexPacketConnectionService implements PacketConnectionService
         this.virtualPassengers = services.require(VirtualPassengerOverlayService.class);
         this.virtualBlocks = services.require(VirtualBlockService.class);
         this.virtualBlockPackets = services.require(VirtualBlockPacketAdapterService.class);
+        this.actionBars = services.require(ActionBarCoordinatorService.class);
     }
 
     @Override
@@ -103,6 +107,9 @@ public final class VexPacketConnectionService implements PacketConnectionService
     @Override
     public Object write(final UUID viewerId, final Object packet) {
         Object visible = transport.filterInventorySynchronization(viewerId, packet);
+        if (visible != null && actionBars.isSuppressed(viewerId)) {
+            visible = transport.suppressActionBar(visible);
+        }
         if (visible == null) {
             return null;
         }

@@ -7,6 +7,7 @@ import java.awt.AlphaComposite;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -18,12 +19,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 
 /** Bakes static GUI previews of JSON item models at build time, never on a server tick. */
 public final class VexUIModelPackGenerator implements AutoCloseable {
+
+    private static final int CELL_SIZE = 48;
+    private static final int PAGE_COLUMNS = 8;
+    private static final int PAGE_SIZE = PAGE_COLUMNS * PAGE_COLUMNS;
+    private static final int FIRST_GLYPH = 0xE000;
+    private static final int[] PREVIEW_SIZES = {14, 16, 32, 48};
 
     private final ObjectMapper json = new ObjectMapper();
     private final List<Path> roots;
@@ -79,49 +87,88 @@ public final class VexUIModelPackGenerator implements AutoCloseable {
                 }
             }
         }
-        var entries = new StringBuilder();
+        var previews = new ArrayList<ModelPreview>();
         List<String> unsupported = new ArrayList<>();
-        int count = 0;
         for (var entry : definitions.entrySet()) {
             String key = entry.getKey();
             BufferedImage image;
             try {
                 JsonNode reference = preview(entry.getValue().path("model"), 0);
-                image = render(reference.path("model").asText(), 48);
+                image = render(reference.path("model").asText(), CELL_SIZE);
             } catch (UnsupportedOperationException unsupportedModel) {
                 unsupported.add(key + ": " + unsupportedModel.getMessage());
                 continue;
             }
             String[] parts = key.split(":", 2);
-            String texture = parts[0] + ":vexui/models/" + parts[1] + ".png";
-            Path png = output.resolve("assets/" + parts[0] + "/textures/vexui/models/" + parts[1] + ".png");
-            Files.createDirectories(Objects.requireNonNull(png.getParent()));
-            ImageIO.write(image, "PNG", png.toFile());
             RewardCardAssets.icon(output, parts[0] + ":reward/model/" + parts[1], image);
-            int ink = inkWidth(image);
-            for (int pixels : new int[]{14, 16, 32, 48}) {
-                String font = parts[0] + ":vexui/models/" + parts[1] + "/" + pixels;
-                for (int offset = 0; offset < 9; offset++) {
-                    var provider = json.createObjectNode().put("type", "bitmap").put("file", texture)
-                        .put("height", pixels).put("ascent", 7 - offset);
-                    provider.putArray("chars").add("\uE001");
-                    var definition = json.createObjectNode();
-                    definition.putArray("providers").add(provider);
-                    write(output.resolve("assets/" + parts[0] + "/font/vexui/models/" + parts[1]
-                        + "/" + pixels + "/y_" + offset + ".json"), json.writeValueAsString(definition));
+            previews.add(new ModelPreview(key, image, inkWidth(image)));
+        }
+        var entries = new StringBuilder();
+        int count = 0;
+        for (int start = 0; start < previews.size(); start += PAGE_SIZE) {
+            int end = Math.min(start + PAGE_SIZE, previews.size());
+            var page = previews.subList(start, end);
+            String fontPath = writePreviewPage(output, page);
+            for (int index = 0; index < page.size(); index++) {
+                ModelPreview preview = page.get(index);
+                for (int pixels : PREVIEW_SIZES) {
+                    String prefix = "model." + count++ + ".";
+                    entries.append(prefix).append("key=").append(preview.key()).append('\n')
+                        .append(prefix).append("pixels=").append(pixels).append('\n')
+                        .append(prefix).append("font=vexcore:").append(fontPath).append('/').append(pixels).append('\n')
+                        .append(prefix).append("point=").append(FIRST_GLYPH + index).append('\n')
+                        .append(prefix).append("advance=")
+                        .append(Math.round(preview.inkWidth() * pixels / (float) CELL_SIZE) + 1).append('\n');
                 }
-                String prefix = "model." + count++ + ".";
-                entries.append(prefix).append("key=").append(key).append('\n')
-                    .append(prefix).append("pixels=").append(pixels).append('\n')
-                    .append(prefix).append("font=").append(font).append('\n')
-                    .append(prefix).append("point=57345\n")
-                    .append(prefix).append("advance=").append(Math.round(ink * pixels / 48f) + 1).append('\n');
             }
         }
         write(manifest, "format=1\ncount=" + count + "\n" + entries);
         write(manifest.resolveSibling("vexui-model-unsupported.txt"), String.join("\n", unsupported) + "\n");
         System.out.println("Generated " + count + " VexUI model sizes; " + unsupported.size()
             + " unsupported definitions listed in " + manifest.resolveSibling("vexui-model-unsupported.txt"));
+    }
+
+    private String writePreviewPage(final Path output, final List<ModelPreview> page) throws IOException {
+        int columns = Math.min(PAGE_COLUMNS, page.size());
+        int rows = Math.ceilDiv(page.size(), columns);
+        var image = new BufferedImage(columns * CELL_SIZE, rows * CELL_SIZE, BufferedImage.TYPE_INT_ARGB);
+        var cell = new int[CELL_SIZE * CELL_SIZE];
+        var characters = json.createArrayNode();
+        for (int row = 0; row < rows; row++) {
+            var line = new StringBuilder();
+            for (int column = 0; column < columns; column++) {
+                int index = row * columns + column;
+                if (index >= page.size()) {
+                    line.append('\0');
+                    continue;
+                }
+                line.appendCodePoint(FIRST_GLYPH + index);
+                page.get(index).image().getRGB(0, 0, CELL_SIZE, CELL_SIZE, cell, 0, CELL_SIZE);
+                image.setRGB(column * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE, cell, 0, CELL_SIZE);
+            }
+            characters.add(line.toString());
+        }
+        var encoded = new ByteArrayOutputStream();
+        ImageIO.write(image, "PNG", encoded);
+        byte[] pixels = encoded.toByteArray();
+        // Pages produced by different pack builds can coexist. Equal files share the same glyph grid.
+        encoded.writeBytes(characters.toString().getBytes(StandardCharsets.UTF_8));
+        String path = "vexui/models/atlas/" + UUID.nameUUIDFromBytes(encoded.toByteArray());
+        Path file = output.resolve("assets/vexcore/textures/" + path + ".png");
+        Files.createDirectories(file.getParent());
+        Files.write(file, pixels);
+        for (int size : PREVIEW_SIZES) {
+            for (int offset = 0; offset < 9; offset++) {
+                var provider = json.createObjectNode().put("type", "bitmap").put("file", "vexcore:" + path + ".png")
+                    .put("height", size).put("ascent", 7 - offset);
+                provider.set("chars", characters);
+                var definition = json.createObjectNode();
+                definition.putArray("providers").add(provider);
+                write(output.resolve("assets/vexcore/font/" + path + "/" + size + "/y_" + offset + ".json"),
+                    json.writeValueAsString(definition));
+            }
+        }
+        return path;
     }
 
     /** Rasterizes one ordinary or generated item model using its GUI display transform. */
@@ -452,5 +499,8 @@ public final class VexUIModelPackGenerator implements AutoCloseable {
     private static void write(final Path path, final String value) throws IOException {
         Files.createDirectories(Objects.requireNonNull(path.toAbsolutePath().getParent()));
         Files.writeString(path, value, StandardCharsets.UTF_8);
+    }
+
+    private record ModelPreview(String key, BufferedImage image, int inkWidth) {
     }
 }

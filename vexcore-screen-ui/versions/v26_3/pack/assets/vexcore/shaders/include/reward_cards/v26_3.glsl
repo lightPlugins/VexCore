@@ -47,8 +47,16 @@ vec4 vex_reward_card_position(vec4 position, vec2 uv, int vertexId) {
     vec2 viewport = ceil(vec2(2.0 / abs(ProjMat[0][0]), 2.0 / abs(ProjMat[1][1])) - 0.001);
     float centered = position.x - floor(viewport.x * 0.5);
     int transportedY = int(floor((centered + 2048.0) / 4096.0));
-    vec2 local = vec2(centered - float(transportedY) * 4096.0,
-        float(transportedY) + (bottom ? float(cell.y) : 0.0) - 2.0);
+    float localX = centered - float(transportedY) * 4096.0;
+    int localY = transportedY;
+    // Shared name and amount fonts use the horizontal payload for both slot indices.
+    if (carrier == 0 || carrier == 3) {
+        int slotPair = transportedY / 32;
+        slot = slotPair / 4;
+        previousSlot = slotPair % 4;
+        localY = transportedY % 32;
+    }
+    vec2 local = vec2(localX, float(localY) + (bottom ? float(cell.y) : 0.0) - 2.0);
     vexRewardPoint = local;
     vexRewardFrame = primitive == 1 ? 1.0 : 0.0;
     vexRewardAge = pulse ? motionAge + 3.0 : age;

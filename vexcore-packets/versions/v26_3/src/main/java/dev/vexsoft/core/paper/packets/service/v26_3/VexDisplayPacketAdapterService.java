@@ -1,5 +1,6 @@
 package dev.vexsoft.core.paper.packets.service.v26_3;
 
+import net.kyori.adventure.sound.Sound;
 import dev.vexsoft.core.api.service.registry.Dependencies;
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexServiceRegistry;
@@ -292,12 +293,7 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
     @Override
     public void attachCamera(final Player viewer, final FakeDisplayHandle handle, final boolean hideSurvivalHud) {
-        Display display = displays.get(handle);
-
-        if (display == null) {
-            throw new IllegalArgumentException("Unknown fake display camera target");
-        }
-
+        Display display = cameraDisplay(handle);
         requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
         List<Object> packets = new ArrayList<>();
 
@@ -310,6 +306,47 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
 
         packets.add(new ClientboundSetCameraPacket(display));
         transport.sendBundle(viewer, packets);
+    }
+
+    @Override
+    public void cutCamera(final Player viewer, final FakeDisplayHandle handle, final Location location) {
+        Display display = cameraDisplay(handle);
+        requireViewer(viewer, handle, location);
+        position(display, location);
+        var data = display.getEntityData();
+        var duration = Display.DATA_POS_ROT_INTERPOLATION_DURATION_ID;
+        int movementDuration = data.get(duration);
+        // A zero-length interpolation snaps the client's camera without removing its narration emitter.
+        data.set(duration, 0, true);
+        var snap = V26_3DisplayPackets.metadata(display);
+        data.set(duration, movementDuration, true);
+        transport.sendBundle(viewer, List.of(
+            snap,
+            V26_3DisplayPackets.teleport(handle.getEntityId(), location),
+            V26_3DisplayPackets.metadata(display)
+        ));
+    }
+
+    @Override
+    public void playCameraSound(final Player viewer, final FakeDisplayHandle handle, final Sound sound) {
+        Display display = cameraDisplay(handle);
+        requireViewer(viewer, handle, display.getBukkitEntity().getLocation());
+        viewer.playSound(sound, display.getBukkitEntity());
+    }
+
+    @Override
+    public void glideCamera(
+        final Player viewer, final FakeDisplayHandle handle, final Location location, final int durationTicks
+    ) {
+        Display display = cameraDisplay(handle);
+        requireViewer(viewer, handle, location);
+        position(display, location);
+        // The client uses the display's synced tick count directly for its position and rotation interpolation.
+        display.getEntityData().set(Display.DATA_POS_ROT_INTERPOLATION_DURATION_ID, durationTicks, true);
+        transport.sendBundle(viewer, List.of(
+            V26_3DisplayPackets.metadata(display),
+            V26_3DisplayPackets.teleport(handle.getEntityId(), location)
+        ));
     }
 
     @Override
@@ -336,6 +373,14 @@ public final class VexDisplayPacketAdapterService implements DisplayPacketAdapte
             case ADVENTURE -> GameType.ADVENTURE;
             case SPECTATOR -> GameType.SPECTATOR;
         };
+    }
+
+    private Display cameraDisplay(final FakeDisplayHandle handle) {
+        Display display = displays.get(handle);
+        if (display == null) {
+            throw new IllegalArgumentException("Unknown fake display camera target");
+        }
+        return display;
     }
 
     @Override

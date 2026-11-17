@@ -149,6 +149,10 @@ import dev.vexsoft.core.paper.screenui.listener.VexScreenUiListener;
 import dev.vexsoft.core.paper.screenui.service.ScreenUiCoordinatorService;
 import dev.vexsoft.core.paper.screenui.service.VexScreenUiCoordinatorService;
 import dev.vexsoft.core.paper.screenui.service.VexScreenUiService;
+import dev.vexsoft.core.paper.scene.service.SceneCoordinatorService;
+import dev.vexsoft.core.paper.scene.service.VexSceneCoordinatorService;
+import dev.vexsoft.core.paper.scene.service.VexSceneListener;
+import dev.vexsoft.core.paper.scene.service.VexSceneService;
 import dev.vexsoft.core.paper.screenui.version.ScreenUiVersionDefinition;
 import dev.vexsoft.core.paper.service.actionbar.ActionBarService;
 import dev.vexsoft.core.paper.service.bootstrap.PluginBootstrapService;
@@ -172,6 +176,7 @@ import dev.vexsoft.core.paper.service.reward.RewardNotificationService;
 import dev.vexsoft.core.paper.service.reward.RewardToastService;
 import dev.vexsoft.core.paper.service.scheduler.ScheduleService;
 import dev.vexsoft.core.paper.service.screenui.ScreenUiService;
+import dev.vexsoft.core.paper.service.scene.SceneService;
 import dev.vexsoft.core.paper.service.sidebar.SidebarService;
 import dev.vexsoft.core.paper.service.signals.SignalService;
 import dev.vexsoft.core.paper.service.teleport.PlayerTeleportService;
@@ -292,6 +297,8 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.register(ScreenUiCoordinatorService.class, VexScreenUiCoordinatorService.class);
         coreServices.register(ScreenUiVersionDefinition.class, ScreenUiVersions.select());
         coreServices.register(ScreenUiService.class, VexScreenUiService.class);
+        coreServices.register(SceneCoordinatorService.class, VexSceneCoordinatorService.class);
+        coreServices.register(SceneService.class, VexSceneService.class);
         coreServices.register(InteractiveUiService.class, VexInteractiveUiService.class);
         coreServices.register(InteractiveUiDemoService.class, VexInteractiveUiDemoService.class);
         coreServices.register(DialogService.class, VexDialogService.class);
@@ -361,6 +368,7 @@ public final class VexCorePlugin extends JavaPlugin implements ConfigurationOwne
         coreServices.require(ServerPerformanceService.class).start();
         coreServices.require(PerformanceBossBarService.class).start();
         coreServices.require(ListenerService.class).register(VexScreenUiListener.class, coreServices);
+        coreServices.require(ListenerService.class).register(VexSceneListener.class, coreServices);
         coreServices.require(ListenerService.class).register(VexUIListener.class, coreServices);
         getLogger().info("Network server ID initialized as " + coreServices.require(ServerIdentityService.class)
             .getServerId()

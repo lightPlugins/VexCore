@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.zip.ZipFile;
@@ -22,6 +23,11 @@ import javax.imageio.ImageIO;
 public final class RewardCardAssets {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final int TEXT_CELL_WIDTH = 18;
+    private static final int TEXT_CELL_HEIGHT = 22;
+    private static final String DIGITS = "0123456789";
+    // RewardCardRenderer formats amounts with WholeAmountFormatter's lowercase suffixes.
+    private static final String QUANTITY_GLYPHS = DIGITS + "+.abcdefghijklmnopqrstuvwxyz";
 
     private RewardCardAssets() {
     }
@@ -50,10 +56,11 @@ public final class RewardCardAssets {
                 int height = provider.path("height").asInt(8);
                 int width = Math.round(cellWidth * height / (float) cellHeight);
                 int top = 2 + 10 - provider.path("ascent").asInt(7);
-                if (width > 18 || top < 2 || top + height > 22) {
+                if (width > TEXT_CELL_WIDTH || top < 2 || top + height > TEXT_CELL_HEIGHT) {
                     throw new IOException("Unsupported reward text cell: " + file);
                 }
-                var atlas = new BufferedImage(columns * 18, rows.size() * 22, BufferedImage.TYPE_INT_ARGB);
+                var atlas = new BufferedImage(columns * TEXT_CELL_WIDTH, rows.size() * TEXT_CELL_HEIGHT,
+                    BufferedImage.TYPE_INT_ARGB);
                 var graphics = atlas.createGraphics();
                 graphics.setComposite(AlphaComposite.Src);
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -64,32 +71,78 @@ public final class RewardCardAssets {
                         if (points[column] == 0) {
                             continue;
                         }
-                        graphics.drawImage(source, column * 18, row * 22 + top,
-                            column * 18 + width, row * 22 + top + height,
+                        int x = column * TEXT_CELL_WIDTH;
+                        int y = row * TEXT_CELL_HEIGHT;
+                        graphics.drawImage(source, x, y + top, x + width, y + top + height,
                             column * cellWidth, row * cellHeight,
                             (column + 1) * cellWidth, (row + 1) * cellHeight, null);
-                        mark(atlas, column * 18, row * 22, 18);
+                        mark(atlas, x, y, TEXT_CELL_WIDTH);
                     }
                 }
                 graphics.dispose();
                 String texture = "vexcore:reward/text/" + index + ".png";
                 png(root, texture, atlas);
-                var copy = JSON.createObjectNode().put("type", "bitmap").put("file", texture).put("height", 22);
+                var copy = JSON.createObjectNode().put("type", "bitmap").put("file", texture)
+                    .put("height", TEXT_CELL_HEIGHT);
                 copy.set("chars", rows.deepCopy());
                 marked.add(copy);
             }
         }
-        for (int slot = 0; slot < 4; slot++) {
-            for (int previous = 0; previous < 4; previous++) {
-                var layout = new RewardCardLayout(slot, previous, 0, 0, false);
-                fonts(root, "vexcore:reward/text/" + layout.variant(), marked, layout.ascent(0));
-                fonts(root, "vexcore:reward/quantity/" + layout.variant(), marked, layout.ascent(3));
-            }
-        }
+        var quantity = subset(root, "vexcore:reward/quantity.png", marked, QUANTITY_GLYPHS);
+        var level = subset(root, "vexcore:progression/level.png", marked, DIGITS + "-◇");
+        var effect = subset(root, "vexcore:progression/effect.png", marked, "✦");
+        fonts(root, "vexcore:reward/text", marked, RewardCardLayout.textAscent(false));
+        fonts(root, "vexcore:reward/quantity", List.of(quantity), RewardCardLayout.textAscent(true));
         for (int part = 0; part < ProgressionLayout.PARTS; part++) {
-            fonts(root, ProgressionLayout.font(part), marked, ProgressionLayout.ascent(part));
+            List<? extends JsonNode> glyphs = switch (part) {
+                case 0, ProgressionLayout.EXPERIENCE_TEXT_PART -> marked;
+                case 6, ProgressionLayout.EXPERIENCE_BAR_PART -> List.of(effect);
+                default -> List.of(level);
+            };
+            fonts(root, ProgressionLayout.font(part), glyphs, ProgressionLayout.ascent(part));
         }
         frame(root);
+    }
+
+    /** Copies marked glyph cells in provider order, preserving their pixels and shader geometry. */
+    private static ObjectNode subset(Path root, String texture, List<JsonNode> providers, String characters)
+        throws IOException {
+        int[] codePoints = characters.codePoints().toArray();
+        var remaining = new HashMap<Integer, Integer>();
+        for (int index = 0; index < codePoints.length; index++) {
+            remaining.put(codePoints[index], index);
+        }
+        var atlas = new BufferedImage(codePoints.length * TEXT_CELL_WIDTH, TEXT_CELL_HEIGHT,
+            BufferedImage.TYPE_INT_ARGB);
+        var pixels = new int[TEXT_CELL_WIDTH * TEXT_CELL_HEIGHT];
+        for (JsonNode provider : providers) {
+            if (remaining.isEmpty()) {
+                break;
+            }
+            String[] source = provider.get("file").asText().split(":", 2);
+            var image = ImageIO.read(root.resolve("assets/" + source[0] + "/textures/" + source[1]).toFile());
+            var rows = provider.get("chars");
+            for (int row = 0; row < rows.size(); row++) {
+                int[] points = rows.get(row).asText().codePoints().toArray();
+                for (int column = 0; column < points.length; column++) {
+                    Integer target = remaining.remove(points[column]);
+                    if (target != null) {
+                        image.getRGB(column * TEXT_CELL_WIDTH, row * TEXT_CELL_HEIGHT,
+                            TEXT_CELL_WIDTH, TEXT_CELL_HEIGHT, pixels, 0, TEXT_CELL_WIDTH);
+                        atlas.setRGB(target * TEXT_CELL_WIDTH, 0, TEXT_CELL_WIDTH, TEXT_CELL_HEIGHT,
+                            pixels, 0, TEXT_CELL_WIDTH);
+                    }
+                }
+            }
+        }
+        if (!remaining.isEmpty()) {
+            throw new IOException("Missing glyphs for " + texture + ": " + remaining.keySet());
+        }
+        png(root, texture, atlas);
+        var provider = JSON.createObjectNode().put("type", "bitmap").put("file", texture)
+            .put("height", TEXT_CELL_HEIGHT);
+        provider.putArray("chars").add(characters);
+        return provider;
     }
 
     /** Converts a static menu-model preview into marked 32-pixel icons for all stack movements. */
@@ -153,7 +206,7 @@ public final class RewardCardAssets {
         image.setRGB(x + width - 1, y, 0x01565831);
     }
 
-    private static void fonts(Path root, String key, List<JsonNode> providers, int ascent) throws IOException {
+    private static void fonts(Path root, String key, List<? extends JsonNode> providers, int ascent) throws IOException {
         var definition = JSON.createObjectNode();
         var list = definition.putArray("providers");
         for (var provider : providers) {

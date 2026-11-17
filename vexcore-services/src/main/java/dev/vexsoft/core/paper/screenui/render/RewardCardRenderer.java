@@ -22,6 +22,8 @@ public final class RewardCardRenderer {
 
     private static final TextColor TEXT = TextColor.color(0xDED6EA);
     private static final TextColor SECONDARY = TextColor.color(0xA89BB9);
+    private static final Key TEXT_FONT = Key.key("vexcore:reward/text");
+    private static final Key QUANTITY_FONT = Key.key("vexcore:reward/quantity");
     private static final VexUIMetrics METRICS = new VexUIMetrics();
 
     private RewardCardRenderer() {
@@ -57,7 +59,8 @@ public final class RewardCardRenderer {
 
     private static void text(TextComponent.Builder output, Component text, int x, int y,
                              RewardCardLayout layout, boolean quantity, TextColor fallback) {
-        Key font = Key.key("vexcore:reward/" + (quantity ? "quantity/" : "text/") + layout.variant());
+        Key font = quantity ? QUANTITY_FONT : TEXT_FONT;
+        int transportY = layout.textTransportY(y);
         ComponentFlattener.basic().flatten(text, new FlattenerListener() {
             private final ArrayDeque<Style> styles = new ArrayDeque<>(List.of(Style.empty()));
             private int cursor = x;
@@ -75,9 +78,10 @@ public final class RewardCardRenderer {
                     int character = METRICS.character(point);
                     // Each glyph's fixed marked cell is cancelled; visible advances use vanilla menu metrics.
                     if (character != ' ' && character != 160 && character != 0x200C) {
-                        glyph(output, Character.toString(character), font, 19, cursor, y, layout.payload(color));
+                        glyph(output, Character.toString(character), font, 19, cursor, transportY, layout.payload(color));
                         if (bold) {
-                            glyph(output, Character.toString(character), font, 19, cursor + 1, y, layout.payload(color));
+                            glyph(output, Character.toString(character), font, 19, cursor + 1, transportY,
+                                layout.payload(color));
                         }
                     }
                     cursor += METRICS.advance(character, bold);

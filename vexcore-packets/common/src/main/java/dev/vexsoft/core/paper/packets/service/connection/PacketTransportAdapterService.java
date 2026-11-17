@@ -22,6 +22,9 @@ public interface PacketTransportAdapterService extends VexService {
     /** Drops corrections for a held menu, leaving the client's predicted click visible until settlement. */
     Object filterInventorySynchronization(UUID viewerId, Object packet);
 
+    /** Removes action-bar text while preserving clear packets, ordinary chat and other bundled packets. */
+    Object suppressActionBar(Object packet);
+
     /** Removes a disconnected viewer's held menu without sending packets. */
     void clearInventorySynchronization(UUID viewerId);
 }

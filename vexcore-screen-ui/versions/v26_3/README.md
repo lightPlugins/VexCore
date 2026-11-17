@@ -20,9 +20,10 @@ default three-lane layout separated on narrow windows without client viewport me
 All shader changes are guarded by the owned-glyph marker; ordinary text retains vanilla behavior.
 
 Protocol 10 adds an independent reward-card carrier range, 65536..98304, dispatched before the screen UI.
-Four primitives and sixteen current/previous slot pairs encode shared transforms. RGB carries two modulo-120 clocks,
-a pulse bit and 3-bit tint channels. `RewardCardAssets` generates marked fixed-width menu text, model previews and
-the VexUI frame. Existing anchored font kinds remain unchanged.
+Frame and icon ascents encode the current and previous slot. All slot pairs share the name and amount fonts.
+For those fonts the horizontal advance carries `(Y + 32 * (4 * slot + previousSlot)) * 4096` plus the local X.
+RGB carries two modulo-120 clocks, a pulse bit and 3-bit tint channels. `RewardCardAssets` generates marked
+fixed-width menu text, model previews and the VexUI frame.
 
 Progression notices use carrier positions 98304–101887 and the same marked text atlas. The seven
 parts draw labels, the new level, four fragments of the previous level, and sparks. RGB carries

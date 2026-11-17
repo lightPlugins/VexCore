@@ -45,6 +45,12 @@ public final class VexActionBarCoordinatorService implements ActionBarCoordinato
     }
 
     @Override
+    public boolean isSuppressed(final UUID viewer) {
+        var state = states.get(viewer);
+        return state != null && state.channels().isSuppressed();
+    }
+
+    @Override
     public void setPersistent(
         final ServiceOwner owner,
         final Player player,

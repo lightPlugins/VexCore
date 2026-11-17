@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -50,6 +51,15 @@ public interface DisplayPacketAdapterService extends VexService {
 
     /** Attaches the viewer camera to a virtual display and optionally spoofs spectator HUD state */
     void attachCamera(Player viewer, FakeDisplayHandle handle, boolean hideSurvivalHud);
+
+    /** Applies an immediate, bundled camera cut without replacing the virtual display. */
+    void cutCamera(Player viewer, FakeDisplayHandle handle, Location location);
+
+    /** Sends an interpolation duration and destination together for one continuous camera movement. */
+    void glideCamera(Player viewer, FakeDisplayHandle handle, Location location, int durationTicks);
+
+    /** Emits a sound from the viewer-local camera display. */
+    void playCameraSound(Player viewer, FakeDisplayHandle handle, Sound sound);
 
     /** Returns the viewer camera and client HUD state to the real player */
     void resetCamera(Player viewer, boolean restoreSurvivalHud);

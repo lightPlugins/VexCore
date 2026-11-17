@@ -13,6 +13,7 @@ import dev.vexsoft.core.paper.screenui.reward.RewardCard;
 import dev.vexsoft.core.paper.screenui.reward.RewardCardLayout;
 import dev.vexsoft.core.reward.notification.RewardNotification;
 import java.math.BigDecimal;
+import java.util.List;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -46,7 +47,7 @@ public final class RewardCardProtocolTest {
     }
 
     @Test
-    void longNamesAndLargeCompactAmountsKeepZeroNetAdvanceAndDistinctQuantityFonts() {
+    void longNamesAndLargeCompactAmountsKeepZeroNetAdvanceAndSharedTextFonts() {
         for (String amount : new String[]{"3", "500", "52000000000000000"}) {
             var reward = new RewardNotification("item:test", Component.text("Überarbeitete Bergarbeiter-Spitzhacke +9"),
                 "minecraft:diamond", new BigDecimal(amount));
@@ -54,8 +55,40 @@ public final class RewardCardProtocolTest {
                 Key.key("vexcore:reward/icon/vanilla/diamond")), Component.text("Erhalten"),
                 new RewardCardLayout(0, 0, 23998, 24001, false));
             assertEquals(0, advance(rendered));
-            assertTrue(fonts(rendered).contains("reward/quantity/0_0"));
+            assertTrue(fonts(rendered).contains("vexcore:reward/text"));
+            assertTrue(fonts(rendered).contains("vexcore:reward/quantity"));
             assertFalse(fonts(rendered).contains("minecraft:default"));
+        }
+    }
+
+    @Test
+    void sharedTextCarriesAllSlotTransitionsWithoutChangingGlyphCoordinates() {
+        var reward = new RewardNotification("item:test", Component.text("Diamond"),
+            "minecraft:diamond", new BigDecimal("9"));
+        var card = new RewardCard(reward, Key.key("vexcore:reward/icon/vanilla/diamond"));
+        for (int slot = 0; slot < 4; slot++) {
+            for (int previous = 0; previous < 4; previous++) {
+                var rendered = RewardCardRenderer.render(card, Component.text("Erhalten"),
+                    new RewardCardLayout(slot, previous, 100, 105, false));
+                assertEquals(0, advance(rendered));
+                List<Component> glyphs = rendered.children();
+                for (int index = 1; index < glyphs.size(); index++) {
+                    Key font = glyphs.get(index).font();
+                    if (!Key.key("vexcore:reward/text").equals(font)
+                        && !Key.key("vexcore:reward/quantity").equals(font)) {
+                        continue;
+                    }
+                    int offset = advance(glyphs.get(index - 1));
+                    for (int vertexX : new int[]{0, 18}) {
+                        float centered = offset + vertexX;
+                        int transported = (int) Math.floor((centered + 2048.0f) / 4096.0f);
+                        assertEquals(slot, transported / 32 / 4);
+                        assertEquals(previous, transported / 32 % 4);
+                        assertTrue(List.of(10, 13, 23).contains(transported % 32));
+                        assertEquals((offset & 4095) + vertexX, centered - transported * 4096.0f);
+                    }
+                }
+            }
         }
     }
 

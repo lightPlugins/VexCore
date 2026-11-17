@@ -13,7 +13,7 @@ import org.bukkit.entity.Player;
  */
 public interface ActionBarService extends VexService {
 
-    /** Hides managed action bars until this owner/channel releases its suppression. Channels keep updating. */
+    /** Hides action bars until this owner/channel releases its suppression. Managed channels keep updating. */
     void setSuppressed(Player player, String channel, boolean suppressed);
 
     /** Sets a persistent line with the default priority of zero. */

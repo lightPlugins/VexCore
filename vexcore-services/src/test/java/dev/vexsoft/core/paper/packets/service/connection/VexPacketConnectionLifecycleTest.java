@@ -38,6 +38,9 @@ public final class VexPacketConnectionLifecycleTest {
                 if (call.getName().equals("clearInventorySynchronization")) {
                     return null;
                 }
+                if (call.getName().equals("isSuppressed")) {
+                    return false;
+                }
                 if (dependency == PacketConnectionAdapterService.class) {
                     if (call.getName().equals("inject")) {
                         handlers.add((PacketDuplexHandler) parameters[1]);

@@ -2,6 +2,7 @@ package dev.vexsoft.core.paper.actionbar.service;
 
 import dev.vexsoft.core.api.service.registry.ServiceOwner;
 import dev.vexsoft.core.api.service.registry.VexService;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
@@ -10,6 +11,9 @@ public interface ActionBarCoordinatorService extends VexService {
 
     /** Adds or removes an owner's channel suppression while preserving the player's action-bar contents. */
     void setSuppressed(ServiceOwner owner, Player player, String channel, boolean suppressed);
+
+    /** Reads the player's suppression state from the packet thread. */
+    boolean isSuppressed(UUID viewer);
 
     /** Sets or replaces one persistent owner channel. */
     void setPersistent(ServiceOwner owner, Player player, String channel, Component component, int priority);

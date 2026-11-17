@@ -17,6 +17,10 @@ final class ActionBarChannelState {
     private long revision;
     private final Set<ChannelKey> suppressions = new HashSet<>();
 
+    synchronized boolean isSuppressed() {
+        return !suppressions.isEmpty();
+    }
+
     synchronized boolean setSuppressed(final ServiceOwner owner, final String channel, final boolean suppressed) {
         ChannelKey key = key(owner, channel);
         boolean changed = suppressed ? suppressions.add(key) : suppressions.remove(key);

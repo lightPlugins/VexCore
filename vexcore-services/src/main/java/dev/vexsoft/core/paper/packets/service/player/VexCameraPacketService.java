@@ -9,7 +9,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 /** Default owner-scoped client camera service. */
@@ -30,24 +32,35 @@ public final class VexCameraPacketService implements CameraPacketService, AutoCl
 
     @Override
     public void attach(final Player viewer, final FakeDisplayHandle target, final boolean hideSurvivalHud) {
-        Player checkedViewer = Objects.requireNonNull(viewer, "viewer");
-        FakeDisplayHandle checkedTarget = Objects.requireNonNull(target, "target");
-
-        if (!checkedTarget.getOwner().equals(owner)) {
-            throw new IllegalArgumentException("Camera target belongs to another plugin");
-        }
-
-        if (!checkedTarget.getViewerId().equals(checkedViewer.getUniqueId())) {
-            throw new IllegalArgumentException("Camera target belongs to another viewer");
-        }
-
-        Boolean previous = attachedViewers.put(checkedViewer.getUniqueId(), hideSurvivalHud);
+        validate(viewer, target);
+        Boolean previous = attachedViewers.put(viewer.getUniqueId(), hideSurvivalHud);
 
         if (Boolean.TRUE.equals(previous) && !hideSurvivalHud) {
-            adapter.resetCamera(checkedViewer, previous);
+            adapter.resetCamera(viewer, previous);
         }
 
-        adapter.attachCamera(checkedViewer, checkedTarget, hideSurvivalHud);
+        adapter.attachCamera(viewer, target, hideSurvivalHud);
+    }
+
+    @Override
+    public void cut(final Player viewer, final FakeDisplayHandle target, final Location destination) {
+        validate(viewer, target);
+        adapter.cutCamera(viewer, target, destination);
+    }
+
+    @Override
+    public void glide(final Player viewer, final FakeDisplayHandle target, final Location destination, final int durationTicks) {
+        validate(viewer, target);
+        if (durationTicks < 1) {
+            throw new IllegalArgumentException("Camera movement must last at least one tick");
+        }
+        adapter.glideCamera(viewer, target, destination, durationTicks);
+    }
+
+    @Override
+    public void playSound(final Player viewer, final FakeDisplayHandle target, final Sound sound) {
+        validate(viewer, target);
+        adapter.playCameraSound(viewer, target, sound);
     }
 
     @Override
@@ -75,5 +88,16 @@ public final class VexCameraPacketService implements CameraPacketService, AutoCl
                 attachedViewers.remove(viewerId);
             }
         });
+    }
+
+    private void validate(final Player viewer, final FakeDisplayHandle target) {
+        Objects.requireNonNull(viewer, "viewer");
+        Objects.requireNonNull(target, "target");
+        if (!target.getOwner().equals(owner)) {
+            throw new IllegalArgumentException("Camera target belongs to another plugin");
+        }
+        if (!target.getViewerId().equals(viewer.getUniqueId())) {
+            throw new IllegalArgumentException("Camera target belongs to another viewer");
+        }
     }
 }

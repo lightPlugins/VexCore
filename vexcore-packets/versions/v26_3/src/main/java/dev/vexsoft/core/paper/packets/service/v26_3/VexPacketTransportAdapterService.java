@@ -10,6 +10,8 @@ import java.util.UUID;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBundlePacket;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -38,6 +40,23 @@ public final class VexPacketTransportAdapterService implements PacketTransportAd
     @Override
     public Object filterInventorySynchronization(final UUID viewerId, final Object packet) {
         return inventories.filter(viewerId, packet);
+    }
+
+    @Override
+    public Object suppressActionBar(final Object packet) {
+        if (!(packet instanceof ClientboundBundlePacket bundle)) {
+            return showsActionBarText(packet) ? null : packet;
+        }
+        List<Packet<? super ClientGamePacketListener>> kept = new ArrayList<>();
+        boolean removed = false;
+        for (var entry : bundle.subPackets()) {
+            if (showsActionBarText(entry)) {
+                removed = true;
+            } else {
+                kept.add(entry);
+            }
+        }
+        return removed ? (kept.isEmpty() ? null : new ClientboundBundlePacket(kept)) : bundle;
     }
 
     @Override
@@ -77,6 +96,11 @@ public final class VexPacketTransportAdapterService implements PacketTransportAd
         }
 
         return checkedPacket;
+    }
+
+    private static boolean showsActionBarText(final Object packet) {
+        return packet instanceof ClientboundSetActionBarTextPacket bar && !bar.text().getString().isEmpty()
+            || packet instanceof ClientboundSystemChatPacket chat && chat.overlay() && !chat.content().getString().isEmpty();
     }
 
     @SuppressWarnings("unchecked")

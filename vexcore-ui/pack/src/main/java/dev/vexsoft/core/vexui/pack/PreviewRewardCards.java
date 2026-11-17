@@ -24,7 +24,7 @@ public final class PreviewRewardCards {
         Path pack = Path.of(args[0]);
         Path output = Path.of(args[1]);
         var json = new ObjectMapper();
-        var font = json.readTree(pack.resolve("assets/vexcore/font/reward/text/0_0.json").toFile());
+        var font = json.readTree(pack.resolve("assets/vexcore/font/reward/text.json").toFile());
         Map<Integer, BufferedImage> glyphs = new HashMap<>();
         for (var provider : font.get("providers")) {
             var location = provider.get("file").asText().split(":", 2);
