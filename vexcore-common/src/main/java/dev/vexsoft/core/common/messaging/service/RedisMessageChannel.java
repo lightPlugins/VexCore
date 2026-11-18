@@ -76,7 +76,8 @@ public final class RedisMessageChannel implements AutoCloseable {
                 }
                 commands = connection;
                 endpoint = new RedisMessageEndpointLease(connection, node(), token, worker);
-                return endpoint.acquire(Duration.ofSeconds(20));
+                return proxy ? endpoint.acquire(Duration.ofSeconds(20))
+                    : endpoint.acquireBackend(Duration.ofSeconds(20), backend.namespace() + "state");
             }
         }).thenRunAsync(() -> {
             if (closed.get()) {
@@ -97,6 +98,14 @@ public final class RedisMessageChannel implements AutoCloseable {
     /** Completes after the endpoint is able to receive messages, without blocking the platform thread. */
     public CompletableFuture<Void> readiness() {
         return ready.copy();
+    }
+
+    /** Wipes the empty network under this proxy's verified messaging lease. */
+    public CompletableFuture<Integer> wipePlayerData(final Runnable clearWorlds) {
+        if (!proxy || !started.get() || closed.get()) {
+            return CompletableFuture.failedFuture(new IllegalStateException("An active proxy is required"));
+        }
+        return readiness().thenCompose(ignored -> backend.wipePlayerData(token, clearWorlds));
     }
 
     /** Queues a bounded control message; request callers retain their existing timeout and correlation behavior. */

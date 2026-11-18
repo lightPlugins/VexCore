@@ -1,6 +1,22 @@
 -- All authority keys use one namespace. Validate before writing: Redis script errors do not roll back writes.
 if redis.call('GET', KEYS[2]) ~= ARGV[1] then return redis.error_reply('LIVE_EPOCH_CHANGED') end
 if redis.call('HEXISTS', KEYS[1], '__schema') ~= 1 then return redis.error_reply('LIVE_STATE_MISSING') end
+-- The proxy journals its maintenance marker before removing data. Other writers stay fenced through recovery.
+if ARGV[6] then
+    if redis.call('GET', KEYS[6]) ~= ARGV[6] then return redis.error_reply('PROXY_LEASE_LOST') end
+    if ARGV[7] == 'begin' then
+        local cursor = '0'
+        repeat
+            local page = redis.call('SCAN', cursor, 'MATCH', ARGV[8], 'COUNT', 512)
+            if #page[2] > 0 then return redis.error_reply('BACKENDS_STILL_RUNNING') end
+            cursor = page[1]
+        until cursor == '0'
+    elseif redis.call('HEXISTS', KEYS[1], 'g|VexCore|network_wipe_pending') == 0 then
+        return redis.error_reply('NETWORK_WIPE_NOT_STARTED')
+    end
+elseif redis.call('HEXISTS', KEYS[1], 'g|VexCore|network_wipe_pending') == 1 then
+    return redis.error_reply('NETWORK_WIPE_PENDING')
+end
 local previous = redis.call('HGET', KEYS[4], ARGV[2])
 if previous then return previous end
 local journalLength = redis.call('XLEN', KEYS[3])

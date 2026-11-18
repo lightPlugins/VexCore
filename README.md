@@ -585,6 +585,22 @@ See [shared rewards and resource providers](docs/rewards.md) for the API contrac
 
 ### Redis live state and SQL checkpoints
 
+#### Resetting player data from the Velocity console
+
+On a Redis network with PostgreSQL checkpoints, `vexwipe confirm` resets player identities, accounts,
+shared and personal profiles, inventories, balances and runtime global records in the configured namespace.
+It also deletes VexIsles Garden assignments, admissions, snapshots, backups and upgrade records in the
+network's Garden database. Published configuration snapshots, compiled Garden templates and YAML files survive.
+The command operates on Core-managed database records and the VexIsles Garden store. Vanilla world files
+and external plugin databases are outside its scope.
+
+Log everyone out, stop all backends including the lobby, and keep the proxy, Redis and PostgreSQL running.
+Enter the command in the Velocity console. The proxy rejects connected or connecting players and waits for
+exclusive access to the network. A journaled marker fences stores during deletion and remains recoverable
+if the process fails. Keep backends stopped and repeat the command after an interrupted run. The completion
+message follows the Garden transaction and verified SQL checkpoint. Restart the proxy, then the backends,
+to reopen logins with fresh caches.
+
 Paper and Velocity share the Redis backend configured in `plugins/VexSoft/VexCore/database.yml`.
 Set `redis.enabled: true` on **every** instance in the network and use the same Redis endpoint, database,
 key prefix and PostgreSQL checkpoint database. The templates leave Redis disabled until credentials are supplied.

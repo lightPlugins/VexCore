@@ -58,6 +58,7 @@ public final class RedisPlayerDataStore
 
     private static final String COMMIT = resource("commit.lua");
     private static final String READ = resource("read.lua");
+    private static final String WIPE_MARKER = "g|VexCore|network_wipe_pending";
     private static final TypeReference<Map<String, String>> STRING_MAP = new TypeReference<>() {
     };
     private static final TypeReference<Map<String, Object>> CHANGE_MAP = new TypeReference<>() {
@@ -152,6 +153,66 @@ public final class RedisPlayerDataStore
     /** Returns this network's key namespace for ephemeral coordination resources. */
     public String namespace() {
         return settings.prefix() + "{network}:";
+    }
+
+    /** Detects an interrupted network wipe before the proxy admits a login. */
+    public CompletableFuture<Boolean> wipePending() {
+        return read(List.of(WIPE_MARKER)).thenApply(records -> records.containsKey(WIPE_MARKER));
+    }
+
+    /** Journals the deletion, runs the world-store cleanup and verifies its SQL recovery checkpoint. */
+    public CompletableFuture<Integer> wipePlayerData(final String proxyToken, final Runnable clearWorlds) {
+        Objects.requireNonNull(clearWorlds, "clearWorlds");
+        return readiness().thenApplyAsync(ignored -> {
+            checkpointThrough(tail());
+            String marker = wipeCommit(proxyToken, "begin", List.of(new Change(WIPE_MARKER, -1, "true", 0, false)));
+            checkpointThrough(marker);
+            // The marker fences writers and joining backends. It also survives a cold recovery mid-wipe.
+            var fields = commands.hkeys(state()).toCompletableFuture().join().stream()
+                .filter(RedisPlayerDataStore::wipeField).toList();
+            String cut = marker;
+            for (int index = 0; index < fields.size(); index += 512) {
+                var batch = fields.subList(index, Math.min(index + 512, fields.size())).stream()
+                    .map(key -> new Change(key, -1, null, 0, true)).toList();
+                cut = wipeCommit(proxyToken, "delete", batch);
+                if ((index / 512 + 1) % 128 == 0) {
+                    checkpointThrough(cut);
+                }
+            }
+            checkpointThrough(cut);
+            clearWorlds.run();
+            accountRevisions.clear();
+            checkpointThrough(wipeCommit(proxyToken, "finish", List.of(new Change(WIPE_MARKER, -1, null, 0, true))));
+            return fields.size();
+        }, Thread::startVirtualThread);
+    }
+
+    static boolean wipeField(final String key) {
+        if (key.startsWith("g|")) {
+            var parts = key.split("\\|", 3);
+            return parts.length == 3 && !parts[2].startsWith("published_") && !key.equals(WIPE_MARKER);
+        }
+        return key.startsWith("a|") || key.startsWith("p|") || key.startsWith("i|") || key.startsWith("n|");
+    }
+
+    private String wipeCommit(final String proxyToken, final String phase, final List<Change> changes) {
+        String nodes = namespace() + "nodes:" + epoch + ":";
+        return commands.<String>eval(COMMIT, ScriptOutputType.VALUE,
+            new String[]{state(), meta(), journal(), receipts(), receiptAges(), nodes + "proxy"},
+            epoch, UUID.randomUUID().toString(), json(changes), Integer.toString(settings.maximumJournalEntries()),
+            Long.toString(profileDatabaseTime().join()), proxyToken, phase, nodes + "server:*").toCompletableFuture().join();
+    }
+
+    private void checkpointThrough(final String position) {
+        long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(2);
+        while (comparePositions(checkpoints.head(settings.prefix()).join().position(), position) < 0) {
+            checkpoint().join();
+            if (System.nanoTime() >= deadline) {
+                throw new IllegalStateException("Wipe checkpoint timed out. Run vexwipe confirm again.");
+            }
+            // A periodically scheduled checkpoint may already have held the coordinator lease.
+            java.util.concurrent.locks.LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
+        }
     }
 
     @Override

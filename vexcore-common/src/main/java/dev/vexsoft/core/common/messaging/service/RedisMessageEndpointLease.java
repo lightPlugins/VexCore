@@ -23,6 +23,12 @@ final class RedisMessageEndpointLease implements AutoCloseable {
     private final ScheduledExecutorService worker;
     private final AtomicBoolean closed = new AtomicBoolean();
     private final CompletableFuture<Void> acquired = new CompletableFuture<>();
+    private String guardedState;
+
+    CompletableFuture<Void> acquireBackend(final Duration timeout, final String state) {
+        guardedState = state;
+        return acquire(timeout);
+    }
 
     CompletableFuture<Void> acquire(final Duration timeout) {
         attempt(System.nanoTime() + timeout.toNanos());
@@ -43,7 +49,12 @@ final class RedisMessageEndpointLease implements AutoCloseable {
             return;
         }
         try {
-            commands.set(key, token, SetArgs.Builder.nx().px(15000)).toCompletableFuture()
+            var claim = guardedState == null ? commands.set(key, token, SetArgs.Builder.nx().px(15000))
+                : commands.<String>eval("if redis.call('HEXISTS', KEYS[2], 'g|VexCore|network_wipe_pending') == 1 "
+                    + "then return redis.error_reply('NETWORK_WIPE_PENDING') end "
+                    + "return redis.call('SET', KEYS[1], ARGV[1], 'NX', 'PX', 15000)", ScriptOutputType.STATUS,
+                    new String[]{key, guardedState}, token);
+            claim.toCompletableFuture()
                 .whenComplete((result, failure) -> {
                     if (failure != null) {
                         acquired.completeExceptionally(failure);

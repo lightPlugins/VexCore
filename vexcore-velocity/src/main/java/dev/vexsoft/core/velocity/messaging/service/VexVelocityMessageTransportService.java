@@ -18,6 +18,7 @@ import dev.vexsoft.core.common.messaging.service.MessageTransportService;
 import dev.vexsoft.core.common.messaging.service.RedisMessageChannel;
 import dev.vexsoft.core.common.player.service.data.PlayerDataStoreService;
 import dev.vexsoft.core.velocity.VexCoreVelocityPlugin;
+import dev.vexsoft.core.velocity.maintenance.NetworkWipeCommand;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +40,7 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
     private final Logger logger;
     private final MessageCodecService codec;
     private final RedisMessageChannel redis;
+    private final NetworkWipeCommand wipe;
     private final CopyOnWriteArrayList<Consumer<MessageEnvelope>> receivers = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<String, ConcurrentLinkedDeque<MessageEnvelope>> pending = new ConcurrentHashMap<>();
     private final AtomicBoolean started = new AtomicBoolean();
@@ -54,12 +56,15 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
         this.proxyServer = corePlugin.getProxyServer();
         this.logger = corePlugin.getPlatformLogger();
         this.codec = checkedServices.require(MessageCodecService.class);
-        var backend = checkedServices.require(PlayerDataStoreService.class).getStore();
+        var storage = checkedServices.require(PlayerDataStoreService.class);
+        var backend = storage.getStore();
         redis = backend instanceof RedisPlayerDataStore live
             ? new RedisMessageChannel(live, codec, true, "", playerId -> proxyServer.getPlayer(playerId).isPresent()) : null;
         if (redis != null) {
             redis.subscribe(message -> receivers.forEach(receiver -> receiver.accept(message)));
         }
+        wipe = backend instanceof RedisPlayerDataStore live ? storage.getSharedDatabase()
+            .map(database -> new NetworkWipeCommand(plugin, live, redis, database)).orElse(null) : null;
     }
 
     @Override
@@ -70,6 +75,9 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
 
         if (redis != null) {
             redis.start();
+            if (wipe != null) {
+                wipe.start();
+            }
             return;
         }
 
@@ -123,6 +131,9 @@ public final class VexVelocityMessageTransportService implements MessageTranspor
 
     @Override
     public void close() {
+        if (wipe != null) {
+            wipe.close();
+        }
         if (redis != null) {
             redis.close();
             receivers.clear();
