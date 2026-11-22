@@ -5,21 +5,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.vexsoft.core.paper.vexui.VexUIFrame;
 import dev.vexsoft.core.paper.vexui.element.VexUIColumn;
+import dev.vexsoft.core.paper.vexui.element.VexUIEntrance;
 import dev.vexsoft.core.paper.vexui.element.VexUIPanel;
+import dev.vexsoft.core.paper.vexui.element.VexUIParagraph;
 import dev.vexsoft.core.paper.vexui.element.VexUISize;
 import dev.vexsoft.core.paper.vexui.element.VexUISpacer;
 import dev.vexsoft.core.paper.vexui.element.VexUIText;
+import dev.vexsoft.core.paper.vexui.element.VexUITexture;
 import dev.vexsoft.core.paper.vexui.layout.VexUILayout;
 import dev.vexsoft.core.paper.vexui.session.VexUIPackPreview;
 import dev.vexsoft.core.paper.vexui.style.VexUITheme;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentIteratorType;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
 import net.kyori.adventure.text.flattener.FlattenerListener;
+import net.kyori.adventure.text.format.ShadowColor;
 import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -57,9 +64,38 @@ public final class VexUIRenderingRegressionTest {
             }
             assertEquals(0, image.getRGB(width, offset + 10));
         }
-        var decorated = new VexUITextEngine(metrics).decorations(label);
+        var decorated = new VexUITextEngine(metrics).decorations(label, null);
         assertEquals(1, decorated.spans().size(), "One colored run should paint one line, not one tile per letter");
         assertEquals(width, decorated.spans().getFirst().width());
+    }
+
+    @Test
+    void illustratedFramesShadowLabelsAndParagraphsWithoutDuplicatingSpriteGlyphs() {
+        var texture = new VexUITexture(Key.key("test:scene"), 0xe100, 9, 9, 10,
+            Component.empty(), VexUIEntrance.SETTLED);
+        var content = new VexUIColumn(0, new VexUIText(Component.text("Name")), texture,
+            new VexUIParagraph(Component.text("Erste Zeile\nZweite Zeile")));
+        var plain = new VexUIFrame(Component.text("Menu"), Component.text("Close"), 140, content, Map.of());
+        var illustrated = plain.withTextShadow().withCompactNativeCloseButton().withClickSound(null);
+        var renderer = new VexUIRenderer(new VexUIMetrics());
+        for (var frame : List.of(plain, illustrated)) {
+            var body = renderer.render(frame, action -> null).body();
+            var expected = frame.textShadow() == null ? ShadowColor.none() : frame.textShadow();
+            for (String run : List.of("Name", "Erste Zeile", "Zweite Zeile")) {
+                assertEquals(expected, runShadow(body, run), run);
+            }
+            assertEquals(ShadowColor.none(), runShadow(body, "\uE100"));
+        }
+        assertEquals(ShadowColor.shadowColor(0xE0181412), illustrated.styleText(illustrated.closeLabel()).shadowColor());
+    }
+
+    private static ShadowColor runShadow(Component body, String run) {
+        for (var child : body.iterable(ComponentIteratorType.DEPTH_FIRST)) {
+            if (child instanceof TextComponent text && text.content().equals(run)) {
+                return text.shadowColor();
+            }
+        }
+        throw new AssertionError("Missing text in the rendered frame: " + run);
     }
 
     @Test

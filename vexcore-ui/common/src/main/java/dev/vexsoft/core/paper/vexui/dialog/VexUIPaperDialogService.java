@@ -30,12 +30,12 @@ public final class VexUIPaperDialogService implements VexUIDialogService {
     public void show(final Player player, final VexUIFrame frame, final VexUIRenderedFrame rendered,
                      final Key closeAction) {
         player.showDialog(Dialog.create(builder -> builder.empty()
-            .base(DialogBase.builder(frame.title()).pause(false).canCloseWithEscape(true)
+            .base(DialogBase.builder(frame.styleText(frame.title())).pause(false).canCloseWithEscape(true)
                 .afterAction(DialogBase.DialogAfterAction.NONE)
                 .body(List.of(DialogBody.plainMessage(rendered.body(), rendered.width() + 10))).build())
             // A native action is required for the client's Escape path to send cancellation to the session.
             // Empty multi-action lists also fail the Minecraft client codec even though the Paper builder accepts them.
-            .type(DialogType.notice(ActionButton.create(frame.closeLabel(), null,
+            .type(DialogType.notice(ActionButton.create(frame.styleText(frame.closeLabel()), null,
                 frame.compactCloseButton() ? 80 : frame.width(), DialogAction.customClick(closeAction, null))))));
     }
 

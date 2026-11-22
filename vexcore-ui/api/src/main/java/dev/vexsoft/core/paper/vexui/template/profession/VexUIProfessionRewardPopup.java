@@ -86,10 +86,12 @@ final class VexUIProfessionRewardPopup {
         separator(map, top + 23);
         int right = X + WIDTH;
         var title = provider.text("rewards.popup_title", Map.of("level", Integer.toString(level)));
-        map.text(X + 11, top + 9, WIDTH - (visible.pages() > 1 ? 102 : 41), title.hoverEvent(title));
-        map.pager(provider, actions, "popup", right - 92, top + 9, 64, visible, value -> page = value);
+        int pagerWidth = 78;
+        int controlsX = visible.pages() > 1 ? right - 28 - pagerWidth : right - 22;
+        map.centeredText(X + 4, top + 12, controlsX - X - 8, title.hoverEvent(title));
+        map.pager(provider, actions, "popup", controlsX, top + 9, pagerWidth, visible, value -> page = value);
         var closeHint = provider.text("main.close");
-        map.centeredText(right - 22, top + 9, 18, provider.text("rewards.popup_close"));
+        map.centeredText(right - 22, top + 12, 18, provider.text("rewards.popup_close"));
         map.hotspot(right - 22, top + 9, 18, 18, "popup.close", closeHint);
 
         if (visible.entries().isEmpty()) {
@@ -114,7 +116,7 @@ final class VexUIProfessionRewardPopup {
         int buttonWidth = 100;
         int buttonX = X + (WIDTH - buttonWidth) / 2;
         surface(map, buttonX, buttonY, buttonWidth, 18, skin);
-        map.centeredText(buttonX + 2, buttonY + 5, buttonWidth - 4, label);
+        map.centeredText(buttonX + 2, buttonY + 4, buttonWidth - 4, label);
         if (available && !running) {
             map.hotspot(buttonX, buttonY, buttonWidth, 18, "claim.level." + level, provider.text("rewards.collect_level"));
         }
@@ -189,17 +191,17 @@ final class VexUIProfessionRewardPopup {
         int width = WIDTH - 26;
         int detailWidth = 74;
         int nameWidth = width - detailWidth - 6;
+        if (details.isEmpty()) {
+            map.centeredText(x, y + 5, width, name.hoverEvent(hint));
+            return;
+        }
         if (details.size() == 1 && session.wrap(name, nameWidth).size() == 1
             && session.wrap(details.getFirst(), detailWidth).size() == 1) {
-            map.text(x, y + 3, nameWidth, name.hoverEvent(hint));
-            // The flexible spacer right-aligns the detail at its actual glyph width.
-            map.add(x + width - detailWidth, y + 3, detailWidth, 9, new VexUIRow(0,
-                new VexUISpacer(VexUISize.flexible()), new VexUIText(details.getFirst().hoverEvent(hint))));
+            map.centeredText(x, y + 5, nameWidth, name.hoverEvent(hint));
+            map.centeredText(x + width - detailWidth, y + 5, detailWidth, details.getFirst().hoverEvent(hint));
         } else {
-            map.text(x, y, width, name.hoverEvent(hint));
-            if (!details.isEmpty()) {
-                map.text(x, y + 10, width, details.getFirst().hoverEvent(hint));
-            }
+            map.centeredText(x, y, width, name.hoverEvent(hint));
+            map.centeredText(x, y + 10, width, details.getFirst().hoverEvent(hint));
         }
     }
 

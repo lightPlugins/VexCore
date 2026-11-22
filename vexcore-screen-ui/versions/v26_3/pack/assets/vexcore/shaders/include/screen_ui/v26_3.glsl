@@ -55,7 +55,7 @@ vec4 vex_dialog_art_position(vec4 position, vec2 uv) {
     } else {
         ivec2 point = clamp(ivec2(floor(texel)), ivec2(0), atlas - 1);
         mark = ivec4(round(texelFetch(Sampler0, point, 0) * 255.0));
-        if (mark.r != 73 || mark.g != 86 || mark.a != 1 || mark.b < 93 || mark.b > 98) return position;
+        if (mark.r != 73 || mark.g != 86 || mark.a != 1 || mark.b < 91 || mark.b > 98) return position;
     }
     if (tab && mark.b != 93) return position;
     if ((legacyPanorama || opaqueBacking) && mark.b < 95) return position;
@@ -101,7 +101,7 @@ vec4 vex_dialog_art_position(vec4 position, vec2 uv) {
     } else if (!settled) {
         // With island starts two ticks apart, intermediate bridges follow each adjoining
         // endpoint independently, keeping the boardwalk attached as the islands land.
-        if (mark.b == 94) age += right ? -1.0 : 1.0;
+        if (mark.b == 91 || mark.b == 94) age += right ? -1.0 : 1.0;
         if (exiting) {
             // The sender positions only outgoing art offscreen so shaderless clients always
             // show the new state. Its compensating space leaves native hit regions untouched.
@@ -115,6 +115,15 @@ vec4 vex_dialog_art_position(vec4 position, vec2 uv) {
             position.xy += vec2(19.0, 12.0) * spring;
             opacity = smoothstep(0.0, 4.5, age);
         }
+    }
+    // These compact foreground effects keep running after the entrance reaches its final pose.
+    if (mark.b == 91) {
+        vexProgressionPart = -6;
+        vexRewardPoint.x = position.x;
+        vexRewardAge = mod(GameTime * 24000.0, 100.0) * 4.0;
+    } else if (mark.b == 92) {
+        vexProgressionPart = -7;
+        vexRewardAge = mod(GameTime * 24000.0, 40.0) * 0.5;
     }
     vexAnimatedColor = vec4(1.0, 1.0, 1.0, opacity * Color.a);
     return position;

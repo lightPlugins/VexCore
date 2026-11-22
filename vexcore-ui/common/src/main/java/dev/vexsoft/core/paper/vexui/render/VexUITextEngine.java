@@ -39,7 +39,7 @@ public final class VexUITextEngine {
     }
 
     /** Separates native decorations whose baseline does not follow our vertically shifted bitmap glyphs. */
-    DecoratedText decorations(final Component component) {
+    DecoratedText decorations(final Component component, final ShadowColor textShadow) {
         var spans = new ArrayList<Decoration>();
         var clean = new ArrayList<Letter>();
         int x = 0;
@@ -60,8 +60,11 @@ public final class VexUITextEngine {
                     spans.add(new Decoration(x, width, color, underline, strike));
                 }
             }
-            clean.add(new Letter(letter.point(), style.decoration(TextDecoration.UNDERLINED, false)
-                .decoration(TextDecoration.STRIKETHROUGH, false)));
+            var cleanStyle = style.decoration(TextDecoration.UNDERLINED, false).decoration(TextDecoration.STRIKETHROUGH, false);
+            if (textShadow != null) {
+                cleanStyle = cleanStyle.shadowColor(textShadow);
+            }
+            clean.add(new Letter(letter.point(), cleanStyle));
             x += width;
         }
         return new DecoratedText(compose(clean), List.copyOf(spans));

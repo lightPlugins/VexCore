@@ -9,6 +9,7 @@ import dev.vexsoft.core.paper.vexui.action.VexUIActions;
 import dev.vexsoft.core.paper.vexui.action.VexUIAsyncAction;
 import dev.vexsoft.core.paper.vexui.action.VexUIClickSound;
 import dev.vexsoft.core.paper.vexui.component.VexUINavigation;
+import dev.vexsoft.core.paper.vexui.component.VexUINavigation.IconCaption;
 import dev.vexsoft.core.paper.vexui.component.VexUIPagedGrid;
 import dev.vexsoft.core.paper.vexui.element.VexUIButton;
 import dev.vexsoft.core.paper.vexui.element.VexUIColumn;
@@ -66,18 +67,6 @@ public final class VexUIProfessionTemplate {
     private record SceneKey(String job, boolean catalog, int page) {
         boolean turnsPathPage(final SceneKey previous) {
             return previous != null && job.equals(previous.job) && !catalog && !previous.catalog && page != previous.page;
-        }
-    }
-
-    private record ControlCaption(int iconX, int textX, int textWidth) {
-        static ControlCaption centered(final VexUISession session, final int x, final int width, final int iconWidth,
-                                       final int gap, final Component label) {
-            int textWidth = session.fittedTextWidth(label, width - iconWidth - gap);
-            int spacing = textWidth > 0 ? gap : 0;
-            // The last glyph's advance includes one trailing pixel between letters.
-            int inkWidth = Math.max(0, textWidth - 1);
-            int iconX = x + (width - iconWidth - spacing - inkWidth) / 2;
-            return new ControlCaption(iconX, iconX + iconWidth + spacing, Math.max(1, textWidth));
         }
     }
 
@@ -143,7 +132,7 @@ public final class VexUIProfessionTemplate {
                 registerPopupActions(job, reward, running, actions);
                 var content = popup.standardContent(session, provider, reward, running, actions);
                 return new VexUIFrame(t("main.title"), t("main.close"), layout.width(), content, actions)
-                    .withCompactNativeCloseButton();
+                    .withCompactNativeCloseButton().withTextShadow();
             }
             var header = new VexUIRow(4, new VexUISpacer(VexUISize.flexible()),
                 VexUINavigation.back(session, t("main.back"), actions));
@@ -154,7 +143,7 @@ public final class VexUIProfessionTemplate {
             var content = new VexUIColumn(VexUISize.content(), 4, List.of(header,
                 workspaceRow(sidebar.content(), workspace.content()), workspaceRow(sidebar.navigation(), workspace.navigation())));
             return new VexUIFrame(t("main.title"), t("main.close"), layout.width(),
-                new VexUIPanel(VexUISize.content(), 6, session.styleSheet().panel(), content), actions);
+                new VexUIPanel(VexUISize.content(), 6, session.styleSheet().panel(), content), actions).withTextShadow();
         }
 
         @Override
@@ -240,7 +229,7 @@ public final class VexUIProfessionTemplate {
             }
             var title = map.background(previousTheme, provider.hasPanoramaSprites());
             return new VexUIFrame(title, t("main.close"), VexUIProfessionScene.WIDTH, map.content(), actions)
-                .withCompactNativeCloseButton();
+                .withCompactNativeCloseButton().withTextShadow();
         }
 
         private void sceneHeader(final VexUISession session, final VexUIProfessionScene map, final String theme,
@@ -256,8 +245,9 @@ public final class VexUIProfessionTemplate {
             map.text(203, 0, 199, next);
             var catalog = t("main.scene_catalog");
             action(actions, "scene.catalog", ignored -> sceneCatalog = true);
-            map.art(201, 18, 0xE02C, 16, 16, 1);
-            map.text(219, 22, 60, sceneCatalog ? catalog.decorate(TextDecoration.UNDERLINED) : catalog);
+            var caption = IconCaption.centered(session, 201, 78, 16, 2, catalog);
+            map.art(caption.iconX(), 18, 0xE02C, 16, 16, 1);
+            map.text(caption.textX(), 22, caption.textWidth(), sceneCatalog ? catalog.decorate(TextDecoration.UNDERLINED) : catalog);
             map.hotspot(201, 18, 78, 18, "scene.catalog", t("main.title"));
 
             var back = t("main.back");
@@ -268,12 +258,7 @@ public final class VexUIProfessionTemplate {
             } else {
                 backAction = VexUINavigation.back(session, back, actions).action();
             }
-            int backWidth = 60;
-            int backX = VexUIProfessionScene.WIDTH - backWidth;
-            var caption = ControlCaption.centered(session, backX, backWidth, 10, 2, back);
-            map.settledArt(caption.iconX(), 21, 0xE004, 10, 12);
-            map.text(caption.textX(), 21, caption.textWidth(), back);
-            map.hotspot(backX, 18, backWidth, 18, backAction, back);
+            map.back(session, backAction, back);
         }
 
         private void pathNavigation(final VexUIProfessionScene map, final String job, final int page,
@@ -368,9 +353,9 @@ public final class VexUIProfessionTemplate {
                 sort = (sort + 1) % 3;
                 catalogPage = 0;
             });
-            map.text(107, 130, 85, t("main.filter_" + filter));
+            map.centeredText(104, 130, 89, t("main.filter_" + filter));
             map.hotspot(104, 126, 89, 18, "filter", t("main.availability_filter_hint"));
-            map.text(204, 130, 85, t("main.sort_" + sort));
+            map.centeredText(199, 130, 89, t("main.sort_" + sort));
             map.hotspot(199, 126, 89, 18, "sort", t("main.sort_hint"));
             map.pager(provider, actions, "catalog", 294, 126, 87, page, value -> catalogPage = value);
         }
@@ -449,11 +434,11 @@ public final class VexUIProfessionTemplate {
             return (VexUIProfessionScene.WIDTH - width) / 2;
         }
 
-        private static ControlCaption jobCaption(final VexUISession session, final Profession choice, final int x,
-                                                 final boolean active) {
+        private static IconCaption jobCaption(final VexUISession session, final Profession choice, final int x,
+                                             final boolean active) {
             return active
-                ? ControlCaption.centered(session, x + 3, VexUIProfessionScene.jobWidth(true) - 6, 16, 3, choice.name())
-                : new ControlCaption(x + 4, 0, 0);
+                ? IconCaption.centered(session, x + 3, VexUIProfessionScene.jobWidth(true) - 6, 16, 3, choice.name())
+                : new IconCaption(x + 4, 0, 0);
         }
 
         private TextColor tabTint(final int startOffset, final int widthDelta) {

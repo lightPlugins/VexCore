@@ -92,6 +92,7 @@ public final class VexUIProfessionTemplateTest {
         assertEquals(frame.width(), back.x() + back.width());
         assertEquals(new VexUIBounds(344, 18, 60, 18), back);
         assertControlContent(frame, back, 18, 0xE004, "Zurück");
+        assertControlContent(frame, hitBounds(hits, "scene.catalog"), 18, 0xE02C, "Berufe");
         assertTrue(((VexUIMap) frame.content()).layers().stream().noneMatch(layer -> layer.y() >= 198));
         assertPathActions(frame);
 
@@ -798,6 +799,7 @@ public final class VexUIProfessionTemplateTest {
                 case "main.hint" -> "Beruf links wählen · Details beim Darüberfahren";
                 case "main.close" -> "Schließen";
                 case "main.back" -> "Zurück";
+                case "main.scene_catalog" -> "Berufe";
                 case "main.filter_0" -> "Alle";
                 case "main.sort_0" -> "Standard";
                 case "main.progress" -> "Lv. %level% / %maximum%";

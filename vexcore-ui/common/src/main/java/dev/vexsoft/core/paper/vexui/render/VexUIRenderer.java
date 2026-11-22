@@ -71,7 +71,7 @@ public final class VexUIRenderer {
     ) {
         var text = new VexUITextEngine(metrics);
         var layout = new VexUILayout(text, style).layout(frame.content(), frame.width());
-        var canvas = new Canvas(frame.width(), layout.bounds().height() + 12, text, actions, style, debug);
+        var canvas = new Canvas(frame, layout.bounds().height() + 12, text, actions, style, debug);
         canvas.paint(layout, null, Component.empty(), false, "root");
         if (debug.bounds()) {
             canvas.outlines(layout, 0);
@@ -80,7 +80,7 @@ public final class VexUIRenderer {
     }
 
     private final class Canvas {
-        private final int width;
+        private final VexUIFrame frame;
         private final int height;
         private final VexUITextEngine text;
         private final BiFunction<String, VexUIClickSound, ClickEvent> actions;
@@ -91,14 +91,14 @@ public final class VexUIRenderer {
         private final List<VexUIRenderedFrame.HitRegion> regions = new ArrayList<>();
 
         private Canvas(
-            final int width,
+            final VexUIFrame frame,
             final int height,
             final VexUITextEngine text,
             final BiFunction<String, VexUIClickSound, ClickEvent> actions,
             final VexUIStyleSheet style,
             final VexUIDebugOptions debug
         ) {
-            this.width = width;
+            this.frame = frame;
             this.height = height;
             this.text = text;
             this.actions = actions;
@@ -129,18 +129,18 @@ public final class VexUIRenderer {
                 if (bounds.y() % 9 != 0 || bounds.height() % 9 != 0) {
                     throw new IllegalArgumentException("Native space hit targets must align with text rows");
                 }
-                click = actions.apply(hotspot.action(), null);
-                nativeRows(bounds, click, hotspot.tooltip());
-                regions.add(new VexUIRenderedFrame.HitRegion(bounds, hotspot.action()));
+                click = null;
+                tooltip = hotspot.tooltip();
+                if (hotspot.action() != null) {
+                    click = actions.apply(hotspot.action(), null);
+                    regions.add(new VexUIRenderedFrame.HitRegion(bounds, hotspot.action()));
+                    tooltip = actionTooltip(tooltip, path, hotspot.action(), bounds);
+                }
+                nativeRows(bounds, click, tooltip);
             } else if (node instanceof VexUIButton button) {
                 muted = disabled || !button.enabled();
                 click = muted ? null : actions.apply(button.action(), button.clickSound());
-                tooltip = button.tooltip();
-                if (debug.actions()) {
-                    tooltip = tooltip.append(Component.newline()).append(Component.text(path + " | " + button.action()
-                        + " | " + bounds.width() + "x" + bounds.height() + " @ " + bounds.x() + "," + bounds.y())
-                        .color(TextColor.color(0xBEA3D1)));
-                }
+                tooltip = actionTooltip(button.tooltip(), path, button.action(), bounds);
                 // A nested disabled button must not leave an enabled ancestor clickable underneath it.
                 if (muted && inherited != null) {
                     throw new IllegalArgumentException("Disabled buttons cannot be nested in clickable buttons");
@@ -240,7 +240,7 @@ public final class VexUIRenderer {
         }
 
         private void label(final int x, final int y, final Component value, final int advance, final boolean muted) {
-            var decorated = text.decorations(value);
+            var decorated = text.decorations(value, frame.textShadow());
             var component = decorated.component();
             if (muted) {
                 component = component.color(TextColor.color(0x81798D));
@@ -285,6 +285,15 @@ public final class VexUIRenderer {
                     strip(x, y + Math.min(row, h - 9), w, color, 0, null, Component.empty());
                 }
             }
+        }
+
+        private Component actionTooltip(final Component tooltip, final String path, final String action, final VexUIBounds bounds) {
+            if (!debug.actions()) {
+                return tooltip;
+            }
+            return tooltip.append(Component.newline()).append(Component.text(path + " | " + action
+                + " | " + bounds.width() + "x" + bounds.height() + " @ " + bounds.x() + "," + bounds.y())
+                .color(TextColor.color(0xBEA3D1)));
         }
 
         private void nativeRows(final VexUIBounds bounds, final ClickEvent click, final Component tooltip) {
@@ -358,30 +367,30 @@ public final class VexUIRenderer {
                     cursor = part.x() + part.advance();
                 }
                 // Every line has the same measured width, so the native widget cannot recenter individual rows.
-                result.append(shift(width - cursor));
+                result.append(shift(frame.width() - cursor));
             }
             return result.build();
         }
 
         private void add(final int x, final int y, final Component value, final int advance) {
-            if (x < 0 || y < 0 || y >= height || x + advance > width + 1) {
+            if (x < 0 || y < 0 || y >= height || x + advance > frame.width() + 1) {
                 throw new IllegalArgumentException("Paint operation escaped the VexUI canvas");
             }
             lines.get(y / 9).add(new Part(x, value, advance));
+        }
+
+        private Component events(final Component component, final ClickEvent click, final Component tooltip) {
+            Component result = component.clickEvent(click);
+            if (!tooltip.equals(Component.empty())) {
+                result = result.hoverEvent(frame.styleText(tooltip));
+            }
+            return result;
         }
     }
 
     private Component iconGlyph(final int point, final int y) {
         return Component.text(Character.toString(point)).font(ICON_FONTS[y % 9])
             .color(TextColor.color(0xFFFFFF)).shadowColor(ShadowColor.shadowColor(0));
-    }
-
-    private Component events(final Component component, final ClickEvent click, final Component tooltip) {
-        Component result = component.clickEvent(click);
-        if (!tooltip.equals(Component.empty())) {
-            result = result.hoverEvent(tooltip);
-        }
-        return result;
     }
 
     private record Part(int x, Component value, int advance) {

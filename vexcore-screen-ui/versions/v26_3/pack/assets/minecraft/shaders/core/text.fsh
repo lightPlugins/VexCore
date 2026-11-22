@@ -82,7 +82,19 @@ void main() {
 
     vec4 color = texColor * vertexColor * ColorModulator;
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)
-    if (vexProgressionPart <= -2) {
+    if (vexProgressionPart == -7) {
+        // One full-color star stores six alpha masks in the last two bits of each RGB channel.
+        ivec3 bits = ivec3(round(texColor.rgb * 255.0)) & ivec3(3);
+        int mask = bits.r | (bits.g << 2) | (bits.b << 4);
+        int frame = int(floor(vexRewardAge));
+        float from = float((mask >> frame) & 1);
+        float to = float((mask >> (frame + 1)) & 1);
+        color.a *= mix(from, to, smoothstep(0.0, 1.0, fract(vexRewardAge)));
+    } else if (vexProgressionPart == -6) {
+        // A single sweep follows the dots continuously across all illuminated links on the page.
+        float distance = abs(mod(vexRewardPoint.x - vexRewardAge + 200.0, 400.0) - 200.0);
+        color.rgb = mix(color.rgb, vec3(1.0, 0.96, 0.77), 1.0 - smoothstep(0.0, 9.0, distance));
+    } else if (vexProgressionPart <= -2) {
         // At tile seams a metadata texel replaces one source pixel. Recover a neighboring
         // artwork sample so that even bright skylines do not show a grid of tiny holes.
         ivec4 mark = ivec4(round(texColor * 255.0));

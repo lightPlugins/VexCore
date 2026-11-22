@@ -428,6 +428,7 @@ public final class VexUISessionState implements VexUISession {
         if (!consumed && !resourcePackChanged && lastFrame != null && frame.title().equals(lastFrame.title())
             && frame.closeLabel().equals(lastFrame.closeLabel()) && frame.width() == lastFrame.width()
             && frame.compactCloseButton() == lastFrame.compactCloseButton()
+            && Objects.equals(frame.textShadow(), lastFrame.textShadow())
             && frame.content().equals(lastFrame.content()) && frame.actions().keySet().equals(lastFrame.actions().keySet())
             && style.equals(lastStyle) && debug.equals(lastDebug)) {
             Map<Key, VexUIAction> refreshed = new HashMap<>();

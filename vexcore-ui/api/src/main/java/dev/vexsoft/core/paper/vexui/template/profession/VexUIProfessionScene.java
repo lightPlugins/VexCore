@@ -1,7 +1,9 @@
 package dev.vexsoft.core.paper.vexui.template.profession;
 
+import dev.vexsoft.core.paper.vexui.VexUISession;
 import dev.vexsoft.core.paper.vexui.action.VexUIAction;
 import dev.vexsoft.core.paper.vexui.action.VexUIActions;
+import dev.vexsoft.core.paper.vexui.component.VexUINavigation;
 import dev.vexsoft.core.paper.vexui.component.VexUIPagedGrid;
 import dev.vexsoft.core.paper.vexui.element.VexUIButton;
 import dev.vexsoft.core.paper.vexui.element.VexUIElement;
@@ -11,6 +13,7 @@ import dev.vexsoft.core.paper.vexui.element.VexUIMap;
 import dev.vexsoft.core.paper.vexui.element.VexUISize;
 import dev.vexsoft.core.paper.vexui.element.VexUIText;
 import dev.vexsoft.core.paper.vexui.element.VexUITexture;
+import dev.vexsoft.core.paper.vexui.template.VexUIPanorama;
 import dev.vexsoft.core.paper.vexui.template.profession.VexUIProfessionSnapshot.Status;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +21,7 @@ import java.util.Map;
 import java.util.function.IntConsumer;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.ShadowColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.object.ObjectContents;
 
 /** Paints the native profession map. Decorative glyphs never determine its widget or hit geometry. */
 final class VexUIProfessionScene {
@@ -30,13 +31,6 @@ final class VexUIProfessionScene {
     static final int JOBS = 7;
     static final int POPUP_X = 86;
     static final int POPUP_WIDTH = 232;
-    private static final Key VANILLA_FONT = Key.key("minecraft:default");
-    private static final Key GUI_ATLAS = Key.key("minecraft:gui");
-    private static final TextColor PANORAMA_UNDERLAY = TextColor.color(0xFFFFFC);
-    // Each vanilla space is four pixels wide. Four row rewinds in the loaded panorama font cancel this advance.
-    private static final Component PANORAMA_LEAD = Component.text(" ".repeat(1008)).font(VANILLA_FONT);
-    private static final String PANORAMA_ORIGIN = "\uE10D".repeat(4);
-    private static final Component TITLE_PADDING = Component.text(" ".repeat(512)).font(VANILLA_FONT);
 
     enum Entrance { SETTLED, PATH_PAGE, SCENE }
 
@@ -55,29 +49,8 @@ final class VexUIProfessionScene {
     }
 
     Component background(final String previousTheme, final boolean hasPanoramaSprites) {
-        var title = Component.text().append(PANORAMA_LEAD);
-        boolean crossfade = entrance == Entrance.SCENE && previousTheme != null;
-        if (crossfade && !hasPanoramaSprites) {
-            // The shader centers the outgoing tiles; their native position is outside the viewport.
-            title.append(panorama(backgroundFont(Key.key(previousTheme)), VexUIEntrance.exitColor(started, 0)));
-        }
-        var font = backgroundFont(theme);
-        // Only this font can rewind to the visible origin. Missing-glyph boxes stay beyond the right edge.
-        title.append(Component.text(PANORAMA_ORIGIN).font(font));
-        var currentTint = crossfade ? ink(0) : VexUIEntrance.SETTLED;
-        if (hasPanoramaSprites) {
-            // The bitmap also works with an older pack. Put native 8px objects outside the viewport
-            // so a client using a different GUI text shader sees only the full-size bitmap.
-            title.append(panorama(font, PANORAMA_UNDERLAY)).append(PANORAMA_LEAD);
-            if (crossfade) {
-                title.append(panoramaSprites(Key.key(previousTheme), VexUIEntrance.exitColor(started, 0)));
-            }
-            return title.append(panoramaSprites(theme, currentTint)).build();
-        }
-        title.append(panorama(font, currentTint));
-        // The native header expands from screen x=0. Its out-of-bounds warning button is then relocated
-        // by DialogScreen to the top-right corner, retaining its actual clickable help screen.
-        return title.append(TITLE_PADDING).build();
+        Key outgoing = entrance == Entrance.SCENE && previousTheme != null ? Key.key(previousTheme) : null;
+        return VexUIPanorama.title(theme, outgoing, started, hasPanoramaSprites);
     }
 
     void add(final int x, final int y, final int width, final int height, final VexUIElement element) {
@@ -116,6 +89,10 @@ final class VexUIProfessionScene {
         add(x, y, width, 9, new VexUIText(VexUISize.fixed(width, 9), value, true));
     }
 
+    void back(final VexUISession session, final String action, final Component label) {
+        layers.addAll(VexUINavigation.panoramaBack(session, WIDTH, shared, action, label));
+    }
+
     void detailSurface() {
         for (int piece = 0; piece < 3; piece++) {
             // The parchment, labels and buttons keep their resting native coordinates as the
@@ -129,7 +106,7 @@ final class VexUIProfessionScene {
         if (page.pages() <= 1) {
             return;
         }
-        centeredText(x + 17, y + 2, width - 34, provider.text("main.page",
+        centeredText(x + 17, y + 3, width - 34, provider.text("main.page",
             Map.of("page", Integer.toString(page.page() + 1), "pages", Integer.toString(page.pages()))));
         if (page.page() > 0) {
             pageArrow(provider, actions, id + ".previous", x, y, false, () -> turn.accept(page.page() - 1));
@@ -142,7 +119,7 @@ final class VexUIProfessionScene {
     private void pageArrow(final VexUIProfessionProvider provider, final Map<String, VexUIAction> actions,
                    final String action, final int x, final int y, final boolean next, final Runnable run) {
         VexUIActions.register(actions, action, ignored -> run.run());
-        art(x + 3, y, next ? 0xE005 : 0xE004, 10, 12, 0);
+        settledArt(x + 3, y + 3, next ? 0xE005 : 0xE004, 10, 12);
         hotspot(x, y, 16, 18, action, provider.text(next ? "main.next" : "main.previous"));
     }
 
@@ -235,40 +212,6 @@ final class VexUIProfessionScene {
     private VexUIMap.Layer bridgeFragment(final int x, final int y, final int width, final int glyph) {
         var texture = new VexUITexture(shared, glyph, width, 21, width + 1, Component.empty(), VexUIEntrance.SETTLED);
         return new VexUIMap.Layer(x, y, width + 1, 21, texture);
-    }
-
-    private static Key backgroundFont(final Key asset) {
-        return Key.key(asset.namespace(), asset.value() + "/background");
-    }
-
-    private static Component panoramaSprites(final Key asset, final TextColor tint) {
-        var sprites = Component.text();
-        for (int row = 0; row < 3; row++) {
-            // The low nibbles carry the same animation clock as the bitmap sprites.
-            // The upper nibbles identify this as a GUI atlas draw and select its vertical position.
-            var rowTint = TextColor.color(0xC0 | (tint.red() & 15), (0xB0 + row * 16) | (tint.green() & 15),
-                0xF0 | (tint.blue() & 15));
-            var sprite = Key.key(asset.namespace(), asset.value() + "/panorama_" + row);
-            sprites.append(Component.object(ObjectContents.sprite(GUI_ATLAS, sprite)).fallback(Component.empty())
-                .color(rowTint).shadowColor(ShadowColor.none()));
-        }
-        return sprites.build();
-    }
-
-    private static Component panorama(final Key font, final TextColor tint) {
-        // The tiles and their negative advances must become available together on a backend switch.
-        var trimGlyphGap = Component.text("\uE10C").font(font);
-        var rewindRow = Component.text("\uE10D").font(font);
-        var rows = Component.text();
-        for (int row = 0; row < 3; row++) {
-            for (int column = 0; column < 4; column++) {
-                rows.append(Component.text(Character.toString(0xE100 + row * 4 + column))
-                    .font(font).color(tint).shadowColor(ShadowColor.none()));
-                rows.append(trimGlyphGap);
-            }
-            rows.append(rewindRow);
-        }
-        return rows.build();
     }
 
     void hotspot(final int x, final int y, final int width, final int height,
