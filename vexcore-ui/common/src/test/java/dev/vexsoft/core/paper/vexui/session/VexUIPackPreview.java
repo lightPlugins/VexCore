@@ -3,6 +3,7 @@ package dev.vexsoft.core.paper.vexui.session;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.vexsoft.core.paper.vexui.render.VexUIRenderedFrame;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import javax.imageio.ImageIO;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
 import net.kyori.adventure.text.flattener.FlattenerListener;
 import net.kyori.adventure.text.format.Style;
@@ -32,10 +34,12 @@ public final class VexUIPackPreview {
     private final Map<String, BufferedImage> images = new HashMap<>();
     private final ObjectMapper json = new ObjectMapper();
     private final List<NativeHit> hits = new ArrayList<>();
+    private final Map<Integer, Rectangle> rowBounds = new HashMap<>();
     private final Path pack = Path.of(System.getProperty("vexui.pack"));
 
     public BufferedImage render(final VexUIRenderedFrame frame) throws IOException {
         hits.clear();
+        rowBounds.clear();
         BufferedImage image = new BufferedImage(frame.width() + 1, frame.height() + 12, BufferedImage.TYPE_INT_ARGB);
         var styles = new ArrayDeque<>(List.of(Style.empty()));
         int[] position = {0, 0};
@@ -62,12 +66,18 @@ public final class VexUIPackPreview {
                         throw new AssertionError("Unknown glyph " + point + " in " + style.font());
                     }
                     var click = style.clickEvent();
-                    if (click != null && click.payload() instanceof ClickEvent.Payload.Custom custom) {
+                    var action = click != null && click.payload() instanceof ClickEvent.Payload.Custom custom ? custom.key() : null;
+                    var hover = style.hoverEvent();
+                    var tooltip = hover != null && hover.action() == HoverEvent.Action.SHOW_TEXT ? (Component) hover.value() : null;
+                    if (action != null || tooltip != null) {
                         int top = position[1] + (glyph.image() == null ? 0 : glyph.top());
                         int height = glyph.image() == null ? 9 : glyph.image().getHeight();
-                        hits.add(new NativeHit(position[0], top, glyph.advance(), height, custom.key()));
+                        hits.add(new NativeHit(position[1], position[0], top, glyph.advance(), height, action, tooltip));
                     }
                     if (glyph.image() != null) {
+                        // GuiTextRenderState bounds include transparent bitmap cells, but not empty space glyphs.
+                        rowBounds.merge(position[1], new Rectangle(position[0], position[1] + glyph.top(),
+                            glyph.image().getWidth(), glyph.image().getHeight()), Rectangle::union);
                         var color = style.color();
                         int tint = color == null ? 0xFFFFFF : color.value();
                         paint(image, glyph, position[0], position[1], tint);
@@ -89,10 +99,22 @@ public final class VexUIPackPreview {
     }
 
     Key actionAt(final double x, final double y) {
-        Key result = null;
+        var hit = hitAt(x, y);
+        return hit == null ? null : hit.action();
+    }
+
+    Component tooltipAt(final double x, final double y) {
+        var hit = hitAt(x, y);
+        return hit == null ? null : hit.tooltip();
+    }
+
+    private NativeHit hitAt(final double x, final double y) {
+        NativeHit result = null;
         for (var hit : hits) {
-            if (x >= hit.x() && x < hit.x() + hit.width() && y >= hit.y() && y < hit.y() + hit.height()) {
-                result = hit.action();
+            var row = rowBounds.get(hit.row());
+            if (row != null && row.contains(x, y) && x >= hit.x() && x < hit.x() + hit.width()
+                && y >= hit.y() && y < hit.y() + hit.height()) {
+                result = hit;
             }
         }
         return result;
@@ -209,6 +231,6 @@ public final class VexUIPackPreview {
     private record Glyph(BufferedImage image, int top, int advance) {
     }
 
-    private record NativeHit(int x, int y, int width, int height, Key action) {
+    private record NativeHit(int row, int x, int y, int width, int height, Key action, Component tooltip) {
     }
 }

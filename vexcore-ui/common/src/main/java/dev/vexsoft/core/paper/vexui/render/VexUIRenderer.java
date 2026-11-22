@@ -1,9 +1,13 @@
 package dev.vexsoft.core.paper.vexui.render;
 
+import static dev.vexsoft.core.paper.vexui.element.VexUISpaces.shift;
+
 import dev.vexsoft.core.paper.vexui.VexUIDebugOptions;
 import dev.vexsoft.core.paper.vexui.VexUIFrame;
 import dev.vexsoft.core.paper.vexui.action.VexUIClickSound;
 import dev.vexsoft.core.paper.vexui.element.VexUIButton;
+import dev.vexsoft.core.paper.vexui.element.VexUIEntrance;
+import dev.vexsoft.core.paper.vexui.element.VexUIHotspot;
 import dev.vexsoft.core.paper.vexui.element.VexUIItemIcon;
 import dev.vexsoft.core.paper.vexui.element.VexUIPanel;
 import dev.vexsoft.core.paper.vexui.element.VexUIParagraph;
@@ -35,13 +39,17 @@ public final class VexUIRenderer {
         .mapToObj(offset -> Key.key("vexcore:vexui/tiles/y_" + offset)).toArray(Key[]::new);
     private static final Key[] ICON_FONTS = IntStream.range(0, 9)
         .mapToObj(offset -> Key.key("vexcore:vexui/icons/y_" + offset)).toArray(Key[]::new);
-    private static final Component[] SHIFTS = IntStream.rangeClosed(-1024, 1024)
-        .mapToObj(VexUIRenderer::createShift).toArray(Component[]::new);
+    private static final Component HOTSPOT_EDGE = Component.text("\uE040")
+        .font(Key.key("vexcore:vexui/space")).shadowColor(ShadowColor.none());
 
     private final VexUIMetrics metrics;
 
     public List<Component> wrap(final Component text, final int width) {
         return new VexUITextEngine(metrics).wrap(text, width, 0);
+    }
+
+    public int fittedTextWidth(final Component text, final int maximumWidth) {
+        return new VexUITextEngine(metrics).fitMeasured(text, maximumWidth, 0).width();
     }
 
     public VexUIRenderedFrame render(final VexUIFrame frame, final Function<String, ClickEvent> actions) {
@@ -117,7 +125,14 @@ public final class VexUIRenderer {
             ClickEvent click = inherited;
             Component tooltip = inheritedTooltip;
             boolean muted = disabled;
-            if (node instanceof VexUIButton button) {
+            if (node instanceof VexUIHotspot hotspot) {
+                if (bounds.y() % 9 != 0 || bounds.height() % 9 != 0) {
+                    throw new IllegalArgumentException("Native space hit targets must align with text rows");
+                }
+                click = actions.apply(hotspot.action(), null);
+                nativeRows(bounds, click, hotspot.tooltip());
+                regions.add(new VexUIRenderedFrame.HitRegion(bounds, hotspot.action()));
+            } else if (node instanceof VexUIButton button) {
                 muted = disabled || !button.enabled();
                 click = muted ? null : actions.apply(button.action(), button.clickSound());
                 tooltip = button.tooltip();
@@ -147,7 +162,12 @@ public final class VexUIRenderer {
             } else if (node instanceof VexUIPanel panel) {
                 if (!panel.tooltip().equals(Component.empty())) {
                     tooltip = panel.tooltip();
-                    hit(bounds, click, tooltip, panel.theme().background());
+                    if (click == null && bounds.y() % 9 == 0 && bounds.height() % 9 == 0
+                        && (panel.content() instanceof VexUIItemIcon || panel.content() instanceof VexUITexture)) {
+                        nativeRows(bounds, click, tooltip);
+                    } else {
+                        hit(bounds, click, tooltip, panel.theme().background());
+                    }
                 }
                 panel(bounds, panel.theme());
             } else if (node instanceof VexUIProgressBar bar) {
@@ -186,7 +206,11 @@ public final class VexUIRenderer {
             } else if (node instanceof VexUITexture texture) {
                 Component glyph = Component.text(Character.toString(texture.codePoint()))
                     .font(Key.key(texture.fontPrefix().namespace(), texture.fontPrefix().value() + "/y_" + (bounds.y() % 9)))
-                    .color(TextColor.color(0xFFFFFF)).shadowColor(ShadowColor.none());
+                    .color(texture.tint()).shadowColor(ShadowColor.none());
+                if (texture.outgoing()) {
+                    glyph = Component.text().append(shift(VexUIEntrance.EXIT_DISPLACEMENT)).append(glyph)
+                        .append(shift(-VexUIEntrance.EXIT_DISPLACEMENT)).build();
+                }
                 Component effective = texture.tooltip().equals(Component.empty()) ? tooltip : texture.tooltip();
                 add(bounds.x(), bounds.y(), events(glyph, click, effective), texture.advance());
             }
@@ -260,6 +284,16 @@ public final class VexUIRenderer {
                 for (int row = 0; row < h; row += 9) {
                     strip(x, y + Math.min(row, h - 9), w, color, 0, null, Component.empty());
                 }
+            }
+        }
+
+        private void nativeRows(final VexUIBounds bounds, final ClickEvent click, final Component tooltip) {
+            // Minecraft culls rows against their bitmap bounds before it picks styled spaces.
+            var strip = Component.text().append(HOTSPOT_EDGE).append(shift(-1))
+                .append(events(shift(bounds.width()), click, tooltip))
+                .append(shift(-1)).append(HOTSPOT_EDGE).build();
+            for (int y = bounds.y(); y < bounds.y() + bounds.height(); y += 9) {
+                add(bounds.x(), y, strip, bounds.width());
             }
         }
 
@@ -348,26 +382,6 @@ public final class VexUIRenderer {
             result = result.hoverEvent(tooltip);
         }
         return result;
-    }
-
-    private Component shift(final int pixels) {
-        return pixels >= -1024 && pixels <= 1024 ? SHIFTS[pixels + 1024] : createShift(pixels);
-    }
-
-    private static Component createShift(final int pixels) {
-        if (pixels == 0) {
-            return Component.empty();
-        }
-        StringBuilder text = new StringBuilder();
-        int remaining = Math.abs(pixels);
-        int offset = pixels < 0 ? 0xE020 : 0xE000;
-        for (int power = 11; power >= 0; power--) {
-            while (remaining >= (1 << power)) {
-                text.appendCodePoint(offset + power);
-                remaining -= 1 << power;
-            }
-        }
-        return Component.text(text.toString()).font(Key.key("vexcore:vexui/space"));
     }
 
     private record Part(int x, Component value, int advance) {

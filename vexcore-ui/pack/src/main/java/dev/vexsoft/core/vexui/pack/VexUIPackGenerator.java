@@ -84,8 +84,11 @@ public final class VexUIPackGenerator {
             shifts.add(quoted(0xE000 + power) + ":" + (1 << power));
             shifts.add(quoted(0xE020 + power) + ":" + -(1 << power));
         }
+        String hitEdge = "vexui/hotspot_edge.png";
+        png(root, "assets/vexcore/textures/" + hitEdge, new BufferedImage(1, 9, BufferedImage.TYPE_INT_ARGB));
         write(root, "assets/vexcore/font/vexui/space.json",
-            "{\"providers\":[{\"type\":\"space\",\"advances\":{" + String.join(",", shifts) + "}}]}\n");
+            "{\"providers\":[{\"type\":\"space\",\"advances\":{" + String.join(",", shifts) + "}},"
+                + bitmap("vexcore:" + hitEdge, 9, 0xE040).replace("ASCENT", "7") + "]}\n");
         write(metricsRoot, "dev/vexsoft/core/paper/vexui/metrics.properties", metrics.toString());
         write(root, "vexui-manifest.properties", metrics.toString());
     }

@@ -60,6 +60,9 @@ void main() {
         position = vex_progression_position(position, UV0, gl_VertexIndex);
     }
     if (vexOwned < 0.5) {
+        position = vex_dialog_art_position(position, UV0);
+    }
+    if (vexOwned < 0.5) {
         position = vex_screen_ui_position(position, UV0, gl_VertexIndex);
     }
 #endif

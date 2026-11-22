@@ -75,6 +75,17 @@ public final class VexUIPackGeneratorTest {
         assertEquals(VexUITheme.PANEL.background(), frame.getRGB(100, 20) & 0xFFFFFF);
         assertEquals(VexUITheme.PANEL.lightBorder(), frame.getRGB(100, 3) & 0xFFFFFF);
         var json = new ObjectMapper();
+        var spaces = json.readTree(first.resolve("assets/vexcore/font/vexui/space.json").toFile());
+        var edge = spaces.get("providers").get(1);
+        assertEquals("\uE040", edge.get("chars").get(0).asText());
+        assertEquals(7, edge.get("ascent").asInt());
+        assertEquals(9, edge.get("height").asInt());
+        var bounds = ImageIO.read(first.resolve("assets/vexcore/textures/vexui/hotspot_edge.png").toFile());
+        assertEquals(1, bounds.getWidth());
+        assertEquals(9, bounds.getHeight());
+        for (int y = 0; y < bounds.getHeight(); y++) {
+            assertEquals(0, bounds.getRGB(0, y) >>> 24);
+        }
         for (int offset : new int[]{0, 899}) {
             var tiles = json.readTree(first.resolve("assets/vexcore/font/vexui/tiles/y_" + offset + ".json").toFile())
                 .get("providers");

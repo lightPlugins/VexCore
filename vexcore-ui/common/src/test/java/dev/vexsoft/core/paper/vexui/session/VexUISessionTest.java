@@ -28,6 +28,7 @@ import dev.vexsoft.core.paper.vexui.debug.VexUIDebugShopService;
 import dev.vexsoft.core.paper.vexui.dialog.VexUIDialogService;
 import dev.vexsoft.core.paper.vexui.dialog.VexUIPaperDialogService;
 import dev.vexsoft.core.paper.vexui.element.VexUIButton;
+import dev.vexsoft.core.paper.vexui.element.VexUIEntrance;
 import dev.vexsoft.core.paper.vexui.element.VexUISize;
 import dev.vexsoft.core.paper.vexui.element.VexUIText;
 import dev.vexsoft.core.paper.vexui.listener.VexUIListener;
@@ -46,7 +47,10 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent.Status;
 import org.bukkit.plugin.Plugin;
 import org.junit.jupiter.api.Test;
 
@@ -102,6 +106,181 @@ public final class VexUISessionTest {
     }
 
     @Test
+    public void successfulPackLoadRedrawsTheDisplayedFrameOnceOnTheEntityThread() {
+        var fixture = new Fixture();
+        var listener = new VexUIListener(fixture.services);
+        var pack = UUID.randomUUID();
+        var loaded = new PlayerResourcePackStatusEvent(fixture.player, pack, Status.SUCCESSFULLY_LOADED);
+        var session = fixture.ui.open(fixture.player, ignored -> frame());
+        listener.resourcePackStatus(loaded);
+        fixture.flush();
+        assertEquals(1, fixture.dialogs.shown.size());
+        for (var status : Status.values()) {
+            if (status != Status.SUCCESSFULLY_LOADED) {
+                listener.resourcePackStatus(new PlayerResourcePackStatusEvent(fixture.player, pack, status));
+            }
+        }
+        var oldConnection = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
+            (proxy, method, args) -> method.getName().equals("getUniqueId") ? fixture.player.getUniqueId() : null);
+        listener.resourcePackStatus(new PlayerResourcePackStatusEvent(oldConnection, pack, Status.SUCCESSFULLY_LOADED));
+        assertEquals(0, fixture.scheduler.queuedTaskCount());
+
+        session.refresh();
+        listener.resourcePackStatus(loaded);
+        listener.resourcePackStatus(loaded);
+        assertEquals(1, fixture.scheduler.queuedTaskCount());
+        assertEquals(1, fixture.dialogs.shown.size());
+        fixture.flush();
+        assertEquals(2, fixture.dialogs.shown.size());
+        session.refresh();
+        fixture.flush();
+        assertEquals(2, fixture.dialogs.shown.size());
+    }
+
+    @Test
+    public void packRefreshPreservesSearchAndNeverReopensAClosedOrReplacedSession() {
+        var fixture = new Fixture();
+        var session = fixture.ui.open(fixture.player, ignored -> frame());
+        fixture.flush();
+        var label = Component.text("Search");
+        var queries = new ArrayList<String>();
+        session.search(new VexUISearch(label, label, label, label, "", queries::add));
+        fixture.flush();
+        var submit = fixture.dialogs.searchSubmit;
+        fixture.coordinator.resourcePackLoaded(fixture.player);
+        fixture.flush();
+        assertEquals(1, fixture.dialogs.shown.size());
+        fixture.coordinator.dispatch(fixture.player, submit, "in progress");
+        fixture.flush();
+        assertEquals(List.of("in progress"), queries);
+
+        fixture.coordinator.resourcePackLoaded(fixture.player);
+        var replacement = fixture.ui.open(fixture.player, ignored -> frame());
+        fixture.flush();
+        assertEquals(3, fixture.dialogs.shown.size());
+        fixture.coordinator.resourcePackLoaded(fixture.player);
+        replacement.close();
+        fixture.flush();
+        assertEquals(3, fixture.dialogs.shown.size());
+        assertTrue(session.isClosed());
+        assertTrue(replacement.isClosed());
+    }
+
+    @Test
+    public void packRefreshToleratesDisableBeforeAndDuringTaskRegistration() {
+        var enabled = new AtomicBoolean(true);
+        var fixture = new Fixture(pluginOwner(enabled));
+        fixture.ui.open(fixture.player, ignored -> frame());
+        fixture.flush();
+        fixture.scheduler.beforeNextTask = () -> enabled.set(false);
+        fixture.coordinator.resourcePackLoaded(fixture.player);
+        fixture.scheduler.beforeNextTask = () -> {
+            throw new AssertionError("Attempted another registration for a disabled plugin");
+        };
+        fixture.coordinator.resourcePackLoaded(fixture.player);
+        fixture.services.unregisterOwnedServices();
+        fixture.flush();
+        assertEquals(1, fixture.dialogs.shown.size());
+    }
+
+    @Test
+    public void dialogArtClockWrapsWithClientTimeAndKeepsASeparateSettledColor() {
+        for (int start = 23000; start < 25000; start++) {
+            int clock = (start + 3) % 2000;
+            var entering = VexUIEntrance.color(start, 3);
+            var exiting = VexUIEntrance.exitColor(start, 3);
+            assertEquals(clock, (entering.red() & 15) << 8 | (entering.green() & 15) << 4 | entering.blue() & 15);
+            assertEquals(2000 + clock, (exiting.red() & 15) << 8 | (exiting.green() & 15) << 4 | exiting.blue() & 15);
+            assertTrue(entering.red() >= 240 && entering.green() >= 240 && entering.blue() >= 240);
+            assertNotEquals(VexUIEntrance.SETTLED, entering);
+            assertNotEquals(VexUIEntrance.SETTLED, exiting);
+        }
+    }
+
+    @Test
+    public void jobTabTintsTransportBothEdgesAcrossTheClientClockWrap() {
+        for (int start = 23970; start < 24034; start++) {
+            for (int widthDelta : new int[]{-62, 0, 62}) {
+                for (int offset : new int[]{-64, -62, -31, -1, 0, 1, 31, 62, 63}) {
+                    var tint = VexUIEntrance.jobTabColor(start, offset, widthDelta);
+                    assertTrue(tint.red() >= 224 && tint.red() < 240);
+                    assertTrue(tint.green() >= 224 && tint.blue() >= 208);
+                    int motion = (tint.blue() - 208) << 9 | (tint.green() - 224) << 4 | (tint.red() - 224);
+                    int decodedOffset = ((motion >> 6) & 127) - 64;
+                    assertEquals(offset, decodedOffset);
+                    assertEquals(offset + widthDelta, decodedOffset + ((motion >> 13) - 1) * 62);
+                    assertEquals((start % 24000) % 64, motion & 63);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void delayedSceneRefreshReplacesThePreviousDeadlineAndRetiresWithTheSession() {
+        var fixture = new Fixture();
+        var renders = new AtomicInteger();
+        var session = fixture.ui.open(fixture.player, ignored -> {
+            renders.incrementAndGet();
+            return frame();
+        });
+        fixture.flush();
+        session.refreshAfter(40);
+        session.refreshAfter(30);
+        fixture.flush();
+        assertEquals(2, renders.get());
+        session.refreshAfter(30);
+        session.close();
+        fixture.flush();
+        assertEquals(2, renders.get());
+    }
+
+    @Test
+    public void delayedMutationSharesTheRefreshDeadlineAndCanScheduleItsSuccessor() {
+        var fixture = new Fixture();
+        var changes = new ArrayList<String>();
+        var rendered = new ArrayList<List<String>>();
+        var session = fixture.ui.open(fixture.player, ignored -> {
+            rendered.add(List.copyOf(changes));
+            return frame();
+        });
+        fixture.flush();
+        session.updateAfter(5, () -> changes.add("cancelled"));
+        session.refreshAfter(31);
+        fixture.flush();
+        assertEquals(List.of(List.of(), List.of()), rendered);
+
+        session.refreshAfter(31);
+        session.updateAfter(5, () -> {
+            changes.add("name");
+            session.updateAfter(31, () -> changes.add("settled"));
+        });
+        assertTrue(changes.isEmpty());
+        fixture.flush();
+        assertEquals(List.of("name", "settled"), changes);
+        assertEquals(changes, rendered.getLast());
+    }
+
+    @Test
+    public void delayedMutationRetiresOnNavigationReplacementAndClose() {
+        var fixture = new Fixture();
+        var calls = new AtomicInteger();
+        var session = fixture.ui.open(fixture.player, ignored -> frame());
+        fixture.flush();
+        session.navigate(ignored -> frame());
+        session.updateAfter(5, calls::incrementAndGet);
+        fixture.flush();
+        assertEquals(0, calls.get());
+
+        session.updateAfter(5, calls::incrementAndGet);
+        var replacement = fixture.ui.open(fixture.player, ignored -> frame());
+        fixture.flush();
+        replacement.updateAfter(5, calls::incrementAndGet);
+        replacement.close();
+        fixture.flush();
+        assertEquals(0, calls.get());
+    }
+
+    @Test
     public void rejectsInvalidAndDuplicateClicksBeforeTheyReachTheScheduler() {
         var fixture = new Fixture();
         AtomicInteger clicks = new AtomicInteger();
@@ -147,6 +326,43 @@ public final class VexUISessionTest {
         assertEquals(1, fixture.dialogs.shown.size());
         fixture.coordinator.dispatch(fixture.player, close, null);
         assertEquals(0, fixture.scheduler.queuedTaskCount());
+    }
+
+    @Test
+    public void handledNativeCloseRefreshesTheFrameAndConsumesItsOldActions() {
+        var fixture = new Fixture();
+        var clicks = new AtomicInteger();
+        var closes = new AtomicInteger();
+        VexUIView body = view(clicks);
+        var session = fixture.ui.open(fixture.player, new VexUIView() {
+            @Override
+            public VexUIFrame render(final VexUISession session) {
+                return body.render(session);
+            }
+
+            @Override
+            public void closeRequested(final VexUISession session) {
+                if (closes.incrementAndGet() > 1) {
+                    session.close();
+                }
+            }
+        });
+        fixture.flush();
+        var oldClose = fixture.dialogs.closeAction;
+        var oldClick = action(fixture.dialogs.shown.getLast().body());
+        fixture.coordinator.dispatch(fixture.player, oldClose, null);
+        fixture.coordinator.dispatch(fixture.player, oldClick, null);
+        fixture.flush();
+        assertFalse(session.isClosed());
+        assertNotEquals(oldClose, fixture.dialogs.closeAction);
+        fixture.coordinator.dispatch(fixture.player, oldClose, null);
+        fixture.flush();
+        assertEquals(1, closes.get());
+        assertEquals(0, clicks.get());
+        fixture.coordinator.dispatch(fixture.player, fixture.dialogs.closeAction, null);
+        fixture.flush();
+        assertTrue(session.isClosed());
+        assertEquals(2, closes.get());
     }
 
     @Test
@@ -456,6 +672,8 @@ public final class VexUISessionTest {
             player = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getUniqueId" -> identity;
+                    case "getWorld" -> Proxy.newProxyInstance(World.class.getClassLoader(), new Class<?>[]{World.class},
+                        (world, getter, arguments) -> getter.getName().equals("getGameTime") ? 100L : null);
                     case "isOnline" -> true;
                     case "hashCode" -> identity.hashCode();
                     case "equals" -> proxy == args[0];

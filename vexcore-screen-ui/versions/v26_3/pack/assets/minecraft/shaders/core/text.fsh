@@ -82,6 +82,34 @@ void main() {
 
     vec4 color = texColor * vertexColor * ColorModulator;
 #if defined(IS_GUI) && !defined(IS_GRAYSCALE)
+    if (vexProgressionPart <= -2) {
+        // At tile seams a metadata texel replaces one source pixel. Recover a neighboring
+        // artwork sample so that even bright skylines do not show a grid of tiny holes.
+        ivec4 mark = ivec4(round(texColor * 255.0));
+        if (mark.r == 73 && mark.g == 86 && mark.a == 1 && mark.b >= 95 && mark.b <= 98) {
+            ivec2 atlas = textureSize(Sampler0, 0);
+            ivec2 point = ivec2(floor(texCoord0 * vec2(atlas)));
+            // Both atlas rows and individual bitmap glyphs carry the 0..4 horizontal tile coordinate.
+            ivec2 inward = ivec2(vexRewardPoint.x < float(mark.b - 95) + 0.5 ? 1 : -1,
+                vexRewardPoint.y < 0.5 ? 1 : -1);
+            color = texelFetch(Sampler0, clamp(point + inward, ivec2(0), atlas - 1), 0)
+                * vertexColor * ColorModulator;
+        }
+        // Scale three can crop away the panorama's baked feather on smaller monitors.
+        if (vexProgressionPart == -2 || vexProgressionPart == -4) {
+            float edge = min(vexProgressionCell.x, vexProgressionCell.y - vexProgressionCell.x);
+            color.a *= smoothstep(0.0, 20.0, edge);
+        }
+        // A fully opaque bitmap pixel can cover a missing atlas row without applying its feather twice.
+        if (vexProgressionPart <= -4 && color.a < 1.0) discard;
+        if (vexRewardAge >= 0.0) {
+            if (vexRewardAge >= 1.0) discard;
+            // The incoming layer covers t*a. Source-over leaves (1-t*a) of this outgoing
+            // layer visible, so its final contribution must be a*(1-t). Together they
+            // retain the original coverage a throughout the crossfade, including its feather.
+            color.a *= (1.0 - vexRewardAge) / (1.0 - vexRewardAge * color.a);
+        }
+    }
     if (vexPanelSize.x > 0.0) {
         vec2 distance = abs(vexPanelPoint - vexPanelSize * 0.5)
             - (vexPanelSize * 0.5 - vec2(vexPanelRadius));

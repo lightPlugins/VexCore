@@ -31,6 +31,23 @@ final class ScreenUiShaderContractTest {
     private final V26_3ScreenUiVersionDefinition version = new V26_3ScreenUiVersionDefinition();
 
     @Test
+    void professionArtDoesNotUseTheGlobalDrawIndexForQuadCorners() throws Exception {
+        String vertexShader = Files.readString(pack.resolve("assets/minecraft/shaders/core/text.vsh"));
+        String include = Files.readString(pack.resolve("assets/vexcore/shaders/include/screen_ui/v26_3.glsl"));
+        int entry = include.indexOf("vec4 vex_dialog_art_position(");
+        assertTrue(entry >= 0);
+        int end = include.indexOf("\n}", entry);
+        assertTrue(end > entry);
+
+        // The GUI packs mixed vertex formats into one buffer. Even the first corner of a quad can have
+        // any global index modulo four. Font and atlas sprites must use their own UVs and geometry.
+        assertTrue(vertexShader.contains("vex_dialog_art_position(position, UV0)"));
+        String professionArt = include.substring(entry, end);
+        assertFalse(professionArt.contains("vertexId"));
+        assertFalse(professionArt.contains("gl_VertexIndex"));
+    }
+
+    @Test
     void contributedSpritesResolveNamespacedFontsAndRejectInvalidContracts() {
         var sprite = UiTexture.sprite(Key.key("demo:hud/frame"), 180, 56);
         for (int tenth = 5; tenth <= 10; tenth++) {

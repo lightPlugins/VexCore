@@ -8,8 +8,9 @@ import io.papermc.paper.event.player.PlayerCustomClickEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 
-/** Routes only VexUI custom actions and retires viewer sessions on disconnect. */
+/** Routes client actions and resource-pack changes to the current viewer session. */
 @Dependencies(VexUICoordinatorService.class)
 @SuppressWarnings("UnstableApiUsage")
 public final class VexUIListener implements Listener {
@@ -27,6 +28,13 @@ public final class VexUIListener implements Listener {
             && event.getCommonConnection() instanceof PlayerGameConnection game) {
             var response = event.getDialogResponseView();
             coordinator.dispatch(game.getPlayer(), event.getIdentifier(), response == null ? null : response.getText("query"));
+        }
+    }
+
+    @EventHandler
+    public void resourcePackStatus(final PlayerResourcePackStatusEvent event) {
+        if (event.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
+            coordinator.resourcePackLoaded(event.getPlayer());
         }
     }
 

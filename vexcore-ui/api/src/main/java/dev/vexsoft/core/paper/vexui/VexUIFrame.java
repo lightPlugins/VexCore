@@ -18,7 +18,7 @@ public record VexUIFrame(
     boolean compactCloseButton
 ) {
 
-    public static final int API_VERSION = 2;
+    public static final int API_VERSION = 3;
     public static final int PACK_FORMAT_VERSION = 3;
 
     /** Copies the action table and validates the logical canvas width. */

@@ -68,6 +68,14 @@ public final class VexUISessionCoordinator implements VexUICoordinatorService, A
     }
 
     @Override
+    public void resourcePackLoaded(final Player player) {
+        var session = sessions.get(player.getUniqueId());
+        if (session != null && session.player() == player) {
+            session.resourcePackLoaded();
+        }
+    }
+
+    @Override
     public void disconnected(final UUID viewer) {
         var session = sessions.remove(viewer);
         if (session != null) {

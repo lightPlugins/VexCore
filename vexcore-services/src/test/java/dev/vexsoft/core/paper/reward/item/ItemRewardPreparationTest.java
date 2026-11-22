@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -134,11 +135,12 @@ final class ItemRewardPreparationTest {
     @Test
     void virtualRangesAreFrozenOnceAndNeverCreateOrDeliverNativeStacks() {
         WholeAmount[] deposited = {WholeAmount.ZERO};
+        var model = new AtomicReference<>("minecraft:raw_iron");
         var items = proxy(RewardItemService.class, (instance, method, arguments) -> switch (method.getName()) {
             case "validate" -> null;
             case "isVirtual" -> true;
             case "name" -> Component.text("Ore");
-            case "icon" -> "vexisles:ore";
+            case "icon" -> model.get();
             case "describe" -> Component.text(arguments[2] + " Ore");
             case "deliverVirtual" -> {
                 deposited[0] = deposited[0].add((WholeAmount) arguments[2]);
@@ -150,8 +152,14 @@ final class ItemRewardPreparationTest {
         var owner = new VexPlayer(UUID.randomUUID(), "Alex");
         owner.bindPlatformPlayer(proxy(Player.class, (instance, method, arguments) -> null));
         var context = new PlayerExecutionContext(owner, Map.of());
-        var prepared = assertInstanceOf(PreparedItemReward.class, new ItemReward(registry)
-            .compile(Map.of("key", "vexisles:ore", "amount", Map.of("min", "3zz", "max", "5zz"))).prepare(context));
+        var configured = new ItemReward(registry)
+            .compile(Map.of("key", "vexisles:ore", "amount", Map.of("min", "3zz", "max", "5zz")));
+        assertEquals(Component.text("minecraft:raw_iron"), configured.describeEntries(context).getFirst()
+            .placeholders().get("item_model"));
+        var prepared = assertInstanceOf(PreparedItemReward.class, configured.prepare(context));
+        model.set("minecraft:raw_gold");
+        assertEquals(Component.text("minecraft:raw_iron"), prepared.describeEntries(context).getFirst()
+            .placeholders().get("item_model"));
         assertEquals(List.of(), prepared.preparedItems());
         var description = prepared.describe(context);
         assertEquals(description, prepared.describe(context));

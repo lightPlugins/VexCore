@@ -29,6 +29,9 @@ public interface VexUICoordinatorService extends VexService {
     /** Dispatches an opaque client action to the viewer's current session. */
     void dispatch(Player player, Key action, String submittedText);
 
+    /** Redraws the dialog displayed on this connection after the client loads a resource pack. */
+    void resourcePackLoaded(Player player);
+
     /** Retires a disconnected viewer's session without sending packets. */
     void disconnected(UUID viewer);
 

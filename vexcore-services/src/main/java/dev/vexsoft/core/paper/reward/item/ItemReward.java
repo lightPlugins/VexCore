@@ -92,6 +92,10 @@ public final class ItemReward implements Reward {
         return definition.minimum().add(WholeAmount.of(selected));
     }
 
+    private static Map<String, Component> itemPlaceholders(final String key, final String model) {
+        return Map.of("item_key", Component.text(key), "item_model", Component.text(model == null ? key : model));
+    }
+
     private static Component join(final List<Component> descriptions) {
         // Separators inherit the consumer's quantity color, rather than the surrounding menu heading.
         Component result = Component.join(JoinConfiguration.commas(true), descriptions);
@@ -189,7 +193,7 @@ public final class ItemReward implements Reward {
         public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
             Player viewer = context.player().requirePlatformPlayer(Player.class);
             return definitions.stream().map(definition -> new ExecutionDescription("",
-                Map.of("item_key", Component.text(definition.item().key())),
+                itemPlaceholders(definition.item().key(), items.icon(viewer, definition.item())),
                 items.describe(viewer, definition.item(), definition.minimum().equals(definition.maximum())
                     ? WholeAmountFormatter.format(definition.minimum())
                     : WholeAmountFormatter.format(definition.minimum()) + "\u2013"
@@ -269,7 +273,7 @@ public final class ItemReward implements Reward {
         public List<ExecutionDescription> describeEntries(final PlayerExecutionContext context) {
             List<ExecutionDescription> result = new ArrayList<>();
             for (int index = 0; index < descriptions.size(); index++) {
-                result.add(new ExecutionDescription("", Map.of("item_key", Component.text(itemKeys.get(index))),
+                result.add(new ExecutionDescription("", itemPlaceholders(itemKeys.get(index), notifications.get(index).icon()),
                     descriptions.get(index)));
             }
             return List.copyOf(result);

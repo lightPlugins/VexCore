@@ -39,7 +39,10 @@ public final class VexUIRenderBenchmarkTest {
         fixture.flush();
         List<VexUIFrame> frames = new ArrayList<>();
         frames.add(fixture.dialogs.frames.getLast());
-        for (String action : List.of("page.next", "tab.rewards", "items.next", "tab.sources", "tab.unlocks")) {
+        if (!frames.getFirst().actions().containsKey("level.5")) {
+            fixture.invoke(session, "page.previous");
+        }
+        for (String action : List.of("level.5", "popup.next", "popup.close", "page.next", "level.10")) {
             fixture.invoke(session, action);
             frames.add(fixture.dialogs.frames.getLast());
         }

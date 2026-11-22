@@ -12,17 +12,24 @@ import net.kyori.adventure.text.Component;
 public interface VexUIProfessionProvider extends VexUIObservable<VexUIProfessionSnapshot>, VexUITemplateText,
     AutoCloseable {
 
-    /** Returns independently reloadable geometry for main, job, levels, rewards, sources, unlocks or receipt. */
+    /** Returns the layout of a profession menu section. */
     VexUITemplateLayout layout(String section);
 
-    /** Claims one milestone, a complete profession when level is null, or all professions when both are null. */
-    CompletionStage<VexUIProfessionSnapshot.Claim> claim(String profession, Integer level);
+    /** Returns the namespaced scene font prefix, such as isles:professions/mining, or null for the standard workspace. */
+    default String sceneTheme(final String profession) {
+        return null;
+    }
+
+    /** Whether each scene's three bitmap strips are also registered in the GUI atlas as panorama_0 through panorama_2. */
+    default boolean hasPanoramaSprites() {
+        return false;
+    }
+
+    /** Claims the selected milestone and returns whether its rewards were collected. */
+    CompletionStage<Boolean> claim(String profession, int level);
 
     /** Expands complete localized tooltip lines, preserving styled whole-line sections. */
     List<Component> lore(String key, Map<String, String> values, Map<String, List<Component>> sections);
-
-    /** Marks only the actually displayed unlock revisions as read. */
-    CompletionStage<Void> seen(List<String> unlocks);
 
     /** Releases viewer-owned adapter resources without cancelling authoritative domain operations. */
     @Override

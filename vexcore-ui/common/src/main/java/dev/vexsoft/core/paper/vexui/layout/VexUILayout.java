@@ -7,6 +7,7 @@ import dev.vexsoft.core.paper.vexui.element.VexUIElement;
 import dev.vexsoft.core.paper.vexui.element.VexUIGrid;
 import dev.vexsoft.core.paper.vexui.element.VexUIGridCell;
 import dev.vexsoft.core.paper.vexui.element.VexUIItemIcon;
+import dev.vexsoft.core.paper.vexui.element.VexUIMap;
 import dev.vexsoft.core.paper.vexui.element.VexUIPanel;
 import dev.vexsoft.core.paper.vexui.element.VexUIParagraph;
 import dev.vexsoft.core.paper.vexui.element.VexUIRow;
@@ -59,7 +60,16 @@ public final class VexUILayout {
         final String path
     ) {
         List<VexUIPlacement> children = new ArrayList<>();
-        if (node instanceof VexUIRow row) {
+        if (node instanceof VexUIMap map) {
+            if (width < map.size().width() || height < map.size().height()) {
+                throw new IllegalArgumentException("Map exceeds its allocated bounds");
+            }
+            for (int index = 0; index < map.layers().size(); index++) {
+                var layer = map.layers().get(index);
+                children.add(place(layer.element(), x + layer.x(), y + layer.y(), layer.width(),
+                    layer.height(), childPath(path, layer.element(), index)));
+            }
+        } else if (node instanceof VexUIRow row) {
             int[] widths = rowWidths(row, width, path);
             int childX = x;
             for (int i = 0; i < row.children().size(); i++) {

@@ -9,11 +9,12 @@ It runs inside VexCore and does not depend on VexIsles.
 - `:vexcore-ui:common`: owner-scoped sessions, shared coordinator, layout, renderer, Paper transport and debug shop.
 - `:vexcore-ui:pack`: deterministic fonts, frame geometry, vanilla icon definitions and matching measurements.
 
-The Java artifacts follow VexCore's release version. API generation 2 and pack schema 3 are exposed through
+The Java artifacts follow VexCore's release version. API generation 3 and pack schema 3 are exposed through
 `VexUIFrame`; they are separate from the Minecraft resource-pack format (88 for this 26.3 profile).
 There is currently one Paper backend and no NMS dependency. Minecraft 26.3 has not been validated.
-API generation 2 removes the unused profession goal method and snapshot field. Plugins implementing the
-profession provider or constructing its snapshots must rebuild against this API. Schema 3 adds Unicode fallback
+API generation 3 limits profession snapshots to job progress and level rewards. The profession provider claims
+one level at a time and reports whether the grant succeeded. Plugins implementing this provider or constructing
+its snapshots must rebuild against this API. Schema 3 adds Unicode fallback
 symbols; install the matching Core JAR and regenerated pack together.
 
 ## Build and visual test
@@ -332,7 +333,7 @@ must be between `0.5` and `2.0`.
 `VexUIClickSound.collect()` supplies the shared `vexcore:ui.collect` confirmation (volume `0.65`, pitch `1`).
 Play `player.playSound(VexUIClickSound.collect().asSound())` on the entity thread only after a menu collection succeeds.
 Do not use it as the initiating button's click sound: rejected, empty and failed collections must not confirm success.
-The profession template plays it once for a successful nonempty receipt, including Collect All.
+The profession template plays it once when a level reward is collected.
 
 The supplied audio is converted to mono Ogg Vorbis at 44.1 kHz and stored as `sounds/ui/collect.ogg` in the `vexcore`
 namespace. Standalone VexUI packs include their own sound manifest. Combined Core/Isles packs retain Core's merged
@@ -370,7 +371,7 @@ allocations fell from 11.10 MB to 4.91 MB, and JSON size from 327.7 kB to 186.1 
 measurements with fixture snapshots, not server MSPT, actual network bytes or a live Paper transport profile.
 The benchmark has no wall-clock pass/fail threshold and is skipped during ordinary builds.
 
-## Reusable templates (API generation 2)
+## Reusable templates (API generation 3)
 
 Templates live in `dev.vexsoft.core.paper.vexui.template` and create a fresh `VexUIView` for each viewer:
 
@@ -379,7 +380,7 @@ Templates live in `dev.vexsoft.core.paper.vexui.template` and create a fresh `Ve
 | `VexUIMainMenuTemplate` | `VexUITemplateProvider<VexUIMainMenuTemplate.Snapshot>` | Paginated dashboard tiles, disabled actions, reward/news attention |
 | `VexUIShopTemplate` | `VexUIShopProvider` | Categories, explicit-submit search, availability filter, sorting, pages, item preview, quantity controls, live purchase quote |
 | `VexUIUpgradeTemplate` | `VexUIUpgradeProvider` | Before/after preview, option selection, paginated requirements/costs, progress and asynchronous execution |
-| `VexUIProfessionTemplate` | `VexUIProfessionProvider` | Single profession workspace, compact sidebar, progress, embedded claims, inline item/details/receipt pages |
+| `VexUIProfessionTemplate` | `VexUIProfessionProvider` | Profession catalog, level path and per-level reward popup |
 | `VexUITravelTemplate` | `VexUITravelProvider` | Paged category sidebar, retained destination pages, embedded direct-travel buttons and live journey/cancellation strip |
 
 Adapters are viewer-specific plain objects. Implement their observable snapshot, localized text and layout contracts;
@@ -397,7 +398,7 @@ The shop template keys are `previous`, `next`, `page` (`page`, `pages`), `back`,
 `empty`, `select_product`, `pending`, `failed`, `quantity` (`amount`), and `quantity_minus16`, `quantity_minus1`,
 `quantity_plus1`, `quantity_plus16`, `quantity_max`. Dashboard keys are the shared paging/back/close subset;
 upgrade additionally uses `empty`, `pending`, `failed`. Profession keys are namespaced per section (`main.*`,
-`job.*`, `levels.*`, `rewards.*`, `sources.*`, `unlocks.*`, `receipt.*`); the VexIsles adapter demonstrates
+`job.*`, `levels.*`, `rewards.*`); the VexIsles adapter demonstrates
 independent published layout/localization ownership. Values use the owning plugin's localization system.
 
 Quotes and previews are presentation only. Shop/upgrade/claim adapters must revalidate profile identity, item
@@ -414,29 +415,18 @@ Use `VexUIIcon.item("minecraft:item/iron_ingot")` only for registered sprites. `
 queries availability at 16/32/48 pixels, allowing adapters to provide a fallback for unsupported custom or block
 models. New pack entries include the profession reward materials; rebuilding the pack remains necessary.
 
-The template tests write `professions.png`, `profession-rewards.png` and `profession-bundle.png` beside the other
-CPU previews. These are font-decoded diagnostic renders, not screenshots from a live client.
-
-The profession template uses one continuous themed workspace. Profession selection, tabs, milestone previews,
-per-level claim buttons, and receipt inspection update that same view. There are no intermediate bundle or
-item-detail dialogs. Its provider additionally supplies `lore(key, values, sections)` through the owning plugin's
-localization system: complete string-list lines, blank separators and whole-line styled component sections are
-preserved. VexIsles publishes these compact sections under `menu_profession_ui_v4_*`; older layout publications
-are not interpreted as the new workspace. The favorite/pinning API has been removed.
+The profession template shows five consecutive level islands and a profession selector. Clicking an island
+opens its reward list over the path. Collect grants the selected level’s entire bundle, including entries
+on subsequent pages. Closing the popup restores the same path page. Back is in the upper-right corner.
+The provider supplies `lore(key, values, sections)` through the owning plugin’s localization system,
+preserving blank separators and styled section components. VexIsles publishes the four sections under
+`menu_profession_ui_v4_*`.
 
 `VexUIPanel.withTooltip(Component)` applies a native tooltip across a panel's complete area. Embed interactive
 buttons in panels and rows; a panel is not itself a clickable parent, so locked child buttons remain disabled.
 Native hit-area tests verify that the backdrop and panel tooltips do not mask nested claim actions.
 
-Profession workspace defaults omit search and use tighter row leading and smaller per-section capacities.
-Viewport tests bound the standard workspace to 300 logical pixels, including empty filters. Filter/sort,
-section and page controls use centered labels while preserving the existing panel themes.
-Navigation groups share one bottom row, including disabled controls, empty previews and partial pages.
-Back sits at the upper right with global Collect All immediately to its left; there is no hint/footer row.
-Unlocks use the full workspace as a two-column paged grid (eight entries with the default four rows), with
-formatted details on hover and no separate detail pane or detail pager.
-Defaults show five levels and four preview items per page. The level path has no goal or reward shortcut controls;
-claims remain under the rewards tab and the global claim action. Goal contracts and snapshot fields have been removed.
+The standard profession workspace provides a paginated level list for jobs without scene artwork.
 
 ## Shared crafting stations
 

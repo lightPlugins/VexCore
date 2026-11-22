@@ -56,10 +56,13 @@ public final class VexUISessionState implements VexUISession {
     private final AtomicBoolean pending = new AtomicBoolean();
     private final Set<Key> queuedActions = ConcurrentHashMap.newKeySet();
     private volatile VexTask refreshTask;
+    private VexTask delayedRefresh;
+    private long delayedGeneration;
     private volatile Map<Key, VexUIAction> actions = Map.of();
     private Map<Key, String> routeNames = Map.of();
     private Map<Key, VexUIClickSound> routeSounds = Map.of();
     private VexUIFrame lastFrame;
+    private boolean resourcePackChanged;
     private VexUIStyleSheet lastStyle;
     private VexUIDebugOptions lastDebug;
     private volatile VexUIDebugOptions debugOptions = VexUIDebugOptions.disabled();
@@ -141,6 +144,11 @@ public final class VexUISessionState implements VexUISession {
     }
 
     @Override
+    public int fittedTextWidth(final Component text, final int maximumWidth) {
+        return renderer.fittedTextWidth(text, maximumWidth);
+    }
+
+    @Override
     public void setDebugOptions(final VexUIDebugOptions options) {
         debugOptions = Objects.requireNonNull(options, "options");
         refresh();
@@ -148,10 +156,17 @@ public final class VexUISessionState implements VexUISession {
 
     @Override
     public void refresh() {
-        if (!isClosed() && coordinator.active(this) && pending.compareAndSet(false, true)) {
+        if (isClosed() || !coordinator.active(this)) {
+            return;
+        }
+        var plugin = scheduler.getOwner();
+        if ((plugin != null && !plugin.isEnabled()) || !pending.compareAndSet(false, true)) {
+            return;
+        }
+        try {
             refreshTask = scheduler.runFor(player, () -> {
                 pending.set(false);
-                if (!isClosed() && coordinator.active(this)) {
+                if (plugin == null || plugin.isEnabled()) {
                     try {
                         render();
                     } catch (RuntimeException failure) {
@@ -160,11 +175,34 @@ public final class VexUISessionState implements VexUISession {
                     }
                 }
             }, this::disconnected).orElse(null);
-            if (refreshTask == null) {
-                pending.set(false);
-                disconnected();
+        } catch (IllegalPluginAccessException failure) {
+            pending.set(false);
+            if (plugin == null || plugin.isEnabled()) {
+                throw failure;
             }
+            return;
         }
+        if (refreshTask == null) {
+            pending.set(false);
+            disconnected();
+        }
+    }
+
+    @Override
+    public void refreshAfter(final long delayTicks) {
+        scheduleAfter(delayTicks, this::refresh);
+    }
+
+    @Override
+    public void updateAfter(final long delayTicks, final Runnable mutation) {
+        Objects.requireNonNull(mutation, "mutation");
+        scheduleAfter(delayTicks, () -> {
+            try {
+                mutation.run();
+            } finally {
+                refresh();
+            }
+        });
     }
 
     @Override
@@ -263,6 +301,14 @@ public final class VexUISessionState implements VexUISession {
         releaseViews();
     }
 
+    synchronized void resourcePackLoaded() {
+        // A pending first frame already uses the new pack. Preserve any text in a native search field.
+        if (lastFrame != null && search == null) {
+            resourcePackChanged = true;
+            refresh();
+        }
+    }
+
     void accept(final Key action, final String submittedText) {
         if (isClosed() || !coordinator.active(this)) {
             return;
@@ -298,7 +344,14 @@ public final class VexUISessionState implements VexUISession {
             return;
         }
         if (action.equals(closeAction)) {
-            close();
+            // The same close packet must not dismiss a popup and then close its parent.
+            closeAction = null;
+            consumed = true;
+            try {
+                views.element().closeRequested(this);
+            } finally {
+                refresh();
+            }
             return;
         }
         var handler = actions.get(action);
@@ -355,7 +408,7 @@ public final class VexUISessionState implements VexUISession {
     }
 
     private synchronized void render() {
-        if (search != null) {
+        if (search != null || isClosed() || !coordinator.active(this)) {
             return;
         }
         VexUIFrame frame;
@@ -372,7 +425,7 @@ public final class VexUISessionState implements VexUISession {
         }
         var style = styleSheet();
         var debug = debugOptions;
-        if (!consumed && lastFrame != null && frame.title().equals(lastFrame.title())
+        if (!consumed && !resourcePackChanged && lastFrame != null && frame.title().equals(lastFrame.title())
             && frame.closeLabel().equals(lastFrame.closeLabel()) && frame.width() == lastFrame.width()
             && frame.compactCloseButton() == lastFrame.compactCloseButton()
             && frame.content().equals(lastFrame.content()) && frame.actions().keySet().equals(lastFrame.actions().keySet())
@@ -408,6 +461,7 @@ public final class VexUISessionState implements VexUISession {
         lastStyle = style;
         lastDebug = debug;
         consumed = false;
+        resourcePackChanged = false;
         dialogs.show(player, frame, rendered, closeAction);
     }
 
@@ -461,6 +515,7 @@ public final class VexUISessionState implements VexUISession {
     }
 
     private void invalidateView() {
+        cancelDelayedRefresh();
         List<Runnable> cleanup = new ArrayList<>();
         bindings.values().forEach(binding -> cleanup.add(binding::close));
         bindings.clear();
@@ -470,6 +525,49 @@ public final class VexUISessionState implements VexUISession {
         cleanup.addAll(previous.cleanup);
         previous.cleanup.clear();
         runCleanup(cleanup);
+    }
+
+    private synchronized void scheduleAfter(final long delayTicks, final Runnable action) {
+        if (delayTicks < 1) {
+            throw new IllegalArgumentException("A delayed refresh needs at least one tick");
+        }
+        cancelDelayedRefresh();
+        var plugin = scheduler.getOwner();
+        if (isClosed() || !coordinator.active(this) || (plugin != null && !plugin.isEnabled())) {
+            return;
+        }
+        long generation = delayedGeneration;
+        try {
+            delayedRefresh = scheduler.runForLater(player, delayTicks, () -> finishDelay(generation, action),
+                this::disconnected).orElse(null);
+        } catch (IllegalPluginAccessException failure) {
+            if (plugin == null || plugin.isEnabled()) {
+                throw failure;
+            }
+            return;
+        }
+        if (delayedRefresh == null) {
+            disconnected();
+        }
+    }
+
+    private synchronized void finishDelay(final long generation, final Runnable action) {
+        if (generation != delayedGeneration) {
+            return;
+        }
+        delayedRefresh = null;
+        var plugin = scheduler.getOwner();
+        if (!isClosed() && coordinator.active(this) && (plugin == null || plugin.isEnabled())) {
+            action.run();
+        }
+    }
+
+    private void cancelDelayedRefresh() {
+        delayedGeneration++;
+        if (delayedRefresh != null) {
+            delayedRefresh.cancel();
+            delayedRefresh = null;
+        }
     }
 
     private static void runCleanup(final List<Runnable> callbacks) {

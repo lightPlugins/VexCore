@@ -32,11 +32,20 @@ public interface VexUISession extends AutoCloseable {
     /** Wraps complete styled text using the same glyph measurements as the renderer. */
     List<Component> wrap(Component text, int width);
 
+    /** Measures the single-line advance after the renderer fits the styled label to the available width. */
+    int fittedTextWidth(Component text, int maximumWidth);
+
     /** Enables or disables developer overlays for this session and requests a refresh. */
     void setDebugOptions(VexUIDebugOptions options);
 
     /** Coalesces a render request without closing the current dialog. */
     void refresh();
+
+    /** Refreshes after the delay, replacing any pending refresh or update scheduled for this view. */
+    void refreshAfter(long delayTicks);
+
+    /** Replaces the view's deadline with a mutation and refresh. Leaving the view cancels the mutation. */
+    void updateAfter(long delayTicks, Runnable mutation);
 
     /** Applies a state mutation on the viewer's scheduler and refreshes if this session is still active. */
     void update(Runnable mutation);
